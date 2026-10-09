@@ -903,6 +903,23 @@ instead of a cookie.
 {"error":{"code":"CSRF_REJECTED","message":"A POST to /notes with cookies came from another site or another app.","fix":"Send the request from the app's own pages, or list /notes under routes.csrf_off in whisk.yaml if a cross-site POST is intended.","docs":"https://skill.whisk.run/errors/CSRF_REJECTED","details":{"route":"/notes","sec_fetch_site":"cross-site"}}}
 ```
 
+## REAUTH_REQUIRED
+
+Status: 403 · Surface: auth
+
+When: on the sign-in host, a signed-in person asked to add or remove a passkey, or to set, change
+or remove their password, more than ten minutes after they last proved who they are: the sign-in
+that made their session, or a confirmation since. Nothing was changed. The pages show the confirm
+page instead; the passkey ceremony's script gets this answer.
+
+Fix: Open `/passkeys/confirm` on the sign-in host and confirm it's you with a passkey, your
+password or an emailed code (or your company's sign-in, when your company signs you in), then
+make the change within ten minutes.
+
+```json
+{"error":{"code":"REAUTH_REQUIRED","message":"Confirm it's you before you add a passkey.","fix":"Open https://auth.whisk.run/passkeys/confirm, confirm with a passkey, your password or an emailed code, then try again within ten minutes.","docs":"https://skill.whisk.run/errors/REAUTH_REQUIRED"}}
+```
+
 ## PATH_AMBIGUOUS
 
 Status: 400 · Surface: edge, auth
@@ -1878,6 +1895,37 @@ Fix: Read PostgreSQL's message, fix the SQL and run it again.
 
 ```json
 {"error":{"code":"QUERY_FAILED","message":"PostgreSQL refused the SQL: relation \"ordrs\" does not exist.","fix":"Fix the SQL and run it again. Nothing was changed.","docs":"https://skill.whisk.run/errors/QUERY_FAILED","details":{"sqlstate":"42P01","position":15}}}
+```
+
+## QUERY_RESULT_TOO_LARGE
+
+Status: 422 · Surface: api, cli
+
+When: `whisk db query` was stopped because the database sent more than the control plane reads
+for one call: a single row, error or notice larger than 8 MiB (`details.kind` is `message`), or
+more than 256 MiB of rows across the SQL's results (`details.kind` is `rows`), counting rows
+past `limit` that are counted but not answered. The connection was dropped, which rolls the
+transaction back; nothing was changed.
+
+Fix: Narrow what the SQL returns: a `where` clause or a `limit`, `count(*)` to count, and
+`left(col, 1000)` or `length(col)` for a very large value.
+
+```json
+{"error":{"code":"QUERY_RESULT_TOO_LARGE","message":"The database sent a single row or message larger than 8 MiB, so the query was stopped. Nothing was changed.","fix":"Select fewer or shorter columns, for example left(body, 1000) or length(body) instead of body, and run it again.","docs":"https://skill.whisk.run/errors/QUERY_RESULT_TOO_LARGE","details":{"limit_bytes":8388608,"kind":"message"}}}
+```
+
+## QUERY_BUSY
+
+Status: 429 · Surface: api, cli
+
+When: `whisk db query` or `whisk db schema` waited five seconds for a place and did not start:
+the org already had two of them running, or the platform sixteen. Nothing ran.
+
+Fix: Wait for the running queries to finish and send it again (`details.retry_after` seconds);
+run queries one after another rather than at once.
+
+```json
+{"error":{"code":"QUERY_BUSY","message":"The org already has 2 database queries running, or the platform has 16; this one waited 5s and did not start.","fix":"Wait for the running queries to finish, then send it again; run queries one after another rather than at once.","docs":"https://skill.whisk.run/errors/QUERY_BUSY","details":{"per_org":2,"at_once":16,"retry_after":5}}}
 ```
 
 ## DB_URL_PRIVATE

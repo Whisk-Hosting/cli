@@ -442,7 +442,8 @@ prints the command that returns to it, or says the plan cannot. `whisk restore -
 restores into a new database beside the live one, which `whisk db query --database <name>` reads,
 so you can check it first; `--swap` puts it live. A restore runs in the background: add `--wait`
 to follow it, or `whisk restore show <id> --wait` later. An owner or admin downloads all of the
-business's data with `whisk export --wait`.
+business's data with `whisk export --wait`; its link works for five minutes, and
+`whisk export show <id>` signs a new one while the archive is kept (seven days).
 
 ## 6. Secrets
 

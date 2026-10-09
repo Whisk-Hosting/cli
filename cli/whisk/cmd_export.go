@@ -17,7 +17,8 @@ import (
 // exportPoll is how often --wait asks how an export is going.
 var exportPoll = 3 * time.Second
 
-// exportCmd starts the org's export and, with --wait, follows it to its link (CLI.md §5.9).
+// exportCmd starts the org's export and, with --wait, follows it to its link; export show signs
+// a fresh link for one that is ready (CLI.md §5.9).
 func exportCmd(s *session) *cobra.Command {
 	var wait bool
 	c := &cobra.Command{
@@ -28,8 +29,10 @@ every database as a pg_dump, the secrets' names (never their values), the audit 
 manifest history, in one archive in the org's own bucket. It works in every state the org can
 be in, frozen included.
 
-With --wait it follows the export, or the one already running, and prints a link that lives
-until the export expires, seven days after it finishes. Owners and admins.`,
+With --wait it follows the export, or the one already running, and prints a download link. The
+archive is kept for seven days after it finishes; each link works for five minutes, and
+whisk export show <id> signs a new one while the archive is kept and you are still an owner or
+admin. Owners and admins.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			org, err := s.org()
@@ -62,24 +65,68 @@ until the export expires, seven days after it finishes. Owners and admins.`,
 			if final.Status != apitypes.ExportDone {
 				return exportFailed(final)
 			}
-			s.printer.Result(exportResult(org, final), func(w io.Writer) {
-				until := ""
-				if !final.ExpiresAt.IsZero() {
-					until = ", downloadable until " + final.ExpiresAt.Local().Format("2 Jan 2006 15:04")
-				}
-				fmt.Fprintf(w, "Export %s is ready: %s%s.\n%s\n", final.ID, exportSize(final.Bytes), until, final.URL)
-			})
+			s.printer.Result(exportResult(org, final), func(w io.Writer) { printExport(w, final) })
 			return nil
 		},
 	}
 	c.Flags().BoolVar(&wait, "wait", false, "follow the export, or the one already running, and print its link when it is ready")
+	c.AddCommand(exportShowCmd(s))
 	return c
+}
+
+// exportShowCmd reads one export, which signs a fresh download link when its archive is ready.
+func exportShowCmd(s *session) *cobra.Command {
+	return &cobra.Command{
+		Use:   "show <id>",
+		Short: "Show one export and, once it is ready, a fresh download link that works for five minutes",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			org, err := s.org()
+			if err != nil {
+				return err
+			}
+			client, _, err := s.client()
+			if err != nil {
+				return err
+			}
+			e, err := client.GetExport(s.ctx, org, args[0])
+			if err != nil {
+				return wrap(err)
+			}
+			if e.Status == apitypes.ExportFailed {
+				return exportFailed(e)
+			}
+			s.printer.Result(exportResult(org, e), func(w io.Writer) { printExport(w, e) })
+			return nil
+		},
+	}
+}
+
+// printExport is one export as a person reads it: its state and, once ready, its link and how
+// long each of the link and the archive lasts.
+func printExport(w io.Writer, e api.Export) {
+	if e.Status != apitypes.ExportDone {
+		fmt.Fprintf(w, "Export %s is %s.\n", e.ID, e.Status)
+		return
+	}
+	until := ""
+	if !e.ExpiresAt.IsZero() {
+		until = ", kept until " + e.ExpiresAt.Local().Format("2 Jan 2006 15:04")
+	}
+	fmt.Fprintf(w, "Export %s is ready: %s%s.\n%s\n", e.ID, exportSize(e.Bytes), until, e.URL)
+	if !e.URLExpiresAt.IsZero() {
+		fmt.Fprintf(w, "The link works until %s; whisk export show %s signs a new one.\n",
+			e.URLExpiresAt.Local().Format("15:04"), e.ID)
+	}
 }
 
 func exportResult(org string, e api.Export) map[string]any {
 	out := map[string]any{"org": org, "id": e.ID, "status": e.Status}
 	if e.URL != "" {
 		out["url"] = e.URL
+	}
+	if !e.URLExpiresAt.IsZero() {
+		out["url_expires_at"] = e.URLExpiresAt
 	}
 	if !e.ExpiresAt.IsZero() {
 		out["expires_at"] = e.ExpiresAt

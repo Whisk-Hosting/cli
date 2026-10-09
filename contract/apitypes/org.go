@@ -298,19 +298,21 @@ const (
 
 // Export is one export of the whole org (CONTROL-PLANE.md §6.19). Its link comes only from
 // reading that one export, because signing a link is audited and a list is read far more often
-// than anyone downloads.
+// than anyone downloads. The link works until URLExpiresAt, minutes after the read; the archive
+// itself is kept until ExpiresAt, and reading the export again signs a new link.
 type Export struct {
-	ID          string          `json:"id"`
-	Status      ExportStatus    `json:"status"`
-	RequestedBy string          `json:"requested_by"`
-	CreatedAt   time.Time       `json:"created_at"`
-	StartedAt   time.Time       `json:"started_at,omitzero"`
-	FinishedAt  time.Time       `json:"finished_at,omitzero"`
-	ExpiresAt   time.Time       `json:"expires_at,omitzero"`
-	Bytes       int64           `json:"bytes"`
-	Contents    map[string]any  `json:"contents"`
-	Error       *werrors.Detail `json:"error,omitempty"`
-	URL         string          `json:"url,omitempty"`
+	ID           string          `json:"id"`
+	Status       ExportStatus    `json:"status"`
+	RequestedBy  string          `json:"requested_by"`
+	CreatedAt    time.Time       `json:"created_at"`
+	StartedAt    time.Time       `json:"started_at,omitzero"`
+	FinishedAt   time.Time       `json:"finished_at,omitzero"`
+	ExpiresAt    time.Time       `json:"expires_at,omitzero"`
+	Bytes        int64           `json:"bytes"`
+	Contents     map[string]any  `json:"contents"`
+	Error        *werrors.Detail `json:"error,omitempty"`
+	URL          string          `json:"url,omitempty"`
+	URLExpiresAt time.Time       `json:"url_expires_at,omitzero"`
 }
 
 // AccountExport is GET /me/export: everything the platform holds about one person as themselves
