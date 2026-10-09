@@ -1,0 +1,9 @@
+# expect: MANIFEST_INVALID not a known preset
+whisk: 1
+name: app
+secrets: [SIGNING_SECRET]
+webhooks:
+  - name: x
+    preset: paypal
+    secret: SIGNING_SECRET
+    handler: /hooks/x

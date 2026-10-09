@@ -1,0 +1,4 @@
+steps:
+  - id: receive
+  - id: compute
+  - id: record

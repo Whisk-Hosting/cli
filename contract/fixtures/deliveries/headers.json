@@ -1,0 +1,7 @@
+{
+  "X-Whisk-Audience": "service",
+  "X-Whisk-Webhook-Id": "01J8Z3WQ9XN4M6P8R0T2V4X6Y8",
+  "X-Whisk-Webhook-Source": "stripe",
+  "X-Whisk-Webhook-Received-At": "2026-09-23T10:15:30Z",
+  "X-Whisk-Delivery-Signature": "v1=1d94b46d0053ffcb73494700dd0a91ea76a7a92bf735be3abbefbaaf802e9191"
+}

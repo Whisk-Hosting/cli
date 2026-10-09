@@ -1,0 +1,34 @@
+{
+  "finished": [
+    "live",
+    "failed",
+    "rolled_back",
+    "cancelled",
+    "blocked",
+    "superseded"
+  ],
+  "statuses": [
+    "queued",
+    "building",
+    "snapshotting",
+    "migrating",
+    "starting",
+    "health_checking",
+    "switching",
+    "draining",
+    "live",
+    "failed",
+    "rolled_back",
+    "cancelled",
+    "blocked",
+    "superseded"
+  ],
+  "supersedable": [
+    "queued",
+    "building",
+    "snapshotting",
+    "migrating",
+    "starting",
+    "health_checking"
+  ]
+}

@@ -1,0 +1,32 @@
+[project]
+name = "whisk-python"
+version = "1.0.0"
+description = "Whisk reference app: FastAPI, SQLAlchemy, Alembic, Inngest, structlog"
+requires-python = ">=3.12"
+dependencies = [
+    "alembic>=1.19",
+    "boto3>=1.43.104",
+    "fastapi>=0.141",
+    "inngest>=0.5.19",
+    "opentelemetry-exporter-otlp-proto-http>=1.45.0",
+    "opentelemetry-instrumentation-fastapi>=0.66b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.66b0",
+    "opentelemetry-instrumentation-urllib>=0.66b0",
+    "opentelemetry-sdk>=1.45.0",
+    "psycopg[binary]>=3.3",
+    "redis>=6.4",
+    "sentry-sdk>=2.68",
+    "sqlalchemy>=2.0",
+    "structlog>=26.1",
+    "uvicorn>=0.52",
+]
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = ["httpx>=0.28", "pytest>=8"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

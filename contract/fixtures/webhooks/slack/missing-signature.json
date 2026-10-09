@@ -1,0 +1,17 @@
+{
+  "preset": "slack",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/slack",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Slack-Request-Timestamp": "1788782400"
+  },
+  "expect": {
+    "verified": false,
+    "reason": "missing_signature"
+  },
+  "note": "No signature header."
+}

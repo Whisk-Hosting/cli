@@ -1,0 +1,2 @@
+go test fuzz v1
+string("whisk:\x1b[\x1b[A0A")

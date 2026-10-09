@@ -1,0 +1,1 @@
+ALTER TABLE "events" ADD COLUMN "verified" boolean DEFAULT false NOT NULL;

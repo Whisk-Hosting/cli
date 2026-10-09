@@ -1,0 +1,4 @@
+# expect: /steps/0
+steps:
+  - id: ready?
+  - id: go

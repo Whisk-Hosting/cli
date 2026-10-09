@@ -1,0 +1,7 @@
+# expect: MANIFEST_INVALID /functions/0/graph
+whisk: 1
+name: app
+functions:
+  - name: a
+    event: x.y
+    graph: workflows/a.yaml

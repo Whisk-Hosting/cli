@@ -1,0 +1,5 @@
+# expect: MANIFEST_INVALID cannot be declared
+whisk: 1
+name: app
+env:
+  PORT: "3000"

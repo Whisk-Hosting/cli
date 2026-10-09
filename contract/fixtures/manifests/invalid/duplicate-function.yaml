@@ -1,0 +1,10 @@
+# expect: MANIFEST_INVALID duplicate function name
+whisk: 1
+name: app
+functions:
+  - name: a
+    event: x.y
+    graph: workflows/a.graph.yaml
+  - name: a
+    event: x.z
+    graph: workflows/a.graph.yaml

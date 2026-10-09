@@ -1,0 +1,342 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skill.whisk.run/whisk.schema.json",
+  "title": "Whisk manifest, conventions version 1",
+  "description": "whisk.yaml at the root of an app repository. Unknown keys are errors so that typos surface.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["whisk", "name"],
+  "properties": {
+    "whisk": {
+      "description": "Conventions version this repository follows. Changes within a version are additive.",
+      "const": 1
+    },
+    "name": {
+      "description": "App slug. The hostname <name>.<org>.whisk.page derives from it.",
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+      "minLength": 3,
+      "maxLength": 40
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public": {
+          "description": "Route globs reachable without identity. Everything else requires a signed-in team or customer identity.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "challenge": {
+          "description": "Public routes whose POSTs must carry a solved Altcha challenge.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "csrf_off": {
+          "description": "Routes exempt from the platform CSRF check. Rare; for embeds.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "headers": {
+          "description": "Response headers to add or override on every response from this app.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        }
+      },
+      "default": {}
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/path", "default": "/health" },
+        "timeout": {
+          "description": "Seconds allowed from container start to the first 200 from the health path.",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 90
+        }
+      },
+      "default": {}
+    },
+    "database": {
+      "description": "app: one database per app. shared:<name>: a schema inside an org-shared database. none: no database.",
+      "type": "string",
+      "pattern": "^(app|none|shared:[a-z0-9]([a-z0-9-]*[a-z0-9])?)$",
+      "default": "app"
+    },
+    "migrate": {
+      "description": "Command run before traffic switches to a new deploy. A snapshot is taken first.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dockerfile": {
+          "description": "Path to a Dockerfile. Absent: the platform detects the stack with Railpack.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "secrets": {
+          "description": "Secret names available only at build time, as BuildKit secret mounts.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/secretName" },
+          "uniqueItems": true,
+          "default": []
+        }
+      },
+      "default": {}
+    },
+    "secrets": {
+      "description": "Names of secrets the app reads from the environment. Humans set values in the dashboard.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/secretName" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "env": {
+      "description": "Non-secret configuration injected into the environment.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+      "additionalProperties": { "type": "string", "maxLength": 4096 },
+      "default": {}
+    },
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": {
+          "description": "Path where the platform delivers function runs using the Inngest protocol.",
+          "$ref": "#/$defs/path",
+          "default": "/.whisk/inngest"
+        }
+      },
+      "default": {}
+    },
+    "functions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/function" },
+      "default": []
+    },
+    "webhooks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/webhook" },
+      "default": []
+    },
+    "static": {
+      "description": "Folders published to object storage at deploy and served with immutable caching.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dir", "path"],
+        "properties": {
+          "dir": { "description": "Folder, relative to the repository root, whose files are published. No segment may be \"..\".", "type": "string", "minLength": 1, "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/?$" },
+          "path": { "$ref": "#/$defs/path" }
+        }
+      },
+      "default": []
+    },
+    "storage": {
+      "description": "true requests a bucket prefix and injects WHISK_STORAGE_*.",
+      "type": "boolean",
+      "default": false
+    },
+    "kv": {
+      "description": "true gives this app a Valkey of its own as WHISK_KV_URL. Plan-gated.",
+      "type": "boolean",
+      "default": false
+    },
+    "email": {
+      "description": "true allows this app to POST to the email send API.",
+      "type": "boolean",
+      "default": false
+    },
+    "always_on": {
+      "description": "true keeps the app awake. Plan-gated.",
+      "type": "boolean",
+      "default": false
+    },
+    "calls": {
+      "description": "Slugs of apps in the same org this app may call with its service identity.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        "minLength": 3,
+        "maxLength": 40
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "customer_identity": {
+      "description": "Second audience for public-facing apps: none, a pool per app, or a pool shared across the org.",
+      "type": "string",
+      "enum": ["none", "app", "org"],
+      "default": "none"
+    },
+    "previews": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "description": "Previews start with an empty database; empty is the only value. Seed test data from the app's migrations or a script.",
+          "type": "string",
+          "enum": ["empty"],
+          "default": "empty"
+        },
+        "ttl_days": { "description": "Days a preview lives after its last push, start or visit.", "type": "integer", "minimum": 1, "maximum": 90, "default": 3 }
+      },
+      "default": {}
+    }
+  },
+  "$defs": {
+    "path": {
+      "description": "An absolute URL path without query or fragment.",
+      "type": "string",
+      "pattern": "^/[^?#\\s]*$",
+      "maxLength": 200
+    },
+    "routeGlob": {
+      "description": "An absolute path that may contain * (within one segment) and ** (across segments).",
+      "type": "string",
+      "pattern": "^/[^?#\\s]*$",
+      "maxLength": 200
+    },
+    "secretName": {
+      "description": "Upper snake case, as the environment variable the value arrives in.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "graph"],
+      "oneOf": [
+        { "required": ["cron"], "not": { "required": ["event"] } },
+        { "required": ["event"], "not": { "required": ["cron"] } }
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "cron": {
+          "description": "Five-field cron expression, evaluated in tz (default UTC).",
+          "type": "string",
+          "pattern": "^\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+$"
+        },
+        "tz": {
+          "description": "IANA time zone name for cron, for example Pacific/Auckland.",
+          "type": "string",
+          "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$"
+        },
+        "event": {
+          "description": "Event name that triggers this function, for example po.created.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+([._/-][a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "graph": {
+          "description": "Path, relative to the repository root, of the declared workflow graph. No segment may be \"..\".",
+          "type": "string",
+          "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*[^/]*\\.graph\\.ya?ml$",
+          "maxLength": 200
+        },
+        "concurrency": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "retries": { "type": "integer", "minimum": 0, "maximum": 20, "default": 3 }
+      }
+    },
+    "webhook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "preset", "handler"],
+      "allOf": [
+        {
+          "if": { "properties": { "preset": { "const": "token" } } },
+          "then": { "not": { "required": ["secret"] } },
+          "else": { "required": ["secret"] }
+        },
+        {
+          "if": { "properties": { "preset": { "const": "hmac" } } },
+          "then": { "required": ["hmac"] },
+          "else": { "not": { "required": ["hmac"] } }
+        }
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "preset": {
+          "description": "A preset name from webhook-presets.yaml, hmac with inline settings, or token for unsigned providers.",
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "secret": {
+          "description": "Name of the secret holding the signing secret. Must also appear in secrets.",
+          "$ref": "#/$defs/secretName"
+        },
+        "handler": {
+          "description": "Route in this app that receives verified deliveries. Reached only by the platform.",
+          "$ref": "#/$defs/path"
+        },
+        "ip_allowlist": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cidr" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "hmac": { "$ref": "#/$defs/hmacSettings" }
+      }
+    },
+    "cidr": {
+      "type": "string",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}(/[0-9]{1,2})?$|^[0-9a-fA-F:]+(/[0-9]{1,3})?$"
+    },
+    "hmacSettings": {
+      "description": "Inline signature settings for preset hmac. Same fields as a preset in webhook-presets.yaml.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["header", "algorithm", "encoding", "payload"],
+      "properties": {
+        "header": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+        "algorithm": { "type": "string", "enum": ["sha1", "sha256", "sha512"] },
+        "encoding": { "type": "string", "enum": ["hex", "base64"] },
+        "payload": { "type": "string", "minLength": 1 },
+        "timestamp": { "$ref": "#/$defs/headerSource" },
+        "timestamp_format": { "type": "string", "enum": ["unix", "unix_ms", "rfc3339"], "default": "unix" },
+        "id": { "$ref": "#/$defs/headerSource" },
+        "signature_pattern": { "type": "string", "minLength": 1 },
+        "signature_prefix": { "type": "string", "minLength": 1 },
+        "tolerance_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 }
+      }
+    },
+    "headerSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": { "type": "string", "enum": ["header", "header_name"] },
+        "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+        "pattern": { "type": "string", "minLength": 1 }
+      },
+      "if": { "properties": { "from": { "const": "header_name" } } },
+      "then": { "required": ["name"] },
+      "else": { "required": ["pattern"] }
+    }
+  }
+}

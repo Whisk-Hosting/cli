@@ -1,0 +1,17 @@
+{
+  "preset": "stripe",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:10:01Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/stripe",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "Stripe-Signature": "t=1788782400,v1=87f3b1bd46f2a5dc47f682362c0816f7b9b76c4a37aedb50b972449e65830f9b"
+  },
+  "expect": {
+    "verified": false,
+    "reason": "stale_timestamp"
+  },
+  "note": "Valid signature, verified 601 seconds after the timestamp."
+}

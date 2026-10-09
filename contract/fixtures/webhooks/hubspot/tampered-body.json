@@ -1,0 +1,18 @@
+{
+  "preset": "hubspot",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/hubspot",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":12500",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-HubSpot-Request-Timestamp": "1788782400000",
+    "X-HubSpot-Signature-v3": "JteuqJKXT9PWQoKFMDOaNMEpPoLI8sSg5hX7XdSEW0U="
+  },
+  "expect": {
+    "verified": false,
+    "reason": "signature_mismatch"
+  },
+  "note": "Body changed after signing."
+}

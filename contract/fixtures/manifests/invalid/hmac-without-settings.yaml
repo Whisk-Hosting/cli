@@ -1,0 +1,9 @@
+# expect: MANIFEST_INVALID hmac
+whisk: 1
+name: app
+secrets: [SIGNING_SECRET]
+webhooks:
+  - name: x
+    preset: hmac
+    secret: SIGNING_SECRET
+    handler: /hooks/x

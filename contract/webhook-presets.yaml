@@ -1,0 +1,109 @@
+# Webhook signature presets. One generic HMAC verifier reads this table; a preset is
+# configuration, not code. The manifest names a preset in webhooks[].preset.
+#
+# Fields:
+#   header             request header carrying the signature
+#   algorithm          sha1 | sha256 | sha512
+#   encoding           hex | base64 (how the provider encodes the MAC)
+#   payload            template of the signed bytes. Placeholders: {body} raw request body;
+#                      {timestamp} and {id} as extracted below; {method} upper case;
+#                      {url} the full URL the provider called, scheme to query string;
+#                      {form_sorted} for form-encoded bodies, every field sorted by name and
+#                      concatenated as name followed by value (Twilio)
+#   timestamp          where the timestamp comes from: {from: header_name, name: X} reads a
+#                      whole header; {from: header, pattern: "re"} extracts group 1 from the
+#                      signature header itself
+#   id                 same shape, for providers that sign a message id
+#   signature_pattern  regex whose group 1 is the MAC, for composite headers (Stripe)
+#   signature_prefix   literal prefix before the MAC (GitHub "sha256=", Slack "v0=")
+#   tolerance_seconds  reject when |now - timestamp| exceeds this; requires timestamp
+#   timestamp_format   unix (default, seconds) | unix_ms | rfc3339
+#
+# Verification is constant-time. When a header carries several signatures (Stripe rotations,
+# Standard Webhooks) each candidate is tested and one match passes.
+#
+# Two names are reserved and carry no fields: hmac (the manifest supplies the same fields
+# inline under webhooks[].hmac) and token (no signature; a long random URL token and an
+# optional IP allowlist). Adding a preset is a pull request with a fixture under
+# fixtures/webhooks/<preset>/ and its expected verdict.
+
+stripe:
+  header: Stripe-Signature
+  algorithm: sha256
+  encoding: hex
+  payload: "{timestamp}.{body}"
+  timestamp: { from: header, pattern: "(?:^|,)t=([0-9]+)" }
+  signature_pattern: "(?:^|,)v1=([0-9a-f]+)"
+  tolerance_seconds: 300
+
+github:
+  header: X-Hub-Signature-256
+  algorithm: sha256
+  encoding: hex
+  payload: "{body}"
+  signature_prefix: "sha256="
+
+shopify:
+  header: X-Shopify-Hmac-Sha256
+  algorithm: sha256
+  encoding: base64
+  payload: "{body}"
+
+xero:
+  header: x-xero-signature
+  algorithm: sha256
+  encoding: base64
+  payload: "{body}"
+
+slack:
+  header: X-Slack-Signature
+  algorithm: sha256
+  encoding: hex
+  payload: "v0:{timestamp}:{body}"
+  timestamp: { from: header_name, name: X-Slack-Request-Timestamp }
+  signature_prefix: "v0="
+  tolerance_seconds: 300
+
+hubspot:
+  header: X-HubSpot-Signature-v3
+  algorithm: sha256
+  encoding: base64
+  payload: "{method}{url}{body}{timestamp}"
+  timestamp: { from: header_name, name: X-HubSpot-Request-Timestamp }
+  timestamp_format: unix_ms
+  tolerance_seconds: 300
+
+twilio:
+  # Twilio signs the full URL followed by the form fields sorted by name, each as name+value.
+  header: X-Twilio-Signature
+  algorithm: sha1
+  encoding: base64
+  payload: "{url}{form_sorted}"
+
+zoom:
+  header: x-zm-signature
+  algorithm: sha256
+  encoding: hex
+  payload: "v0:{timestamp}:{body}"
+  timestamp: { from: header_name, name: x-zm-request-timestamp }
+  signature_prefix: "v0="
+  tolerance_seconds: 300
+
+linear:
+  header: Linear-Signature
+  algorithm: sha256
+  encoding: hex
+  payload: "{body}"
+
+standard-webhooks:
+  header: webhook-signature
+  algorithm: sha256
+  encoding: base64
+  payload: "{id}.{timestamp}.{body}"
+  id: { from: header_name, name: webhook-id }
+  timestamp: { from: header_name, name: webhook-timestamp }
+  signature_prefix: "v1,"
+  tolerance_seconds: 300
+
+hmac: {}
+token: {}

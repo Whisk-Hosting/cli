@@ -1,0 +1,7 @@
+steps:
+  - id: receive
+    label: Take the event payload
+  - id: compute
+    label: Sum the numbers (fails on purpose when asked)
+  - id: record
+    label: Insert an event row keyed by the run id

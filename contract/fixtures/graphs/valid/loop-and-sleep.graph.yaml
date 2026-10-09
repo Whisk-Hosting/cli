@@ -1,0 +1,9 @@
+steps:
+  - id: fetch-page
+    label: Fetch one page of contacts
+  - id: store-page
+  - id: more-pages?
+    branches: { yes: fetch-page, no: wait-for-next-window }
+  - id: wait-for-next-window
+    kind: sleep
+    next: end

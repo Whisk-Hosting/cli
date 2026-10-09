@@ -1,0 +1,61 @@
+whisk: 1
+name: job-tracker
+
+routes:
+  public: ["/", "/public/**", "/health", "/contact"]
+  challenge: ["/contact"]
+  csrf_off: []
+  headers:
+    Content-Security-Policy: "default-src https:"
+    X-Frame-Options: DENY
+
+health:
+  path: /health
+  timeout: 90
+
+database: app
+migrate: "npm run migrate"
+
+build:
+  dockerfile: Dockerfile
+  secrets: [NPM_TOKEN]
+
+secrets: [XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL, STRIPE_WEBHOOK_SECRET]
+env:
+  LOG_LEVEL: info
+
+queue:
+  endpoint: /.whisk/inngest
+
+functions:
+  - name: nightly-margin
+    cron: "0 6 * * *"
+    tz: Pacific/Auckland
+    graph: workflows/nightly-margin.graph.yaml
+  - name: po-approval
+    event: po.created
+    graph: workflows/po-approval.graph.yaml
+    concurrency: 5
+    retries: 3
+
+webhooks:
+  - name: stripe
+    preset: stripe
+    secret: STRIPE_WEBHOOK_SECRET
+    handler: /hooks/stripe
+    ip_allowlist: []
+
+static:
+  - dir: public/assets
+    path: /assets
+
+storage: false
+kv: false
+email: false
+always_on: false
+calls: []
+customer_identity: none
+
+previews:
+  database: empty
+  ttl_days: 7

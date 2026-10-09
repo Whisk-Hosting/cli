@@ -1,0 +1,4 @@
+# expect: duplicate step id
+steps:
+  - id: a
+  - id: a

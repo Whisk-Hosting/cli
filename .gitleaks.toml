@@ -1,0 +1,18 @@
+# gitleaks configuration for the pre-commit and pre-receive scans. The default rules apply;
+# this file only names the deliberate placeholders the repository must contain.
+title = "whisk"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Recorded webhook fixtures carry the throwaway secret they were signed with, and documented example values are shaped like the real thing on purpose."
+paths = [
+  '''^contract/fixtures/webhooks/[^/]+/[^/]+\.json$''',
+]
+regexes = [
+  '''whsec_(fixture|test|canary)_[0-9a-z]+''',
+  '''signkey-test-0+''',
+  '''whisk-stub-event-key''',
+  '''canary-secret-value-[0-9]+''',
+]

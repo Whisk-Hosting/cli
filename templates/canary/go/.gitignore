@@ -1,0 +1,7 @@
+/server
+/whisk-go
+/bin/
+.whisk/dev/
+.env
+.env.*
+!.env.example

@@ -1,0 +1,32 @@
+whisk: 1
+name: whisk-go
+
+routes:
+  public: ["/", "/health", "/whoami"]
+
+health:
+  path: /health
+  timeout: 60
+
+database: app
+migrate: "./server migrate"
+
+secrets: [STRIPE_WEBHOOK_SECRET, CANARY_SECRET]
+
+functions:
+  - name: nightly-summary
+    cron: "0 6 * * *"
+    graph: workflows/nightly-summary.graph.yaml
+  - name: canary-event
+    event: canary.event
+    graph: workflows/canary-event.graph.yaml
+    retries: 3
+  - name: canary-approval
+    event: canary.approval
+    graph: workflows/canary-approval.graph.yaml
+
+webhooks:
+  - name: stripe
+    preset: stripe
+    secret: STRIPE_WEBHOOK_SECRET
+    handler: /hooks/stripe

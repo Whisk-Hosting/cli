@@ -1,0 +1,19 @@
+whisk: 1
+name: hooks-demo
+secrets: [ACME_SIGNING_KEY]
+webhooks:
+  - name: acme
+    preset: hmac
+    secret: ACME_SIGNING_KEY
+    handler: /hooks/acme
+    hmac:
+      header: X-Acme-Signature
+      algorithm: sha512
+      encoding: base64
+      payload: "{timestamp}.{body}"
+      timestamp: { from: header_name, name: X-Acme-Timestamp }
+      tolerance_seconds: 600
+  - name: legacy
+    preset: token
+    handler: /hooks/legacy
+    ip_allowlist: ["203.0.113.0/24"]

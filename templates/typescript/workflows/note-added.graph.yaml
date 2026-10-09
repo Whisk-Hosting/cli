@@ -1,0 +1,7 @@
+steps:
+  - id: count-words
+    label: Count the words in the new note
+  - id: found?
+    branches: { yes: save-count, no: end }
+  - id: save-count
+    label: Save the count on the note

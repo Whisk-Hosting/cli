@@ -1,0 +1,3 @@
+go test fuzz v1
+string("01J8Z3WQ9XN4M6P8R0T2V4X6Y8")
+[]byte("[{\"OP\":\"waitforevent\",\"Name\":\"other/po.created\",\"oPts\":{\"EVENT\":\"other/x\"}}]")

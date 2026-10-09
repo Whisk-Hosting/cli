@@ -1,0 +1,8 @@
+# expect: MANIFEST_INVALID exactly one of cron or event
+whisk: 1
+name: app
+functions:
+  - name: both
+    cron: "0 6 * * *"
+    event: x.y
+    graph: workflows/both.graph.yaml

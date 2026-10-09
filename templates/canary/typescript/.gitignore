@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.whisk/dev/
+.env
+.env.*
+!.env.example
+fuzz/.build/

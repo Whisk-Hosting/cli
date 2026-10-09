@@ -1,0 +1,5 @@
+# expect: MANIFEST_UNKNOWN_KEY did you mean functions
+whisk: 1
+name: app
+function:
+  - name: x

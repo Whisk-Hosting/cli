@@ -1,0 +1,5 @@
+# expect: /steps/0
+steps:
+  - id: a
+    branches: { yes: b, no: end }
+  - id: b

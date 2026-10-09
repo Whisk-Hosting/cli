@@ -1,0 +1,3 @@
+# expect: MANIFEST_INVALID does not parse as YAML
+whisk: 1
+name: [unclosed

@@ -1,0 +1,4 @@
+# expect: /steps/0/kind
+steps:
+  - id: a
+    kind: human

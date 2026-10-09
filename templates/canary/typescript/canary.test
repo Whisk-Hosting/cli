@@ -1,0 +1,122 @@
+#!/bin/sh
+# canary.test: exercises a running template end to end through the platform edge and API.
+# The platform runs it after deploying the template; it also runs against whisk-stub.
+#
+#   canary.test <app url> <api url> <org id> <app id>
+#
+# Environment:
+#   CANARY_SERVICE_TOKEN   bearer for the queue endpoint (WHISK_SERVICE_TOKEN of the app)
+#   CANARY_SESSION         Cookie header value for the app hostname (a signed-in session).
+#                          Absent: sign in through /.whisk/login, which only the stub allows.
+#   CANARY_API_TOKEN       bearer for the platform API (approvals). The stub needs none.
+#   CANARY_STRIPE_SECRET   value of STRIPE_WEBHOOK_SECRET, to sign a test delivery
+#   CANARY_HOOKS_URL       webhook ingress base; default <api url>/hooks
+#   CANARY_LOKI_URL        optional; when set, the request id of one request must be found there
+#
+# Needs sh, curl, openssl. Exits non-zero on the first failed assertion.
+set -eu
+
+APP=${1:?app url}; API=${2:?api url}; ORG=${3:?org id}; APPID=${4:?app id}
+HOOKS=${CANARY_HOOKS_URL:-$API/hooks}
+JAR=$(mktemp); trap 'rm -f "$JAR"' EXIT
+MARK="canary-$(date +%s)-$$"
+PASS=0
+
+say() { printf '%s\n' "$*" >&2; }
+ok() { PASS=$((PASS + 1)); say "ok   $*"; }
+fail() { say "FAIL $*"; exit 1; }
+jv() { printf '%s' "$1" | sed -n "s/.*\"$2\":\"\([^\"]*\)\".*/\1/p" | head -1; }
+count() { printf '%s' "$1" | grep -o "$2" | wc -l | tr -d ' '; }
+# get/post: body then "|" then status; cookies from the jar when SIGNED=1.
+req() {
+  method=$1; url=$2; shift 2
+  if [ -n "${CANARY_SESSION:-}" ]; then set -- "$@" -H "Cookie: $CANARY_SESSION"; fi
+  curl -sS -o "$JAR.body" -w '%{http_code}' -X "$method" -b "$JAR" -c "$JAR" "$@" "$url" > "$JAR.code" || true
+  BODY=$(cat "$JAR.body"); CODE=$(cat "$JAR.code")
+}
+api() { m=$1; u=$2; shift 2; req "$m" "$u" -H "Authorization: Bearer ${CANARY_API_TOKEN:-none}" -H "Content-Type: application/json" "$@"; }
+poll() { # poll <seconds> <command...>: retry until the command succeeds
+  n=$1; shift
+  while [ "$n" -gt 0 ]; do if "$@"; then return 0; fi; sleep 1; n=$((n - 1)); done
+  return 1
+}
+
+# 1. Health and public routes, anonymous, with a forged identity header that must vanish.
+req GET "$APP/health"; [ "$CODE" = 200 ] || fail "GET /health -> $CODE"; ok "health 200"
+req GET "$APP/whoami" -H "X-Whisk-User-Id: forged" -H "X-Whisk-Roles: owner"
+[ "$(jv "$BODY" x-whisk-audience)" = anonymous ] || fail "anonymous audience: $BODY"
+case "$BODY" in *forged*) fail "forged header reached the app: $BODY";; esac
+REQ_ID=$(jv "$BODY" x-whisk-request-id); [ -n "$REQ_ID" ] || fail "no request id: $BODY"
+ok "public route anonymous, forged identity stripped, request id $REQ_ID"
+
+# 2. Private route without a session.
+CANARY_SESSION_SAVED=${CANARY_SESSION:-}; CANARY_SESSION=
+req GET "$APP/me" -H "Accept: application/json"; [ "$CODE" = 401 ] || fail "GET /me anonymous -> $CODE"
+case "$BODY" in *AUTH_REQUIRED*) ;; *) fail "401 body lacks AUTH_REQUIRED: $BODY";; esac
+req GET "$APP/me" -H "Accept: text/html" -H "Sec-Fetch-Mode: navigate"; [ "$CODE" = 302 ] || fail "navigation -> $CODE"
+ok "private route: 401 for fetch, 302 for navigation"
+CANARY_SESSION=$CANARY_SESSION_SAVED
+
+# 3. Sign in (stub) or use the given session; identity arrives on private routes.
+if [ -z "${CANARY_SESSION:-}" ]; then
+  req GET "$APP/.whisk/login?return=/" -L; [ "$CODE" = 200 ] || fail "login -> $CODE"
+fi
+req GET "$APP/me"; [ "$CODE" = 200 ] || fail "GET /me signed in -> $CODE $BODY"
+EMAIL=$(jv "$BODY" x-whisk-email); [ -n "$EMAIL" ] || fail "no email on /me: $BODY"
+[ -n "$(jv "$BODY" x-whisk-user-id)" ] || fail "no user id: $BODY"
+ok "signed in as $EMAIL"
+
+# 4. CSRF: cross-site POST refused, same-origin accepted; the note comes back on GET.
+req POST "$APP/notes" -H "Content-Type: application/json" -H "Sec-Fetch-Site: cross-site" -d "{\"body\":\"$MARK\"}"
+[ "$CODE" = 403 ] || fail "cross-site POST -> $CODE"
+req POST "$APP/notes" -H "Content-Type: application/json" -H "Sec-Fetch-Site: same-origin" -d "{\"body\":\"$MARK\"}"
+[ "$CODE" = 201 ] || fail "same-origin POST -> $CODE $BODY"
+req GET "$APP/notes"; case "$BODY" in *"$MARK"*) ;; *) fail "note not listed";; esac
+ok "csrf enforced, note written and read"
+
+# 5. Queue: an event runs the function once; the same dedupe key does not run it again.
+EVT="{\"name\":\"canary.event\",\"data\":{\"marker\":\"$MARK\",\"numbers\":[1,2,3]},\"dedupe_key\":\"$MARK\"}"
+req POST "$API/v1/orgs/$ORG/apps/$APPID/events" -H "Authorization: Bearer ${CANARY_SERVICE_TOKEN:?}" -H "Content-Type: application/json" -d "$EVT"
+[ "$CODE" = 200 ] || fail "enqueue -> $CODE $BODY"
+runs_recorded() { req GET "$APP/events?kind=run"; [ "$(count "$BODY" "$MARK")" -ge 1 ]; }
+poll 60 runs_recorded || fail "canary.event run not recorded within 60s"
+case "$BODY" in *'"sum":6'*|*'"sum": 6'*) ;; *) fail "compute step result missing: $BODY";; esac
+req POST "$API/v1/orgs/$ORG/apps/$APPID/events" -H "Authorization: Bearer $CANARY_SERVICE_TOKEN" -H "Content-Type: application/json" -d "$EVT"
+sleep 5; req GET "$APP/events?kind=run"; [ "$(count "$BODY" "$MARK")" = 1 ] || fail "dedupe key did not suppress the second run"
+ok "event ran once (steps receive, compute, record), dedupe honoured"
+
+# 6. Approval: the function waits, a human decides through the API, the run resumes.
+req POST "$API/v1/orgs/$ORG/apps/$APPID/events" -H "Authorization: Bearer $CANARY_SERVICE_TOKEN" -H "Content-Type: application/json" -d "{\"name\":\"canary.approval\",\"data\":{\"marker\":\"$MARK\"}}"
+[ "$CODE" = 200 ] || fail "enqueue approval -> $CODE $BODY"
+approval_pending() { api GET "$API/v1/orgs/$ORG/apps/$APPID/approvals?status=pending"; case "$BODY" in *request-approval*) ;; *) return 1;; esac; }
+poll 60 approval_pending || fail "no pending approval within 60s"
+AID=$(printf '%s' "$BODY" | grep -o '"id":"[^"]*:request-approval"' | tail -1 | sed 's/"id":"//; s/"$//')
+[ -n "$AID" ] || fail "approval id not found in $BODY"
+api POST "$API/approvals/$AID" -d '{"decision":"approved","note":"canary"}'; [ "$CODE" = 200 ] || fail "decide -> $CODE $BODY"
+decision_recorded() { req GET "$APP/events?kind=approval"; case "$BODY" in *"$MARK"*) ;; *) return 1;; esac; }
+poll 60 decision_recorded || fail "approval decision not recorded within 60s"
+case "$BODY" in *'"decision":"approved"'*|*'"decision": "approved"'*) ;; *) fail "decision payload: $BODY";; esac
+ok "approval requested, decided, run resumed"
+
+# 7. Webhooks: a signed delivery reaches the handler once; a forged one is stored, not delivered;
+#    a replay carries the same id and the handler deduplicates it.
+TS=$(date +%s); WBODY="{\"id\":\"evt_$MARK\",\"type\":\"invoice.paid\"}"
+SIG=$(printf '%s' "$TS.$WBODY" | openssl dgst -sha256 -hmac "${CANARY_STRIPE_SECRET:?}" | sed 's/^.* //')
+req POST "$HOOKS/$ORG/$APPID/stripe" -H "Content-Type: application/json" -H "Stripe-Signature: t=$TS,v1=$SIG" -d "$WBODY"
+[ "$CODE" = 200 ] || fail "signed webhook -> $CODE $BODY"; WID=$(jv "$BODY" id)
+hook_recorded() { req GET "$APP/events?kind=webhook"; case "$BODY" in *"evt_$MARK"*) ;; *) return 1;; esac; }
+poll 30 hook_recorded || fail "webhook not delivered within 30s"
+req POST "$HOOKS/$ORG/$APPID/stripe" -H "Content-Type: application/json" -H "Stripe-Signature: t=$TS,v1=$(printf '%064d' 0)" -d "$WBODY"
+[ "$CODE" = 401 ] || fail "forged webhook -> $CODE"
+api POST "$API/v1/orgs/$ORG/apps/$APPID/webhooks/stripe/events/$WID/replay"; [ "$CODE" = 202 ] || fail "replay -> $CODE $BODY"
+sleep 3; req GET "$APP/events?kind=webhook"; [ "$(count "$BODY" "evt_$MARK")" = 1 ] || fail "replay was not deduplicated"
+ok "webhook verified, forged refused, replay deduplicated"
+
+# 8. Logs: the request id from step 1 is queryable when a Loki URL is given.
+if [ -n "${CANARY_LOKI_URL:-}" ]; then
+  in_loki() { req GET "$CANARY_LOKI_URL/loki/api/v1/query?query=%7Bapp_id%3D%22$APPID%22%7D%20%7C%3D%20%22$REQ_ID%22"; case "$BODY" in *"$REQ_ID"*) ;; *) return 1;; esac; }
+  poll 30 in_loki || fail "request id $REQ_ID not in Loki within 30s"
+  ok "request id found in logs"
+fi
+
+say "canary passed: $PASS checks"
