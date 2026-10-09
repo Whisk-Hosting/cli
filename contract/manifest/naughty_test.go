@@ -90,6 +90,7 @@ var (
 		}},
 		{"calls", func(s string) map[string]any { return base(map[string]any{"calls": []any{s}}) }},
 		{"customer_identity", func(s string) map[string]any { return base(map[string]any{"customer_identity": s}) }},
+		{"network", func(s string) map[string]any { return base(map[string]any{"network": s}) }},
 		{"unknown key", func(s string) map[string]any { return base(map[string]any{s: true}) }},
 	}
 )
@@ -183,6 +184,11 @@ func checkParsed(t *testing.T, where string, s string, src []byte) {
 	case CustomerIdentityNone, CustomerIdentityApp, CustomerIdentityOrg:
 	default:
 		t.Errorf("%s %q: accepted customer_identity %q", where, s, m.CustomerIdentity)
+	}
+	switch m.Network {
+	case "", NetworkInternal, NetworkPublic:
+	default:
+		t.Errorf("%s %q: accepted network %q", where, s, m.Network)
 	}
 }
 

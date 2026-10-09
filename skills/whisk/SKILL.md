@@ -224,6 +224,7 @@ email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
 calls: []                         # other apps of the business this one calls (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
+network: internal                 # Whisk On-Premise only: internal (default) | public; not on whisk.run
 previews: { database: empty, ttl_days: 3 }   # previews start empty; days a preview lasts
 ```
 

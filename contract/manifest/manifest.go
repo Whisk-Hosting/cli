@@ -45,7 +45,10 @@ type Manifest struct {
 	AlwaysOn         bool              `json:"always_on"`
 	Calls            []string          `json:"calls"`
 	CustomerIdentity string            `json:"customer_identity"`
-	Previews         Previews          `json:"previews"`
+	// Network is where the app is served: NetworkInternal or NetworkPublic, or empty for the
+	// edition's default (public on whisk.run, internal on Whisk On-Premise).
+	Network  string   `json:"network,omitempty"`
+	Previews Previews `json:"previews"`
 }
 
 type Routes struct {
@@ -94,6 +97,13 @@ const (
 	CustomerIdentityNone = "none"
 	CustomerIdentityApp  = "app"
 	CustomerIdentityOrg  = "org"
+)
+
+// Network values (ON-PREMISE.md §5): internal serves the app only on the edge's inside address,
+// public on the outside address too.
+const (
+	NetworkInternal = "internal"
+	NetworkPublic   = "public"
 )
 
 type Static struct {
