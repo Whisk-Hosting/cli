@@ -67,6 +67,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("SignInMethod", "SIGN_IN_METHODS", MethodPasskey, MethodPassword, MethodCode, MethodSSO, MethodTest))
 	add(enumOf("ActorKind", "ACTOR_KINDS", ActorUser, ActorAgent, ActorSystem, ActorOperator, ActorService))
 	add(enumOf("DeviceStatus", "DEVICE_STATUSES", DevicePending, DeviceApproved, DeviceDenied, DeviceExpired))
+	add(enumOf("LicenceState", "LICENCE_STATES", LicenceMissing, LicenceInvalid, LicenceActive, LicenceEnding, LicenceExpired))
 	add(enumOf("DeviceScope", "DEVICE_SCOPES", DeviceScopeApp, DeviceScopeOrg, DeviceScopePick, DeviceScopeNew))
 	add(enumOf("LoginScope", "LOGIN_SCOPES", LoginScopeAccount, LoginScopeBusiness, LoginScopeApp))
 	add(enumOf("HoldStatus", "HOLD_STATUSES", HoldHeld, HoldReleased, HoldRemoved))
@@ -159,6 +160,8 @@ var wire = []any{
 	AccessRequest{}, CreateDeployRequest{}, DeclareSecretRequest{}, SecretValueRequest{},
 	RollbackSecretRequest{}, SecretPreviewsRequest{}, ShareSecretRequest{}, SharedSecret{}, DomainRequest{}, DeployKeyResponse{}, DeviceApproveRequest{},
 	RegisterNodeRequest{}, RegisterNodeResponse{},
+	// onpremise.go
+	Licence{}, InstallLicenceRequest{},
 	// operator.go
 	Hold{}, HoldDecision{}, WebRisk{}, WebRiskRequest{}, AbuseFlag{}, Feedback{}, FeedbackPage{},
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{}, CanaryRun{}, HarnessFailure{}, Revenue{},

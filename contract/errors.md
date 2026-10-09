@@ -2043,6 +2043,50 @@ Fix: Enrol another node, or bring a down node back, then drain again.
 {"error":{"code":"NODE_DRAIN_NO_TARGET","message":"No other node is ready to take job-tracker, so node1 cannot be drained.","fix":"Enrol or bring back another ready node, then drain again.","docs":"https://skill.whisk.run/errors/NODE_DRAIN_NO_TARGET","details":{"node":"node1","apps":["job-tracker"]}}}
 ```
 
+## LICENCE_MISSING
+
+Status: 403 · Surface: api, git, deploy
+
+When: Whisk On-Premise has no licence installed, so a deploy or a push is refused.
+Running apps keep running. The hosted platform never answers it.
+
+Fix: Ask Whisk for your licence, then install it on the operator page or with
+`whiskd licence install < licence.txt`.
+
+```json
+{"error":{"code":"LICENCE_MISSING","message":"No Whisk licence is installed, so nothing new can deploy.","fix":"Ask Whisk for a current licence, then install it on the operator page or with `whiskd licence install < licence.txt`.","docs":"https://skill.whisk.run/errors/LICENCE_MISSING","details":{}}}
+```
+
+## LICENCE_INVALID
+
+Status: 403 · Surface: api, git, deploy
+
+When: the installed Whisk On-Premise licence cannot be used: its signature does not match its
+terms (the file was changed after Whisk issued it), it was signed with a key this version does
+not know, or its start date is still ahead. Installing such a file is refused with the same
+code.
+
+Fix: Install the licence file exactly as Whisk sent it, from its first line to its signature. If
+it is unchanged, ask Whisk for a current licence.
+
+```json
+{"error":{"code":"LICENCE_INVALID","message":"The installed Whisk licence cannot be used: The licence signature does not match its terms. The file has been changed since Whisk issued it.","fix":"Ask Whisk for a current licence, then install it on the operator page or with `whiskd licence install < licence.txt`.","docs":"https://skill.whisk.run/errors/LICENCE_INVALID","details":{"problem":"The licence signature does not match its terms. The file has been changed since Whisk issued it."}}}
+```
+
+## LICENCE_EXPIRED
+
+Status: 403 · Surface: api, git, deploy
+
+When: the Whisk On-Premise licence has ended. Running apps keep running and keep their data; new
+deploys and pushes wait for a current licence.
+
+Fix: Ask Whisk to renew the licence, then install the new file on the operator page or with
+`whiskd licence install < licence.txt`. Deploys work again at once.
+
+```json
+{"error":{"code":"LICENCE_EXPIRED","message":"The Whisk licence ended on 2027-10-08. Running apps keep running; new deploys wait for a current licence.","fix":"Ask Whisk for a current licence, then install it on the operator page or with `whiskd licence install < licence.txt`.","docs":"https://skill.whisk.run/errors/LICENCE_EXPIRED","details":{"licence":"lic_2026_0001","ended":"2027-10-08"}}}
+```
+
 ## REPO_TOO_LARGE
 
 Status: 422 · Surface: git, cli
