@@ -6,7 +6,8 @@ import (
 	"time"
 )
 
-// Stored state of one stub run: webhook events and approvals. Memory only; a restart is a
+// Stored state of one stub run: webhook events, approvals, the email the app sent, custom
+// domains and the files an inbox kept. Memory only; a restart is a
 // fresh platform, which is what a local run wants.
 
 type webhookEvent struct {
@@ -18,7 +19,8 @@ type webhookEvent struct {
 	BodyText   string            `json:"body"`
 	Verified   bool              `json:"verified"`
 	Reason     string            `json:"reason,omitempty"`
-	// DeliveryStatus is queued, delivered, failed or dead; never_delivered for unverified.
+	// DeliveryStatus is queued, delivered, failed or dead; never_delivered for unverified, and
+	// skipped for an inbox message that was dropped (Reason says why).
 	DeliveryStatus string `json:"delivery_status"`
 	Attempts       int    `json:"attempts"`
 	LastStatus     int    `json:"last_status,omitempty"`
@@ -40,10 +42,46 @@ type store struct {
 	mu        sync.Mutex
 	events    map[string]*webhookEvent
 	approvals map[string]*approval
+	mails     []*sentMail // oldest first, at most maxSent
+	domains   *domains
+	files     map[string]*stubFile
 }
 
 func newStore() *store {
-	return &store{events: map[string]*webhookEvent{}, approvals: map[string]*approval{}}
+	return &store{events: map[string]*webhookEvent{}, approvals: map[string]*approval{}, domains: newDomains(), files: map[string]*stubFile{}}
+}
+
+func (s *store) putMail(m *sentMail) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.mails = append(s.mails, m)
+	if len(s.mails) > maxSent {
+		s.mails = s.mails[len(s.mails)-maxSent:]
+	}
+}
+
+// mailList is what the stub took, newest first.
+func (s *store) mailList() []*sentMail {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]*sentMail, 0, len(s.mails))
+	for i := len(s.mails) - 1; i >= 0; i-- {
+		out = append(out, s.mails[i])
+	}
+	return out
+}
+
+func (s *store) putFile(f *stubFile) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.files[f.ID] = f
+}
+
+func (s *store) file(id string) (*stubFile, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, ok := s.files[id]
+	return f, ok
 }
 
 func (s *store) putEvent(e *webhookEvent) {

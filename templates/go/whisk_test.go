@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -134,5 +135,56 @@ func TestCallerSettings(t *testing.T) {
 		if a, u := callerSettings(c.in); a != c.audience || u != c.userID {
 			t.Errorf("%s: got (%q, %q), want (%q, %q)", c.name, a, u, c.audience, c.userID)
 		}
+	}
+}
+
+// The domains helper calls the app's own routes with the service token, decodes a domain and its
+// records, and turns the platform's error into a *PlatformError with its code and details.
+func TestDomainsHelper(t *testing.T) {
+	var seen []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seen = append(seen, r.Method+" "+r.URL.Path+" "+r.Header.Get("Authorization"))
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodPost && r.URL.Path == "/v1/orgs/o1/apps/a1/domains":
+			w.WriteHeader(201)
+			_, _ = w.Write([]byte(`{"id":"d1","hostname":"results.lab.example","kind":"custom","verified":false,"cert_status":"pending","status":"pending_dns","added_by":"app","records":[{"type":"TXT","name":"_whisk-verify.results.lab.example","value":"whisk-verify-1"},{"type":"CNAME","name":"results.lab.example","value":"results--acme.whisk.page"}],"created_at":"2026-10-09T00:00:00Z"}`))
+		case r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"items":[{"id":"d1","hostname":"results.lab.example","kind":"custom","status":"pending_dns"}]}`))
+		case strings.HasSuffix(r.URL.Path, "/verify"):
+			w.WriteHeader(409)
+			_, _ = w.Write([]byte(`{"error":{"code":"DOMAIN_UNVERIFIED","message":"not yet","fix":"add the records","details":{"missing":["TXT"]}}}`))
+		case r.Method == http.MethodDelete:
+			w.WriteHeader(204)
+		}
+	}))
+	defer srv.Close()
+	t.Setenv("WHISK_QUEUE_URL", srv.URL+"/v1/orgs/o1/apps/a1/events")
+	t.Setenv("WHISK_SERVICE_TOKEN", "svc")
+	ctx := context.Background()
+
+	d, err := domains.Add(ctx, "results.lab.example")
+	if err != nil || d.ID != "d1" || d.Status != "pending_dns" || d.AddedBy != "app" || len(d.Records) != 2 || d.Records[1].Type != "CNAME" {
+		t.Fatalf("Add = %+v, %v", d, err)
+	}
+	if all, err := domains.List(ctx); err != nil || len(all) != 1 || all[0].Hostname != "results.lab.example" {
+		t.Errorf("List = %+v, %v", all, err)
+	}
+	_, err = domains.Verify(ctx, "d1")
+	var pe *PlatformError
+	if !errors.As(err, &pe) || pe.Code != "DOMAIN_UNVERIFIED" || pe.Status != 409 || pe.Details["missing"] == nil {
+		t.Errorf("Verify = %v, want a DOMAIN_UNVERIFIED PlatformError", err)
+	}
+	if err := domains.Remove(ctx, "d1"); err != nil {
+		t.Errorf("Remove = %v", err)
+	}
+	want := []string{
+		"POST /v1/orgs/o1/apps/a1/domains Bearer svc",
+		"GET /v1/orgs/o1/apps/a1/domains Bearer svc",
+		"POST /v1/orgs/o1/apps/a1/domains/d1/verify Bearer svc",
+		"DELETE /v1/orgs/o1/apps/a1/domains/d1 Bearer svc",
+	}
+	if strings.Join(seen, "\n") != strings.Join(want, "\n") {
+		t.Errorf("calls:\n%s\nwant:\n%s", strings.Join(seen, "\n"), strings.Join(want, "\n"))
 	}
 }

@@ -28,11 +28,13 @@ func printDNS(p output.Printer, w io.Writer, d api.Domain) {
 		return
 	}
 	fmt.Fprintf(w, "Create these DNS records for %s, then run whisk domains verify %s:\n", d.Hostname, d.Hostname)
-	p.Table(w, []string{"TYPE", "NAME", "VALUE"}, [][]string{
-		{"TXT", orDash(d.TXTRecord), orDash(d.TXTValue)},
-		{"CNAME", d.Hostname, orDash(d.CNAMETarget)},
-	})
-	if len(d.Addresses) > 0 {
+	records := dnsRecords(d)
+	rows := make([][]string, len(records))
+	for i, r := range records {
+		rows[i] = []string{r["type"], orDash(r["name"]), orDash(r["value"])}
+	}
+	p.Table(w, []string{"TYPE", "NAME", "VALUE"}, rows)
+	if len(d.Addresses) > 0 && !pointsByAddress(records) {
 		fmt.Fprintf(w, "A bare domain such as example.com cannot have a CNAME: point it with A (IPv4) or AAAA (IPv6) records to %s instead.\n", strings.Join(d.Addresses, ", "))
 	}
 }
@@ -64,9 +66,9 @@ func domainsCmd(s *session) *cobra.Command {
 					if d.Verified {
 						verified = "verified"
 					}
-					rows[i] = []string{d.Hostname, string(d.Kind), verified, orDash(d.CertStatus)}
+					rows[i] = []string{d.Hostname, string(d.Kind), verified, orDash(d.CertStatus), orDash(string(d.AddedBy)), orDash(d.RedirectTo)}
 				}
-				s.printer.Table(w, []string{"HOSTNAME", "KIND", "DNS", "CERTIFICATE"}, rows)
+				s.printer.Table(w, []string{"HOSTNAME", "KIND", "DNS", "CERTIFICATE", "ADDED BY", "REDIRECTS TO"}, rows)
 			})
 			return nil
 		},
@@ -154,19 +156,89 @@ func domainsCmd(s *session) *cobra.Command {
 			return nil
 		},
 	}
-	domains.AddCommand(list, add, verify, remove, orgDomainCmd(s))
+	var off bool
+	redirect := &cobra.Command{
+		Use:   "redirect <hostname> [<to>]",
+		Short: "Send every request to a custom domain on to another hostname of the app",
+		Long: `The custom domain answers every request with a permanent redirect (301 for GET and HEAD, 308 for
+anything else) to the same path and query on <to>, another hostname of the app: its address or
+another verified custom domain. A path the app's redirects name goes straight to the rule's
+target on <to>, in one hop. Use it for the old domain after a site moves, and to send
+www.example.com to example.com. --off serves the app on the domain again.`,
+		Args: cobra.RangeArgs(1, 2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			to := ""
+			switch {
+			case off && len(args) == 2:
+				return output.New("INVALID_REQUEST", "--off takes no target.", "Run whisk domains redirect "+args[0]+" --off, or name the target without --off.", nil)
+			case !off && len(args) == 1:
+				return output.New("INVALID_REQUEST", "Name the hostname to redirect to.", "Run whisk domains redirect "+args[0]+" <to>, such as example.com, or --off to stop.", nil)
+			case !off:
+				to = strings.ToLower(strings.TrimSpace(args[1]))
+			}
+			org, app, err := s.target()
+			if err != nil {
+				return err
+			}
+			client, _, err := s.client()
+			if err != nil {
+				return err
+			}
+			all, err := client.ListDomains(s.ctx, org, app)
+			if err != nil {
+				return wrap(err)
+			}
+			d, ok := findDomain(all, args[0])
+			if !ok {
+				return output.New("NOT_FOUND", fmt.Sprintf("%s is not a hostname of %s/%s.", args[0], org, app), "Run whisk domains add "+args[0]+" first; whisk domains list shows the hostnames.", map[string]any{"hostname": args[0]})
+			}
+			d, err = client.SetDomainRedirect(s.ctx, org, app, d.ID, to)
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "domain": d}, func(w io.Writer) {
+				if d.RedirectTo == "" {
+					fmt.Fprintf(w, "%s serves the app.\n", d.Hostname)
+					return
+				}
+				fmt.Fprintf(w, "%s redirects every request to the same path on %s.\n", d.Hostname, d.RedirectTo)
+			})
+			return nil
+		},
+	}
+	redirect.Flags().BoolVar(&off, "off", false, "serve the app on the domain again")
+	domains.AddCommand(list, add, verify, remove, redirect, orgDomainCmd(s))
 	return domains
 }
 
-// dnsRecords is the JSON form of the records a custom domain needs.
+// dnsRecords is the JSON form of the records a custom domain needs: the API's own list, which
+// gives a bare domain A and AAAA records instead of a CNAME, or the TXT and CNAME from an API
+// that does not send one.
 func dnsRecords(d api.Domain) []map[string]string {
 	if d.Verified || d.Kind != "custom" {
 		return []map[string]string{}
+	}
+	if len(d.Records) > 0 {
+		out := make([]map[string]string, len(d.Records))
+		for i, r := range d.Records {
+			out[i] = map[string]string{"type": r.Type, "name": r.Name, "value": r.Value}
+		}
+		return out
 	}
 	return []map[string]string{
 		{"type": "TXT", "name": d.TXTRecord, "value": d.TXTValue},
 		{"type": "CNAME", "name": d.Hostname, "value": d.CNAMETarget},
 	}
+}
+
+// pointsByAddress reports whether the records already point the name with A or AAAA records.
+func pointsByAddress(records []map[string]string) bool {
+	for _, r := range records {
+		if r["type"] == "A" || r["type"] == "AAAA" {
+			return true
+		}
+	}
+	return false
 }
 
 func envsCmd(s *session) *cobra.Command {

@@ -1,6 +1,6 @@
 // The Whisk conventions in one file: identity from headers, JSON logging with the request id,
-// tracing, the Inngest client wired to the platform, the approval helper and the webhook
-// deliveries helper. Copy this file as-is.
+// tracing, the Inngest client wired to the platform, the approval helper, the webhook
+// deliveries helper and the custom domains helper. Copy this file as-is.
 package main
 
 import (
@@ -263,6 +263,163 @@ func enqueue(ctx context.Context, name string, data any, dedupeKey string) (stri
 		ID string `json:"id"`
 	}
 	return out.ID, json.Unmarshal(raw, &out)
+}
+
+// MediaLinks is what signMedia answers: one link per address asked for, in the same order,
+// and when they all stop working.
+type MediaLinks struct {
+	ExpiresAt time.Time `json:"expires_at"`
+	Links     []struct {
+		ID   string `json:"id"`
+		Path string `json:"path"`
+		URL  string `json:"url"`
+	} `json:"links"`
+}
+
+// signMedia asks the platform, with the service token, for signed links to private uploads,
+// for an app that signs its people in itself (skill §9, "Signed links"). Write each address as
+// the page would for someone signed in to Whisk: "/.whisk/img/<id>?w=800" for an image,
+// "/.whisk/media/<id>" (or ".../embed", ".../poster.jpg") for video and audio. Each link works
+// for anyone holding it, with no sign-in, until it expires (expiresIn, an hour when zero,
+// twelve hours at most), so check that the person may see the file first and sign links when
+// the page is drawn rather than storing them. Server side only.
+func signMedia(ctx context.Context, paths []string, expiresIn time.Duration) (MediaLinks, error) {
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
+	defer cancel()
+	body, _ := json.Marshal(map[string]any{"paths": paths, "expires_in": int64(expiresIn / time.Second)})
+	endpoint := strings.TrimSuffix(env("WHISK_QUEUE_URL", ""), "/events") + "/uploads/links"
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return MediaLinks{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+env("WHISK_SERVICE_TOKEN", ""))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return MediaLinks{}, err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+	if resp.StatusCode/100 != 2 {
+		return MediaLinks{}, fmt.Errorf("signMedia: %d %s", resp.StatusCode, raw)
+	}
+	var out MediaLinks
+	return out, json.Unmarshal(raw, &out)
+}
+
+// platformURL is the app's own routes on the platform API, .../v1/orgs/<org>/apps/<app>, read
+// from WHISK_QUEUE_URL, which is that address plus /events.
+func platformURL() string {
+	return strings.TrimSuffix(env("WHISK_QUEUE_URL", ""), "/events")
+}
+
+// PlatformError is the platform's error for a call the app made with its service token: a stable
+// code, a sentence, a fix and the details (CONTRACT.md §10).
+type PlatformError struct {
+	Status  int            `json:"-"`
+	Code    string         `json:"code"`
+	Message string         `json:"message"`
+	Fix     string         `json:"fix"`
+	Details map[string]any `json:"details,omitempty"`
+}
+
+func (e *PlatformError) Error() string { return e.Code + ": " + e.Message }
+
+// platformCall sends one request to the app's own routes with the service token, read per call
+// since it rotates, within wait, and decodes the answer into out (nil to ignore it).
+func platformCall(ctx context.Context, wait time.Duration, method, path string, body, out any) error {
+	ctx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+	var reader io.Reader
+	if body != nil {
+		raw, _ := json.Marshal(body)
+		reader = bytes.NewReader(raw)
+	}
+	req, err := http.NewRequestWithContext(ctx, method, platformURL()+path, reader)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+env("WHISK_SERVICE_TOKEN", ""))
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
+	if resp.StatusCode/100 != 2 {
+		var e struct {
+			Error PlatformError `json:"error"`
+		}
+		if json.Unmarshal(raw, &e) != nil || e.Error.Code == "" {
+			return fmt.Errorf("%s %s: %d %s", method, path, resp.StatusCode, raw)
+		}
+		e.Error.Status = resp.StatusCode
+		return &e.Error
+	}
+	if out == nil || resp.StatusCode == http.StatusNoContent {
+		return nil
+	}
+	return json.Unmarshal(raw, out)
+}
+
+// Domain is one of the app's hostnames (CONTRACT.md §8, "Custom domains"). Status is
+// pending_dns, pending_certificate or active; Records are what to show whoever runs the name's
+// DNS until it is verified; AddedBy is app for the ones the app added, team for the business's.
+type Domain struct {
+	ID         string      `json:"id"`
+	Hostname   string      `json:"hostname"`
+	Kind       string      `json:"kind"`
+	Verified   bool        `json:"verified"`
+	CertStatus string      `json:"cert_status"`
+	Status     string      `json:"status"`
+	AddedBy    string      `json:"added_by,omitempty"`
+	Records    []DNSRecord `json:"records,omitempty"`
+	CreatedAt  time.Time   `json:"created_at"`
+}
+
+// DNSRecord is one record to create at a DNS provider.
+type DNSRecord struct {
+	Type  string `json:"type"`
+	Name  string `json:"name"`
+	Value string `json:"value"`
+}
+
+// domains manages the app's own custom domains with its service token, so the app can let the
+// businesses it serves point a domain of theirs at it. Keep each domain's id beside the
+// customer it belongs to and remove by that id. A *PlatformError carries the platform's code:
+// DOMAIN_UNVERIFIED (details.records and details.missing say what is not in place yet),
+// DOMAIN_TAKEN, PLAN_LIMIT_DOMAINS, RATE_LIMITED.
+var domains domainsHelper
+
+type domainsHelper struct{}
+
+// List is every hostname of the app: its own address and the custom domains.
+func (domainsHelper) List(ctx context.Context) ([]Domain, error) {
+	var out struct {
+		Items []Domain `json:"items"`
+	}
+	err := platformCall(ctx, 15*time.Second, http.MethodGet, "/domains", nil, &out)
+	return out.Items, err
+}
+
+// Add attaches a hostname; the answer carries the records to show.
+func (domainsHelper) Add(ctx context.Context, hostname string) (Domain, error) {
+	var d Domain
+	err := platformCall(ctx, 15*time.Second, http.MethodPost, "/domains", map[string]string{"hostname": hostname}, &d)
+	return d, err
+}
+
+// Verify checks the records and has the certificate issued; it can take half a minute.
+func (domainsHelper) Verify(ctx context.Context, id string) (Domain, error) {
+	var d Domain
+	err := platformCall(ctx, 60*time.Second, http.MethodPost, "/domains/"+id+"/verify", nil, &d)
+	return d, err
+}
+
+// Remove detaches a hostname the app added, by its id.
+func (domainsHelper) Remove(ctx context.Context, id string) error {
+	return platformCall(ctx, 15*time.Second, http.MethodDelete, "/domains/"+id, nil, nil)
 }
 
 // Delivery is one webhook delivery, proven to be the platform's: the id to dedupe on, the

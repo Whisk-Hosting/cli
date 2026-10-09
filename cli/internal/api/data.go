@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"time"
 )
@@ -48,15 +49,18 @@ func (c *Client) SnapshotDatabase(ctx context.Context, org, app, environment str
 
 // Restore is a self-service point-in-time restore as the API records it.
 type Restore struct {
-	ID             string     `json:"id"`
-	Environment    string     `json:"environment"`
-	At             time.Time  `json:"at"`
-	Swap           bool       `json:"swap"`
-	Status         string     `json:"status"` // queued | running | done | failed
-	TargetDatabase string     `json:"target_database,omitempty"`
-	Error          *ErrorBody `json:"error,omitempty"`
-	CreatedAt      time.Time  `json:"created_at"`
-	FinishedAt     *time.Time `json:"finished_at,omitempty"`
+	ID             string    `json:"id"`
+	Environment    string    `json:"environment"`
+	At             time.Time `json:"at"`
+	Import         string    `json:"import,omitempty"` // the import whose dump it loads, instead of a time
+	Swap           bool      `json:"swap"`
+	Status         string    `json:"status"` // queued | running | done | failed
+	TargetDatabase string    `json:"target_database,omitempty"`
+	// PreviousDatabase is the database a swap replaced, kept for 7 days.
+	PreviousDatabase string     `json:"previous_database,omitempty"`
+	Error            *ErrorBody `json:"error,omitempty"`
+	CreatedAt        time.Time  `json:"created_at"`
+	FinishedAt       *time.Time `json:"finished_at,omitempty"`
 }
 
 // ErrorBody is the error object as it appears inside a record.
@@ -65,6 +69,20 @@ type ErrorBody struct {
 	Message string         `json:"message"`
 	Fix     string         `json:"fix"`
 	Details map[string]any `json:"details,omitempty"`
+}
+
+// UnmarshalJSON reads the error object bare or as the platform stores it on a record, wrapped
+// as {"error": {…}}.
+func (e *ErrorBody) UnmarshalJSON(b []byte) error {
+	type bare ErrorBody
+	var wrapped struct {
+		Error *bare `json:"error"`
+	}
+	if err := json.Unmarshal(b, &wrapped); err == nil && wrapped.Error != nil {
+		*e = ErrorBody(*wrapped.Error)
+		return nil
+	}
+	return json.Unmarshal(b, (*bare)(e))
 }
 
 // RestoreDatabase starts a PITR of an environment's database into a fresh database beside it,
@@ -131,6 +149,7 @@ func (c *Client) QueryDatabase(ctx context.Context, org, app string, req QueryRe
 type DBSchema struct {
 	Environment string    `json:"environment"`
 	Database    string    `json:"database"`
+	Postgres    string    `json:"postgres"`
 	Tables      []DBTable `json:"tables"`
 	Truncated   bool      `json:"truncated"`
 }

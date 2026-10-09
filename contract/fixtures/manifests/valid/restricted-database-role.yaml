@@ -1,0 +1,6 @@
+whisk: 1
+name: ledger
+database: app
+database_role: restricted
+migrate: "npx prisma migrate deploy"
+customer_identity: app

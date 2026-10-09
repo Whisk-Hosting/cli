@@ -16,7 +16,7 @@ dependencies = [
     "psycopg[binary]>=3.3",
     "redis>=6.4",
     "sentry-sdk>=2.68",
-    "sqlalchemy>=2.0",
+    "sqlalchemy>=2.1",
     "structlog>=26.1",
     "uvicorn>=0.52",
 ]

@@ -56,7 +56,7 @@ type Options struct {
 
 	InngestURL  string // a running Inngest dev server; empty starts one on InngestPort
 	InngestPort string // 8288
-	InngestCmd  string // npx --yes inngest-cli@1.44.0
+	InngestCmd  string // npx --yes inngest-cli@1.46.0
 	NoInngest   bool   // run without a workflow engine
 	Migrate     bool   // run the manifest's migrate command before starting the app
 
@@ -74,7 +74,7 @@ var Defaults = Options{
 	Roles:        []string{"owner"},
 	SecretsFile:  ".whisk/dev/secrets.env",
 	InngestPort:  "8288",
-	InngestCmd:   "npx --yes inngest-cli@1.44.0",
+	InngestCmd:   "npx --yes inngest-cli@1.46.0",
 	Migrate:      true,
 }
 
@@ -122,6 +122,9 @@ type stub struct {
 	// posts carry so the internal listener can tell them from any other caller.
 	deliveryKey    []byte
 	deliveryMarker string
+	// mediaKey signs and checks media links (media.go): random per run, never handed to the app,
+	// as the platform's key is not.
+	mediaKey []byte
 
 	serviceToken string
 	sessionValue string
@@ -172,6 +175,7 @@ func build(o Options) (*stub, manifest.Manifest, error) {
 		serviceToken:   "whsk_service_" + randomToken(32),
 		deliveryKey:    randomBytes(32),
 		deliveryMarker: randomToken(32),
+		mediaKey:       randomBytes(32),
 		sessionValue:   randomToken(32),
 		sessionID:      newULID(),
 		extraEnv:       o.ExtraEnv,
@@ -368,13 +372,23 @@ func (s *stub) describe() map[string]any {
 	return map[string]any{
 		"org_id": s.orgID, "app_id": s.appID, "app": s.manifest.Name,
 		"edge": s.edgeURL, "internal": s.internalURL,
-		"events": prefix + "/events", "approvals": prefix + "/approvals", "decide": s.apiURL + "/approvals/{id}",
-		"webhooks": prefix + "/webhooks/{name}/events", "hooks": s.apiURL + "/hooks/" + s.orgID + "/" + s.appID + "/{source}",
+		"events": prefix + "/events", "approvals": prefix + "/approvals", "links": prefix + "/uploads/links", "decide": s.apiURL + "/approvals/{id}",
+		"email": prefix + "/email/send", "email_sent": prefix + "/email/sent",
+		"webhooks": prefix + "/webhooks/{name}/events", "domains": prefix + "/domains", "email_domains": prefix + "/email/domains", "hooks": s.apiURL + "/hooks/" + s.orgID + "/" + s.appID + "/{source}",
+		"inbox":    s.describeInbox(),
 		"identity": s.identity, "public_routes": s.manifest.Routes.Public, "service_routes": s.manifest.ServiceRoutes(),
 		// The service token is the app's own credential; a local run may read it here to drive
 		// the queue endpoint from a test script. The platform never exposes it this way.
 		"service_token": tok,
 	}
+}
+
+// describeInbox is the inbox of a local run, or nil when the app declares none.
+func (s *stub) describeInbox() map[string]any {
+	if s.manifest.Inbox == nil {
+		return nil
+	}
+	return map[string]any{"address": s.inboxAddress(), "handler": s.manifest.Inbox.Handler, "send": s.apiURL + "/v1/stub/inbox"}
 }
 
 // appEnv is the environment the platform would inject (environment.md), for a local run.

@@ -79,6 +79,10 @@ func (e *edge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	case path == "/.whisk/ready":
 		w.WriteHeader(http.StatusOK)
 		return
+	case mediaPath(path):
+		// As the platform's edge: these addresses are the platform's, never the app's.
+		e.media(w, r)
+		return
 	}
 
 	if s.manifest.IsService(path) {

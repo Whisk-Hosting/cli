@@ -82,7 +82,7 @@ schema, which run on the platform. --private prints the inside address anyway.`,
 	}
 	snapshot.Flags().StringVar(&snapEnv, "env", "", "the environment; production when omitted")
 
-	db.AddCommand(queryCmd(s), dbSchemaCmd(s), shellCmd(s), url, snapshot)
+	db.AddCommand(queryCmd(s), dbSchemaCmd(s), shellCmd(s), url, snapshot, dbImportCmd(s))
 	return db
 }
 
@@ -255,9 +255,18 @@ func restoreFailed(r api.Restore) error {
 	return &output.Error{Code: r.Error.Code, Message: r.Error.Message, Fix: r.Error.Fix, Details: details}
 }
 
+// restoreSource is what a restore loads: a point in the app's history, or an imported dump.
+// Pure.
+func restoreSource(r api.Restore) string {
+	if r.Import != "" {
+		return "from import " + r.Import
+	}
+	return "to " + r.At.UTC().Format(time.RFC3339)
+}
+
 // restoreRow is one line of whisk restore list. Pure.
 func restoreRow(r api.Restore) string {
-	line := fmt.Sprintf("%s  %-8s %s to %s", r.ID, r.Status, r.Environment, r.At.UTC().Format(time.RFC3339))
+	line := fmt.Sprintf("%s  %-8s %s %s", r.ID, r.Status, r.Environment, restoreSource(r))
 	if r.TargetDatabase != "" {
 		line += " into " + r.TargetDatabase
 	}
@@ -268,7 +277,7 @@ func restoreRow(r api.Restore) string {
 }
 
 func printRestore(w io.Writer, r api.Restore) {
-	fmt.Fprintf(w, "Restore %s %s: %s to %s", r.ID, r.Status, r.Environment, r.At.UTC().Format(time.RFC3339))
+	fmt.Fprintf(w, "Restore %s %s: %s %s", r.ID, r.Status, r.Environment, restoreSource(r))
 	if r.TargetDatabase != "" {
 		fmt.Fprintf(w, " into %s", r.TargetDatabase)
 	}

@@ -159,7 +159,10 @@ func dbSchemaCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
-			s.printer.Result(map[string]any{"org": org, "app": app, "environment": sc.Environment, "database": sc.Database, "tables": sc.Tables, "truncated": sc.Truncated}, func(w io.Writer) {
+			s.printer.Result(map[string]any{"org": org, "app": app, "environment": sc.Environment, "database": sc.Database, "postgres": sc.Postgres, "tables": sc.Tables, "truncated": sc.Truncated}, func(w io.Writer) {
+				if sc.Postgres != "" {
+					fmt.Fprintln(w, s.printer.Dim("PostgreSQL "+sc.Postgres))
+				}
 				if len(sc.Tables) == 0 {
 					fmt.Fprintf(w, "%s has no tables yet.\n", sc.Database)
 					return

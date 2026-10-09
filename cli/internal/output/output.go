@@ -88,6 +88,7 @@ var exitByCode = map[string]int{
 	"RESTORE_POINT_NOT_ARCHIVED":      ExitUnavailable,
 	"BUILD_FAILED":                    ExitDeploy,
 	"BUILD_TIMEOUT":                   ExitDeploy,
+	"SECRET_IN_IMAGE":                 ExitDeploy,
 	"IMAGE_PULL_FAILED":               ExitDeploy,
 	"HEALTH_CHECK_FAILED":             ExitDeploy,
 	"CONTAINER_CRASHED":               ExitDeploy,

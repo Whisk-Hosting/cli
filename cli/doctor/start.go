@@ -426,6 +426,10 @@ func w102(r Repo, _ Context) outcome {
 	if r.ManifestErr == nil && r.Manifest.Migrate != "" {
 		where = "whisk.yaml migrate already runs them once per deploy"
 	}
+	if r.ManifestErr == nil && r.Manifest.Restricted() {
+		// The run login cannot change the schema, so the start fails rather than slows.
+		where += ", and with database_role: restricted the app's login cannot run them, so the app fails to start"
+	}
 	var out outcome
 	reported := map[string]bool{}
 	for _, c := range cmds {

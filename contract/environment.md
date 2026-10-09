@@ -14,7 +14,7 @@ version. Read them from the environment at start; never commit values; never ren
 | `WHISK_ENV` | `production` or `preview:<branch>` |
 | `WHISK_PUBLIC_URL` | `https://<hostname>` for this environment |
 | `WHISK_QUEUE_URL` | `https://api.whisk.run/v1/orgs/<org>/apps/<app>/events`; POST events here |
-| `WHISK_SERVICE_TOKEN` | bearer token for `WHISK_QUEUE_URL`, the uploads and email endpoints, and app-to-app calls. Rotated daily; read it per request, never cache it in a file. |
+| `WHISK_SERVICE_TOKEN` | bearer token for `WHISK_QUEUE_URL`, the uploads, customers, email and custom domain endpoints, and app-to-app calls. Rotated daily; read it per request, never cache it in a file. |
 | `WHISK_INNGEST_URL` | origin of the workflow API the Inngest SDK talks to (scheme and host, no path); pass it as the SDK's base URL |
 | `WHISK_INNGEST_SIGNING_KEY` | this app's own; verifies function-run requests to `queue.endpoint`, and tells the platform which app the SDK is |
 | `WHISK_INNGEST_EVENT_KEY` | this app's own; lets the Inngest SDK send events from inside a function |
@@ -35,7 +35,7 @@ version. Read them from the environment at start; never commit values; never ren
 
 | Variable | When | Value |
 |---|---|---|
-| `DATABASE_URL` | `database` is `app` or `shared:<name>` | `postgres://…?sslmode=require`, pooled in transaction mode. For `shared:`, the app's own schema is first on `search_path`. |
+| `DATABASE_URL` | `database` is `app` or `shared:<name>` | `postgres://…?sslmode=require`, pooled in transaction mode. For `shared:`, the app's own schema is first on `search_path`. With `database_role: restricted` the running app's is the run login, `<owner>_run`, which reads and writes rows and cannot change the schema; the `migrate` step's is the owner over a direct connection. |
 | `WHISK_STORAGE_ENDPOINT`, `WHISK_STORAGE_BUCKET`, `WHISK_STORAGE_ACCESS_KEY`, `WHISK_STORAGE_SECRET_KEY`, `WHISK_STORAGE_PREFIX`, `WHISK_STORAGE_REGION` | `storage: true` | S3-compatible credentials for the org's bucket, which is the tenant boundary. Write under the prefix, which is your app's own. Use path-style addressing; the endpoint is reachable from the container and from browsers. |
 | `WHISK_KV_URL` | `kv: true` | `redis://…` to a Valkey the app has to itself: no prefix, no sharing. Empty after the app sleeps; sized by the plan, and full means the app's own least recently used keys go. |
 | every name in `secrets:` | always | the value a human set; absent until then |

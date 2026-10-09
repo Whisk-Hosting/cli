@@ -80,6 +80,12 @@
       "minLength": 1,
       "maxLength": 500
     },
+    "database_role": {
+      "description": "owner: the app connects as the role that owns its tables. restricted: the app connects as a run login that only reads and writes rows, and only the migrate step connects as the owner, so the app's own queries cannot disable row-level security, drop a policy or change a table. restricted needs a database and a migrate command.",
+      "type": "string",
+      "enum": ["owner", "restricted"],
+      "default": "owner"
+    },
     "build": {
       "type": "object",
       "additionalProperties": false,
@@ -136,6 +142,26 @@
       "items": { "$ref": "#/$defs/webhook" },
       "default": []
     },
+    "inbox": {
+      "description": "Receive email at the app's own address. Each message is stored in the app's storage and delivered to handler the way webhooks are: signed, retried and replayable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handler"],
+      "properties": {
+        "handler": {
+          "description": "Route in this app that receives each message as JSON. Reached only by the platform.",
+          "$ref": "#/$defs/path"
+        },
+        "allow_from": {
+          "description": "Senders allowed to reach the inbox: whole addresses, or @domain for every address at that domain. Empty allows everyone.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^([^@\\s]+)?@[^@\\s]+\\.[^@\\s]+$", "maxLength": 254 },
+          "uniqueItems": true,
+          "maxItems": 100,
+          "default": []
+        }
+      }
+    },
     "static": {
       "description": "Folders published to object storage at deploy and served with immutable caching.",
       "type": "array",
@@ -149,6 +175,29 @@
         }
       },
       "default": []
+    },
+    "redirects": {
+      "description": "Old addresses the edge answers with a redirect before the app is reached or woken, on every hostname of the app.",
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from"],
+        "properties": {
+          "from": { "description": "The old path, such as /about-us; with a query (/product.php?id=12) it matches only requests carrying those values; a :name segment (/blog/:year/:slug) matches any one segment; ending in /* it matches the path and everything below it.", "type": "string", "minLength": 1, "maxLength": 2000 },
+          "to": { "description": "The new path or http(s) address. After a from ending in /*, a to ending in * gets the rest of the path; each :name from has is replaced by the segment it matched. Left out for 410.", "type": "string", "minLength": 1, "maxLength": 2000 },
+          "status": { "description": "301 (permanent, the default), 308 (permanent, keeps the method), 302 or 307 (temporary), or 410 (gone).", "type": "integer", "enum": [301, 302, 307, 308, 410], "default": 301 },
+          "query": { "description": "keep adds the request's query to to; drop leaves it off. Default keep, or drop when from names a query.", "type": "string", "enum": ["keep", "drop"] }
+        }
+      },
+      "default": []
+    },
+    "redirects_file": {
+      "description": "Path, relative to the repository root, of a file with more redirects, one a line: from, to, an optional status and an optional query=keep or query=drop. No segment may be \"..\".",
+      "type": "string",
+      "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+)$",
+      "maxLength": 200
     },
     "storage": {
       "description": "true requests a bucket prefix and injects WHISK_STORAGE_*.",

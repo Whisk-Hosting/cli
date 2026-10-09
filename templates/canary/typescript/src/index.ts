@@ -12,8 +12,8 @@ import { diagKV } from "./kv.js";
 import { diagSync } from "./sync.js";
 import { deliveries, enqueue, env, hasRole, identity, inngest, log, tracing } from "./whisk.js";
 
-// Errors only: when tracing is on, OpenTelemetry belongs to the tracer in whisk.ts.
-if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV, skipOpenTelemetrySetup: !!tracing });
+// Errors only: Sentry leaves OpenTelemetry to the tracer in whisk.ts.
+if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
 
 const app = new Hono();
 
@@ -78,6 +78,11 @@ app.get("/events", async (c) => {
 // verified and dedupes on the webhook id before this function runs (CONTRACT.md §7).
 app.post("/hooks/stripe", deliveries.handle(recordEvent, (d, c) => {
   log.info({ request_id: who(c).requestId, webhook_id: d.id, bytes: d.body.length }, "stripe delivery");
+}));
+// Inbound email: each message to the app's address arrives as a delivery whose JSON body names
+// the sender, the subject and where the original and attachments are stored (CONTRACT.md §7).
+app.post("/inbound/email", deliveries.handle(recordEvent, (d, c) => {
+  log.info({ request_id: who(c).requestId, webhook_id: d.id, bytes: d.body.length }, "email delivery");
 }));
 
 // Diagnostics used by the platform canary; private, and safe to delete in your own app.

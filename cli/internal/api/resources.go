@@ -141,6 +141,19 @@ func (c *Client) VerifyDomain(ctx context.Context, org, app, id string) (Domain,
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/domains/"+pathSeg(id)+"/verify", map[string]any{}, &out)
 }
 
+// SetDomainRedirect makes a custom domain send every request to another hostname of the app,
+// or serve the app again when to is "".
+func (c *Client) SetDomainRedirect(ctx context.Context, org, app, id, to string) (Domain, error) {
+	var out Domain
+	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/domains/"+pathSeg(id)+"/redirect", map[string]string{"to": to}, &out)
+}
+
+// LiveManifest is the manifest in force: the one of production's live deploy.
+func (c *Client) LiveManifest(ctx context.Context, org, app string) (apitypes.Manifest, error) {
+	var out apitypes.Manifest
+	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/manifest", nil, &out)
+}
+
 // DeleteDomain detaches a custom hostname.
 func (c *Client) DeleteDomain(ctx context.Context, org, app, id string) error {
 	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/domains/"+pathSeg(id), nil, nil)
@@ -390,6 +403,29 @@ func (c *Client) RemoveCustomer(ctx context.Context, org, app, id string) error 
 	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/customers/"+pathSeg(id), nil, nil)
 }
 
+// ---- signed media links (CONTROL-PLANE.md §6.13 "Signed links", CLI.md §5.9) ---------------
+
+// MediaLinks and MediaLinkKey are the signed-links answers.
+type (
+	MediaLinks   = apitypes.MediaLinks
+	MediaLinkKey = apitypes.MediaLinkKey
+)
+
+// SignMedia asks for signed, expiring links to the app's private images and video: each path
+// as a page writes it (/.whisk/img/<id>?w=800, /.whisk/media/<id>), expiresIn seconds (0 is an
+// hour).
+func (c *Client) SignMedia(ctx context.Context, org, app string, paths []string, expiresIn int64) (MediaLinks, error) {
+	var out MediaLinks
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/uploads/links", map[string]any{"paths": paths, "expires_in": expiresIn}, &out)
+}
+
+// RotateMediaLinkKey gives the app a new signing key: links already issued work until they
+// expire, or with immediately stop now.
+func (c *Client) RotateMediaLinkKey(ctx context.Context, org, app string, immediately bool) (MediaLinkKey, error) {
+	var out MediaLinkKey
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/uploads/links/rotate", map[string]bool{"immediately": immediately}, &out)
+}
+
 // ---- tokens (CONTROL-PLANE.md §5.1 Tokens, CLI.md §5.12) -----------------------------------
 
 // ListTokens lists the org's live agent and deploy tokens, values never included.
@@ -445,6 +481,37 @@ func (c *Client) ReplayWebhookEvent(ctx context.Context, org, app, name, eventID
 	var out WebhookEvent
 	path := fmt.Sprintf("%s/webhooks/%s/events/%s/replay", appPath(org, app), pathSeg(name), pathSeg(eventID))
 	return out, c.Do(ctx, http.MethodPost, path, nil, &out)
+}
+
+// ---- inbox (CONTROL-PLANE.md §6.12 "Receiving", CLI.md §5.8) ---------------------------------
+
+// Inbox is the app's address, its own receiving domains and the latest messages.
+type Inbox = apitypes.Inbox
+
+// InboxDomain is a business's own domain whose mail reaches the app.
+type InboxDomain = apitypes.InboxDomain
+
+// GetInbox reads the app's inbox.
+func (c *Client) GetInbox(ctx context.Context, org, app string) (Inbox, error) {
+	var out Inbox
+	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/inbox", nil, &out)
+}
+
+// AddInboxDomain registers a domain whose mail reaches the app and answers the records to publish.
+func (c *Client) AddInboxDomain(ctx context.Context, org, app, domain string) (InboxDomain, error) {
+	var out InboxDomain
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/inbox/domains", apitypes.InboxDomainRequest{Domain: domain}, &out)
+}
+
+// VerifyInboxDomain checks the domain's records; it stays pending until they are published.
+func (c *Client) VerifyInboxDomain(ctx context.Context, org, app, id string) (InboxDomain, error) {
+	var out InboxDomain
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/inbox/domains/"+pathSeg(id)+"/verify", nil, &out)
+}
+
+// RemoveInboxDomain stops the domain reaching the app, by id.
+func (c *Client) RemoveInboxDomain(ctx context.Context, org, app, id string) error {
+	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/inbox/domains/"+pathSeg(id), nil, nil)
 }
 
 // ---- logs and errors (CONTROL-PLANE.md §6.17, CLI.md §5.5) -----------------------------------

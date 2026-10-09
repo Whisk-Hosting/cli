@@ -18,7 +18,9 @@ var noReplay = []string{
 	"/orgs/{org}/apps/{app}/db/url",              // database connection credentials
 	"/orgs/{org}/apps/{app}/db/query",            // query results
 	"/orgs/{org}/apps/{app}/db/schema",           // the database's tables
+	"/orgs/{org}/apps/{app}/db/imports",          // a signed upload form for a dump
 	"/orgs/{org}/apps/{app}/uploads",             // a signed upload URL
+	"/orgs/{org}/apps/{app}/uploads/links",       // signed links to private images and video
 	"/orgs/{org}/members",                        // an invitation's join link
 	"/orgs/{org}/members/{id}/invite",            // a fresh join link
 	"/orgs/{org}/apps/{app}/customers",           // a customer's invitation link

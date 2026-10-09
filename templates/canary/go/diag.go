@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net"
 	"net/http"
@@ -13,11 +14,13 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // The diagnostics the platform's canary drives to prove the container's boundaries
-// (HARNESS.md H18, H22, H37 and H42). Every route is private, answers JSON, and is safe to delete in
-// your own app. They are the same in the three templates.
+// (HARNESS.md H18, H22, H37, H42 and H91). Every route is private, answers JSON, and is safe to
+// delete in your own app. They are the same in the three templates, except /diag/pg/guard,
+// which H91 drives on this one alone.
 
 // internalPort is the edge's internal listener, where app-to-app calls arrive
 // (CADDY.md §4.3).
@@ -248,6 +251,7 @@ func diagShare(w http.ResponseWriter, req *http.Request) {
 		sql  string
 		args []any
 	}{
+		// doctor: allow W105 H37 runs this on apps that connect as the owner of their tables
 		{"create table if not exists " + s + ".diag_share_existing (marker text not null)", nil},
 		{"insert into " + s + ".diag_share_existing (marker) values ($1)", []any{in.Marker}},
 		{"grant usage on schema " + s + " to " + to, nil},
@@ -294,4 +298,69 @@ func diagRead(w http.ResponseWriter, req *http.Request) {
 	// nosemgrep: go.lang.security.injection.tainted-sql-string.tainted-sql-string -- the schema name is quoted by pgx.Identifier.Sanitize
 	_, err = conn.Exec(ctx, "insert into "+s+".diag_share_existing (marker) values ($1)", marker+"-reader")
 	writeJSON(w, 200, map[string]any{"tables": tables, "wrote": err == nil, "write_error": errText(err)})
+}
+
+// guardAttempts are the statements POST /diag/pg/guard tries on the notes table, each of which
+// changes what the migrations made. With database_role: restricted the app's login must be
+// refused every one (CONTRACT.md §8); as the owner most would run. %s is the table's owner.
+var guardAttempts = []struct{ name, sql string }{
+	{"disable_rls", "alter table notes disable row level security"},
+	{"no_force_rls", "alter table notes no force row level security"},
+	{"drop_policy", "drop policy notes_by_audience on notes"},
+	{"alter_table", "alter table notes add column diag_guard text"},
+	{"drop_table", "drop table notes"},
+	{"truncate", "truncate notes"},
+	{"create_table", "create table diag_guard (id int)"},
+	{"set_role", "set local role %s"},
+}
+
+// diagGuard is POST /diag/pg/guard: who the app connects as and who owns its notes, whether its
+// login is a superuser or bypasses row-level security, how many notes a query that says nothing
+// about who is asking sees, and for each of guardAttempts whether the database refused it and
+// with which SQLSTATE. Every attempt runs in a transaction of its own that is rolled back, so
+// nothing changes even when one is allowed.
+func diagGuard(w http.ResponseWriter, req *http.Request) {
+	ctx, cancel := context.WithTimeout(req.Context(), 15*time.Second)
+	defer cancel()
+	conn, err := diagConn(ctx)
+	if err != nil {
+		writeJSON(w, 200, map[string]string{"error": err.Error()})
+		return
+	}
+	defer conn.Close(ctx)
+	var user, owner string
+	var super, bypass bool
+	var unscoped int
+	err = conn.QueryRow(ctx, `select current_user, (select tableowner from pg_tables where tablename = 'notes' and schemaname = any(current_schemas(false)) limit 1),
+		r.rolsuper, r.rolbypassrls, (select count(*) from notes) from pg_roles r where r.rolname = current_user`).Scan(&user, &owner, &super, &bypass, &unscoped)
+	if err != nil {
+		writeJSON(w, 200, map[string]string{"error": err.Error()})
+		return
+	}
+	attempts := map[string]map[string]any{}
+	for _, a := range guardAttempts {
+		stmt := a.sql
+		if strings.Contains(stmt, "%s") {
+			stmt = strings.Replace(stmt, "%s", pgx.Identifier{owner}.Sanitize(), 1)
+		}
+		attempts[a.name] = guardAttempt(ctx, conn, stmt)
+	}
+	writeJSON(w, 200, map[string]any{"user": user, "owner": owner, "superuser": super, "bypassrls": bypass, "unscoped": unscoped, "attempts": attempts})
+}
+
+// guardAttempt runs one statement in a transaction it always rolls back, and answers whether
+// the database refused it, its SQLSTATE and its message.
+func guardAttempt(ctx context.Context, conn *pgx.Conn, stmt string) map[string]any {
+	tx, err := conn.Begin(ctx)
+	if err != nil {
+		return map[string]any{"refused": true, "code": "", "error": err.Error()}
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	_, err = tx.Exec(ctx, stmt)
+	code := ""
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		code = pgErr.Code
+	}
+	return map[string]any{"refused": err != nil, "code": code, "error": errText(err)}
 }

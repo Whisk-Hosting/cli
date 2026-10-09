@@ -119,6 +119,22 @@ api POST "$API/v1/orgs/$ORG/apps/$APPID/webhooks/stripe/events/$WID/replay"; [ "
 sleep 3; req GET "$APP/events?kind=webhook"; [ "$(count "$BODY" "evt_$MARK")" = 1 ] || fail "replay was not deduplicated"
 ok "webhook verified, forged refused, replay deduplicated"
 
+# 7b. Inbound email, under whisk-stub: a raw message posted to the stub's inbox is stored and
+#     reaches /inbound/email once, naming its subject. On the platform mail arrives through the
+#     provider instead (HARNESS.md H96) and the stub's route does not exist, so the step is skipped.
+EML=$(printf 'From: Canary <canary@example.com>\r\nTo: canary.dev@in.localhost\r\nSubject: %s\r\nMessage-ID: <%s@example.com>\r\n\r\nHello from the canary.\r\n' "mail-$MARK" "$MARK")
+req POST "$API/v1/stub/inbox" -H "Content-Type: message/rfc822" --data-binary "$EML"
+if [ "$CODE" = 202 ]; then
+  EID=$(jv "$BODY" id); [ -n "$EID" ] || fail "stub inbox answered no id: $BODY"
+  mail_recorded() { req GET "$APP/events?kind=webhook"; case "$BODY" in *"$EID"*) ;; *) return 1;; esac; }
+  poll 30 mail_recorded || fail "email not delivered within 30s"
+  case "$BODY" in *"mail-$MARK"*) ;; *) fail "email delivery lacks its subject: $BODY";; esac
+  ok "email stored and delivered to the inbox handler"
+else
+  case "$BODY" in *INBOX_*) fail "stub inbox -> $CODE $BODY";; esac
+  say "skip inbound email: no stub inbox at $API ($CODE)"
+fi
+
 # 8. Logs: the request id from step 1 is queryable when a Loki URL is given.
 if [ -n "${CANARY_LOKI_URL:-}" ]; then
   in_loki() { req GET "$CANARY_LOKI_URL/loki/api/v1/query?query=%7Bapp_id%3D%22$APPID%22%7D%20%7C%3D%20%22$REQ_ID%22"; case "$BODY" in *"$REQ_ID"*) ;; *) return 1;; esac; }

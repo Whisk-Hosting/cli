@@ -52,8 +52,10 @@ type Capacity struct {
 	Disk        *CapacityDisk   `json:"disk"`
 	Nodes       []CapacityNode  `json:"nodes"`
 	Rows        []CapacityRow   `json:"rows"`
-	Prices      CapacityPrices  `json:"prices"`
-	Revenue     CapacityRevenue `json:"revenue"`
+	// Prices and Revenue are what the hosted platform's money columns come from. Whisk
+	// On-Premise runs on the company's own servers and leaves both out.
+	Prices  *CapacityPrices  `json:"prices,omitempty"`
+	Revenue *CapacityRevenue `json:"revenue,omitempty"`
 }
 
 // CapacityMemory is app memory at its busiest against what the servers carry with one down.
@@ -85,16 +87,17 @@ type CapacityNode struct {
 }
 
 // CapacityRow is one breakpoint: so many servers, what they carry with one down, when to add the
-// next, and, with prices set, what they cost in NZ cents against the revenue at that point.
+// next, and, on the hosted platform with prices set, what they cost in NZ cents against the
+// revenue at that point. A money figure the plan does not have is left out.
 type CapacityRow struct {
 	Servers      int      `json:"servers"`
 	Now          bool     `json:"now"`
 	UsableBytes  int64    `json:"usable_bytes"`
 	AddAtBytes   int64    `json:"add_at_bytes"`
-	MonthlyCents *int64   `json:"monthly_cents"`
-	PerGBCents   *int64   `json:"per_gb_cents"`
-	RevenueCents *int64   `json:"revenue_cents"`
-	SharePercent *float64 `json:"share_percent"`
+	MonthlyCents *int64   `json:"monthly_cents,omitempty"`
+	PerGBCents   *int64   `json:"per_gb_cents,omitempty"`
+	RevenueCents *int64   `json:"revenue_cents,omitempty"`
+	SharePercent *float64 `json:"share_percent,omitempty"`
 }
 
 // CapacityPrices is where the money columns come from: the monthly price of the server Whisk

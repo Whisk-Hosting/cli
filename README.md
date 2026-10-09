@@ -60,7 +60,7 @@ Alembic) and Go (chi, pgx, goose).
 | **Migrations** | `migrate:` command in `whisk.yaml` | Run before traffic switches, after a snapshot. A failed migration restores the snapshot and keeps the previous deploy live |
 | **Backups and restore** | `whisk restore --at <time>` | Continuous backups. Point-in-time restore to any minute: 7 days on Starter, Team and Agency, 30 days on Business, not on Free |
 | **Queue** | `POST $WHISK_QUEUE_URL` | Events with the same `dedupe_key` within 24 hours are dropped |
-| **Durable workflows** | Inngest SDK, functions declared in `whisk.yaml` | Inngest v1.44.0. Steps are retried and memoised. Event names are scoped to the app. Failed runs are parked for `whisk runs replay` |
+| **Durable workflows** | Inngest SDK, functions declared in `whisk.yaml` | Inngest v1.46.0. Steps are retried and memoised. Event names are scoped to the app. Failed runs are parked for `whisk runs replay` |
 | **Cron** | `cron:` and `tz:` on a function | Nothing runs on a timer in the container. A sleeping app wakes for the run. `whisk cron run` starts one now |
 | **Approvals** | `approval(step, runId, name, {to, title, data})` | A workflow waits up to 7 days for a person. The platform renders the approval page and notifies a role, group or user |
 | **Workflow graphs** | `workflows/*.graph.yaml` | Each function's steps and decisions as a diagram, with real runs overlaid. Doctor checks the graph matches the code |

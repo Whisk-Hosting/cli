@@ -141,6 +141,12 @@ func run() error {
 		logger.Info("stripe delivery", "request_id", req.Header.Get("X-Whisk-Request-Id"), "webhook_id", d.ID, "bytes", len(d.Body))
 		return nil
 	}))
+	// Inbound email: each message to the app's address arrives as a delivery whose JSON body names
+	// the sender, the subject and where the original and attachments are stored (CONTRACT.md §7).
+	r.Post("/inbound/email", deliveries.Handle(db.RecordEvent, func(req *http.Request, d Delivery) error {
+		logger.Info("email delivery", "request_id", req.Header.Get("X-Whisk-Request-Id"), "webhook_id", d.ID, "bytes", len(d.Body))
+		return nil
+	}))
 
 	// Diagnostics used by the platform canary; private, and safe to delete in your own app.
 	r.Get("/diag", func(w http.ResponseWriter, req *http.Request) { writeJSON(w, 200, diagReport()) })
@@ -161,6 +167,7 @@ func run() error {
 	r.Get("/diag/pg", diagPG)
 	r.Post("/diag/pg/share", diagShare)
 	r.Get("/diag/pg/read", diagRead)
+	r.Post("/diag/pg/guard", diagGuard)
 	r.Post("/diag/enqueue", func(w http.ResponseWriter, req *http.Request) {
 		// Sends one event through WHISK_QUEUE_URL with the app's own service token, so the
 		// platform can prove an app enqueues its own events.
@@ -199,6 +206,7 @@ func run() error {
 		logger.Info("canary secret log line", "value", v)
 		writeJSON(w, 200, map[string]any{"logged": true, "length": len(v)})
 	})
+	r.Post("/diag/domains", diagDomains)
 	r.Get("/diag/kv", kvRoute)
 	r.Get("/diag/sync", syncRoute)
 	r.Get("/diag/boom", func(w http.ResponseWriter, req *http.Request) { panic("deliberate exception for error tracking") })

@@ -93,6 +93,7 @@ These paths are reserved on every app hostname and never reach the app:
 | `/.whisk/ready` | 200 when the app is awake; used by the waking page. |
 | `/.whisk/media/<id>`, `/.whisk/player.js` | An uploaded video or audio file and the player that plays it. |
 | `/.whisk/img/<id>?w=&h=&fit=&format=` | An uploaded image in the size and format asked for. |
+| either, with `exp`, `kid` and `sig` | A private upload for someone without a Whisk sign-in, through a link the app's server signed with `POST …/uploads/links` (CONTRACT.md §8). |
 
 `return` must be a path on the same hostname; anything else is replaced with `/`.
 

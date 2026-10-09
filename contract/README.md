@@ -30,6 +30,8 @@ apitypes/              the API's JSON, defined once; the dashboard's TypeScript 
                        from it (go test ./apitypes -update)
 tokensig/              the Whisk-Signature a device-bound agent token's requests carry: the
                        canonical string, signing and verification
+medialink/             signed media links: what a link covers, signing and the constant-time
+                       check the platform and the stub share
 platformpage/          the page the edge and the platform answer a browser with when there is
                        no app page to show (waking, access walls, paused, unknown address)
 wakewindow/            the edge's wake confirmation and grace spans and the node's subnet
@@ -66,12 +68,12 @@ command, starts the app, and serves three listeners:
 | Listener | Stands in for | Does |
 |---|---|---|
 | `:3000` | `<app>.<org>.whisk.page` | strips inbound `X-Whisk-*`, public and private routes, sign-in via `/.whisk/login`, identity headers for `--as`, CSRF, Altcha challenge, security headers, cookies bound to the app with `__Host-` and others kept from it, request ids |
-| `:3001` | `api.whisk.run` and `hooks.whisk.run` | the queue endpoint, approvals (list and decide), webhook ingress with the presets, stored events and replay, and the workflow API (proxied to the Inngest dev server it starts) |
+| `:3001` | `api.whisk.run` and `hooks.whisk.run` | the queue endpoint, approvals (list and decide), webhook ingress with the presets, stored events and replay, signed media links (`POST …/uploads/links`), email (`POST …/email/send` checks the message and its attachments as the platform does and keeps it; `GET …/email/sent` lists what was sent), the app's own sending domains (verified when checked), the app's custom domains (names under `.test` or `.example` verify at once; any other answers `DOMAIN_UNVERIFIED`), and the workflow API (proxied to the Inngest dev server it starts) |
 | `:3002` | the internal listener | platform deliveries and app-to-app calls with the service identity |
 
 `GET :3001/v1/stub` describes the run: ids, URLs and the service token. Secrets come from
-`.whisk/dev/secrets.env`. Not emulated: rate limits, previews, storage, email, key-value, custom
-domains, sleep and wake. The CLI's `whisk dev` is this code with Postgres and the dev server
+`.whisk/dev/secrets.env`. Not emulated: rate limits and plan caps, previews, email delivery, key-value,
+sleep and wake. The CLI's `whisk dev` is this code with Postgres and the dev server
 managed for you.
 
 ## Contributing

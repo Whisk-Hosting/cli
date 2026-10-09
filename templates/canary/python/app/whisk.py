@@ -1,6 +1,6 @@
 """The Whisk conventions in one file: identity from headers, JSON logging with the request id,
-tracing, the Inngest client wired to the platform, the approval helper and the webhook
-deliveries helper. Copy this file as-is."""
+tracing, the Inngest client wired to the platform, the approval helper, the webhook
+deliveries helper and the custom domains helper. Copy this file as-is."""
 
 import base64
 import binascii
@@ -11,7 +11,10 @@ import inspect
 import json
 import logging
 import os
+import re
 import sys
+import urllib.error
+import urllib.parse
 import urllib.request
 from dataclasses import dataclass, field
 from typing import Any, Awaitable, Callable, Mapping
@@ -169,6 +172,86 @@ def enqueue(name: str, data: Any, dedupe_key: str | None = None) -> dict[str, An
     req = urllib.request.Request(env("WHISK_QUEUE_URL"), data=body, method="POST", headers={"Content-Type": "application/json", "Authorization": f"Bearer {env('WHISK_SERVICE_TOKEN')}"})
     with urllib.request.urlopen(req, timeout=10) as resp:
         return json.loads(resp.read())
+
+
+def sign_media(paths: list[str], expires_in: int | None = None) -> dict[str, Any]:
+    """Ask the platform, with the service token, for signed links to private uploads, for an
+    app that signs its people in itself (skill section 9, "Signed links"). Write each address as
+    the page would for someone signed in to Whisk: "/.whisk/img/<id>?w=800" for an image,
+    "/.whisk/media/<id>" (or ".../embed", ".../poster.jpg") for video and audio. Answers
+    {"expires_at", "links": [{"id", "path", "url"}]}, one link per path in the same order. Each
+    link works for anyone holding it, with no sign-in, until it expires (expires_in seconds, an
+    hour unless given, twelve hours at most), so check that the person may see the file first
+    and sign links when the page is drawn rather than storing them. Server side only."""
+    url = re.sub(r"/events$", "/uploads/links", env("WHISK_QUEUE_URL"))
+    body = json.dumps({"paths": paths, "expires_in": expires_in or 0}).encode()
+    req = urllib.request.Request(url, data=body, method="POST", headers={"Content-Type": "application/json", "Authorization": f"Bearer {env('WHISK_SERVICE_TOKEN')}"})
+    with urllib.request.urlopen(req, timeout=10) as resp:
+        return json.loads(resp.read())
+
+
+def _platform_url() -> str:
+    """The app's own routes on the platform API, .../v1/orgs/<org>/apps/<app>, read from
+    WHISK_QUEUE_URL, which is that address plus /events."""
+    url = env("WHISK_QUEUE_URL")
+    return url[: -len("/events")] if url.endswith("/events") else url
+
+
+class PlatformError(Exception):
+    """The platform's error for a call the app made with its service token: a stable code, a
+    sentence, a fix and the details (CONTRACT.md §10)."""
+
+    def __init__(self, status: int, code: str, message: str, fix: str, details: dict[str, Any] | None = None):
+        super().__init__(message)
+        self.status, self.code, self.message, self.fix = status, code, message, fix
+        self.details = details or {}
+
+
+def _platform_call(method: str, path: str, wait: float, body: Any = None) -> Any:
+    """One request to the app's own routes with the service token, read per call since it
+    rotates, within wait seconds; the decoded answer, or None for 204."""
+    data = None if body is None else json.dumps(body).encode()
+    req = urllib.request.Request(_platform_url() + path, data=data, method=method, headers={"Content-Type": "application/json", "Authorization": f"Bearer {env('WHISK_SERVICE_TOKEN')}"})
+    try:
+        with urllib.request.urlopen(req, timeout=wait) as resp:
+            raw = resp.read()
+            return json.loads(raw) if raw else None
+    except urllib.error.HTTPError as e:
+        raw = e.read()
+        try:
+            err = json.loads(raw).get("error") or {}
+        except ValueError:
+            err = {}
+        if not err.get("code"):
+            raise RuntimeError(f"{method} {path}: {e.code} {raw[:500]!r}") from e
+        raise PlatformError(e.code, err["code"], err.get("message", ""), err.get("fix", ""), err.get("details")) from e
+
+
+class _Domains:
+    """The app's own custom domains, managed with its service token, so the app can let the
+    businesses it serves point a domain of theirs at it (CONTRACT.md §8, "Custom domains"). Each
+    domain is a dict: id, hostname, status (pending_dns, pending_certificate or active), records
+    to show whoever runs the name's DNS until it is verified, and added_by ("app" for the ones
+    the app added, "team" for the business's). Keep each domain's id beside the customer it
+    belongs to and remove by that id. A PlatformError carries the platform's code:
+    DOMAIN_UNVERIFIED (details["records"] and details["missing"] say what is not in place yet),
+    DOMAIN_TAKEN, PLAN_LIMIT_DOMAINS, RATE_LIMITED."""
+
+    def list(self) -> list[dict[str, Any]]:
+        return _platform_call("GET", "/domains", 15)["items"]
+
+    def add(self, hostname: str) -> dict[str, Any]:
+        return _platform_call("POST", "/domains", 15, {"hostname": hostname})
+
+    def verify(self, id: str) -> dict[str, Any]:
+        """Check the records and have the certificate issued; it can take half a minute."""
+        return _platform_call("POST", f"/domains/{urllib.parse.quote(id, safe='')}/verify", 60)
+
+    def remove(self, id: str) -> None:
+        _platform_call("DELETE", f"/domains/{urllib.parse.quote(id, safe='')}", 15)
+
+
+domains = _Domains()
 
 
 @dataclass(frozen=True)

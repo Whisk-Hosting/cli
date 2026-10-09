@@ -1,6 +1,6 @@
 // The Whisk conventions in one file: identity from headers, JSON logging with the request id,
-// tracing, the Inngest client wired to the platform, the approval helper and the webhook
-// deliveries helper. Copy this file as-is.
+// tracing, the Inngest client wired to the platform, the approval helper, the webhook
+// deliveries helper and the custom domains helper. Copy this file as-is.
 import { SpanKind, SpanStatusCode, trace } from "@opentelemetry/api";
 import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-proto";
 import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
@@ -156,6 +156,101 @@ export const enqueue = async (name: string, data: unknown, dedupeKey?: string): 
   });
   if (!res.ok) throw new Error(`enqueue ${name}: ${res.status} ${await res.text()}`);
   return (await res.json()) as { id: string };
+};
+
+// MediaLinks is what signMedia answers: one link per address asked for, in the same order,
+// and when they all stop working.
+export type MediaLinks = { expiresAt: string; links: { id: string; path: string; url?: string }[] };
+
+// signMedia asks the platform, with the service token, for signed links to private uploads,
+// for an app that signs its people in itself (skill §9, "Signed links"). Write each address as
+// the page would for someone signed in to Whisk: "/.whisk/img/<id>?w=800" for an image,
+// "/.whisk/media/<id>" (or ".../embed", ".../poster.jpg") for video and audio. Each link works
+// for anyone holding it, with no sign-in, until it expires (expiresIn seconds, an hour unless
+// given, twelve hours at most), so check that the person may see the file first and sign links
+// when the page is drawn rather than storing them. Server side only.
+export const signMedia = async (paths: string[], expiresIn?: number): Promise<MediaLinks> => {
+  const url = env("WHISK_QUEUE_URL").replace(/\/events$/, "/uploads/links");
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: `Bearer ${env("WHISK_SERVICE_TOKEN")}` },
+    body: JSON.stringify({ paths, expires_in: expiresIn }),
+    signal: AbortSignal.timeout(10_000),
+  });
+  if (!res.ok) throw new Error(`signMedia: ${res.status} ${await res.text()}`);
+  const out = (await res.json()) as { expires_at: string; links: { id: string; path: string; url?: string }[] };
+  return { expiresAt: out.expires_at, links: out.links };
+};
+
+// platformUrl is the app's own routes on the platform API, .../v1/orgs/<org>/apps/<app>, read
+// from WHISK_QUEUE_URL, which is that address plus /events.
+const platformUrl = () => env("WHISK_QUEUE_URL").replace(/\/events$/, "");
+
+// PlatformError is the platform's error for a call the app made with its service token: a
+// stable code, a sentence, a fix and the details (CONTRACT.md §10).
+export class PlatformError extends Error {
+  readonly status: number;
+  readonly code: string;
+  readonly fix: string;
+  readonly details: Record<string, unknown>;
+  constructor(status: number, code: string, message: string, fix: string, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name = "PlatformError";
+    this.status = status;
+    this.code = code;
+    this.fix = fix;
+    this.details = details;
+  }
+}
+
+// platformCall sends one request to the app's own routes with the service token, read per call
+// since it rotates, within waitMs, and answers the decoded body (undefined for 204).
+const platformCall = async <T>(method: string, path: string, waitMs: number, body?: unknown): Promise<T> => {
+  const res = await fetch(platformUrl() + path, {
+    method,
+    headers: { "content-type": "application/json", authorization: `Bearer ${env("WHISK_SERVICE_TOKEN")}` },
+    body: body === undefined ? undefined : JSON.stringify(body),
+    signal: AbortSignal.timeout(waitMs),
+  });
+  const text = await res.text();
+  if (!res.ok) {
+    const e = ((): { code?: string; message?: string; fix?: string; details?: Record<string, unknown> } => {
+      try { return (JSON.parse(text) as { error?: object }).error ?? {}; } catch { return {}; }
+    })();
+    if (!e.code) throw new Error(`${method} ${path}: ${res.status} ${text}`);
+    throw new PlatformError(res.status, e.code, e.message ?? "", e.fix ?? "", e.details ?? {});
+  }
+  return (text ? JSON.parse(text) : undefined) as T;
+};
+
+// Domain is one of the app's hostnames (CONTRACT.md §8, "Custom domains"). status is
+// pending_dns, pending_certificate or active; records are what to show whoever runs the name's
+// DNS until it is verified; addedBy is "app" for the ones the app added, "team" for the
+// business's.
+export type DNSRecord = { type: string; name: string; value: string };
+export type Domain = {
+  id: string;
+  hostname: string;
+  kind: string;
+  verified: boolean;
+  cert_status: string;
+  status: "pending_dns" | "pending_certificate" | "active";
+  added_by?: "app" | "team";
+  records?: DNSRecord[];
+  created_at: string;
+};
+
+// domains manages the app's own custom domains with its service token, so the app can let the
+// businesses it serves point a domain of theirs at it. Keep each domain's id beside the customer
+// it belongs to and remove by that id. A PlatformError carries the platform's code:
+// DOMAIN_UNVERIFIED (details.records and details.missing say what is not in place yet),
+// DOMAIN_TAKEN, PLAN_LIMIT_DOMAINS, RATE_LIMITED.
+export const domains = {
+  list: async (): Promise<Domain[]> => (await platformCall<{ items: Domain[] }>("GET", "/domains", 15_000)).items,
+  add: (hostname: string): Promise<Domain> => platformCall<Domain>("POST", "/domains", 15_000, { hostname }),
+  // verify checks the records and has the certificate issued; it can take half a minute.
+  verify: (id: string): Promise<Domain> => platformCall<Domain>("POST", `/domains/${encodeURIComponent(id)}/verify`, 60_000),
+  remove: async (id: string): Promise<void> => { await platformCall<void>("DELETE", `/domains/${encodeURIComponent(id)}`, 15_000); },
 };
 
 // Delivery is one webhook delivery, proven to be the platform's: the id to dedupe on, the

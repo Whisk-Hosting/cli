@@ -1,6 +1,6 @@
 # Workflow features
 
-Whisk runs functions on Inngest itself, self-hosted: engine **v1.44.0**. Write standard Inngest
+Whisk runs functions on Inngest itself, self-hosted: engine **v1.46.0**. Write standard Inngest
 code with plain event names and every feature below works as Inngest documents it. Every row below was tested against that engine through
 the platform's own event path with the TypeScript SDK the template pins (`inngest` 4.20); the
 Python and Go SDKs speak the same protocol to the same engine. The harness scenario H35 checks

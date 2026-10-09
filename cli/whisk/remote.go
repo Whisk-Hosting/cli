@@ -79,7 +79,7 @@ func needsHumanSecrets(names []string, page string) *output.Error {
 	return &output.Error{
 		Code:    "NEEDS_HUMAN",
 		Message: fmt.Sprintf("%d secret(s) need a value before the app can use them: %s.", len(names), strings.Join(names, ", ")),
-		Fix:     "Ask an owner or admin to open " + url + " and paste the values there. The app restarts automatically when they are set.",
+		Fix:     "Ask an owner, admin or developer to open " + url + " and paste the values there. The app restarts automatically when they are set.",
 		Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
 		Details: map[string]any{"url": url, "names": names},
 	}

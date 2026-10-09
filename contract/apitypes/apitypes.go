@@ -105,9 +105,21 @@ type App struct {
 	LastDeployAt       *time.Time `json:"last_deploy_at,omitempty"`
 	// Problem is why the app is broken (its container exited after going live) or why its
 	// last wake in the past day failed; absent when neither (CONTROL-PLANE.md §6.5).
-	Problem   *AppProblem `json:"problem,omitempty"`
-	CreatedAt time.Time   `json:"created_at"`
-	UpdatedAt time.Time   `json:"updated_at"`
+	Problem *AppProblem `json:"problem,omitempty"`
+	// Promoted is set while the app is a Promoted app, absent when it is not one
+	// (CONTROL-PLANE.md §6.15).
+	Promoted  *AppPromoted `json:"promoted,omitempty"`
+	CreatedAt time.Time    `json:"created_at"`
+	UpdatedAt time.Time    `json:"updated_at"`
+}
+
+// AppPromoted is when an app was made a Promoted app and by whom (a user id), and whether it is
+// in force: false while the business's plan has no price for Promoted apps, when the app runs
+// like any other and nothing is charged (CONTROL-PLANE.md §6.15).
+type AppPromoted struct {
+	Since   time.Time `json:"since"`
+	By      string    `json:"by"`
+	InForce bool      `json:"in_force"`
 }
 
 // AppProblem is the latest thing that stopped the app answering: CONTAINER_CRASHED with the
@@ -285,14 +297,27 @@ type Domain struct {
 	CertStatus string     `json:"cert_status"`
 	// CDN is set on a custom domain an operator marked as fronted by a CDN (CADDY.md §3).
 	CDN bool `json:"cdn"`
+	// RedirectTo is another hostname of the app that this custom domain sends every request to
+	// with a permanent redirect (CONTROL-PLANE.md §6.11); absent while it serves the app.
+	RedirectTo string `json:"redirect_to,omitempty"`
 	// For custom domains awaiting verification.
 	TXTRecord   string `json:"txt_record,omitempty"`
 	TXTValue    string `json:"txt_value,omitempty"`
 	CNAMETarget string `json:"cname_target,omitempty"`
 	// Addresses are the app hostname's addresses, for a bare domain (example.com), which
 	// cannot have a CNAME: A and AAAA records to them point it at the app instead.
-	Addresses []string  `json:"addresses,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Addresses []string `json:"addresses,omitempty"`
+	// Records are the DNS records to create, ready to show whoever runs the name's DNS: the
+	// TXT that proves it, then a CNAME to the app, or A and AAAA records for a bare domain.
+	// Empty once the domain is verified, and for every other kind.
+	Records []DNSRecord `json:"records,omitempty"`
+	// Status is where a custom domain is: waiting for its records, for its certificate, or
+	// answering. Every other kind is active.
+	Status DomainStatus `json:"status"`
+	// AddedBy says who added a custom domain: the business's people and their agents (team)
+	// or the app itself with its service token (app), which removes only its own.
+	AddedBy   DomainAddedBy `json:"added_by,omitempty"`
+	CreatedAt time.Time     `json:"created_at"`
 }
 
 // Token is an agent or deploy token without its value.
@@ -395,6 +420,9 @@ type Validation struct {
 	Unavailable []string `json:"unavailable"`
 	// Start is the app's typical start, for doctor's W100; absent until one is recorded.
 	Start *AppStart `json:"start,omitempty"`
+	// Promoted is true when the app is a Promoted app in force (CONTROL-PLANE.md §6.15), which
+	// may keep its own sign-in, so doctor skips W090.
+	Promoted bool `json:"promoted"`
 }
 
 // DeviceCode is the answer to POST /device/code.

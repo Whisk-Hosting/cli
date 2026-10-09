@@ -118,7 +118,7 @@ func secretsCmd(s *session) *cobra.Command {
 		Short: "Where a human sets the values: prints one link for all of them and exits 2",
 		Long: `Secret values are only ever typed in the dashboard. The CLI never takes one, from a prompt or
 otherwise, so this prints the NEEDS_HUMAN block with one link for every name given. The link opens
-the secrets page with its paste form ready, a NAME= line for each, so an owner or admin pastes
+the secrets page with its paste form ready, a NAME= line for each, so an owner, admin or developer pastes
 all the values at once.
 
 Previews receive a secret only when it is shared with previews. With --previews (or
@@ -142,7 +142,7 @@ branch's code.`,
 			return &output.Error{
 				Code:    "NEEDS_HUMAN",
 				Message: fmt.Sprintf("%s %s, and values are set in the dashboard, never through the CLI.", strings.Join(args, ", "), verb),
-				Fix:     "Ask an owner or admin to open " + url + " and paste " + them + " there. Do not ask them for a value and do not put one in a file.",
+				Fix:     "Ask an owner, admin or developer to open " + url + " and paste " + them + " there. Do not ask them for a value and do not put one in a file.",
 				Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
 				Details: map[string]any{"url": url, "name": args[0], "names": args, "org": org, "app": app},
 			}

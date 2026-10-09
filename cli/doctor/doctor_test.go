@@ -467,6 +467,31 @@ http.createServer((req, res) => routes[req.url](req, res)).listen(Number(process
 	}
 }
 
+func TestW090Promoted(t *testing.T) {
+	r := Repo{Files: []File{{Path: "public/login.html", Content: []byte("<input type=password>\n")}}}
+	cases := []struct {
+		name     string
+		v        *api.Validation
+		findings int
+		skipped  string
+	}{
+		{"not bound or not asked", nil, 1, ""},
+		{"bound, not promoted", &api.Validation{}, 1, ""},
+		{"bound, promoted", &api.Validation{Promoted: true}, 0, "W090: skipped, the app is a Promoted app, which may keep its own sign-in"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			o := w090(r, Context{Validation: tc.v})
+			if len(o.findings) != tc.findings {
+				t.Errorf("findings = %+v, want %d", o.findings, tc.findings)
+			}
+			if got := strings.Join(o.skipped, ";"); got != tc.skipped {
+				t.Errorf("skipped = %q, want %q", got, tc.skipped)
+			}
+		})
+	}
+}
+
 func TestPasswordFields(t *testing.T) {
 	cases := map[string]bool{
 		`<input type="password" name="pw">`:              true,
@@ -494,5 +519,40 @@ func TestPasswordFields(t *testing.T) {
 	got := passwordFields(r)
 	if len(got) != 1 || got[0].File != "templates/login.jinja" || got[0].Line != 2 {
 		t.Errorf("passwordFields = %+v", got)
+	}
+}
+
+// The inbox handler is a delivery route like a webhook's: doctor finds it in code and checks it
+// verifies the delivery (doctor-rules.md W050, W053).
+func TestInboxHandlerRoute(t *testing.T) {
+	yaml := passing["whisk.yaml"] + "inbox:\n  handler: /inbound/email\n"
+	cases := []struct {
+		name string
+		code string
+		want []string
+		none []string
+	}{
+		{"routed and verified", `app.post("/inbound/email", deliveries.handle(recordMail, () => {}));` + "\n", nil, []string{"W050", "W053"}},
+		{"no route", "", []string{"W050"}, nil},
+		{"routed but not verified", `app.post("/inbound/email", (c) => c.text("ok"));` + "\n", []string{"W053"}, []string{"W050"}},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			files := map[string]string{"whisk.yaml": yaml}
+			if c.code != "" {
+				files["src/mail.ts"] = "import { app } from \"./index\";\n" + c.code
+			}
+			rep := runDoctor(t, with(passing, files), false)
+			for _, id := range c.want {
+				if !has(rep, id) {
+					t.Errorf("%s not reported: %+v", id, rep.Findings)
+				}
+			}
+			for _, id := range c.none {
+				if has(rep, id) {
+					t.Errorf("%s reported: %+v", id, rep.Findings)
+				}
+			}
+		})
 	}
 }

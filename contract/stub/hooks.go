@@ -9,6 +9,7 @@ import (
 	"time"
 
 	werrors "github.com/whisk-run/contract/errors"
+	"github.com/whisk-run/contract/inbound"
 	"github.com/whisk-run/contract/manifest"
 	"github.com/whisk-run/contract/run"
 	"github.com/whisk-run/contract/run/runhttp"
@@ -104,9 +105,9 @@ func (h *hooks) deliver(ctx context.Context, id string) {
 	if !ok {
 		return
 	}
-	src, _ := s.manifest.WebhookByName(evt.Source)
+	handler, _ := s.handlerFor(evt.Source)
 	for attempt := 0; ; attempt++ {
-		status := h.post(ctx, src, evt)
+		status := h.post(ctx, handler, evt)
 		s.store.update(id, func(e *webhookEvent) {
 			e.Attempts++
 			e.LastStatus = status
@@ -135,9 +136,9 @@ func (h *hooks) deliver(ctx context.Context, id string) {
 	}
 }
 
-func (h *hooks) post(ctx context.Context, src manifest.Webhook, evt *webhookEvent) int {
+func (h *hooks) post(ctx context.Context, handler string, evt *webhookEvent) int {
 	s := h.stub
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.internalURL+src.Handler, bytes.NewReader(evt.Body))
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, s.internalURL+handler, bytes.NewReader(evt.Body))
 	if err != nil {
 		return 0
 	}
@@ -166,6 +167,18 @@ func (h *hooks) post(ctx context.Context, src manifest.Webhook, evt *webhookEven
 	defer resp.Body.Close()
 	_, _ = io.Copy(io.Discard, resp.Body)
 	return resp.StatusCode
+}
+
+// handlerFor is the route a source's deliveries go to: a declared webhook's handler, or the
+// inbox's for the inbox source.
+func (s *stub) handlerFor(source string) (string, bool) {
+	if w, ok := s.manifest.WebhookByName(source); ok {
+		return w.Handler, true
+	}
+	if s.manifest.Inbox != nil && source == inbound.SourceName {
+		return s.manifest.Inbox.Handler, true
+	}
+	return "", false
 }
 
 func flattenHeaders(h http.Header) map[string]string {

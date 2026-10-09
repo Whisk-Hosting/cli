@@ -16,11 +16,10 @@ import (
 // Images pinned for the local stack.
 const (
 	imagePostgres  = "postgres:18-alpine"
-	imagePgBouncer = "edoburu/pgbouncer:v1.25.2-p0"
-	imageInngest   = "inngest/inngest:v1.44.0"
-	imageValkey    = "valkey/valkey:8-alpine"
-	imageStorage   = "quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z"
-	imageStorageMC = "quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z"
+	imagePgBouncer = "edoburu/pgbouncer:v1.26.0-p0"
+	imageInngest   = "inngest/inngest:v1.46.0"
+	imageValkey    = "valkey/valkey:9.1.2-alpine"
+	imageStorage   = "rustfs/rustfs:1.0.1"
 )
 
 // Ports are the host ports the stack publishes on 127.0.0.1.
@@ -131,15 +130,17 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 	if m.Storage {
 		w("  storage:")
 		w("    image: %s", imageStorage)
-		w(`    command: ["server", "/data", "--console-address", ":9001"]`)
-		w("    environment: {MINIO_ROOT_USER: whisk, MINIO_ROOT_PASSWORD: whiskwhisk}")
+		w("    environment: {RUSTFS_ACCESS_KEY: whisk, RUSTFS_SECRET_KEY: whiskwhisk, RUSTFS_VOLUMES: /data, RUSTFS_CONSOLE_ENABLE: \"true\"}")
 		w(`    ports: ["127.0.0.1:%d:9000", "127.0.0.1:%d:9001"]`, ports.Storage, ports.Console)
 		w(`    volumes: ["storage:/data"]`)
-		w(`    healthcheck: {test: ["CMD", "mc", "ready", "local"], interval: 2s, timeout: 3s, retries: 30}`)
+		w(`    healthcheck: {test: ["CMD-SHELL", "curl -sf http://127.0.0.1:9000/health >/dev/null"], interval: 2s, timeout: 3s, retries: 30}`)
+		// The bucket, made with a signed PUT from the store's own image: 200 when made, 409 when
+		// it already exists.
 		w("  storage-init:")
-		w("    image: %s", imageStorageMC)
+		w("    image: %s", imageStorage)
 		w("    depends_on: {storage: {condition: service_healthy}}")
-		w(`    entrypoint: ["sh", "-c", "mc alias set local http://storage:9000 whisk whiskwhisk && mc mb --ignore-existing local/whisk"]`)
+		w("    environment: {RUSTFS_ACCESS_KEY: whisk, RUSTFS_SECRET_KEY: whiskwhisk}")
+		w(`    entrypoint: ["sh", "-c", "code=$$(curl -s -o /dev/null -w '%%{http_code}' --aws-sigv4 aws:amz:local:s3 --user \"$$RUSTFS_ACCESS_KEY:$$RUSTFS_SECRET_KEY\" -X PUT http://storage:9000/whisk); case $$code in 200|409) ;; *) echo \"creating the bucket failed: HTTP $$code\" >&2; exit 1 ;; esac"]`)
 	}
 	w("volumes:")
 	w("  postgres: {}")

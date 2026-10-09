@@ -1,0 +1,6 @@
+# expect: MANIFEST_INVALID needs a database
+whisk: 1
+name: app
+database: none
+database_role: restricted
+migrate: "./server migrate"

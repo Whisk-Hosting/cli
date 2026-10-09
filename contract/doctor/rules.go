@@ -39,7 +39,7 @@ type Finding struct {
 }
 
 // ManifestRules are the rule ids that also run in the git pre-receive hook.
-var ManifestRules = []string{"W001", "W002", "W003", "W040", "W051", "W052", "W070"}
+var ManifestRules = []string{"W001", "W002", "W003", "W040", "W051", "W052", "W070", "W110"}
 
 var (
 	reHeading = regexp.MustCompile(`(?m)^## (W\d{3})\s*$`)

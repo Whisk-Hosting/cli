@@ -1,0 +1,5 @@
+# expect: MANIFEST_INVALID needs a migrate command
+whisk: 1
+name: app
+database: app
+database_role: restricted

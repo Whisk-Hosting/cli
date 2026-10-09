@@ -278,8 +278,8 @@ nothing (a deploy reports `FUNCTIONS_NOT_REGISTERED`). Ids read: JavaScript
 ## W050
 
 Level: warning
-Check: a webhook handler path is not found as a route in code.
-Fix: Add a POST route at the handler path, or change webhooks[].handler to the route that exists.
+Check: a webhook handler path, or the inbox handler, is not found as a route in code.
+Fix: Add a POST route at the handler path, or change webhooks[].handler (or inbox.handler) to the route that exists.
 Safe fix: no
 
 Details: same route idioms as W022, for POST.
@@ -306,11 +306,11 @@ routes regardless, but it signals a misunderstanding and is removed.
 ## W053
 
 Level: warning
-Check: a webhook handler does not verify the delivery through the template helper or X-Whisk-Delivery-Signature.
+Check: a webhook handler, or the inbox handler, does not verify the delivery through the template helper or X-Whisk-Delivery-Signature.
 Fix: Wrap the handler in the template's deliveries helper (deliveries.Handle in Go, deliveries.handle in TypeScript and Python), or verify X-Whisk-Delivery-Signature under WHISK_DELIVERY_KEY yourself before doing any work.
 Safe fix: no
 
-Details: for each `webhooks[].handler`, the file that registers the route (same route idioms
+Details: for each `webhooks[].handler` and `inbox.handler`, the file that registers the route (same route idioms
 as W050) must reference `deliveries.Handle`, `deliveries.handle` or the literal
 `X-Whisk-Delivery-Signature`. Without the check a handler trusts the network: any same-org app
 that can reach it could post a forged delivery. Skipped when no route for the handler is found
@@ -398,7 +398,7 @@ directory is not a git repository yet.
 ## W080
 
 Level: warning
-Check: always_on, customer_identity, storage, kv or email needs a plan the org does not have.
+Check: always_on, customer_identity, storage, kv, email or inbox needs a plan the org does not have.
 Fix: Ask an owner to upgrade, or remove the setting; the deploy will be refused otherwise.
 Safe fix: no
 
@@ -407,7 +407,10 @@ Details: known only when the directory is bound to an app, because the answer co
 app on a plan without it (the free app) deploys without a cache and without `WHISK_KV_URL`,
 unless it already had a cache, which it keeps. The push and the deploy's logs then carry the
 line `whisk: W080 kv: the <plan> plan includes no key-value store, …`; the fix is to remove
-`kv` from whisk.yaml or move to Starter or above.
+`kv` from whisk.yaml or move to Starter or above. `inbox` is not refused either: an app on Free
+or Starter deploys with its inbox declared, every message to it is dropped as `not_on_plan`, and
+the push carries `whisk: W080 inbox: the <plan> plan includes no inbox, …`; the fix is to remove
+`inbox` from whisk.yaml or move to Team or above.
 
 ## W090
 
@@ -422,7 +425,9 @@ password is what the abuse scan holds for review. Matched in code and in templat
 (`.html`, `.jinja`, `.ejs`, `.hbs`, `.njk`, `.svelte`, `.vue`, `.astro`, `.tmpl`, `.gohtml`,
 `.templ`, `.erb`, `.mustache`): `type="password"` in any quoting or none, `type: "password"`,
 `.type = "password"`, and Python's `PasswordField` and `PasswordInput`. Tests and vendored
-folders are left out. One finding per file, at its first match.
+folders are left out. One finding per file, at its first match. Skipped for a Promoted app,
+which may keep its own sign-in: known when the directory is bound to an app and
+`/apps/:app/validate` answers `promoted: true`.
 
 ## W091
 
@@ -669,3 +674,41 @@ esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.
 Then copy only `dist/` into the final image, not node_modules, and start with
 `node dist/index.mjs`. A library that loads files of its own at run time (native addons, some
 template engines) is marked external (`--external:<name>`) and installed in the image alone.
+
+## W105
+
+Level: warning
+Check: the app runs with database_role restricted and its server code changes the schema outside the migrations or switches role.
+Fix: Move the schema change into a migration that the manifest's migrate command runs, which connects as the owner, and remove SET ROLE: with database_role restricted the app already connects as a login that cannot change tables, and that login is a member of no role.
+Safe fix: no
+
+Details: runs when `database_role` is `restricted`. In server code (tests and vendored folders
+left out, comments not read): any `set role`, `set local role` or `set session role`, at its
+line; and the first schema change in each file that is not part of the migrations (`create`,
+`alter` or `drop` of a table, index, schema, policy, function, trigger, view, sequence or type,
+and `create extension`). A file is part of the migrations when its path names `migrat`,
+`alembic` or a `drizzle/` folder, or it is a `.sql` file. Migrations run when the app starts
+are W102's finding, which says that under this setting they stop the app from starting.
+
+## W110
+
+Level: error
+Check: the redirects file is missing, a line of it is not a rule, or the redirects together are invalid (a duplicate, a loop, more than 10,000).
+Fix: Fix the line named, or remove the rule that duplicates another or sends a request back where it started.
+Safe fix: no
+
+Details: `whisk.yaml`'s own `redirects` are checked with the manifest (W002); this rule reads the
+file `redirects_file` names and checks its rules together with them, as the push does
+(CONTRACT.md §3.1). One finding per problem, at the file's line where there is one.
+
+## W111
+
+Level: warning
+Check: a redirect's target is redirected again by another rule, so a visitor and a search engine take two hops where one would do.
+Fix: Point the first rule straight at the final address.
+Safe fix: no
+
+Details: search engines follow a few hops, but each is a slower page and may carry less of
+the page's ranking to the new address. Only path targets are followed; an absolute address
+leaves the app. A prefix rule's target is followed with one sample segment in place of its
+`*`. The message lists the hops: `/a redirects to /b, which redirects to /c`.

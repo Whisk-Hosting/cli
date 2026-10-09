@@ -1,6 +1,6 @@
 # Builds without a Dockerfile too (Railpack); this one exists to show the shape.
-FROM python:3.13-slim
-COPY --from=ghcr.io/astral-sh/uv:0.9 /uv /bin/uv
+FROM python:3.14-slim
+COPY --from=ghcr.io/astral-sh/uv:0.12 /uv /bin/uv
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy PYTHONUNBUFFERED=1
 WORKDIR /app
 COPY pyproject.toml uv.lock ./

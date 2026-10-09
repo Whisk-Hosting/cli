@@ -11,29 +11,39 @@ import (
 	"time"
 
 	werrors "github.com/whisk-run/contract/errors"
+	"github.com/whisk-run/contract/inbound"
 	"github.com/whisk-run/contract/run/runhttp"
 )
 
 // api is the stand-in for api.whisk.run and hooks.whisk.run in one listener:
 //
 //	POST /v1/orgs/{org}/apps/{app}/events                      enqueue (service token)
+//	POST /v1/orgs/{org}/apps/{app}/uploads/links               sign media links (service token)
 //	GET  /v1/orgs/{org}/apps/{app}/approvals[?status=pending]   list approvals
 //	POST /approvals/{id}                                        decide {decision, note}
 //	GET  /v1/orgs/{org}/apps/{app}/webhooks/{name}/events       stored deliveries
 //	POST /v1/orgs/{org}/apps/{app}/webhooks/{name}/events/{id}/replay
+//	POST /v1/orgs/{org}/apps/{app}/email/send                  send an email (service token), kept here
+//	GET  /v1/orgs/{org}/apps/{app}/email/sent                  what the app sent, newest first
 //	POST /hooks/{org}/{app}/{source}[/{token}]                  webhook ingress
+//	*    /v1/orgs/{org}/apps/{app}/domains[/{id}[/verify]]       custom domains (domains.go)
+//	*    /v1/orgs/{org}/apps/{app}/email/domains[/{id}[/verify]]  the app's own sending domains
+//	POST /v1/stub/inbox                                         a raw message to the app's inbox
+//	GET  /v1/orgs/{org}/apps/{app}/uploads/{id}                 a file the inbox kept (service token)
+//	GET  /v1/stub/files/{id}                                    its bytes
 //	*    everything else                                        the workflow API (Inngest dev server)
 //
 // The workflow API is served at the listener's root because the SDKs resolve absolute paths
 // such as /fn/register and /e/<key> against WHISK_INNGEST_URL; the stub's own routes never
 // collide with Inngest's.
 type api struct {
-	stub    *stub
-	inngest *httputil.ReverseProxy
+	stub           *stub
+	inngest        *httputil.ReverseProxy
+	sendingDomains *emailDomains
 }
 
 func newAPI(s *stub) *api {
-	a := &api{stub: s}
+	a := &api{stub: s, sendingDomains: newEmailDomains()}
 	if s.inngestURL != nil {
 		a.inngest = httputil.NewSingleHostReverseProxy(s.inngestURL)
 		director := a.inngest.Director
@@ -53,14 +63,30 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case p == prefix+"/events" && r.Method == http.MethodPost:
 		a.enqueue(w, r)
+	case p == prefix+"/uploads/links" && r.Method == http.MethodPost:
+		a.links(w, r)
 	case p == prefix+"/approvals" && r.Method == http.MethodGet:
 		writeJSON(w, 200, map[string]any{"approvals": s.store.approvalList(r.URL.Query().Get("status"))})
 	case strings.HasPrefix(p, "/approvals/") && r.Method == http.MethodPost:
 		a.decide(w, r, strings.TrimPrefix(p, "/approvals/"))
+	case p == prefix+"/email/send" && r.Method == http.MethodPost:
+		a.sendEmail(w, r)
+	case p == prefix+"/email/sent" && r.Method == http.MethodGet:
+		writeJSON(w, 200, map[string]any{"emails": s.store.mailList()})
+	case p == prefix+"/domains" || strings.HasPrefix(p, prefix+"/domains/"):
+		a.domains(w, r, strings.TrimPrefix(p, prefix+"/domains"))
+	case p == prefix+"/email/domains" || strings.HasPrefix(p, prefix+"/email/domains/"):
+		a.emailDomains(w, r, strings.TrimPrefix(p, prefix+"/email/domains"))
 	case strings.HasPrefix(p, prefix+"/webhooks/"):
 		a.webhooks(w, r, strings.TrimPrefix(p, prefix+"/webhooks/"))
 	case strings.HasPrefix(p, "/hooks/"):
 		s.hooks.receive(w, r, strings.TrimPrefix(p, "/hooks/"))
+	case p == "/v1/stub/inbox" && r.Method == http.MethodPost:
+		a.receiveMail(w, r)
+	case strings.HasPrefix(p, prefix+"/uploads/") && r.Method == http.MethodGet:
+		a.upload(w, r, strings.TrimPrefix(p, prefix+"/uploads/"))
+	case strings.HasPrefix(p, "/v1/stub/files/") && r.Method == http.MethodGet:
+		a.fileContent(w, r, strings.TrimPrefix(p, "/v1/stub/files/"))
 	case p == "/v1/stub":
 		writeJSON(w, 200, s.describe())
 	default:
@@ -218,7 +244,7 @@ func (a *api) decide(w http.ResponseWriter, r *http.Request, id string) {
 func (a *api) webhooks(w http.ResponseWriter, r *http.Request, rest string) {
 	parts := strings.Split(rest, "/")
 	name := parts[0]
-	if _, ok := a.stub.manifest.WebhookByName(name); !ok {
+	if _, ok := a.stub.handlerFor(name); !ok {
 		writeError(w, r, 404, werrors.New("WEBHOOK_SOURCE_UNKNOWN", "No webhook source named "+name+" is declared in whisk.yaml.", "Declare it under webhooks and restart the stub.", map[string]any{"source": name}))
 		return
 	}
@@ -229,6 +255,10 @@ func (a *api) webhooks(w http.ResponseWriter, r *http.Request, rest string) {
 		e, ok := a.stub.store.event(parts[2])
 		if !ok || e.Source != name {
 			writeError(w, r, 404, werrors.New("NOT_FOUND", "No event "+parts[2]+" for source "+name+".", "List events with GET .../webhooks/"+name+"/events.", nil))
+			return
+		}
+		if inbound.Dropped(e.Reason) {
+			writeError(w, r, 409, werrors.New("INBOX_MESSAGE_DROPPED", "Message "+e.ID+" was not kept ("+e.Reason+"), so there is nothing to send again.", "Send the message again once the reason no longer holds.", map[string]any{"event_id": e.ID, "reason": e.Reason}))
 			return
 		}
 		if !e.Verified {

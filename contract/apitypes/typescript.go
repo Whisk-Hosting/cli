@@ -64,6 +64,8 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("SubjectKind", "SUBJECT_KINDS", SubjectUser, SubjectGroup, SubjectEveryone))
 	add(enumOf("Audience", "AUDIENCES", AudienceTeam, AudienceCustomer))
 	add(enumOf("DomainKind", "DOMAIN_KINDS", DomainPlatform, DomainCustom, DomainBusiness, DomainFormer))
+	add(enumOf("DomainStatus", "DOMAIN_STATUSES", DomainPendingDNS, DomainPendingCertificate, DomainActive))
+	add(enumOf("DomainAddedBy", "DOMAIN_ADDERS", DomainAddedByTeam, DomainAddedByApp))
 	add(enumOf("SignInMethod", "SIGN_IN_METHODS", MethodPasskey, MethodPassword, MethodCode, MethodSSO, MethodTest))
 	add(enumOf("ActorKind", "ACTOR_KINDS", ActorUser, ActorAgent, ActorSystem, ActorOperator, ActorService))
 	add(enumOf("DeviceStatus", "DEVICE_STATUSES", DevicePending, DeviceApproved, DeviceDenied, DeviceExpired))
@@ -115,6 +117,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("LogDestinationStatus", "LOG_DESTINATION_STATUSES", LogSending, LogWaiting, LogFailing, LogStopped))
 	add(enumOf("CustomerStatus", "CUSTOMER_STATUSES", CustomerInvited, CustomerActive, CustomerBlocked))
 	add(enumOf("DeliveryStatus", "DELIVERY_STATUSES", DeliveryQueued, DeliveryDelivered, DeliveryFailed, DeliveryDead, DeliverySkipped))
+	add(enumOf("InboxDomainStatus", "INBOX_DOMAIN_STATUSES", InboxDomainPending, InboxDomainVerified))
 	add(enumOf("CdnProviderName", "CDN_PROVIDER_NAMES", CdnBunny, CdnNone))
 	add(enumOf("CdnStatus", "CDN_STATUSES", CdnOff, CdnStarting, CdnSwitching, CdnLive, CdnStopping))
 	add(enumOf("CdnDirectReason", "CDN_DIRECT_REASONS", CdnThrough, CdnBare, CdnBusiness, CdnPreview))
@@ -149,7 +152,7 @@ var wire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, Manifest{}, Validation{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
@@ -161,13 +164,14 @@ var wire = []any{
 	RollbackSecretRequest{}, SecretPreviewsRequest{}, ShareSecretRequest{}, SharedSecret{}, DomainRequest{}, DeployKeyResponse{}, DeviceApproveRequest{},
 	RegisterNodeRequest{}, RegisterNodeResponse{},
 	// onpremise.go
-	Licence{}, InstallLicenceRequest{},
+	Licence{}, InstallLicenceRequest{}, SupportDoor{}, OpenSupportDoorRequest{}, SupportDoorSeen{},
+	SupportCallRequest{}, SupportCallAnswer{},
 	// operator.go
 	Hold{}, HoldDecision{}, WebRisk{}, WebRiskRequest{}, AbuseFlag{}, Feedback{}, FeedbackPage{},
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{}, CanaryRun{}, HarnessFailure{}, Revenue{},
 	PlanRevenue{}, Signup{}, SignupOrg{}, BrokenGlass{}, DrainResult{}, DrainMove{},
 	// billing.go
-	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, OrgRef{},
+	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, OrgRef{},
 	PlanCheckout{}, TrialStart{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
 	PayDetails{}, PayStep{}, ClientBusiness{}, Handover{}, ClientTrial{}, Clients{}, ClientAdded{},
 	HandoverMade{}, ClientOverview{}, ClientUsage{}, RebateSettlement{}, Payouts{}, Rebates{},
@@ -187,13 +191,15 @@ var wire = []any{
 	AccountExport{}, ExportProfile{}, ExportMembership{}, ExportSession{}, ExportPasskey{},
 	ExportToken{}, ExportAuditEvent{}, ExportFeedback{}, LastOwnerOrg{},
 	// data.go
-	EmailDomain{}, EmailStatus{}, EmailProviderRequest{}, EmailProviderSet{}, EmailSender{},
+	EmailDomain{}, EmailAttachment{}, EmailStatus{}, EmailProviderRequest{}, EmailProviderSet{}, EmailSender{},
 	EmailAllowance{}, EmailAllowancePeriod{}, StorageInfo{}, StorageProviderRequest{},
-	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, PackageFinding{},
+	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, MediaLink{},
+	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
 	PackageCounts{}, PackageScan{}, Packages{}, LogDestination{}, LogDestinationList{},
 	LogDestinationRequest{}, LogLine{}, LogPage{}, PlatformLogPage{}, ErrorGroup{}, ErrorSample{}, ErrorFrame{},
 	TraceSummary{}, TraceUsage{}, TraceList{}, TraceSpan{}, TraceEvent{}, TraceDetail{}, Customer{},
 	CustomerList{}, WebhookSource{}, WebhookEvent{}, DeliveryError{},
+	Inbox{}, InboxDomain{}, InboxDomainRequest{}, InboxMessage{},
 	// integrations.go
 	CdnProvider{}, CdnHostname{}, AppCdn{}, GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
 	GitHubBranch{}, GitHubLink{}, GitHubAppRecord{}, GitHubAppInfo{}, GitHubManifestStart{},

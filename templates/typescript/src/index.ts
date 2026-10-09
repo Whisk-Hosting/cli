@@ -9,8 +9,8 @@ import { dbFor, notes, sql } from "./db.js";
 import { functions } from "./functions.js";
 import { canChange, canSee, enqueue, env, identity, inngest, log, scopeFor, tracing } from "./whisk.js";
 
-// Errors only: when tracing is on, OpenTelemetry belongs to the tracer in whisk.ts.
-if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV, skipOpenTelemetrySetup: !!tracing });
+// Errors only: Sentry leaves OpenTelemetry to the tracer in whisk.ts.
+if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
 
 const app = new Hono();
 const appName = env("WHISK_APP_NAME", "whisk-typescript");

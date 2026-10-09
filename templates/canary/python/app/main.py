@@ -123,6 +123,14 @@ def stripe_hook(delivery: Delivery) -> None:
     log.info("stripe delivery", webhook_id=delivery.id, bytes=len(delivery.body))
 
 
+# Inbound email: each message to the app's address arrives as a delivery whose JSON body names
+# the sender, the subject and where the original and attachments are stored (CONTRACT.md §7).
+@app.post("/inbound/email")
+@deliveries.handle(record_event)
+def inbound_email(delivery: Delivery) -> None:
+    log.info("email delivery", webhook_id=delivery.id, bytes=len(delivery.body))
+
+
 # Diagnostics used by the platform canary; private, and safe to delete in your own app.
 @app.get("/diag")
 def diag() -> dict[str, Any]:

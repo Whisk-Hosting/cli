@@ -26,17 +26,33 @@ const (
 	EmailDomainPaused   EmailDomainStatus = "paused"
 )
 
+// EmailAttachment is one file an app's email carries (POST …/email/send, `attachments`): the
+// file base64 as content, or the full key of an object in the app's storage as storage_key, and
+// a content_id for an image the HTML shows with <img src="cid:…">. The rules are in mailattach.
+type EmailAttachment struct {
+	Filename    string `json:"filename"`
+	ContentType string `json:"content_type,omitempty"`
+	Content     string `json:"content,omitempty"`
+	StorageKey  string `json:"storage_key,omitempty"`
+	ContentID   string `json:"content_id,omitempty"`
+}
+
 // EmailDomain is one sending domain: where it stands, and the records to publish if it is
 // waiting.
 type EmailDomain struct {
-	ID            string            `json:"id"`
-	Domain        string            `json:"domain"`
+	ID     string `json:"id"`
+	Domain string `json:"domain"`
+	// App is the slug of the app that registered the domain for its customers, which alone sends
+	// from it; absent for a domain of the whole business.
+	App           string            `json:"app,omitempty"`
 	Status        EmailDomainStatus `json:"status"`
 	DNSRecords    []DNSRecord       `json:"dns_records"`
 	BounceRate    float64           `json:"bounce_rate"`
 	ComplaintRate float64           `json:"complaint_rate"`
 	VerifiedAt    time.Time         `json:"verified_at,omitzero"`
-	CreatedAt     time.Time         `json:"created_at"`
+	// CheckedAt is when the provider was last asked whether the domain is verified.
+	CheckedAt time.Time `json:"checked_at,omitzero"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // EmailStatus is GET /orgs/:org/email: the provider, the domains and what has gone. MonthlyLimit
@@ -248,6 +264,29 @@ type UploadImage struct {
 	Path   string `json:"path"`
 	URL    string `json:"url,omitempty"`
 	Detail string `json:"detail,omitempty"`
+}
+
+// MediaLink is one signed link, for the address asked for: Path on any of the app's hostnames
+// but its previews, URL on its production one.
+type MediaLink struct {
+	ID   string `json:"id"`
+	Path string `json:"path"`
+	URL  string `json:"url,omitempty"`
+}
+
+// MediaLinks answers POST …/uploads/links: the links, in the order asked, and when they stop
+// working.
+type MediaLinks struct {
+	ExpiresAt time.Time   `json:"expires_at"`
+	Links     []MediaLink `json:"links"`
+}
+
+// MediaLinkKey is where an app's media-link signing key stands after a rotation: the
+// generation links are now signed with, and until when links signed before still work.
+type MediaLinkKey struct {
+	Generation    int       `json:"generation"`
+	RotatedAt     time.Time `json:"rotated_at"`
+	PreviousUntil time.Time `json:"previous_until"`
 }
 
 // PackageSeverity is how serious a known vulnerability is.
@@ -601,4 +640,59 @@ type WebhookEvent struct {
 type DeliveryError struct {
 	Status int    `json:"status"`
 	Error  string `json:"error"`
+}
+
+// InboxDomainStatus is where a business's own receiving domain stands: pending until the
+// provider sees its records, then verified, when its mail reaches the app.
+type InboxDomainStatus string
+
+const (
+	InboxDomainPending  InboxDomainStatus = "pending"
+	InboxDomainVerified InboxDomainStatus = "verified"
+)
+
+// InboxDomain is a business's own domain whose mail reaches one app (CONTROL-PLANE.md §6.12
+// "Receiving"), with the records to publish while it waits.
+type InboxDomain struct {
+	ID         string            `json:"id"`
+	Domain     string            `json:"domain"`
+	Status     InboxDomainStatus `json:"status"`
+	DNSRecords []DNSRecord       `json:"dns_records"`
+	CreatedAt  time.Time         `json:"created_at"`
+	VerifiedAt time.Time         `json:"verified_at,omitzero"`
+}
+
+// InboxDomainRequest is POST /orgs/:org/apps/:app/inbox/domains.
+type InboxDomainRequest struct {
+	Domain string `json:"domain"`
+}
+
+// InboxMessage is one message an inbox received, as a list shows it: the event it is stored as
+// (whisk webhooks events inbox lists the same), who sent it, and how its delivery went. Reason
+// says why a message was dropped rather than delivered.
+type InboxMessage struct {
+	ID          string         `json:"id"`
+	ReceivedAt  time.Time      `json:"received_at"`
+	From        string         `json:"from"`
+	Recipient   string         `json:"recipient"`
+	Subject     string         `json:"subject"`
+	Attachments int            `json:"attachments"`
+	Status      DeliveryStatus `json:"status"`
+	Reason      string         `json:"reason,omitempty"`
+	Attempts    int            `json:"attempts"`
+}
+
+// Inbox is GET /orgs/:org/apps/:app/inbox: the app's address and its own domains when it
+// declares an inbox, whether the platform can receive mail now, and the latest messages.
+type Inbox struct {
+	Declared  bool `json:"declared"`
+	Available bool `json:"available"`
+	// Included is whether the business's plan includes an inbox (Team and above); on one that
+	// does not, every message is dropped as not_on_plan.
+	Included  bool           `json:"included"`
+	Address   string         `json:"address"`
+	Handler   string         `json:"handler"`
+	AllowFrom []string       `json:"allow_from"`
+	Domains   []InboxDomain  `json:"domains"`
+	Recent    []InboxMessage `json:"recent"`
 }

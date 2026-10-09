@@ -38,6 +38,7 @@ the human asks for that service by name; if a built-in falls short, say so with 
 | Scheduled and background work | functions, steps, retries, approvals (§7) | node-cron, Celery, BullMQ, an outside cron, Zapier |
 | Secrets | declared names, set in the dashboard (§6) | `.env` files, Doppler, Vault |
 | Incoming webhooks | `webhooks:` with verification, retries, replay (§8) | a relay service, your own signature code |
+| Receiving email | `inbox:`, an address per app, delivered like a webhook (§8) | SES receiving, Mailgun routes, Postmark inbound, an IMAP poller |
 | Files and uploads | `storage: true` (§9) | an S3 or R2 account, Cloudinary, UploadThing |
 | Video and audio | `<whisk-video>` (§9) | Mux, Vimeo, YouTube embeds |
 | Email | `email: true` (§9) | SendGrid, Resend, Mailgun, SMTP |
@@ -216,8 +217,12 @@ env: { LOG_LEVEL: info }          # plain configuration, visible in logs
 queue: { endpoint: /.whisk/inngest }
 functions: []                     # cron and event functions (§7)
 webhooks: []                      # incoming webhooks (§8)
+inbox: { handler: /inbound/email } # receive email at the app's own address (§8)
 static:                           # committed folders served by the edge, cached for a year
   - { dir: public/assets, path: /assets }
+redirects:                        # old addresses the edge redirects, before the app wakes
+  - { from: /about-us, to: /about }               # 301 unless status says otherwise
+redirects_file: redirects.txt     # more rules, one a line: from to [status] [query=drop]
 storage: false                    # files, uploads, images, video (§9) · every plan
 kv: false                         # a Redis of its own (§9) · paid
 email: false                      # sending email (§9) · every plan
@@ -285,6 +290,42 @@ app with no further DNS), an owner or admin's session runs `whisk domains busine
 instead: a TXT and one wildcard CNAME (`*.acme.com`), then `whisk domains business verify`. The
 human's existing records (www, mail) keep working.
 
+**Redirects.** When a page is renamed or a site moves to Whisk, keep every old address
+working, or search engines drop the pages. List each old path under `redirects` with the new one (`from`, `to`, `status` 301 by
+default, 308, 302, 307 or 410 for a page that is gone). `from: /blog/*` with `to: /news/*`
+moves a whole section, carrying the rest of the path; `from: /blog/:year/:slug` with `to:
+/posts/:slug` reshapes addresses; `from: /product.php?id=12` matches only that query. Short
+links and campaigns are rules too (`/go/zoom` to an outside address, status 302 when it will
+change). The request's query is kept unless `query: drop`, or the rule's `from` names one.
+More than a few dozen rules go in a file named by `redirects_file`, one rule a line:
+`/old-page /new-page`, `/blog/* /news/* 308`, `/old-promo 410`; at most 10,000 rules in all.
+The edge answers them on every hostname of the app without waking it, ahead of the app's own
+routes. Point each rule straight at the final address: `whisk redirects check` (and `whisk
+doctor`, `W111`) reports a rule whose target another rule redirects again, and a loop fails the
+push. `whisk redirects test /old-page` prints what a request gets, and `whisk redirects list`
+what is live. To move the old domain itself, add it to the app (`whisk domains add
+old-acme.com`, verify it), then `whisk domains redirect old-acme.com acme.com`: every request
+to the old name gets a 301 to the same path on the new one, and a path a rule names goes
+straight to the rule's target there. The same command sends `www.acme.com` to `acme.com`.
+
+**Their customers' domains.** An app that serves other businesses under their own names (a
+white-label app) lets each bring a domain of its own from inside the app, with no person running
+the CLI: the template's `domains` helper (`domains.add`, `list`, `verify`, `remove`; Go
+`domains.Add` and so on) calls `/v1/orgs/<org>/apps/<app>/domains` with `WHISK_SERVICE_TOKEN`
+from production. `add(hostname)` answers the domain with its `id`, `status` and `records`; show
+the customer `records` as they are (a TXT, then a CNAME, or A and AAAA records for a bare domain
+like `lab.com`) and store the `id` with the customer. Let them press a button that calls
+`verify(id)` once they have created the records: `DOMAIN_UNVERIFIED` says in `details.missing`
+what is not in place yet, and DNS can take an hour, so never verify in a loop. `status` is then
+`pending_certificate` until the certificate is served and `active` after; the app answers on the
+name with no deploy and reads the name the visitor used from `Host`. Remove with `remove(id)`,
+never by hostname. The app removes only the domains it added; the business's own
+(`added_by: team`) answer `DOMAIN_ADDED_BY_TEAM`. A name another app holds is `DOMAIN_TAKEN`,
+one app holds at most the plan's `custom_domains_per_app` (`PLAN_LIMIT_DOMAINS`), and more than
+30 adds and removes or 120 verifies an hour is `RATE_LIMITED`. Only the customer's own admins
+should reach these screens: check their role in the app first. `whisk dev` answers the same
+routes; names under `.test` or `.example` verify there at once.
+
 **Serving from near the visitors.** On Team and Business, `whisk cdn on` puts the app's address
 and its CNAME'd domains behind a CDN (`whisk cdn` shows the status and each hostname's route).
 It helps public pages, sites and downloads. A public page is cached only as long as the app's
@@ -319,7 +360,7 @@ the package to that version or newer in the lockfile (a base image package by mo
 image), deploy, then `whisk scan --now` to check again. A finding with no `fixed` has no fix yet;
 leave it. Most image findings come from the operating system in a full base image: the TypeScript
 and Go templates run on a distroless image (`gcr.io/distroless/nodejs24-debian13:nonroot` for Node,
-the Python one on `python:3.13-slim`), which has no shell or package manager, so keep `migrate` a plain command such as `node dist/migrate.js`, not `npm run`
+the Python one on `python:3.14-slim`), which has no shell or package manager, so keep `migrate` a plain command such as `node dist/migrate.js`, not `npm run`
 or shell syntax (`whisk doctor` warns, `W062`). An app that needs a system program (ffmpeg,
 ImageMagick, a browser) moves the Dockerfile's last stage to `FROM node:24-trixie-slim`, installs it
 with `RUN apt-get update && apt-get install -y --no-install-recommends <package> && rm -rf
@@ -370,6 +411,14 @@ the CLI. An owner can remove a customer: they are signed out and can no longer s
 again (or signing up again) within 30 days they come back under the same `X-Whisk-User-Id`, so
 keep their records rather than deleting them when a request stops naming them; after 30 days
 the platform deletes the person, and a later invitation makes a new id.
+
+**Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an
+owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never
+sleeps and has more memory (1 GB guaranteed, up to 4 GB). A Promoted app may keep its own
+sign-in: list every route under `routes.public` (`["/**"]`) and the app's own login decides who
+gets in, and doctor leaves out W090 for it. Everything else in this skill still applies. Only
+build or keep a login of the app's own on a Promoted app; never ask for promotion to get round
+§4, and never promote an app yourself: it is charged, so it is the owner's choice.
 
 Who may open the app (groups, people, everyone in the business) is an owner's or admin's choice
 in the dashboard: `whisk access show` reads it and `whisk open access` gives the link to relay.
@@ -422,7 +471,9 @@ write.
 
 `DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is. No
 session-level state: no `SET` outside a transaction, no advisory locks held across statements,
-no `LISTEN`. Prepared statements are fine inside a transaction.
+no `LISTEN`. Prepared statements are fine inside a transaction. Before a migration relies on a
+function from a recent release (such as `uuidv7()`), check the server's version:
+`whisk db schema --json` prints it as `postgres`.
 
 Migrations run from the manifest's `migrate` command before traffic switches, with a direct
 connection the platform provides for that step and a snapshot taken first. The previous deploy
@@ -492,12 +543,55 @@ runs as `system` and sees every row. Another app reading a shared schema is filt
 owner's policies too: it sets `system` the same way when it should see every row. `whisk dev`
 connects as a superuser, which policies never filter, so prove isolation on a deploy.
 
+**Keep the app's own queries from changing the schema.** By default the app connects as the role
+that owns its tables, so a bug or an injected statement could turn row-level security off, drop
+a policy or rewrite a table. Set `database_role: restricted` and the app connects as a second
+login, `<owner>_run`, that owns nothing: it reads and writes rows, under every policy, and cannot
+change a table, a policy or anything else the migrations made. Only the `migrate` step connects
+as the owner. Use it for any app whose data is kept apart with row-level security, and for an
+app moving to Whisk that already runs as a restricted role.
+
+```yaml
+database: app
+database_role: restricted          # owner (default) | restricted; needs a migrate command
+migrate: "npx prisma migrate deploy"
+```
+
+- `DATABASE_URL` in the running app is the run login (pooled, as always); in `migrate` it is the
+  owner (direct). Use each as-is. Prisma users point `url` at `DATABASE_URL` and need no
+  `directUrl`: the migrate step's `DATABASE_URL` is already direct.
+- Every table, view and sequence the owner makes is readable and writable by the run login
+  without a grant, now and later (`select`, `insert`, `update`, `delete`; `usage` and `update`
+  on sequences). It has no `truncate`, cannot create anything, and cannot `set role` to the
+  owner, so drop any `SET ROLE` or `SET LOCAL ROLE` the app used to switch to a restricted role
+  itself: the login already is one.
+- Schema changes belong in `migrate` alone. An app that creates tables when it starts (`create
+  table if not exists` at boot, `prisma migrate deploy` or `db push` in the start command) fails
+  under the run login with `permission denied`; move that into `migrate`. `whisk doctor` warns
+  (W105, W102).
+- Make a table append-only with policies, not with `revoke`: give it a `for select` and a `for
+  insert` policy and no `update` or `delete` policy, and the run login can add rows and never
+  change them. A `revoke` in a migration also works and lasts across deploys, but a restore that
+  swaps the database in gives the run login its grants on every table again; policies are part
+  of the schema and come back with it.
+- In a shared database, a reader that runs with `database_role: restricted` connects as
+  `app_<reader id>_run`: grant that login what you grant `app_<reader id>`, in the same three
+  statements. It exists once the reader has deployed with the setting, and a grant to a login
+  that does not exist fails, so add it after.
+- `whisk db query`, `db schema` and `db url` act as the owner, so a person can still inspect and
+  repair anything. `whisk dev` connects as a superuser, so prove the restriction on a deploy.
+
+Turning it on for a live app takes one deploy: it makes the login, grants it everything the
+owner already has, migrates as the owner and starts the app as the login. Run `whisk doctor`
+first, since anything the app changes in the schema while it runs now fails. Removing the line
+starts the app as the owner again on the next deploy.
+
 **Looking at the data from your machine.** The database's own address is inside the platform, so
 connecting to it from outside does not work (`whisk db url` says so). Use these instead; they
 run on the platform, need nothing installed, and are audited:
 
-- `whisk db schema --json`: every table with its columns, keys and estimated row count. Read it
-  first when planning an import or a migration.
+- `whisk db schema --json`: the PostgreSQL version and every table with its columns, keys and
+  estimated row count. Read it first when planning an import or a migration.
 - `whisk db query "select … limit 20" --json`: the rows as JSON, values as PostgreSQL prints
   them. `--file script.sql` runs a script. Statements stop after 30 seconds; at most `--limit`
   rows come back (1000 by default).
@@ -519,6 +613,17 @@ so you can check it first; `--swap` puts it live. A restore runs in the backgrou
 to follow it, or `whisk restore show <id> --wait` later. An owner or admin downloads all of the
 business's data with `whisk export --wait`; its link works for five minutes, and
 `whisk export show <id>` signs a new one while the archive is kept (seven days).
+
+**Bringing an existing database.** When an app moves to Whisk with data it already has, dump the
+old database in custom format with PostgreSQL 18's `pg_dump` or older, `pg_dump -Fc --no-owner
+--no-acl -f app.dump "$OLD_DATABASE_URL"`, deploy the app once so its database exists, then run
+`whisk db import app.dump --wait`. The dump is uploaded over HTTPS and loaded into a new database
+beside the live one, named in the result; check it with `whisk db query --database <name>`, then
+`whisk db import app.dump --swap --wait` makes it the live database and keeps the previous one
+for 7 days. Owners and grants in the dump are dropped and everything belongs to the app, so the
+app's migrations must not recreate tables the dump already has. A plain SQL dump is refused;
+there is no database port to connect to and none is needed. An app on a shared database cannot
+take an import. Up to 5 GB.
 
 ## 6. Secrets
 
@@ -636,7 +741,7 @@ On the Free plan a schedule runs at most every 10 minutes: `*/5` runs at minutes
 after 2 idle minutes and get half a core; one that uses all of it for ten minutes is put to
 sleep (`APP_CPU_SLEEP` in its logs), so keep heavy work in small batches.
 
-**Engine features.** It is Inngest itself (v1.44.0): write standard Inngest code with plain
+**Engine features.** It is Inngest itself (v1.46.0): write standard Inngest code with plain
 event names (`"po.created"` in triggers, `cancelOn`, `step.waitForEvent` and sends) and
 everything works as Inngest documents it, `priority` included.
 Event names are your app's own: another app's `po.created` never reaches you. Listen for
@@ -676,6 +781,45 @@ with no preset uses `preset: hmac` with its signature settings under `hmac` (the
 preset in `webhook-presets.yaml`). `whisk webhooks events <name>` lists recent deliveries with why
 the last attempt failed (the handler's status and answer), and `whisk webhooks replay <name>
 <id>` sends one to the handler again.
+
+**Receiving email.** Declare an inbox and every message to the app's address is stored, then
+delivered to the handler like a webhook: verified, retried, listed and replayable. The Team plan
+and above include an inbox; on Free and Starter every message is dropped (`W080` says so).
+
+```yaml
+inbox:
+  handler: /inbound/email
+  allow_from: ["@lab.example", "results@other.example"]   # optional; anyone when absent
+```
+
+`whisk inbox` prints the address, `<app>.<org>@in.whisk.run`; `<app>.<org>+anything@…` reaches
+the app too, with `anything` as `tag`. A business that wants its own address runs `whisk inbox
+domains add results.yourbusiness.com`, publishes the MX record it prints, then `whisk inbox
+domains verify <id>`: every address at that domain then reaches this app. Use a subdomain that
+receives no other mail. The handler receives `POST` with `Content-Type: application/json`, the
+same `X-Whisk-Webhook-*` headers as a webhook with source `inbox`, and this body:
+
+```json
+{"message_id":"<b7@lab.example>","from":"Lab <results@lab.example>","from_address":"results@lab.example",
+ "to":["lab.acme@in.whisk.run"],"cc":[],"recipient":"lab.acme@in.whisk.run","tag":"","subject":"Batch 7",
+ "text":"See attached.","html":"","text_truncated":false,"html_truncated":false,
+ "authentication":{"spf":"pass","dkim":"pass","dmarc":"pass"},
+ "raw":{"upload_id":"01J…","key":"app/01J…/inbox/…/message.eml","bytes":48213,"content_type":"message/rfc822"},
+ "attachments":[{"filename":"b7.pdf","content_type":"application/pdf","upload_id":"01J…","key":"app/01J…/inbox/…/1-b7.pdf","bytes":40120}],
+ "received_at":"2026-10-09T08:00:00Z"}
+```
+
+The original message and each attachment are already in the app's storage: read one with
+`GET /v1/orgs/<org>/apps/<app>/uploads/<upload_id>` and the service token, which answers a link
+to it, or by `key` with the storage client when the app declares `storage: true`. `text` and
+`html` stop at 1 MB each; the original holds the rest. Dedupe on `X-Whisk-Webhook-Id` or
+`message_id`. Mail is dropped, never bounced, when it is over 25 MB, from a sender `allow_from`
+does not accept (a whole address or `@domain`; a message failing DMARC never matches), past 30 a
+minute, 1,000 or 1 GB a day, or unreadable; a dropped message is still listed with its reason
+and cannot be replayed (`INBOX_MESSAGE_DROPPED`). `whisk webhooks events inbox` and `whisk
+webhooks replay inbox <id>` work on messages as on any source. Locally, with `whisk dev` running,
+`whisk inbox send message.eml` (or `--from`, `--subject`, `--text`, `--attach`) delivers a test
+message the same way.
 
 **Calling another of the business's apps.** When one app needs an answer from another now (the
 website asking the stock app for today's price, a customer portal asking the orders app where
@@ -763,6 +907,37 @@ upload has not finished; retry), `IMAGE_UNREADABLE` (not a picture it can read, 
 megapixels), `NOT_AN_IMAGE` (the upload is not `image/*`). `GET …/uploads/<id>` gives the address
 as `image.path`.
 
+**Signed links (an app with its own sign-in).** A `private` upload's addresses answer only
+people signed in through Whisk. If the app keeps its own accounts (an app moved onto Whisk with
+its own login), do not keep your own image resizing (sharp, Pillow) or stream private photos
+and video through the app: have the server sign the addresses. After checking that the person
+may see the file, ask with the service token, server side only, and put the answered `path` in
+the page:
+
+```ts
+const { links } = await signMedia(["/.whisk/img/UPLOAD_ID?w=800", "/.whisk/media/VIDEO_ID"], 3600);
+// Python: sign_media([...], expires_in=3600); Go: signMedia(ctx, []string{...}, time.Hour)
+// = POST /v1/orgs/<org>/apps/<app>/uploads/links {"paths": [...], "expires_in": 3600}
+```
+
+```html
+<img src="/.whisk/img/UPLOAD_ID?w=800&exp=…&kid=…&sig=…" width="800" alt="…">
+<script src="/.whisk/player.js" defer></script>
+<whisk-video src="/.whisk/media/VIDEO_ID?exp=…&kid=…&sig=…"></whisk-video>
+```
+
+Write each path exactly as for a signed-in page, with the size it asks for (one link per size,
+up to 100 paths per call); a video's link also covers its `/embed`, `/poster.jpg` and every
+quality. A link opens the file for anyone who has it until it expires, an hour unless
+`expires_in` says (60 seconds to 12 hours), so sign links each time the page is drawn and never
+store or email them; the same path asked for again within a quarter of its lifetime is the same
+link, so browsers keep the picture cached. Change nothing in a link: another size, a later
+`exp` or another app answers `403 MEDIA_LINK_INVALID`, an old one `403 MEDIA_LINK_EXPIRED`
+(draw the page again). The address without its signature still needs a Whisk sign-in. If a link
+leaks, `whisk uploads rotate-key --now` stops every link issued; without `--now` old links run
+out on their own. `whisk uploads link <path>` prints a link to look at a private file as a
+stranger would.
+
 **Files a job keeps between runs.** Do not rebuild a directory tree in the database. Set
 `storage: true` and use the template's tree helper: pull the tree into a directory under `/tmp`
 at the start of a run, work on ordinary files, and push as you go and at the end. It moves only
@@ -795,6 +970,25 @@ app's name, with no setup; `from: "Training <training@whisk.page>"` sends as
 business's own domain, an owner verifies it under Settings, Email, and `from` names an address on
 it; any other domain gets `EMAIL_DOMAIN_UNVERIFIED` naming the domains that are. Set `reply_to`
 when people should be able to answer.
+`attachments` adds files, up to 10 and 10 MB together: `{filename, content_type, content}` with
+the file base64, or `{filename, storage_key}` with the full key of a file the app keeps in
+storage (`WHISK_STORAGE_PREFIX` + name), which suits a generated PDF report. For a logo in the
+mail, give the image a `content_id` and show it in `html` with `<img src="cid:logo">`; every
+inline image must be shown and every `cid:` must have its image. Programs and scripts (`.exe`,
+`.js`, `.bat`, …) are refused with `EMAIL_ATTACHMENT_BLOCKED`; the other refusals are
+`EMAIL_ATTACHMENT_INVALID`, `EMAIL_ATTACHMENT_TOO_LARGE` and `EMAIL_ATTACHMENT_NOT_FOUND`, each
+with a `fix`. Locally `whisk dev` checks the same rules and keeps the mail instead of sending it:
+`GET <api>/v1/orgs/<org>/apps/<app>/email/sent` lists it.
+When each of your app's customers wants mail from their own domain (a white-label app), register
+it with the service token: `POST /v1/orgs/<org>/apps/<app>/email/domains {domain}` answers `id`,
+`status: "pending"` and `dns_records` (DKIM, SPF and the return path's MX, full names). Show the
+customer those records to publish, keep the `id` against the customer, then
+`POST .../email/domains/<id>/verify` until `status` is `verified` (it asks at most every 30
+seconds); `from` on that domain then works for your app only. `GET .../email/domains` lists them
+and `DELETE .../email/domains/<id>` removes one when the customer leaves. A domain another
+business or app already has is `EMAIL_DOMAIN_TAKEN`; the plan caps them
+(`PLAN_LIMIT_EMAIL_DOMAINS`) and the free app has none. `whisk dev` answers these routes locally
+and verifies at once.
 Transactional only: at most 20 recipients a message and 100 a minute. The plan includes a daily
 allowance; past it a paid plan keeps sending and is billed, and the free app stops (it also stops
 at 50 a month). `EMAIL_RATE_LIMITED` says which limit with `details.period`.
@@ -822,7 +1016,8 @@ you. Requests to `localhost:3000` carry the headers for that person; public rout
 production; `/.whisk/login` and `/.whisk/logout` work. Secrets for local runs come from
 `.whisk/dev/secrets.env`, which is git-ignored and filled by the human. Webhooks locally:
 `whisk dev tunnel stripe` prints the URL to paste into the provider and forwards every verified
-delivery to the app running here for an hour.
+delivery to the app running here for an hour. Email locally: `whisk inbox send message.eml` hands a
+message to the inbox handler, stored and delivered as on the platform (§8).
 
 Before the CLI is installed, `whisk-stub` (`contract/cmd/whisk-stub` in the public whisk CLI
 repository, `go run` it from there) does the same job with an existing Postgres and the Inngest
@@ -920,8 +1115,8 @@ hour signed in, 5 without a login; past that, combine them.
 - Fetch another app's routes from page script. Those requests arrive without cookies; call the
   other app from your server with a service token.
 - Accept `X-Whisk-*` values from anywhere but the request the platform delivered.
-- Build a login page, a password field, a session store or a password reset. The platform owns
-  sign-in; doctor warns on a password field (W090), and a public page asking for a password in
+- Build a login page, a password field, a session store or a password reset, unless the app is
+  a Promoted app that keeps its own sign-in (§4). The platform owns sign-in; doctor warns on a password field (W090), and a public page asking for a password in
   another company's name is held for review.
 - Hold a database connection open across requests with session state; the pool is
   transactional (doctor warns on `LISTEN`, advisory locks and `SET`, W024).

@@ -114,6 +114,9 @@ var ruleTable = []rule{
 	{"W102", false, w102},
 	{"W103", false, w103},
 	{"W104", false, w104},
+	{"W105", true, w105},
+	{"W110", true, w110},
+	{"W111", true, w111},
 }
 
 const manifestFile = "whisk.yaml"
@@ -445,15 +448,32 @@ func w042(r Repo, _ Context) outcome {
 
 func w050(r Repo, _ Context) outcome {
 	var out outcome
-	for i, w := range r.Manifest.Webhooks {
-		found, anyRouter := routeFound(r, w.Handler, "POST")
+	for _, d := range deliveryRoutes(r.Manifest) {
+		found, anyRouter := routeFound(r, d.handler, "POST")
 		if found {
 			continue
 		}
 		if !anyRouter {
-			return skip("W050", routesUnread(fmt.Sprintf("a POST route for webhook %s at %s", w.Name, w.Handler)))
+			return skip("W050", routesUnread(fmt.Sprintf("a POST route for %s at %s", d.what, d.handler)))
 		}
-		out = out.add("W050", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/webhooks/%d/handler", i)), fmt.Sprintf("No POST route for webhook %s at %s was found in code.", w.Name, w.Handler))
+		out = out.add("W050", manifestFile, yamlLine(r.ManifestNode, d.pointer), fmt.Sprintf("No POST route for %s at %s was found in code.", d.what, d.handler))
+	}
+	return out
+}
+
+// deliveryRoute is a route the platform delivers to with its signature: a webhook's handler or
+// the inbox's.
+type deliveryRoute struct{ what, handler, pointer string }
+
+// deliveryRoutes is every route a manifest has the platform deliver to, in manifest order.
+// Pure.
+func deliveryRoutes(m manifest.Manifest) []deliveryRoute {
+	out := []deliveryRoute{}
+	for i, w := range m.Webhooks {
+		out = append(out, deliveryRoute{what: "webhook " + w.Name, handler: w.Handler, pointer: fmt.Sprintf("/webhooks/%d/handler", i)})
+	}
+	if m.Inbox != nil {
+		out = append(out, deliveryRoute{what: "the inbox", handler: m.Inbox.Handler, pointer: "/inbox/handler"})
 	}
 	return out
 }
@@ -464,8 +484,8 @@ var deliveryCheckPattern = regexp.MustCompile(`\bdeliveries\.(?:Handle|handle)\b
 
 func w053(r Repo, _ Context) outcome {
 	var out outcome
-	for i, w := range r.Manifest.Webhooks {
-		files := routeFiles(r, w.Handler, "POST")
+	for _, d := range deliveryRoutes(r.Manifest) {
+		files := routeFiles(r, d.handler, "POST")
 		if len(files) == 0 {
 			continue // W050 reports a missing route; nothing to inspect here.
 		}
@@ -477,7 +497,7 @@ func w053(r Repo, _ Context) outcome {
 			}
 		}
 		if !verified {
-			out = out.add("W053", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/webhooks/%d/handler", i)), fmt.Sprintf("The handler for webhook %s at %s (%s) does not verify X-Whisk-Delivery-Signature.", w.Name, w.Handler, files[0].Path))
+			out = out.add("W053", manifestFile, yamlLine(r.ManifestNode, d.pointer), fmt.Sprintf("The handler for %s at %s (%s) does not verify X-Whisk-Delivery-Signature.", d.what, d.handler, files[0].Path))
 		}
 	}
 	return out
@@ -904,7 +924,10 @@ func problems(err error) []problem {
 
 func graphProblems(err error) []problem { return problems(err) }
 
-func w090(r Repo, _ Context) outcome {
+func w090(r Repo, c Context) outcome {
+	if c.Validation != nil && c.Validation.Promoted {
+		return skip("W090", "the app is a Promoted app, which may keep its own sign-in")
+	}
 	var out outcome
 	for _, h := range passwordFields(r) {
 		out = out.add("W090", h.File, h.Line, fmt.Sprintf("%s line %d asks for a password; the platform signs people in, so the app never does.", h.File, h.Line))

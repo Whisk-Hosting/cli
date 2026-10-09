@@ -898,11 +898,11 @@ func deployWhy(e *werrors.Detail) string {
 	return e.Code
 }
 
-// webhookURLs is each declared webhook's name and the address its provider sends to, or none
-// when the app declares none or they cannot be read (the deploy is live either way).
+// webhookURLs is each declared webhook's name and the address its provider sends to (for the
+// inbox, the email address mail for the app goes to), or none when the app declares none or they cannot be read (the deploy is live either way).
 func (s *session) webhookURLs(client *api.Client, org, app string) []map[string]string {
 	m, err := loadManifest(s.env.Dir)
-	if err != nil || len(m.Webhooks) == 0 {
+	if err != nil || (len(m.Webhooks) == 0 && m.Inbox == nil) {
 		return nil
 	}
 	ctx, cancel := context.WithTimeout(s.ctx, 15*time.Second)

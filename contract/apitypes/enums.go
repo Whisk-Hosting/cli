@@ -129,6 +129,25 @@ const (
 	DomainFormer   DomainKind = "former"
 )
 
+// DomainStatus is where a custom domain is (CONTROL-PLANE.md §6.11): its records are not in
+// place yet, it is verified and the edge has not presented its certificate yet, or it answers.
+type DomainStatus string
+
+const (
+	DomainPendingDNS         DomainStatus = "pending_dns"
+	DomainPendingCertificate DomainStatus = "pending_certificate"
+	DomainActive             DomainStatus = "active"
+)
+
+// DomainAddedBy is who added a custom domain: the business's people and their agents, or the
+// app itself with its service token.
+type DomainAddedBy string
+
+const (
+	DomainAddedByTeam DomainAddedBy = "team"
+	DomainAddedByApp  DomainAddedBy = "app"
+)
+
 // SignInMethod is how a session was signed in (CONTROL-PLANE.md §4.1).
 type SignInMethod string
 

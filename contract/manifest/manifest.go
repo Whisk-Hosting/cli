@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/whisk-run/contract"
+	"github.com/whisk-run/contract/redirects"
 	"github.com/whisk-run/contract/routes"
 	"github.com/whisk-run/contract/webhook"
 )
@@ -32,13 +33,17 @@ type Manifest struct {
 	Health           Health            `json:"health"`
 	Database         string            `json:"database"`
 	Migrate          string            `json:"migrate,omitempty"`
+	DatabaseRole     string            `json:"database_role"`
 	Build            Build             `json:"build"`
 	Secrets          []string          `json:"secrets"`
 	Env              map[string]string `json:"env"`
 	Queue            Queue             `json:"queue"`
 	Functions        []Function        `json:"functions"`
 	Webhooks         []Webhook         `json:"webhooks"`
+	Inbox            *Inbox            `json:"inbox,omitempty"`
 	Static           []Static          `json:"static"`
+	Redirects        []redirects.Rule  `json:"redirects"`
+	RedirectsFile    string            `json:"redirects_file,omitempty"`
 	Storage          bool              `json:"storage"`
 	KV               bool              `json:"kv"`
 	Email            bool              `json:"email"`
@@ -91,6 +96,14 @@ type Webhook struct {
 	HMAC        *webhook.Preset `json:"hmac,omitempty"`
 }
 
+// Inbox is the app's inbound email (CONTRACT.md §7, "Inbound email"): every message to the app's
+// address is stored and delivered to Handler as JSON. AllowFrom, when set, names the only senders
+// that reach it: whole addresses, or "@domain" for every address at that domain.
+type Inbox struct {
+	Handler   string   `json:"handler"`
+	AllowFrom []string `json:"allow_from"`
+}
+
 // Whose pool an app's customers belong to (CONTROL-PLANE.md §4.6): none, its own, or one
 // shared with the org's other apps that ask for the same.
 const (
@@ -98,6 +111,17 @@ const (
 	CustomerIdentityApp  = "app"
 	CustomerIdentityOrg  = "org"
 )
+
+// Which login an app's own code connects as (CONTRACT.md §8): the role that owns its tables, or
+// a run login that owns nothing while only the migrate step connects as the owner.
+const (
+	DatabaseRoleOwner      = "owner"
+	DatabaseRoleRestricted = "restricted"
+)
+
+// Restricted reports whether the app runs as its database's run login. A manifest stored before
+// the field existed reads as the owner.
+func (m Manifest) Restricted() bool { return m.DatabaseRole == DatabaseRoleRestricted }
 
 // Network values (ON-PREMISE.md §5): internal serves the app only on the edge's inside address,
 // public on the outside address too.
@@ -461,6 +485,9 @@ func withDefaults(m Manifest) Manifest {
 	if m.Database == "" {
 		m.Database = "app"
 	}
+	if m.DatabaseRole == "" {
+		m.DatabaseRole = DatabaseRoleOwner
+	}
 	m.Build.Secrets = orEmpty(m.Build.Secrets)
 	m.Secrets = orEmpty(m.Secrets)
 	if m.Env == nil {
@@ -478,8 +505,14 @@ func withDefaults(m Manifest) Manifest {
 	for i := range m.Webhooks {
 		m.Webhooks[i].IPAllowlist = orEmpty(m.Webhooks[i].IPAllowlist)
 	}
+	if m.Inbox != nil {
+		m.Inbox.AllowFrom = orEmpty(m.Inbox.AllowFrom)
+	}
 	if m.Static == nil {
 		m.Static = []Static{}
+	}
+	if m.Redirects == nil {
+		m.Redirects = []redirects.Rule{}
 	}
 	m.Calls = orEmpty(m.Calls)
 	if m.CustomerIdentity == "" {
@@ -545,6 +578,14 @@ func checkRules(m Manifest) Problems {
 			}
 		}
 	}
+	if m.Restricted() {
+		if m.Database == "none" {
+			add("/database_role", "database_role: restricted needs a database; remove it or declare database: app or shared:<name>")
+		}
+		if m.Migrate == "" {
+			add("/database_role", "database_role: restricted needs a migrate command: only the migrate step connects as the owner that can create and change tables")
+		}
+	}
 	presets := webhook.Presets()
 	seenHooks := map[string]int{}
 	for i, w := range m.Webhooks {
@@ -564,10 +605,46 @@ func checkRules(m Manifest) Problems {
 			}
 		}
 	}
+	if m.Inbox != nil {
+		if i, clash := seenHooks[InboxSource]; clash {
+			add(fmt.Sprintf("/webhooks/%d/name", i), "the webhook name inbox is the inbox's own while inbox: is declared; rename the source")
+		}
+		if m.Inbox.Handler == m.Queue.Endpoint {
+			add("/inbox/handler", "the inbox handler cannot be the queue endpoint")
+		}
+	}
+	for _, p := range redirects.Check(m.Redirects) {
+		add(fmt.Sprintf("/redirects/%d/%s", p.Index, p.Field), p.Message)
+	}
 	if len(ps) == 0 {
 		return nil
 	}
 	return dedupe(ps)
+}
+
+// WithFile returns the manifest with the redirects file's rules after its own, so the
+// manifest recorded for a commit carries every rule the edge serves (CONTRACT.md §3.1). The
+// problems name the file's lines, and the rules checked together: a duplicate or a loop
+// across the two, or too many in all.
+func (m Manifest) WithFile(src []byte) (Manifest, []string) {
+	parsed, bad := redirects.ParseFile(src)
+	var out []string
+	for _, p := range bad {
+		out = append(out, fmt.Sprintf("%s %s", m.RedirectsFile, p))
+	}
+	if len(out) > 0 {
+		return m, out
+	}
+	all := append(append([]redirects.Rule{}, m.Redirects...), parsed.Rules...)
+	for _, p := range redirects.Check(all) {
+		if i := p.Index - len(m.Redirects); i >= 0 && i < len(parsed.Lines) {
+			out = append(out, fmt.Sprintf("%s line %d: %s %s", m.RedirectsFile, parsed.Lines[i], p.Field, p.Message))
+		} else {
+			out = append(out, fmt.Sprintf("redirects[%d].%s: %s", p.Index, p.Field, p.Message))
+		}
+	}
+	m.Redirects = all
+	return m, out
 }
 
 func reservedName(n string) string {
@@ -598,12 +675,18 @@ func sortedKeys(m map[string]string) []string {
 	return out
 }
 
-// ServiceRoutes returns the paths only the platform may call: the queue endpoint and every
-// webhook handler.
+// InboxSource is the webhook source an inbox's messages are stored and replayed under.
+const InboxSource = "inbox"
+
+// ServiceRoutes returns the paths only the platform may call: the queue endpoint, every
+// webhook handler and the inbox handler.
 func (m Manifest) ServiceRoutes() []string {
 	out := []string{m.Queue.Endpoint}
 	for _, w := range m.Webhooks {
 		out = append(out, w.Handler)
+	}
+	if m.Inbox != nil {
+		out = append(out, m.Inbox.Handler)
 	}
 	return out
 }

@@ -96,6 +96,9 @@ func TestDefaults(t *testing.T) {
 	if m.Functions[0].Retries != 3 || m.Functions[1].Retries != 0 {
 		t.Fatalf("retries default wrong: %+v", m.Functions)
 	}
+	if m.DatabaseRole != DatabaseRoleOwner || m.Restricted() {
+		t.Fatalf("database_role default not applied: %+v", m)
+	}
 	if m.CustomerIdentity != "none" || m.Previews.Database != "empty" || m.Previews.TTLDays != 3 {
 		t.Fatalf("defaults not applied: %+v", m)
 	}

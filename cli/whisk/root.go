@@ -156,13 +156,13 @@ func newRoot(s *session) *cobra.Command {
 	pf.StringVar(&s.appFlag, "app", "", "app slug, instead of .whisk/app.json")
 
 	root.AddCommand(
-		versionCmd(s), updateCmd(s), skillCmd(s), errorGroupsCmd(s, errorsCmd(s)), schemaCmd(s), cronCmd(s), webhooksCmd(s),
+		versionCmd(s), updateCmd(s), skillCmd(s), errorGroupsCmd(s, errorsCmd(s)), schemaCmd(s), cronCmd(s), webhooksCmd(s), inboxCmd(s),
 		logsCmd(s), tracesCmd(s), mcpCmd(s),
 		loginCmd(s), logoutCmd(s), whoamiCmd(s), accountCmd(s), orgsCmd(s), useCmd(s), cloneCmd(s), gitCredentialCmd(s),
 		initCmd(s), appsCmd(s), doctorCmd(s), devCmd(s),
 		deployCmd(s), deploysCmd(s), rollbackCmd(s), statusCmd(s), scanCmd(s), openCmd(s),
-		secretsCmd(s), domainsCmd(s), cdnCmd(s), envsCmd(s), githubCmd(s),
-		membersCmd(s), accessCmd(s), deployKeysCmd(s), customersCmd(s), clientsCmd(s),
+		secretsCmd(s), domainsCmd(s), redirectsCmd(s), cdnCmd(s), envsCmd(s), githubCmd(s),
+		membersCmd(s), accessCmd(s), deployKeysCmd(s), customersCmd(s), uploadsCmd(s), clientsCmd(s),
 		agentTokenCmd(s), tokensCmd(s), feedbackCmd(s),
 		functionsCmd(s), runsCmd(s), eventsCmd(s), approvalsCmd(s),
 		dbCmd(s), restoreCmd(s), exportCmd(s), billingCmd(s), operatorCmd(s),

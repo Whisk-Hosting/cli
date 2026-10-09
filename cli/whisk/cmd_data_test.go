@@ -73,7 +73,7 @@ func dataAPI(t *testing.T, st *dataState) *httptest.Server {
 	}))
 	mux.HandleFunc("POST "+app+"/db/schema", auth(func(w http.ResponseWriter, r *http.Request) {
 		st.record(r)
-		writeJSON(w, 200, map[string]any{"environment": "production", "database": "app_a1", "tables": []any{map[string]any{"schema": "public", "name": "notes", "kind": "table", "rows_estimate": 2,
+		writeJSON(w, 200, map[string]any{"environment": "production", "database": "app_a1", "postgres": "17.11", "tables": []any{map[string]any{"schema": "public", "name": "notes", "kind": "table", "rows_estimate": 2,
 			"columns":     []any{map[string]any{"name": "id", "type": "integer", "nullable": false, "default": "nextval('notes_id_seq'::regclass)"}, map[string]any{"name": "body", "type": "text", "nullable": true, "default": nil}},
 			"constraints": []any{map[string]any{"name": "notes_pkey", "kind": "primary_key", "definition": "PRIMARY KEY (id)"}}}}})
 	}))
@@ -245,11 +245,11 @@ func TestDBAndRestore(t *testing.T) {
 	}
 
 	r = runRemote(t, dir, srv.URL, nil, "db", "schema", "--json")
-	if r.Code != 0 || r.JSON["tables"].([]any)[0].(map[string]any)["name"] != "notes" {
+	if r.Code != 0 || r.JSON["tables"].([]any)[0].(map[string]any)["name"] != "notes" || r.JSON["postgres"] != "17.11" {
 		t.Fatalf("db schema: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, nil, "db", "schema")
-	if r.Code != 0 || !strings.Contains(r.Stdout, "public.notes (about 2 rows)") || !strings.Contains(r.Stdout, "id integer not null") || !strings.Contains(r.Stdout, "PRIMARY KEY (id)") {
+	if r.Code != 0 || !strings.Contains(r.Stdout, "PostgreSQL 17.11") || !strings.Contains(r.Stdout, "public.notes (about 2 rows)") || !strings.Contains(r.Stdout, "id integer not null") || !strings.Contains(r.Stdout, "PRIMARY KEY (id)") {
 		t.Fatalf("db schema human: %+v", r)
 	}
 

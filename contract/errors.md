@@ -167,7 +167,7 @@ points at the dashboard, where the person does it signed in. An agent acting for
 billing contact reads billing (`whisk billing`).
 
 ```json
-{"error":{"code":"FORBIDDEN_ROLE","message":"Setting a secret value needs the admin or owner role; you are a developer.","fix":"Ask an owner or admin of acme to set STRIPE_SECRET_KEY at https://whisk.run/o/acme/secrets, or to change your role.","docs":"https://skill.whisk.run/errors/FORBIDDEN_ROLE","details":{"required_any":["owner","admin"],"role":"developer"}}}
+{"error":{"code":"FORBIDDEN_ROLE","message":"Setting a secret value needs the owner, admin or developer role; you are billing.","fix":"Ask an owner, admin or developer of acme to set STRIPE_SECRET_KEY at https://whisk.run/o/acme/secrets, or to change your role.","docs":"https://skill.whisk.run/errors/FORBIDDEN_ROLE","details":{"required_any":["owner","admin","developer"],"role":"billing"}}}
 ```
 
 ## AGENT_CATEGORY
@@ -345,6 +345,20 @@ Fix: Remove someone who has left, or ask an owner to upgrade the plan.
 {"error":{"code":"PLAN_LIMIT_MEMBERS","message":"The Team plan allows 25 people and acme has 25.","fix":"Remove someone who has left with whisk members remove <email>, or ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_LIMIT_MEMBERS","details":{"limit":25,"current":25,"plan":"team"}}}
 ```
 
+## PLAN_LIMIT_EMAIL_DOMAINS
+
+Status: 402 · Surface: api
+
+When: an app registers a sending domain of its own for a customer (`POST
+/v1/orgs/<org>/apps/<app>/email/domains`) while the business's apps already hold as many as the
+plan's `app_email_domains` allows together: Starter 25, Team and Agency 250, Business 1,000.
+
+Fix: Remove a domain no customer sends from any more, by its id, or ask an owner to upgrade.
+
+```json
+{"error":{"code":"PLAN_LIMIT_EMAIL_DOMAINS","message":"The Starter plan allows 25 sending domains across a business's apps, and this business's apps hold 25.","fix":"Remove a domain no customer sends from any more by its id, or ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_LIMIT_EMAIL_DOMAINS","details":{"limit":25,"current":25,"plan":"starter"}}}
+```
+
 ## PLAN_LIMIT_PREVIEWS
 
 Status: 402 · Surface: api, cli
@@ -412,12 +426,13 @@ events or removing a chatty cron.
 Status: 409 · Surface: api, cli
 
 When: an owner asked to move to a plan the org does not fit: more apps, members or storage than
-it includes, or a feature switched on that it does not include (single sign-on). `details.over`
-names each limit with what the org has and what the plan allows; `details.features` names each
-feature to switch off first (`sso`).
+it includes, or a feature switched on that it does not include (single sign-on, Promoted apps).
+`details.over` names each limit with what the org has and what the plan allows;
+`details.features` names each feature to switch off first (`sso`, `promoted`).
 
 Fix: Delete what the smaller plan does not include and switch off the features it lacks (single
-sign-on in the business's settings), then change the plan again.
+sign-on in the business's settings, Promoted apps on each app's page), then change the plan
+again.
 
 ```json
 {"error":{"code":"PLAN_DOWNGRADE_BLOCKED","message":"acme has 12 apps and the Starter plan includes 10.","fix":"Delete 2 apps you no longer need with whisk apps delete <slug>, then change the plan again.","docs":"https://skill.whisk.run/errors/PLAN_DOWNGRADE_BLOCKED","details":{"plan":"starter","over":[{"limit":"apps","has":12,"allows":10}]}}}
@@ -437,13 +452,34 @@ When: the action needs a plan setting the org's plan does not include: a custom 
 org's own log service (`log_forwarding`), setting or changing the org's own storage bucket,
 which also receives the backup copy (`own_bucket`, Business only; sending the bucket the org
 already has again with new keys is allowed on any plan), checking an app's packages now
-(`package_scanning`) or serving an app through the CDN (`cdn`). `details.setting` names it and `details.plan` the plan. `kv` on a plan
-without it is not refused: the app deploys without a cache and `W080` says so (doctor-rules.md).
+(`package_scanning`), serving an app through the CDN (`cdn`), making an app a Promoted app
+(`promoted`), an app registering sending domains of its own for its customers
+(`app_email_domains`, on every plan with custom domains), or an app's inbox receiving at the
+business's own domain (`inbox`, Team and above). `details.setting` names it and `details.plan`
+the plan. `kv` on a plan without it is not refused: the app deploys without a cache and `W080`
+says so; nor is `inbox`: the app deploys and every message to it is dropped as `not_on_plan`
+(doctor-rules.md).
 
 Fix: Ask an owner to upgrade the plan at the billing URL, or stop using the setting.
 
 ```json
 {"error":{"code":"PLAN_FEATURE","message":"Custom domains are not included in the Free plan.","fix":"Ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_FEATURE","details":{"setting":"custom_domains","plan":"free"}}}
+```
+
+## PROMOTE_UNAVAILABLE
+
+Status: 409 · Surface: api
+
+When: an owner or billing contact asked to make an app a Promoted app for a business that does
+not pay its own extras, where a Promoted app is charged: a client business its agency pays for
+(`details.reason: client`, with `details.agency` naming the agency), or a business inside its
+free trial (`details.reason: trial`, with `details.trial_ends_at`).
+
+Fix: For a client business, hand it over and let it choose its own plan first. During the trial,
+end the trial or choose a plan on the billing page, then promote the app.
+
+```json
+{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is inside its free trial, and a Promoted app is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
 ```
 
 ## TRIAL_USED
@@ -638,7 +674,7 @@ Fix: Tell the human the secret name and the URL where they set it. Do not ask th
 value and do not put it in a file.
 
 ```json
-{"error":{"code":"SECRET_VALUE_NEEDS_HUMAN","message":"Agent tokens cannot set secret values.","fix":"Ask an owner or admin to set XERO_CLIENT_SECRET at https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET. The deploy will restart automatically once it is set.","docs":"https://skill.whisk.run/errors/SECRET_VALUE_NEEDS_HUMAN","details":{"name":"XERO_CLIENT_SECRET","url":"https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET"}}}
+{"error":{"code":"SECRET_VALUE_NEEDS_HUMAN","message":"Agent tokens cannot set secret values.","fix":"Ask an owner, admin or developer to set XERO_CLIENT_SECRET at https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET. The deploy will restart automatically once it is set.","docs":"https://skill.whisk.run/errors/SECRET_VALUE_NEEDS_HUMAN","details":{"name":"XERO_CLIENT_SECRET","url":"https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET"}}}
 ```
 
 ## SECRET_SHREDDED
@@ -673,7 +709,7 @@ app may use the same value as that app; if they agree, run
 `whisk secrets share NAME --from <app>` instead of asking for the value.
 
 ```json
-{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask an owner or admin to set the rest at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/secrets"}}}
+{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask an owner, admin or developer to set the rest at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/secrets"}}}
 ```
 
 ## SECRET_SHARED_EXISTS
@@ -716,6 +752,45 @@ Dockerfile step failed, a build-time secret is missing from `build.secrets`. Fix
 
 ```json
 {"error":{"code":"BUILD_FAILED","message":"The build failed at step 5 of 9 (npm ci).","fix":"Read the log excerpt, fix the cause, and run whisk deploy again. The previous deploy is still live.","docs":"https://skill.whisk.run/errors/BUILD_FAILED","details":{"build_id":"01J9","step":"npm ci","exit_code":1,"log":["npm ERR! code E404","npm ERR! 404 Not Found - GET https://registry.npmjs.org/left-padd"]}}}
+```
+
+## SECRET_IN_IMAGE
+
+Status: - · Surface: deploy, cli
+
+When: the built image, or one of the manifest's static folders, holds the value of one of the
+app's secrets: a build secret a step wrote into a file, or a value pasted into code or a
+committed file. Whisk looks for every distinctive secret value before the image is stored, so
+the build stopped and nothing was pushed; the previous deploy is still live.
+`details.secrets` names the secrets and `details.files` each file (`{secret, path, browser}`);
+`browser: true` means the file is sent to browsers, where anyone who opens the app could read
+it. The value itself is never shown.
+
+Fix: Read the secret from the environment on the server at run time, never in code sent to the
+browser or written into the image (a build secret is for the build's own steps). If the value is
+in the repository, remove it and set a new value for the secret, because the old one stays in the
+history. A value that is meant to be public takes a public name, such as `NEXT_PUBLIC_` or
+`VITE_`.
+
+```json
+{"error":{"code":"SECRET_IN_IMAGE","message":"The value of STRIPE_KEY is in /app/dist/assets/index-a1.js, a file sent to browsers, so anyone who opens the app could read it. The build was stopped before the image was stored.","fix":"Read the secret from the environment on the server at run time, never in code sent to the browser or written into the image (a build secret is for the build's own steps). If the value is in the repository, remove it and set a new value for the secret, because the old one stays in the history. A value that is meant to be public takes a public name, such as NEXT_PUBLIC_ or VITE_.","docs":"https://skill.whisk.run/errors/SECRET_IN_IMAGE","details":{"build_id":"01J9","fault":"app","secrets":["STRIPE_KEY"],"files":[{"secret":"STRIPE_KEY","path":"/app/dist/assets/index-a1.js","browser":true}]}}}
+```
+
+## SOURCE_MAPS_PUBLISHED
+
+Status: - · Surface: deploy (a warning), cli
+
+When: the deploy went live, but it sends source maps to browsers: `.js.map` or `.css.map` files
+in a static folder or in a folder of the image that build tools write browser files into. Anyone
+can read the app's original source code from them, comments included. It is a warning on the
+deploy (`warnings`), not a failure. `details.count` is how many, `details.files` up to five.
+
+Fix: Turn browser source maps off for production builds (Vite: `build.sourcemap: false`;
+Next.js: `productionBrowserSourceMaps: false`; esbuild: no `--sourcemap`), or send them to your
+error tracker instead of serving them, then deploy again.
+
+```json
+{"error":{"code":"SOURCE_MAPS_PUBLISHED","message":"The app sends source maps to browsers (3, such as /app/dist/assets/index-a1.js.map), so anyone can read its original source code.","fix":"Turn browser source maps off for production builds (Vite: build.sourcemap false; Next.js: productionBrowserSourceMaps false; esbuild: no --sourcemap), or send them to your error tracker instead of serving them, then deploy again.","details":{"count":3,"files":["/app/dist/assets/index-a1.js.map"]},"docs":"https://skill.whisk.run/errors/SOURCE_MAPS_PUBLISHED"}}
 ```
 
 ## BUILD_TIMEOUT
@@ -1027,9 +1102,15 @@ Status: 429 · Surface: edge, api, auth
 
 When: a client exceeded a rate limit: per IP for a visitor who is not signed in, per user for
 one who is, per app, or per token on the API; or sent more feedback in an hour than `POST /v1/feedback` takes
-(`details.scope` is `feedback`); or sent more than ten browser error reports in a minute from
-one network address to `POST /v1/client-errors` (`details.scope` is `client_errors`); or started more than ten device logins (`POST /v1/device/code`)
-or polled more than sixty times (`POST /v1/device/token`) in a minute from one network address.
+(`details.scope` is `feedback`); or an app's own service token added or removed more than 30
+custom domains, or asked to verify more than 120, in an hour (`details.scope` is
+`app_domains`); or sent more than ten browser error reports in a minute from
+one network address to `POST /v1/client-errors` (`details.scope` is `client_errors`); or asked
+whisk.run's Whisk On-Premise release routes more than thirty times in a minute from one network
+address (`details.scope` is `onpremise_releases`); or started more than ten device logins (`POST /v1/device/code`)
+or polled more than sixty times (`POST /v1/device/token`) in a minute from one network address;
+or an app registered more than twenty sending domains of its own in an hour (`details.scope` is
+`email_domains`).
 On the sign-in host, more than five emailed codes for one address
 or thirty from one network address in an hour, or ten wrong passwords for one address or fifty
 from one network address. `Retry-After` says when to try again.
@@ -1096,6 +1177,66 @@ Fix: Fix the handler so it answers 2xx within 30 seconds, deploy, then replay wi
 
 ```json
 {"error":{"code":"WEBHOOK_DEAD","message":"Event 01J9 from source stripe was not delivered after 5 attempts; the last response was 500.","fix":"Fix the handler at /hooks/stripe so it answers 2xx within 30 seconds, deploy, then run whisk webhooks replay stripe 01J9.","docs":"https://skill.whisk.run/errors/WEBHOOK_DEAD","details":{"source":"stripe","event_id":"01J9","attempts":5,"last_status":500}}}
+```
+
+## INBOX_NOT_DECLARED
+
+Status: 404 · Surface: api, cli, stub
+
+When: a request needs the app's inbox (`GET`'s domains, `POST .../inbox/domains`, `whisk inbox
+send`, the stub's `POST /v1/stub/inbox`) and `whisk.yaml` declares no `inbox`. `GET .../inbox`
+itself answers `declared: false` instead.
+
+Fix: Add `inbox:` with `handler:` naming the route that receives each message to `whisk.yaml`,
+write that route, and push (or restart `whisk dev`).
+
+```json
+{"error":{"code":"INBOX_NOT_DECLARED","message":"lab-results declares no inbox, so it receives no email.","fix":"Add inbox: with handler: /inbound/email (the route that receives each message) to whisk.yaml and push.","docs":"https://skill.whisk.run/errors/INBOX_NOT_DECLARED","details":{"app":"lab-results"}}}
+```
+
+## INBOX_DOMAIN_TAKEN
+
+Status: 409 · Surface: api, cli
+
+When: a receiving domain cannot be added to this app: another app already receives at it, the
+business sends from it (a sending domain cannot also be a receiving one), another business holds
+it at the provider, or it is one of Whisk's own domains. `details.reason` says which.
+
+Fix: Use a subdomain only this app receives at, such as `results.yourbusiness.com`. If another app
+of the business has it, remove it there first (`whisk inbox domains remove <id>`).
+
+```json
+{"error":{"code":"INBOX_DOMAIN_TAKEN","message":"results.acme.example cannot receive mail for this app: another app receives mail at it.","fix":"Use a subdomain only this app receives at, such as results.yourbusiness.com. If another app of yours has it, remove it there first.","docs":"https://skill.whisk.run/errors/INBOX_DOMAIN_TAKEN","details":{"domain":"results.acme.example","reason":"another app receives mail at it"}}}
+```
+
+## INBOX_UNAVAILABLE
+
+Status: 503 · Surface: api, cli
+
+When: a receiving domain was added or verified while the platform has no receiving provider set
+up (the operator has not connected Resend). Mail sent to the app's address in the meantime is not
+kept.
+
+Fix: Try again later. The platform's operator connects receiving on the operator page.
+
+```json
+{"error":{"code":"INBOX_UNAVAILABLE","message":"Whisk is not set up to receive email yet.","fix":"Try again later; the operator sets receiving up on the operator page. Messages sent before then are not kept.","docs":"https://skill.whisk.run/errors/INBOX_UNAVAILABLE","details":{}}}
+```
+
+## INBOX_MESSAGE_DROPPED
+
+Status: 409 · Surface: api, cli, stub
+
+When: a replay named an inbox message that was dropped rather than delivered: it was too large,
+over the inbox's rate or daily limits, from a sender `allow_from` does not accept, unreadable, or
+it arrived while the business was paused. Its `reason` says which. Nothing of it was stored but
+the record, so there is nothing to send.
+
+Fix: Nothing to replay. Ask the sender to send it again once the cause is fixed: add them to
+`inbox.allow_from` and push, wait for the limit to reset, or ask for a smaller message.
+
+```json
+{"error":{"code":"INBOX_MESSAGE_DROPPED","message":"Message 01J9 was dropped (sender_not_allowed), so there is nothing to replay.","fix":"Ask the sender to send it again once the cause is fixed; for sender_not_allowed, add them to inbox.allow_from in whisk.yaml and push first.","docs":"https://skill.whisk.run/errors/INBOX_MESSAGE_DROPPED","details":{"event_id":"01J9","reason":"sender_not_allowed"}}}
 ```
 
 ## DELIVERY_UNVERIFIED
@@ -1334,7 +1475,8 @@ records to `details.addresses` instead. `details.missing` lists `TXT`, `CNAME` (
 name does not point at the app either way), or both.
 
 Fix: Create the records in `details.records` at the DNS provider, wait for propagation, and
-run `whisk domains verify <hostname>`.
+run `whisk domains verify <hostname>`. An app verifying with its own service token shows its
+customer `details.records` and calls `POST .../domains/<id>/verify` again later.
 
 ```json
 {"error":{"code":"DOMAIN_UNVERIFIED","message":"jobs.acme.example is not verified: the TXT record was not found yet.","fix":"Add TXT _whisk-verify.jobs.acme.example = whisk-verify-9f3c and CNAME jobs.acme.example -> job-tracker.acme.whisk.page (for a bare domain like example.com, which cannot have a CNAME, A or AAAA records to 95.217.38.236 instead), wait for DNS to update, then run whisk domains verify jobs.acme.example.","docs":"https://skill.whisk.run/errors/DOMAIN_UNVERIFIED","details":{"hostname":"jobs.acme.example","records":[{"type":"TXT","name":"_whisk-verify.jobs.acme.example","value":"whisk-verify-9f3c"},{"type":"CNAME","name":"jobs.acme.example","value":"job-tracker.acme.whisk.page"}],"addresses":["95.217.38.236"],"missing":["TXT"]}}}
@@ -1367,6 +1509,39 @@ your domain, contact support with proof of ownership.
 
 ```json
 {"error":{"code":"DOMAIN_TAKEN","message":"jobs.acme.example is already attached to another app.","fix":"Run whisk domains remove jobs.acme.example on the app that holds it, or choose another hostname. Contact support@whisk.run if you own the domain and do not control that app.","docs":"https://skill.whisk.run/errors/DOMAIN_TAKEN","details":{"hostname":"jobs.acme.example"}}}
+```
+
+## PLAN_LIMIT_DOMAINS
+
+Status: 402 · Surface: api, cli
+
+When: adding a custom domain would give the app more than its plan allows one app
+(`custom_domains_per_app`: Starter 25, Team and Agency 100, Business 500), counting every custom
+domain of the app, verified or not, whoever added it. `details.limit` is the plan's number and
+`details.current` how many the app holds.
+
+Fix: Remove a domain nobody uses any more by its id (`DELETE .../domains/<id>`, or `whisk
+domains remove <hostname>`), such as one whose records were never created, or ask an owner to
+upgrade the plan.
+
+```json
+{"error":{"code":"PLAN_LIMIT_DOMAINS","message":"The Starter plan allows 25 custom domains on one app and results has 25.","fix":"Remove a domain nobody uses any more by its id, such as one whose records were never created, or ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_LIMIT_DOMAINS","details":{"limit":25,"current":25,"plan":"starter"}}}
+```
+
+## DOMAIN_ADDED_BY_TEAM
+
+Status: 403 · Surface: api
+
+When: an app's own service token tried to remove a custom domain the business's people or their
+agents added (`added_by: team`). The app's token removes only the domains it added itself, so
+the business's own names stay out of reach of the app's code. `details.domain_id` names the
+domain.
+
+Fix: Leave it, or have a person with deploy rights remove it with `whisk domains remove
+<hostname>` or from the app's Domains page.
+
+```json
+{"error":{"code":"DOMAIN_ADDED_BY_TEAM","message":"results.acme.example was added by the business's team, so the app's own token cannot remove it.","fix":"Leave it, or have a person with deploy rights remove it with whisk domains remove results.acme.example.","docs":"https://skill.whisk.run/errors/DOMAIN_ADDED_BY_TEAM","details":{"domain_id":"01J9ZQ4X7T8V2M5N6P3R1S0W9Y","hostname":"results.acme.example"}}}
 ```
 
 ## ORG_DOMAIN_EXISTS
@@ -1409,6 +1584,70 @@ email settings page.
 
 ```json
 {"error":{"code":"EMAIL_PAUSED","message":"Sending for acme is paused: the bounce rate over the last 24 hours was 7.2%.","fix":"Remove bouncing addresses from your lists, then ask an owner to resume sending at https://whisk.run/o/acme/settings.","docs":"https://skill.whisk.run/errors/EMAIL_PAUSED","details":{"domain":"mail.acme.example"}}}
+```
+
+## EMAIL_ATTACHMENT_INVALID
+
+Status: 400 · Surface: api
+
+When: an email send's `attachments` cannot be used as written: more than 10 files, an entry with
+no `filename` or one holding a path or a line break, neither or both of `content` and
+`storage_key`, `content` that is not base64 or is empty, a `content_type` that is not
+`type/subtype`, a `content_id` on a file that is not an image, a `content_id` the HTML never shows
+as `cid:<content_id>` or one used twice, or a `cid:` in the HTML that no attachment carries.
+`details.attachment` is the entry's index.
+
+Fix: Do what `fix` says for that entry: each attachment is `{filename, content_type, content}` or
+`{filename, content_type, storage_key}`, with `content_id` only on an image the HTML shows with
+`<img src="cid:<content_id>">`.
+
+```json
+{"error":{"code":"EMAIL_ATTACHMENT_INVALID","message":"Attachment logo.png has content_id logo, and the HTML never shows cid:logo.","fix":"Show it with <img src=\"cid:logo\">, or leave content_id out to attach the file.","docs":"https://skill.whisk.run/errors/EMAIL_ATTACHMENT_INVALID","details":{"attachment":1,"filename":"logo.png","content_id":"logo"}}}
+```
+
+## EMAIL_ATTACHMENT_TOO_LARGE
+
+Status: 413 · Surface: api
+
+When: an email's attachments hold more than 10 MB together, decoded, counting files read from
+storage; or the send body is over 16 MB.
+
+Fix: Send smaller files or fewer of them, or put the file in storage and send a link to it
+instead of the file.
+
+```json
+{"error":{"code":"EMAIL_ATTACHMENT_TOO_LARGE","message":"The attachments hold 12.4 MB together; a message may carry 10.0 MB.","fix":"Send smaller files, fewer of them, or a link to the file in storage instead of the file.","docs":"https://skill.whisk.run/errors/EMAIL_ATTACHMENT_TOO_LARGE","details":{"bytes":13002342,"limit_bytes":10485760}}}
+```
+
+## EMAIL_ATTACHMENT_BLOCKED
+
+Status: 422 · Surface: api
+
+When: an email's attachment is a program, script, shortcut, installer or disk image: its name
+ends in an extension Gmail refuses (`.exe`, `.js`, `.bat`, `.iso` and the rest of
+`mailattach.Blocked`), its `content_type` is a program's, its first bytes are a Windows, Linux or
+macOS executable whatever it is called, or it is a ZIP archive naming such a file.
+
+Fix: Send documents, images and data files, not programs. To share a program, put it in storage
+and send a link to it.
+
+```json
+{"error":{"code":"EMAIL_ATTACHMENT_BLOCKED","message":"Attachment setup.exe cannot be sent: its type, .exe, is a program or script mail servers refuse.","fix":"Send documents, images and data files, not programs. To share a program, put it in storage and send a link to it.","docs":"https://skill.whisk.run/errors/EMAIL_ATTACHMENT_BLOCKED","details":{"attachment":0,"filename":"setup.exe","extension":".exe"}}}
+```
+
+## EMAIL_ATTACHMENT_NOT_FOUND
+
+Status: 404 · Surface: api
+
+When: an email's attachment names a `storage_key` that is not under the app's own
+`WHISK_STORAGE_PREFIX`, or that the app's storage does not hold (never written, deleted, or
+moved to quarantine by the scan).
+
+Fix: Send the object's full key, the app's `WHISK_STORAGE_PREFIX` followed by its name, for a file
+the app wrote; or send the file itself as `content`.
+
+```json
+{"error":{"code":"EMAIL_ATTACHMENT_NOT_FOUND","message":"Attachment report.pdf names app/01J9ZQ/reports/october.pdf, which is not in this app's storage.","fix":"Send storage_key as the object's full key, the app's WHISK_STORAGE_PREFIX followed by its name, such as app/01J9ZQ/reports/october.pdf.","docs":"https://skill.whisk.run/errors/EMAIL_ATTACHMENT_NOT_FOUND","details":{"attachment":0,"filename":"report.pdf","storage_key":"app/01J9ZQ/reports/october.pdf"}}}
 ```
 
 ## EMAIL_LINK_BLOCKED
@@ -1743,6 +1982,39 @@ Fix: Resize only uploads authorised with an image content type. Play video and a
 ```json
 {"error":{"code":"NOT_AN_IMAGE","message":"invoice-4412.pdf is application/pdf, not an image.","fix":"Use /.whisk/img/ for uploads authorised with an image/* content_type; play video and audio at /.whisk/media/<id>.","docs":"https://skill.whisk.run/errors/NOT_AN_IMAGE","details":{"id":"01J9ABC","content_type":"application/pdf"}}}
 ```
+
+## MEDIA_LINK_EXPIRED
+
+Status: 403 · Surface: edge
+
+When: a signed link to an image or video (`/.whisk/img/<id>` or `/.whisk/media/<id>` with
+`exp`, `kid` and `sig`, from `POST …/uploads/links`) is used after its `exp`. The signature is
+checked first, so only a genuine link is told it expired. The answer is never cached.
+
+Fix: Draw the page again so the app issues a fresh link. Issue links when the page is drawn,
+for as long as the page needs them (an hour unless `expires_in` says otherwise, twelve hours at
+most), rather than storing them.
+
+```json
+{"error":{"code":"MEDIA_LINK_EXPIRED","message":"This link expired at 2026-10-09T05:00:00Z.","fix":"Draw the page again: the app issues a fresh link with POST …/uploads/links each time it shows the file.","docs":"https://skill.whisk.run/errors/MEDIA_LINK_EXPIRED","details":{"expired_at":"2026-10-09T05:00:00Z"}}}
+```
+
+## MEDIA_LINK_INVALID
+
+Status: 403 · Surface: edge
+
+When: a request to `/.whisk/img/<id>` or `/.whisk/media/<id>` carries a `sig` that does not
+verify: its query was changed (another size, a later `exp`), it was made for another upload or
+another app, its `exp`, `kid` or `sig` is malformed, or it was signed with a key the app has
+since rotated. A request with a `sig` is judged by it alone, so a wrong one is refused even for
+someone signed in. The answer is never cached.
+
+Fix: Use the link exactly as `POST …/uploads/links` answered it. For another size, ask for
+another link; after a rotation, issue new links.
+
+```json
+{"error":{"code":"MEDIA_LINK_INVALID","message":"The link's signature does not match what it asks for: it was changed, or it was made for another size, file or app.","fix":"Use the link exactly as POST …/uploads/links answered it, changing nothing in its query; ask for another size with a new link.","docs":"https://skill.whisk.run/errors/MEDIA_LINK_INVALID"}}
+```
 ## EXPORT_IN_PROGRESS
 
 Status: 409 · Surface: api, cli
@@ -1834,10 +2106,14 @@ Status: 409 · Surface: api, cli
 
 When: a business adds a sending domain another business on Whisk already sends from, or one of
 Whisk's own domains or a name under one. A sending domain belongs to one business, so removing it
-from one never stops another's mail or Whisk's.
+from one never stops another's mail or Whisk's. Within a business, an app registering a domain
+the whole business already has (`details.held_by` is `business`: every app sends from it
+already) or another of its apps registered (`held_by` is `app`, `details.app` names it), and a
+business adding in Settings a domain one of its apps registered, are refused the same way.
 
 Fix: Send from a domain only your business uses, such as a subdomain like
-mail.yourbusiness.com. If the domain is yours, remove it from the other business first.
+mail.yourbusiness.com. If the domain is yours, remove it from the other business first. An app
+sends from a domain of the whole business without registering it.
 
 ```json
 {"error":{"code":"EMAIL_DOMAIN_TAKEN","message":"mail.acme.com is already a sending domain of another business on Whisk.","fix":"Send from a domain only your business uses, such as a subdomain like mail.yourbusiness.com. If the domain is yours, remove it from the other business first.","docs":"https://skill.whisk.run/errors/EMAIL_DOMAIN_TAKEN","details":{"domain":"mail.acme.com"}}}
@@ -2064,7 +2340,8 @@ Status: 403 · Surface: api, git, deploy
 When: the installed Whisk On-Premise licence cannot be used: its signature does not match its
 terms (the file was changed after Whisk issued it), it was signed with a key this version does
 not know, or its start date is still ahead. Installing such a file is refused with the same
-code.
+code. whisk.run answers it too when a licence file sent to the support relay or the release
+downloads does not verify.
 
 Fix: Install the licence file exactly as Whisk sent it, from its first line to its signature. If
 it is unchanged, ask Whisk for a current licence.
@@ -2085,6 +2362,65 @@ Fix: Ask Whisk to renew the licence, then install the new file on the operator p
 
 ```json
 {"error":{"code":"LICENCE_EXPIRED","message":"The Whisk licence ended on 2027-10-08. Running apps keep running; new deploys wait for a current licence.","fix":"Ask Whisk for a current licence, then install it on the operator page or with `whiskd licence install < licence.txt`.","docs":"https://skill.whisk.run/errors/LICENCE_EXPIRED","details":{"licence":"lic_2026_0001","ended":"2027-10-08"}}}
+```
+
+## SUPPORT_DOOR_CLOSED
+
+Status: 409 · Surface: api
+
+When: one of Whisk's operators sends a call to a Whisk On-Premise install whose support door is
+not open: the company never opened it, closed it, its time ran out, or the install has not asked
+for calls in the last two minutes. Nothing is sent. Only whisk.run answers it.
+
+Fix: Ask the company to open the support door on their operator page, then send the call again.
+
+```json
+{"error":{"code":"SUPPORT_DOOR_CLOSED","message":"The support door of lic_2026_0001 is not open.","fix":"Ask the company to open the support door on their operator page, then send the call again.","docs":"https://skill.whisk.run/errors/SUPPORT_DOOR_CLOSED","details":{"licence":"lic_2026_0001"}}}
+```
+
+## SUPPORT_DOOR_TIMEOUT
+
+Status: 504 · Surface: api
+
+When: a call sent through a Whisk On-Premise install's support door had no answer within 60
+seconds. The install may still run it and answer later; the answer is kept for a day. Only
+whisk.run answers it.
+
+Fix: Read what the call would have changed before sending it again; a read is safe to repeat.
+
+```json
+{"error":{"code":"SUPPORT_DOOR_TIMEOUT","message":"lic_2026_0001 did not answer the call within 60 seconds.","fix":"Check what the call would have changed before sending it again; a read is safe to repeat.","docs":"https://skill.whisk.run/errors/SUPPORT_DOOR_TIMEOUT","details":{"licence":"lic_2026_0001","call":"6f2c…"}}}
+```
+
+## RELEASE_NOT_COVERED
+
+Status: 403 · Surface: api
+
+When: a company asks whisk.run for a Whisk On-Premise release bundle its licence does not cover:
+the release was published after the licence's last day, or the licence's first day has not come.
+A licence that has ended still downloads every release published on or before its last day.
+Only whisk.run answers it.
+
+Fix: Download a release the licence covers (`POST /v1/onpremise/releases` lists them), or ask
+Whisk for a licence that covers this one.
+
+```json
+{"error":{"code":"RELEASE_NOT_COVERED","message":"onpremise-2027.11 was published on 2027-11-02, after 2027-10-08, the last day of licence lic_2026_0001.","fix":"Download a release your licence covers (POST /v1/onpremise/releases lists them), or ask Whisk for a licence that covers this one.","docs":"https://skill.whisk.run/errors/RELEASE_NOT_COVERED","details":{"licence":"lic_2026_0001","version":"onpremise-2027.11","starts":"2026-10-09","ends":"2027-10-08"}}}
+```
+
+## PACKAGE_CHECK_OFF
+
+Status: 409 · Surface: api
+
+When: lockfiles are sent to be checked before a deploy (`whisk doctor`) on a platform that sends
+no lockfile to osv.dev. Whisk On-Premise does not unless its operator turns it on. Nothing was
+checked or sent.
+
+Fix: Deploy as usual: once the app is live the platform's registry checks the packages in its
+image. An operator can turn the lockfile check on with `WHISK_OSV=on`.
+
+```json
+{"error":{"code":"PACKAGE_CHECK_OFF","message":"This platform does not send lockfiles to osv.dev, so they cannot be checked before a deploy.","fix":"Deploy as usual: once the app is live the platform's registry checks the packages in its image. An operator can turn the lockfile check on with WHISK_OSV=on.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_OFF","details":{"setting":"WHISK_OSV"}}}
 ```
 
 ## REPO_TOO_LARGE
@@ -2187,7 +2523,7 @@ Fix: Show the human the URL and the names exactly as printed, then wait or conti
 that does not depend on it.
 
 ```json
-{"error":{"code":"NEEDS_HUMAN","message":"2 secrets need a value before the app can use them: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"Ask an owner or admin to set them at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/NEEDS_HUMAN","details":{"url":"https://whisk.run/o/acme/secrets","names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"]}}}
+{"error":{"code":"NEEDS_HUMAN","message":"2 secrets need a value before the app can use them: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"Ask an owner, admin or developer to set them at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/NEEDS_HUMAN","details":{"url":"https://whisk.run/o/acme/secrets","names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"]}}}
 ```
 
 ## UPDATE_FAILED
@@ -2238,6 +2574,20 @@ database.
 
 ```json
 {"error":{"code":"DEV_STACK_FAILED","message":"docker compose up: Bind for 127.0.0.1:5432 failed: port is already allocated","fix":"Check that Docker is running and the ports in .whisk/dev/compose.yaml are free, then run whisk dev again; whisk dev --down resets the stack.","docs":"https://skill.whisk.run/errors/DEV_STACK_FAILED","details":{}}}
+```
+
+## DEV_NOT_RUNNING
+
+Status: - · Surface: cli
+
+When: `whisk inbox send` found nothing answering as the local stub at `127.0.0.1:<port+1>`:
+`whisk dev` is not running, or was started with another `--port`. Nothing was sent.
+
+Fix: Start the app with `whisk dev` in another terminal, or pass `--port` with the port it was
+started on.
+
+```json
+{"error":{"code":"DEV_NOT_RUNNING","message":"Nothing answered at http://127.0.0.1:3001/v1/stub/inbox: connection refused","fix":"Start the app with whisk dev in another terminal, or pass --port with the port it was started on.","docs":"https://skill.whisk.run/errors/DEV_NOT_RUNNING","details":{"url":"http://127.0.0.1:3001/v1/stub/inbox"}}}
 ```
 
 ## GIT_TLS_UNTRUSTED
@@ -2504,13 +2854,25 @@ Fix: Add a CMD (or ENTRYPOINT) to the Dockerfile that starts the server on PORT,
 {"error":{"code":"IMAGE_NO_COMMAND","message":"The image for job-tracker defines no command to run.","fix":"Add a CMD line, such as CMD node dist/index.js or your server start command, to the Dockerfile and deploy again.","docs":"https://skill.whisk.run/errors/IMAGE_NO_COMMAND","details":{"image":"01J.../01J...@sha256:..."}}}
 ```
 
+## COMMAND_NOT_RUNNABLE
+
+Status: - · Surface: deploy, node
+
+When: the container's command could not be run at all: the `run` or `migrate` command in whisk.yaml, or the image's ENTRYPOINT or CMD, is not in the image, is not executable, or is built for another CPU. Nothing of the app ran; a migration changed nothing. The runtime's words are in message.
+
+Fix: Make the command exist in the image and be executable: install the tool the command names (for example add prisma to dependencies rather than devDependencies, or call it through npx), use its full path, chmod +x a script, or build for linux/amd64. Deploy again.
+
+```json
+{"error":{"code":"COMMAND_NOT_RUNNABLE","message":"The migration did not run: the image has no \"prisma\" on its PATH, so the command could not be started. Nothing ran, so the database is as it was.","fix":"Make the command exist in the image and be executable, then deploy again.","docs":"https://skill.whisk.run/errors/COMMAND_NOT_RUNNABLE","details":{"fault":"app","step":"migrate","command":"prisma migrate deploy"}}}
+```
+
 ## CONTAINER_START_FAILED
 
 Status: - · Surface: deploy, node
 
 When: Docker or the sandbox runtime refused to start the container. The node's diagnosis is in message; the container's first log lines, when any, are in details.
 
-Fix: Read the message and the log lines. A missing file or a non-executable command is the app's to fix; a runtime error is the operator's.
+Fix: Read the message and the log lines: this is a runtime error on Whisk's side, and the operator has been told. A command the image cannot run is COMMAND_NOT_RUNNABLE instead.
 
 ```json
 {"error":{"code":"CONTAINER_START_FAILED","message":"runsc could not start job-tracker: exec /app/start: permission denied.","fix":"Make the start command executable in the image (chmod +x in the Dockerfile) and deploy again.","docs":"https://skill.whisk.run/errors/CONTAINER_START_FAILED","details":{"log_tail":["exec /app/start: permission denied"]}}}
