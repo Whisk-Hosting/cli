@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from .db import Note, engine
 from .functions import functions
-from .whisk import client, enqueue, env, identity, log, trace_app, tracing
+from .whisk import can_change, can_see, client, enqueue, env, identity, log, scope_for, trace_app, tracing
 
 if os.environ.get("SENTRY_DSN"):
     sentry_sdk.init(dsn=os.environ["SENTRY_DSN"], environment=os.environ.get("WHISK_ENV"))
@@ -64,10 +64,18 @@ def health() -> Any:
         return JSONResponse({"ok": False, "error": str(exc)}, status_code=503)
 
 
+# Each note belongs to its author (author_id). The team sees every note; a customer, when the app
+# has customer_identity, sees only their own (whisk.py scope_for).
 @app.get("/notes")
-def list_notes() -> list[dict[str, Any]]:
+def list_notes(request: Request) -> list[dict[str, Any]]:
+    scope = scope_for(identity(request.headers))
+    if scope.kind == "none":
+        return []
+    query = select(Note).order_by(Note.id.desc()).limit(100)
+    if scope.kind == "owner":
+        query = query.where(Note.author_id == scope.owner_id)
     with Session(engine) as session:
-        return [n.as_dict() for n in session.scalars(select(Note).order_by(Note.id.desc()).limit(100))]
+        return [n.as_dict() for n in session.scalars(query)]
 
 
 @app.post("/notes", status_code=201)
@@ -95,12 +103,17 @@ async def create_note(request: Request) -> dict[str, Any]:
 
 @app.delete("/notes/{note_id}", status_code=204)
 def delete_note(note_id: int, request: Request) -> Response:
-    if not identity(request.headers).has_role("owner", "admin"):
-        raise HTTPException(403, "owner or admin role required")
+    who = identity(request.headers)
+    if not 1 <= note_id <= 2147483647:
+        raise HTTPException(404, "no such note")
     with Session(engine) as session, session.begin():
         note = session.get(Note, note_id)
-        if note is not None:
-            session.delete(note)
+        # A note the person may not see is answered as if it did not exist.
+        if note is None or not can_see(who, note.author_id):
+            raise HTTPException(404, "no such note")
+        if not can_change(who, note.author_id):
+            raise HTTPException(403, "only its author or an owner or admin can delete it")
+        session.delete(note)
     return Response(status_code=204)
 
 

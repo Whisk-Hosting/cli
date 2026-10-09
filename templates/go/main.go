@@ -88,8 +88,10 @@ func run() error {
 		writeJSON(w, 200, map[string]any{"ok": true})
 	})
 
+	// Each note belongs to its author (AuthorID). The team sees every note; a customer, when the
+	// app has customer_identity, sees only their own (whisk.go ScopeFor).
 	r.Get("/notes", func(w http.ResponseWriter, req *http.Request) {
-		notes, err := db.ListNotes(req.Context())
+		notes, err := db.ListNotes(req.Context(), ScopeFor(identityFrom(req.Header)))
 		respond(w, notes, err)
 	})
 	r.Post("/notes", func(w http.ResponseWriter, req *http.Request) {
@@ -121,11 +123,22 @@ func run() error {
 		writeJSON(w, 201, note)
 	})
 	r.Delete("/notes/{id}", func(w http.ResponseWriter, req *http.Request) {
-		if !identityFrom(req.Header).HasRole("owner", "admin") {
-			writeJSON(w, 403, map[string]string{"error": "owner or admin role required"})
+		who := identityFrom(req.Header)
+		id, _ := strconv.ParseInt(chi.URLParam(req, "id"), 10, 32)
+		note, ok, err := db.GetNote(req.Context(), id)
+		if err != nil {
+			respond(w, nil, err)
 			return
 		}
-		id, _ := strconv.ParseInt(chi.URLParam(req, "id"), 10, 64)
+		// A note the person may not see is answered as if it did not exist.
+		if !ok || !who.CanSee(note.AuthorID) {
+			writeJSON(w, 404, map[string]string{"error": "no such note"})
+			return
+		}
+		if !who.CanChange(note.AuthorID) {
+			writeJSON(w, 403, map[string]string{"error": "only its author or an owner or admin can delete it"})
+			return
+		}
 		if err := db.DeleteNote(req.Context(), id); err != nil {
 			respond(w, nil, err)
 			return

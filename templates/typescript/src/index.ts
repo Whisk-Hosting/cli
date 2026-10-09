@@ -7,7 +7,7 @@ import { html } from "hono/html";
 import { serve as inngestServe } from "inngest/hono";
 import { db, notes, sql } from "./db.js";
 import { functions } from "./functions.js";
-import { enqueue, env, hasRole, identity, inngest, log, tracing } from "./whisk.js";
+import { canChange, canSee, enqueue, env, identity, inngest, log, scopeFor, tracing } from "./whisk.js";
 
 // Errors only: when tracing is on, OpenTelemetry belongs to the tracer in whisk.ts.
 if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV, skipOpenTelemetrySetup: !!tracing });
@@ -47,7 +47,14 @@ app.get("/health", async (c) => {
   }
 });
 
-app.get("/notes", async (c) => c.json(await db.select().from(notes).orderBy(desc(notes.id)).limit(100)));
+// Each note belongs to its author (authorId). The team sees every note; a customer, when the app
+// has customer_identity, sees only their own (whisk.ts scopeFor).
+app.get("/notes", async (c) => {
+  const scope = scopeFor(who(c));
+  if (scope.kind === "none") return c.json([]);
+  const mine = scope.kind === "owner" ? eq(notes.authorId, scope.ownerId) : undefined;
+  return c.json(await db.select().from(notes).where(mine).orderBy(desc(notes.id)).limit(100));
+});
 app.post("/notes", async (c) => {
   const id = who(c);
   if (!id.userId) return c.json({ error: "a signed-in person is required" }, 403);
@@ -63,8 +70,14 @@ app.post("/notes", async (c) => {
   return c.json(note, 201);
 });
 app.delete("/notes/:id", async (c) => {
-  if (!hasRole(who(c), "owner", "admin")) return c.json({ error: "owner or admin role required" }, 403);
-  await db.delete(notes).where(eq(notes.id, Number(c.req.param("id"))));
+  const id = who(c);
+  const noteId = Number(c.req.param("id"));
+  if (!Number.isSafeInteger(noteId) || noteId < 1 || noteId > 2147483647) return c.json({ error: "no such note" }, 404);
+  const [note] = await db.select().from(notes).where(eq(notes.id, noteId));
+  // A note the person may not see is answered as if it did not exist.
+  if (!note || !canSee(id, note.authorId)) return c.json({ error: "no such note" }, 404);
+  if (!canChange(id, note.authorId)) return c.json({ error: "only its author or an owner or admin can delete it" }, 403);
+  await db.delete(notes).where(eq(notes.id, note.id));
   return c.body(null, 204);
 });
 

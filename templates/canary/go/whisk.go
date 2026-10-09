@@ -134,6 +134,43 @@ func (id Identity) HasRole(roles ...string) bool {
 	return false
 }
 
+// Who may see and change a record (skill §4, "Who may see and change what"). A record belongs to
+// the person who made it: store their X-Whisk-User-Id beside it as its owner. The business's own
+// team sees every record; a customer sees only their own; anyone else sees nothing. Query with
+// ScopeFor so the database does the filtering, and answer 404, not 403, for a record the person
+// may not see, so its id tells them nothing. access_test.go checks these rules over thousands of
+// generated people and records; keep it passing when you change them.
+
+// Scope is which records a person may see: Kind "all", "owner" (OwnerID's only) or "none".
+type Scope struct {
+	Kind    string
+	OwnerID string
+}
+
+func ScopeFor(id Identity) Scope {
+	switch {
+	case id.UserID == "":
+		return Scope{Kind: "none"}
+	case id.Audience == "team":
+		return Scope{Kind: "all"}
+	case id.Audience == "customer":
+		return Scope{Kind: "owner", OwnerID: id.UserID}
+	}
+	return Scope{Kind: "none"}
+}
+
+func (s Scope) Includes(ownerID string) bool {
+	return s.Kind == "all" || (s.Kind == "owner" && ownerID != "" && s.OwnerID == ownerID)
+}
+
+func (id Identity) CanSee(ownerID string) bool { return ScopeFor(id).Includes(ownerID) }
+
+// CanChange: a customer their own records; on the team, the record's owner or an owner or
+// admin of the business.
+func (id Identity) CanChange(ownerID string) bool {
+	return id.CanSee(ownerID) && (id.Audience != "team" || ownerID == id.UserID || id.HasRole("owner", "admin"))
+}
+
 func whiskHeaders(h http.Header) map[string]string {
 	out := map[string]string{}
 	for name, values := range h {

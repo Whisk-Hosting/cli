@@ -383,6 +383,38 @@ link to the app from inside a sandboxed iframe (a CRM tile, a widget on another 
 Chrome's `ERR_BLOCKED_BY_RESPONSE`; when the app is meant to be opened that way, set
 `Cross-Origin-Opener-Policy: unsafe-none` in `routes.headers`.
 
+### Who may see and change what
+
+The platform decides who may open the app. The app decides which records each person may see
+and change, and that is where most real security holes in business apps are: one customer
+opening another's invoice by changing the number in the address. Do it the same way every time.
+
+1. **Store the owner on every record a person creates**: their `X-Whisk-User-Id`, in a column
+   such as `owner_id` or `author_id`. Never take the owner from the body, the query string or a
+   hidden form field.
+2. **Filter in the query, not afterwards.** The template's `whisk` module has `scopeFor`
+   (`scope_for`, `ScopeFor` in Go): the business's team sees every record, a customer only their
+   own, anyone else nothing. Every list, search, count, export and report goes through it.
+3. **Check every record fetched by id** with `canSee`, then `canChange` before changing or
+   deleting it (`can_see` and `can_change`; `CanSee` and `CanChange`). A record the person may not
+   see answers 404, as if it did not exist; one they may see but not change answers 403.
+4. **Change the rules in one place.** When a business wants something different (members see
+   only their own records, a group sees a department's), change the helpers, not each route. The
+   template's access tests (`access.test.ts`, `test_access.py`, `access_test.go`) check the rules
+   over thousands of generated people and records; keep them passing and add a case for the new
+   rule.
+5. **Test each kind of record as the wrong person.** For every route that reads or changes one,
+   add a test that calls it as a second customer, as a team member who is not an owner or admin,
+   and with no identity at all, and expects 404, 403 or an empty list, never the record. Ids in
+   the address and in the body both count.
+
+The same habits close the other common holes. Send SQL with parameters (the ORM, or `$1`), never
+by joining strings. Let the framework escape HTML; never insert text a person typed as raw HTML.
+Keep keys on the server, never in code sent to the browser. Fetch only addresses the app chose,
+never a URL a person typed without checking its host first. Keep uploads in storage (§9) and serve
+them from there. Before pushing, run the tests and `whisk doctor`: W094 warns when an app with
+customer sign-in never limits anything to the signed-in person.
+
 ## 5. Database
 
 `DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is. No

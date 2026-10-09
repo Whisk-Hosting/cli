@@ -77,6 +77,31 @@ export const identity = (h: (name: string) => string | undefined): Identity => (
 
 export const hasRole = (id: Identity, ...roles: string[]) => roles.some((r) => id.roles.includes(r));
 
+// Who may see and change a record (skill §4, "Who may see and change what"). A record belongs
+// to the person who made it: store their X-Whisk-User-Id beside it as its owner. The business's
+// own team sees every record; a customer sees only their own; anyone else sees nothing. Query
+// with scopeFor so the database does the filtering, and answer 404, not 403, for a record the
+// person may not see, so its id tells them nothing. test/access.test.ts checks these rules over
+// thousands of generated people and records; keep it passing when you change them.
+export type Scope = { kind: "all" } | { kind: "owner"; ownerId: string } | { kind: "none" };
+
+export const scopeFor = (id: Identity): Scope => {
+  if (!id.userId) return { kind: "none" };
+  if (id.audience === "team") return { kind: "all" };
+  if (id.audience === "customer") return { kind: "owner", ownerId: id.userId };
+  return { kind: "none" };
+};
+
+export const inScope = (scope: Scope, ownerId: string) =>
+  scope.kind === "all" || (scope.kind === "owner" && ownerId !== "" && scope.ownerId === ownerId);
+
+export const canSee = (id: Identity, ownerId: string) => inScope(scopeFor(id), ownerId);
+
+// Changing or deleting: a customer their own records; on the team, the record's owner or an
+// owner or admin of the business.
+export const canChange = (id: Identity, ownerId: string) =>
+  canSee(id, ownerId) && (id.audience !== "team" || ownerId === id.userId || hasRole(id, "owner", "admin"));
+
 // The Inngest client. The platform delivers runs to queue.endpoint and signs them with
 // WHISK_INNGEST_SIGNING_KEY; events sent from inside a function go to WHISK_INNGEST_URL. Event
 // names are plain everywhere ("po.created"): the platform keeps each app's events to itself.

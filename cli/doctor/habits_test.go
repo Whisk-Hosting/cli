@@ -56,6 +56,14 @@ func TestHabitRules(t *testing.T) {
 		{"nodemailer", "W093", map[string]string{"src/mail.ts": `const nodemailer = require("nodemailer");` + "\n"}, true},
 		{"smtplib", "W093", map[string]string{"app/mail.py": "import smtplib\n"}, true},
 		{"redis client is fine", "W093", map[string]string{"src/kv.ts": `import { createClient } from "redis";` + "\n"}, false},
+
+		{"customers never told apart", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n"}, true},
+		{"only the helper module scopes", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: org\n", "src/whisk.ts": "export const canSee = (id, o) => inScope(scopeFor(id), o);\n"}, true},
+		{"helpers used", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n", "src/orders.ts": "const scope = scopeFor(who(c));\n"}, false},
+		{"python helpers used", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n", "app/orders.py": "if not can_see(who, order.owner_id):\n    raise HTTPException(404)\n"}, false},
+		{"go helpers used", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n", "orders.go": "package main\nfunc ok(id Identity, o string) bool { return id.CanSee(o) }\n"}, false},
+		{"audience compared", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n", "src/orders.ts": "if (id.audience === \"customer\") q = q.where(eq(orders.ownerId, id.userId));\n"}, false},
+		{"no customer sign-in", "W094", map[string]string{}, false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

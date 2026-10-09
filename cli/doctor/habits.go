@@ -357,3 +357,33 @@ func w093(r Repo, _ Context) outcome {
 	}
 	return out
 }
+
+// customerScopePatterns are the signs that an app tells customers apart: a call to the template
+// helpers, or a comparison of the audience with "customer" (W094).
+var customerScopePatterns = []*regexp.Regexp{
+	regexp.MustCompile(`\b(?:scopeFor|canSee|canChange|scope_for|can_see|can_change|ScopeFor)\(`),
+	regexp.MustCompile(`\.(?:CanSee|CanChange)\(`),
+	regexp.MustCompile(`(?:===?|!==?)\s*["']customer["']|["']customer["']\s*(?:===?|!==?)`),
+}
+
+// helperModule reports whether a file is the template's own whisk module, whose helpers call
+// each other and so say nothing about whether the app uses them. Pure.
+func helperModule(p string) bool {
+	switch path.Base(p) {
+	case "whisk.ts", "whisk.js", "whisk.py", "whisk.go":
+		return true
+	}
+	return false
+}
+
+func w094(r Repo, _ Context) outcome {
+	if r.Manifest.CustomerIdentity != "app" && r.Manifest.CustomerIdentity != "org" {
+		return outcome{}
+	}
+	for _, f := range serverCode(r) {
+		if !helperModule(f.Path) && len(matches(f, customerScopePatterns, 0)) > 0 {
+			return outcome{}
+		}
+	}
+	return one("W094", manifestFile, yamlLine(r.ManifestNode, "/customer_identity"), fmt.Sprintf("customer_identity is %s, but no code limits what a customer sees to the signed-in person, so one customer may read another's records.", r.Manifest.CustomerIdentity))
+}

@@ -98,6 +98,43 @@ def identity(headers: Mapping[str, str]) -> Identity:
     )
 
 
+# Who may see and change a record (skill §4, "Who may see and change what"). A record belongs to
+# the person who made it: store their X-Whisk-User-Id beside it as its owner. The business's own
+# team sees every record; a customer sees only their own; anyone else sees nothing. Query with
+# scope_for so the database does the filtering, and answer 404, not 403, for a record the person
+# may not see, so its id tells them nothing. tests/test_access.py checks these rules over
+# thousands of generated people and records; keep it passing when you change them.
+
+
+@dataclass(frozen=True)
+class Scope:
+    kind: str  # "all", "owner" or "none"
+    owner_id: str | None = None
+
+
+def scope_for(who: Identity) -> Scope:
+    if not who.user_id:
+        return Scope("none")
+    if who.audience == "team":
+        return Scope("all")
+    if who.audience == "customer":
+        return Scope("owner", who.user_id)
+    return Scope("none")
+
+
+def in_scope(scope: Scope, owner_id: str) -> bool:
+    return scope.kind == "all" or (scope.kind == "owner" and owner_id != "" and scope.owner_id == owner_id)
+
+
+def can_see(who: Identity, owner_id: str) -> bool:
+    return in_scope(scope_for(who), owner_id)
+
+
+def can_change(who: Identity, owner_id: str) -> bool:
+    """A customer their own records; on the team, the record's owner or an owner or admin."""
+    return can_see(who, owner_id) and (who.audience != "team" or owner_id == who.user_id or who.has_role("owner", "admin"))
+
+
 def whisk_headers(headers: Mapping[str, str]) -> dict[str, str]:
     return {k.lower(): v for k, v in headers.items() if k.lower().startswith("x-whisk-")}
 

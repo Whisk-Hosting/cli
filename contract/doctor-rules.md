@@ -470,6 +470,22 @@ Python `smtplib`, `sendgrid`, `resend`, `postmarker`, `mailgun`; Go `net/smtp`,
 `gopkg.in/gomail.v2`. Cache: `@upstash/redis`, `@upstash/ratelimit`, `upstash_redis`,
 `github.com/upstash/*`. One finding per library.
 
+## W094
+
+Level: warning
+Check: the app has customer sign-in (customer_identity app or org) but its code never limits what a customer sees to the signed-in person.
+Fix: Store each record's owner from X-Whisk-User-Id and filter with the template helpers (scopeFor, canSee, canChange; skill §4, "Who may see and change what"), or compare X-Whisk-Audience with "customer" and filter by X-Whisk-User-Id yourself.
+Safe fix: no
+
+Details: with customers signed in, every query an app runs for a customer must be limited to that
+customer's records, or one customer can read another's by changing an id. Doctor looks in
+server code for any sign that the app tells customers apart: a call to the template helpers
+(`scopeFor(`, `canSee(`, `canChange(`, `scope_for(`, `can_see(`, `can_change(`, `ScopeFor(`,
+`.CanSee(`, `.CanChange(`) or a comparison of the audience with `"customer"` (`=== "customer"`,
+`== "customer"`, `"customer" ==`). With none of them, one finding is reported at
+`customer_identity` in whisk.yaml. Finding one does not prove every query is limited; the
+template's access tests and a test per kind of record do that.
+
 ## W100
 
 Level: warning

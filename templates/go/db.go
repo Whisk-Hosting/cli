@@ -59,8 +59,12 @@ func (d *DB) Ping(ctx context.Context) error { return d.pool.Ping(ctx) }
 
 const noteColumns = `id, author_id, author_email, body, words, created_at`
 
-func (d *DB) ListNotes(ctx context.Context) ([]Note, error) {
-	rows, err := d.pool.Query(ctx, `select `+noteColumns+` from notes order by id desc limit 100`)
+// ListNotes is the newest notes the scope includes (whisk.go ScopeFor); none for Kind "none".
+func (d *DB) ListNotes(ctx context.Context, scope Scope) ([]Note, error) {
+	if scope.Kind != "all" && scope.Kind != "owner" {
+		return []Note{}, nil
+	}
+	rows, err := d.pool.Query(ctx, `select `+noteColumns+` from notes where $1 = '' or author_id = $1 order by id desc limit 100`, scope.OwnerID)
 	if err != nil {
 		return nil, err
 	}
