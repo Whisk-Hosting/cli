@@ -499,6 +499,67 @@ and Alembic's `op.create_table("name"` in Python. A table is covered when any of
 `alter table … <name> force row level security`, inside an `op.execute` string or not. Tests and
 vendored folders are left out. One finding per table, at its `create`.
 
+## W096
+
+Level: warning
+Check: the app builds SQL by joining text instead of sending values as parameters.
+Fix: Send each value as a parameter: a tagged template (sql`... ${x}`), $1 placeholders with a values list, %s with a params tuple in Python, $1 with arguments in Go. Never put a value into the SQL text.
+Safe fix: no
+
+Details: matched in server code outside migrations, only where the text is shaped like a
+statement (`select … from`, `insert into`, `update … set`, `delete from`), so ordinary sentences
+are not matched. JavaScript: an untagged template literal with `${…}` passed to `.unsafe(`,
+`.query(`, `.execute(`, `.raw(`, `.run(`, `.all(`, `.get(` or `.prepare(`, or a statement
+string joined with `+` there; a tagged template (postgres.js, Drizzle's `sql`) sends parameters
+and is not matched. Python: an f-string statement with `{…}`, or a statement string followed by
+`%`, `.format(` or `+`; `execute(sql, params)` is not matched. Go: `fmt.Sprintf` of a statement
+with `%s`, `%v`, `%d` or `%q`. One finding per file, at its first match.
+
+## W097
+
+Level: warning
+Check: the app inserts text into a page as raw HTML.
+Fix: Let the framework escape text (JSX, Jinja's {{ }}, html/template), set textContent instead of innerHTML, and when HTML a person wrote must be shown, clean it with an allow-list sanitiser first.
+Safe fix: no
+
+Details: matched in server code, browser code and page templates. JavaScript:
+`dangerouslySetInnerHTML`, assigning `innerHTML` or `outerHTML` anything but a plain string
+literal, `insertAdjacentHTML(`, `document.write(`. Python: `Markup(`, `mark_safe(`,
+`autoescape=False`. Go: `template.HTML(`. Page templates: `| safe`, `v-html=`, `{@html `, `{{{`.
+Clearing an element (`innerHTML = ""`) is not matched. One finding per file, at its first
+match.
+
+## W098
+
+Level: warning
+Check: the app has customer sign-in and a SQL statement reads or changes a table of people's records without limiting it to the record's owner.
+Fix: Add the owner column to the statement (where customer_id = $1 with X-Whisk-User-Id), or build it from scopeFor (skill §4, "Who may see and change what").
+Safe fix: no
+
+Details: runs only with `customer_identity: app` or `org`. A table belongs to people when its
+definition has a column named `owner_id`, `author_id`, `customer_id`, `user_id` or `created_by`:
+read from `create table` in `.sql` files, Drizzle's `pgTable(…)` and Alembic's
+`create_table(…)`. A string literal in server code, outside migrations and schema files, shaped
+like a statement that names such a table after `from`, `join` or `update` is reported when it
+does not mention the owner column and does not pick one row by `id` (a row fetched by id is
+checked with `canSee` before it is used). ORM query builders are not read; the template's access
+tests cover them. One finding per table, at its first match.
+
+## W099
+
+Level: warning
+Check: a public route takes writes without a challenge, or a route named for staff is public.
+Fix: Keep the route private, or for a form strangers fill in, list it under routes.challenge; take admin, manage, internal and staff paths out of routes.public.
+Safe fix: no
+
+Details: a POST route whose path matches `routes.public` and not `routes.challenge`, or a PUT,
+PATCH or DELETE route whose path matches `routes.public`, as registered in code (JavaScript
+`.post(`, `.put(`, `.patch(`, `.delete(`; Python `@app.post(` and the like; Go `.Post(` and the
+like and `HandleFunc("POST /…")`), with path parameters (`:id`, `{id}`, `<id>`) read as one
+segment. Webhook handlers and the queue endpoint are service routes and not matched. Also any
+`routes.public` entry with a segment `admin`, `administrator`, `manage`, `internal` or `staff`,
+reported at its line in whisk.yaml.
+
 ## W100
 
 Level: warning

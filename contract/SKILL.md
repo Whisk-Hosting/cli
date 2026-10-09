@@ -408,7 +408,9 @@ by joining strings. Let the framework escape HTML; never insert text a person ty
 Keep keys on the server, never in code sent to the browser. Fetch only addresses the app chose,
 never a URL a person typed without checking its host first. Keep uploads in storage (§9) and serve
 them from there. Before pushing, run the tests and `whisk doctor`: W094 warns when an app with
-customer sign-in never limits anything to the signed-in person.
+customer sign-in never limits anything to the signed-in person, and W096 to W099 flag SQL built
+from text, raw HTML, a list of people's records with no owner filter, and public routes that
+write.
 
 ## 5. Database
 
