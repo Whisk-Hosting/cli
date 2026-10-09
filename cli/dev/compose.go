@@ -15,7 +15,7 @@ import (
 
 // Images pinned for the local stack.
 const (
-	imagePostgres  = "postgres:17-alpine"
+	imagePostgres  = "postgres:18-alpine"
 	imagePgBouncer = "edoburu/pgbouncer:v1.25.2-p0"
 	imageInngest   = "inngest/inngest:v1.44.0"
 	imageValkey    = "valkey/valkey:8-alpine"
@@ -95,7 +95,7 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 	w("    image: %s", imagePostgres)
 	w("    environment: {POSTGRES_USER: whisk, POSTGRES_PASSWORD: whisk, POSTGRES_DB: %s}", db)
 	w(`    ports: ["127.0.0.1:%d:5432"]`, ports.Postgres)
-	w(`    volumes: ["postgres:/var/lib/postgresql/data"]`)
+	w(`    volumes: ["postgres:/var/lib/postgresql"]`)
 	w(`    healthcheck: {test: ["CMD-SHELL", "pg_isready -U whisk -d %s"], interval: 2s, timeout: 3s, retries: 30}`, db)
 	w("  pgbouncer:")
 	w("    image: %s", imagePgBouncer)

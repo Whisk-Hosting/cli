@@ -22,7 +22,7 @@ func TestReusableOnlyTheCLIsOwnFile(t *testing.T) {
 	}
 	own := BuildPlan(m, ports, 3002, false).Compose
 	forged := own + "  evil:\n    image: alpine\n    volumes: [\"/:/host\"]\n"
-	mounted := strings.Replace(own, `volumes: ["postgres:/var/lib/postgresql/data"]`, `volumes: ["/home:/var/lib/postgresql/data"]`, 1)
+	mounted := strings.Replace(own, `volumes: ["postgres:/var/lib/postgresql"]`, `volumes: ["/home:/var/lib/postgresql"]`, 1)
 	cases := []struct {
 		name    string
 		src     string
