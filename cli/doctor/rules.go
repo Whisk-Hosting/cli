@@ -104,6 +104,7 @@ var ruleTable = []rule{
 	{"W092", false, w092},
 	{"W093", false, w093},
 	{"W094", false, w094},
+	{"W095", true, w095},
 	{"W100", false, w100},
 	{"W101", false, w101},
 	{"W102", false, w102},

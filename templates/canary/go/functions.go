@@ -14,7 +14,7 @@ import (
 func registerFunctions(client inngestgo.Client, db *DB) error {
 	_, err := inngestgo.CreateFunction(client, inngestgo.FunctionOpts{ID: "nightly-summary"}, inngestgo.CronTrigger("0 6 * * *"),
 		func(ctx context.Context, in inngestgo.Input[any]) (any, error) {
-			total, err := step.Run(ctx, "count-notes", func(ctx context.Context) (int, error) { return db.CountNotes(ctx) })
+			total, err := step.Run(ctx, "count-notes", func(ctx context.Context) (int, error) { return db.CountNotes(ctx, systemCaller) })
 			if err != nil {
 				return nil, err
 			}

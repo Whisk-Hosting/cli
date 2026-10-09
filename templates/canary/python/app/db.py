@@ -1,11 +1,13 @@
 import datetime as dt
-from typing import Any
+from collections.abc import Iterator
+from contextlib import AbstractContextManager, contextmanager
+from typing import Any, Protocol
 
-from sqlalchemy import Boolean, DateTime, Integer, String, Text, create_engine, false, func, select
+from sqlalchemy import Boolean, DateTime, Index, Integer, String, Text, create_engine, false, func, select, text
 from sqlalchemy.dialects.postgresql import JSONB, insert
 from sqlalchemy.orm import DeclarativeBase, Mapped, Session, mapped_column
 
-from .whisk import env
+from .whisk import Identity, env
 
 
 class Base(DeclarativeBase):
@@ -14,6 +16,7 @@ class Base(DeclarativeBase):
 
 class Note(Base):
     __tablename__ = "notes"
+    __table_args__ = (Index("notes_author_id", "author_id"),)
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     author_id: Mapped[str] = mapped_column(String, nullable=False)
     author_email: Mapped[str] = mapped_column(String, nullable=False)
@@ -43,6 +46,47 @@ class Event(Base):
 engine = create_engine(env("DATABASE_URL").replace("postgres://", "postgresql+psycopg://", 1), pool_pre_ping=True, pool_size=5, connect_args={"prepare_threshold": None})
 
 
+class Caller(Protocol):
+    """Who a query runs as: the request's identity (whisk.identity), or SYSTEM for the app's own
+    work."""
+
+    @property
+    def audience(self) -> str: ...
+
+    @property
+    def user_id(self) -> str | None: ...
+
+
+SYSTEM = Identity(audience="system")
+
+
+def caller_settings(caller: Caller) -> dict[str, str]:
+    """The two settings the row-level security policies read
+    (alembic/versions/0003_row_level_security.py). Pure."""
+    return {"audience": caller.audience, "user_id": caller.user_id or ""}
+
+
+_SET_CALLER = text("select set_config('whisk.audience', :audience, true), set_config('whisk.user_id', :user_id, true)")
+
+
+@contextmanager
+def db_for(caller: Caller) -> Iterator[Session]:
+    """A session in one short transaction that first tells Postgres who is asking, so a table
+    with a policy answers only that caller's rows even when a query forgets its filter. A plain
+    Session(engine) says nothing, and those tables answer it with no rows. Read what you need
+    before the block ends (objects expire on commit), and keep slow work (calls to other
+    services) outside it: the transaction holds a pooled connection until it ends."""
+    with Session(engine) as session, session.begin():
+        session.execute(_SET_CALLER, caller_settings(caller))
+        yield session
+
+
+def as_system() -> AbstractContextManager[Session]:
+    """db_for for the app's own work, outside any person's request: functions, webhook
+    deliveries. It sees every row, so never use it to answer a person."""
+    return db_for(SYSTEM)
+
+
 def record_event(id: str, kind: str, payload: Any, verified: bool = False) -> dict[str, Any]:
     """Insert once per id; verified marks a webhook delivery the deliveries helper proved to
     be the platform's."""
@@ -60,5 +104,6 @@ def list_events(kind: str | None) -> list[dict[str, Any]]:
 
 
 def count_notes() -> int:
-    with Session(engine) as session:
+    """Every note, for the nightly summary: a function, so it counts as the system."""
+    with as_system() as session:
         return session.scalar(select(func.count()).select_from(Note)) or 0

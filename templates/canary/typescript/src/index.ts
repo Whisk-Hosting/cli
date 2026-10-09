@@ -1,11 +1,11 @@
 import { serve as nodeServe } from "@hono/node-server";
 import { httpInstrumentationMiddleware } from "@hono/otel";
 import * as Sentry from "@sentry/node";
-import { desc, eq, sql as rawSql } from "drizzle-orm";
+import { count, desc, eq, sql as rawSql } from "drizzle-orm";
 import { Hono } from "hono";
 import { serve as inngestServe } from "inngest/hono";
 import { connect } from "node:net";
-import { db, events, notes, recordEvent, sql } from "./db.js";
+import { db, dbFor, events, notes, recordEvent, sql } from "./db.js";
 import { functions } from "./functions.js";
 import { diagCall, diagPG, diagPost, diagRead, diagReport, diagShare } from "./diag.js";
 import { diagKV } from "./kv.js";
@@ -52,18 +52,20 @@ app.get("/whoami", (c) => c.json(whiskHeaders(c)));
 
 // Private routes: the platform has already signed the caller in.
 app.get("/me", (c) => c.json(whiskHeaders(c)));
-app.get("/notes", async (c) => c.json(await db.select().from(notes).orderBy(desc(notes.id)).limit(100)));
+app.get("/notes", async (c) => c.json(await dbFor(who(c), (tx) => tx.select().from(notes).orderBy(desc(notes.id)).limit(100))));
 app.post("/notes", async (c) => {
   const id = who(c);
-  if (!id.userId) return c.json({ error: "a signed-in person is required" }, 403);
-  const body = (await c.req.json().catch(() => ({}))) as { body?: string };
-  if (!body.body?.trim()) return c.json({ error: "body is required" }, 400);
-  const [note] = await db.insert(notes).values({ authorId: id.userId, authorEmail: id.email ?? "", body: body.body.trim() }).returning();
+  const authorId = id.userId;
+  if (!authorId) return c.json({ error: "a signed-in person is required" }, 403);
+  const text = ((await c.req.json().catch(() => ({}))) as { body?: string }).body?.trim();
+  if (!text) return c.json({ error: "body is required" }, 400);
+  const [note] = await dbFor(id, (tx) => tx.insert(notes).values({ authorId, authorEmail: id.email ?? "", body: text }).returning());
   return c.json(note, 201);
 });
 app.delete("/notes/:id", async (c) => {
-  if (!hasRole(who(c), "owner", "admin")) return c.json({ error: "owner or admin role required" }, 403);
-  await db.delete(notes).where(eq(notes.id, Number(c.req.param("id"))));
+  const id = who(c);
+  if (!hasRole(id, "owner", "admin")) return c.json({ error: "owner or admin role required" }, 403);
+  await dbFor(id, (tx) => tx.delete(notes).where(eq(notes.id, Number(c.req.param("id")))));
   return c.body(null, 204);
 });
 app.get("/events", async (c) => {
@@ -80,6 +82,13 @@ app.post("/hooks/stripe", deliveries.handle(recordEvent, (d, c) => {
 
 // Diagnostics used by the platform canary; private, and safe to delete in your own app.
 app.get("/diag", (c) => c.json(diagReport()));
+// The notes the caller's row-level security lets through with no filter in the query, counted
+// once as the caller (dbFor) and once saying nothing about who is asking (db), which must be none.
+app.get("/diag/rows", async (c) => {
+  const [scoped] = await dbFor(who(c), (tx) => tx.select({ n: count() }).from(notes));
+  const [unscoped] = await db.select({ n: count() }).from(notes);
+  return c.json({ scoped: scoped.n, unscoped: unscoped.n });
+});
 app.get("/diag/call", async (c) => c.json(await diagCall(c.req.query("to") ?? "", c.req.query("token") !== "none", c.req.query("via"))));
 app.post("/diag/call", async (c) => {
   const out = await diagPost(await c.req.json().catch(() => ({})));

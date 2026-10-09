@@ -8,9 +8,8 @@ import sentry_sdk
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
 from sqlalchemy import select, text
-from sqlalchemy.orm import Session
 
-from .db import Note, engine
+from .db import Note, db_for, engine
 from .functions import functions
 from .whisk import can_change, can_see, client, enqueue, env, identity, log, scope_for, trace_app, tracing
 
@@ -65,16 +64,18 @@ def health() -> Any:
 
 
 # Each note belongs to its author (author_id). The team sees every note; a customer, when the app
-# has customer_identity, sees only their own (whisk.py scope_for).
+# has customer_identity, sees only their own (whisk.py scope_for), and the table's row-level
+# security keeps to the same rule should a query forget it (db_for).
 @app.get("/notes")
 def list_notes(request: Request) -> list[dict[str, Any]]:
-    scope = scope_for(identity(request.headers))
+    who = identity(request.headers)
+    scope = scope_for(who)
     if scope.kind == "none":
         return []
     query = select(Note).order_by(Note.id.desc()).limit(100)
     if scope.kind == "owner":
         query = query.where(Note.author_id == scope.owner_id)
-    with Session(engine) as session:
+    with db_for(who) as session:
         return [n.as_dict() for n in session.scalars(query)]
 
 
@@ -87,7 +88,7 @@ async def create_note(request: Request) -> dict[str, Any]:
     text_ = str(body.get("body", "")).strip() if isinstance(body, dict) else ""
     if not text_:
         raise HTTPException(400, "body is required")
-    with Session(engine) as session, session.begin():
+    with db_for(who) as session:
         note = Note(author_id=who.user_id, author_email=who.email or "", body=text_)
         session.add(note)
         session.flush()
@@ -106,7 +107,7 @@ def delete_note(note_id: int, request: Request) -> Response:
     who = identity(request.headers)
     if not 1 <= note_id <= 2147483647:
         raise HTTPException(404, "no such note")
-    with Session(engine) as session, session.begin():
+    with db_for(who) as session:
         note = session.get(Note, note_id)
         # A note the person may not see is answered as if it did not exist.
         if note is None or not can_see(who, note.author_id):

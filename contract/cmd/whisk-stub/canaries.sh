@@ -3,10 +3,13 @@
 #
 #   canaries.sh <postgres base url, e.g. postgres://whisk:whisk@127.0.0.1:5432>
 #
-# A database named whisk_<template> is dropped and created for each run. Needs Node (the
-# TypeScript template and the Inngest dev server), uv (Python), Go, curl and openssl.
+# A database named whisk_<template> is dropped and created for each run, owned by a login role
+# of its own that is not a superuser, as an app's role is on the platform, so row-level security
+# applies to it. Needs Node (the TypeScript template and the Inngest dev server), uv (Python), Go,
+# curl and openssl.
 set -eu
 BASE=${1:?postgres base url}
+HOSTPORT=${BASE#*://}; HOSTPORT=${HOSTPORT#*@}
 ROOT=$(cd "$(dirname "$0")/../../.." && pwd)
 SECRET=whsec_canary_0123456789abcdef
 
@@ -18,8 +21,10 @@ run() { # run <template> <app command...>
   cd "$ROOT/templates/canary/$T"
   mkdir -p .whisk/dev
   printf 'STRIPE_WEBHOOK_SECRET=%s\nCANARY_SECRET=canary-secret-value-42\n' "$SECRET" > .whisk/dev/secrets.env
-  psql "$BASE/postgres" -q -c "drop database if exists $DB with (force)" -c "create database $DB"
-  /tmp/whisk-stub --as ana@acme.example --name Ana --database-url "$BASE/$DB" -- "$@" > "/tmp/stub-$T.log" 2>&1 &
+  ROLE="${DB}_app"
+  psql "$BASE/postgres" -q -c "drop database if exists $DB with (force)" -c "drop role if exists $ROLE" \
+    -c "create role $ROLE login password 'canary' nosuperuser nobypassrls" -c "create database $DB owner $ROLE"
+  /tmp/whisk-stub --as ana@acme.example --name Ana --database-url "postgres://$ROLE:canary@$HOSTPORT/$DB" -- "$@" > "/tmp/stub-$T.log" 2>&1 &
   STUB=$!
   for _ in $(seq 1 150); do curl -sf http://127.0.0.1:3000/health >/dev/null 2>&1 && break; sleep 1; done
   curl -sf http://127.0.0.1:3000/health >/dev/null || { echo "$T: app not healthy"; tail -40 "/tmp/stub-$T.log"; kill $STUB; return 1; }

@@ -8,10 +8,10 @@ import inngest.fast_api
 import sentry_sdk
 from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
-from sqlalchemy import select, text
+from sqlalchemy import func, select, text
 from sqlalchemy.orm import Session
 
-from .db import Note, engine, list_events, record_event
+from .db import Note, db_for, engine, list_events, record_event
 from .functions import functions
 from .diag import diag_call, diag_pg, diag_post, diag_read, diag_report, diag_share
 from .kv import diag_kv
@@ -79,8 +79,8 @@ def me(request: Request) -> dict[str, str]:
 
 
 @app.get("/notes")
-def list_notes() -> list[dict[str, Any]]:
-    with Session(engine) as session:
+def list_notes(request: Request) -> list[dict[str, Any]]:
+    with db_for(identity(request.headers)) as session:
         return [n.as_dict() for n in session.scalars(select(Note).order_by(Note.id.desc()).limit(100))]
 
 
@@ -93,7 +93,7 @@ async def create_note(request: Request) -> dict[str, Any]:
     text_ = str(body.get("body", "")).strip()
     if not text_:
         raise HTTPException(400, "body is required")
-    with Session(engine) as session, session.begin():
+    with db_for(who) as session:
         note = Note(author_id=who.user_id, author_email=who.email or "", body=text_)
         session.add(note)
         session.flush()
@@ -102,9 +102,10 @@ async def create_note(request: Request) -> dict[str, Any]:
 
 @app.delete("/notes/{note_id}", status_code=204)
 def delete_note(note_id: int, request: Request) -> Response:
-    if not identity(request.headers).has_role("owner", "admin"):
+    who = identity(request.headers)
+    if not who.has_role("owner", "admin"):
         raise HTTPException(403, "owner or admin role required")
-    with Session(engine) as session, session.begin():
+    with db_for(who) as session:
         session.delete(session.get(Note, note_id))
     return Response(status_code=204)
 
@@ -126,6 +127,19 @@ def stripe_hook(delivery: Delivery) -> None:
 @app.get("/diag")
 def diag() -> dict[str, Any]:
     return diag_report()
+
+
+@app.get("/diag/rows")
+def diag_rows(request: Request) -> dict[str, int]:
+    """The notes the caller's row-level security lets through with no filter in the query,
+    counted once as the caller (db_for) and once saying nothing about who is asking (a plain
+    Session), which must be none."""
+    count = select(func.count()).select_from(Note)
+    with db_for(identity(request.headers)) as session:
+        scoped = session.scalar(count) or 0
+    with Session(engine) as session:
+        unscoped = session.scalar(count) or 0
+    return {"scoped": scoped, "unscoped": unscoped}
 
 
 @app.get("/diag/call")

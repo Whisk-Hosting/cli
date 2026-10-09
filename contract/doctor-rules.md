@@ -486,6 +486,19 @@ server code for any sign that the app tells customers apart: a call to the templ
 `customer_identity` in whisk.yaml. Finding one does not prove every query is limited; the
 template's access tests and a test per kind of record do that.
 
+## W095
+
+Level: warning
+Check: the app serves customers and a migration creates a table without row-level security.
+Fix: Give the table a policy in a migration (enable and force row level security, then the policy in SKILL.md §5) and query it through the template's dbFor; for a table no customer owns, such as a price list, add `doctor: allow W095` with the reason on the line above the create.
+Safe fix: no
+
+Details: runs when `customer_identity` is `app` or `org`. Tables are found in migrations: a
+`create table` (any case, `if not exists`, schema-qualified or quoted names) in a `.sql` file,
+and Alembic's `op.create_table("name"` in Python. A table is covered when any of them holds
+`alter table … <name> force row level security`, inside an `op.execute` string or not. Tests and
+vendored folders are left out. One finding per table, at its `create`.
+
 ## W100
 
 Level: warning

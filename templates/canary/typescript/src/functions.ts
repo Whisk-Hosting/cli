@@ -1,13 +1,13 @@
 // Three functions, one per trigger kind the platform offers. Step names match the ids in
 // workflows/*.graph.yaml; doctor checks that they do.
 import { count } from "drizzle-orm";
-import { db, notes, recordEvent } from "./db.js";
+import { asSystem, notes, recordEvent } from "./db.js";
 import { approval, inngest, log } from "./whisk.js";
 
 export const nightlySummary = inngest.createFunction(
   { id: "nightly-summary", triggers: [{ cron: "0 6 * * *" }] },
   async ({ step }) => {
-    const total = await step.run("count-notes", async () => (await db.select({ n: count() }).from(notes))[0].n);
+    const total = await step.run("count-notes", async () => (await asSystem((tx) => tx.select({ n: count() }).from(notes)))[0].n);
     const day = new Date().toISOString().slice(0, 10);
     return step.run("record-summary", () => recordEvent(`summary:${day}`, "summary", { day, notes: total }));
   },

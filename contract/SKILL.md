@@ -448,6 +448,42 @@ The first two cover the tables that exist; the third covers tables the owner cre
 reader then queries `app_<owner id>.<table>` and joins it with its own tables. Grant `INSERT`,
 `UPDATE` or `DELETE` the same way only when the reader must write; `REVOKE` takes access back.
 
+**Row-level security: one customer never sees another's rows.** When the app serves customers
+(`customer_identity`), or people who must not see each other's records, every table holding rows
+that belong to someone gets a policy, so a query that forgets its `where` still answers only the
+caller's rows. Add it in a migration, naming the column that holds the owner's
+`X-Whisk-User-Id`:
+
+```sql
+create index orders_owner_id on orders (owner_id);
+alter table orders enable row level security;
+alter table orders force row level security;
+create policy orders_by_audience on orders using (
+    current_setting('whisk.audience', true) in ('team', 'system')
+    or owner_id = nullif(current_setting('whisk.user_id', true), '')
+);
+```
+
+`force` matters: the app's role owns the table, and an owner skips policies without it. The
+policy lets the team and the app's own work see every row and a customer only their own. Then
+every query on such a table goes through the template's helper, which tells Postgres who is
+asking at the start of one short transaction: `dbFor(who(c), (tx) => …)` in TypeScript,
+`with db_for(identity(request.headers)) as session:` in Python, `db.For(ctx, callerOf(identityFrom(r.Header)), func(tx pgx.Tx)
+error {…})` in Go. Functions and webhook deliveries, which run for nobody in particular, use
+`asSystem` (`as_system`, `db.AsSystem`); never use it to answer a person's request. A query that
+skips the helper sees none of the rows and cannot write them, which is the safe way to fail.
+Keep slow work (calls to other services) outside the helper, since the transaction holds a
+pooled connection until it ends.
+
+To tailor it: a table every signed-in customer may read but only the team may change (a price
+list) needs no policy; a team member who should see only their own rows drops `'team'` from the
+list; rows shared by a customer's company use a column holding that company's id instead of
+the person's. A migration that reads or changes rows of a policy table starts with
+`select set_config('whisk.audience', 'system', true);` (DDL needs nothing). `whisk db query`
+runs as `system` and sees every row. Another app reading a shared schema is filtered by the
+owner's policies too: it sets `system` the same way when it should see every row. `whisk dev`
+connects as a superuser, which policies never filter, so prove isolation on a deploy.
+
 **Looking at the data from your machine.** The database's own address is inside the platform, so
 connecting to it from outside does not work (`whisk db url` says so). Use these instead; they
 run on the platform, need nothing installed, and are audited:

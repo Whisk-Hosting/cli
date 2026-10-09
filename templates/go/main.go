@@ -89,9 +89,11 @@ func run() error {
 	})
 
 	// Each note belongs to its author (AuthorID). The team sees every note; a customer, when the
-	// app has customer_identity, sees only their own (whisk.go ScopeFor).
+	// app has customer_identity, sees only their own (whisk.go ScopeFor), and the table's
+	// row-level security keeps to the same rule should a query forget it (DB.For).
 	r.Get("/notes", func(w http.ResponseWriter, req *http.Request) {
-		notes, err := db.ListNotes(req.Context(), ScopeFor(identityFrom(req.Header)))
+		who := identityFrom(req.Header)
+		notes, err := db.ListNotes(req.Context(), callerOf(who), ScopeFor(who))
 		respond(w, notes, err)
 	})
 	r.Post("/notes", func(w http.ResponseWriter, req *http.Request) {
@@ -108,7 +110,7 @@ func run() error {
 			writeJSON(w, 400, map[string]string{"error": "body is required"})
 			return
 		}
-		note, err := db.InsertNote(req.Context(), id.UserID, id.Email, strings.TrimSpace(body.Body))
+		note, err := db.InsertNote(req.Context(), callerOf(id), id.UserID, id.Email, strings.TrimSpace(body.Body))
 		if err != nil {
 			respond(w, nil, err)
 			return
@@ -125,7 +127,7 @@ func run() error {
 	r.Delete("/notes/{id}", func(w http.ResponseWriter, req *http.Request) {
 		who := identityFrom(req.Header)
 		id, _ := strconv.ParseInt(chi.URLParam(req, "id"), 10, 32)
-		note, ok, err := db.GetNote(req.Context(), id)
+		note, ok, err := db.GetNote(req.Context(), callerOf(who), id)
 		if err != nil {
 			respond(w, nil, err)
 			return
@@ -139,7 +141,7 @@ func run() error {
 			writeJSON(w, 403, map[string]string{"error": "only its author or an owner or admin can delete it"})
 			return
 		}
-		if err := db.DeleteNote(req.Context(), id); err != nil {
+		if err := db.DeleteNote(req.Context(), callerOf(who), id); err != nil {
 			respond(w, nil, err)
 			return
 		}

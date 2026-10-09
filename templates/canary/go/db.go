@@ -63,29 +63,86 @@ func openDB(ctx context.Context) (*DB, error) {
 func (d *DB) Close()                         { d.pool.Close() }
 func (d *DB) Ping(ctx context.Context) error { return d.pool.Ping(ctx) }
 
-func (d *DB) ListNotes(ctx context.Context) ([]Note, error) {
-	rows, err := d.pool.Query(ctx, `select id, author_id, author_email, body, created_at from notes order by id desc limit 100`)
-	if err != nil {
-		return nil, err
+// Caller is who a query runs as: the request's audience and person, or "system" for the app's
+// own work.
+type Caller struct{ Audience, UserID string }
+
+// callerOf is the caller a request's identity makes.
+func callerOf(id Identity) Caller { return Caller{Audience: id.Audience, UserID: id.UserID} }
+
+// systemCaller is the app's own work, outside any person's request: functions, webhook
+// deliveries. It sees every row, so never use it to answer a person.
+var systemCaller = Caller{Audience: "system"}
+
+// callerSettings are the two settings the row-level security policies read
+// (migrations/00003_row_level_security.sql). A caller with no audience is anonymous. Pure.
+func callerSettings(c Caller) (audience, userID string) {
+	if c.Audience == "" {
+		return "anonymous", c.UserID
 	}
-	notes, err := pgx.CollectRows(rows, pgx.RowToStructByPos[Note])
-	if notes == nil {
-		notes = []Note{}
-	}
+	return c.Audience, c.UserID
+}
+
+// For runs fn in one short transaction that first tells Postgres who is asking, so a table with
+// a policy answers only that caller's rows even when a query forgets its filter. A query on the
+// pool itself says nothing, and those tables answer it with no rows. Keep slow work (calls to
+// other services) outside fn: the transaction holds a pooled connection until it ends.
+func (d *DB) For(ctx context.Context, c Caller, fn func(pgx.Tx) error) error {
+	return pgx.BeginFunc(ctx, d.pool, func(tx pgx.Tx) error {
+		audience, userID := callerSettings(c)
+		if _, err := tx.Exec(ctx, `select set_config('whisk.audience', $1, true), set_config('whisk.user_id', $2, true)`, audience, userID); err != nil {
+			return err
+		}
+		return fn(tx)
+	})
+}
+
+// AsSystem is For with the system caller, for the app's own work.
+func (d *DB) AsSystem(ctx context.Context, fn func(pgx.Tx) error) error {
+	return d.For(ctx, systemCaller, fn)
+}
+
+func (d *DB) ListNotes(ctx context.Context, c Caller) ([]Note, error) {
+	notes := []Note{}
+	err := d.For(ctx, c, func(tx pgx.Tx) error {
+		rows, _ := tx.Query(ctx, `select id, author_id, author_email, body, created_at from notes order by id desc limit 100`)
+		got, err := pgx.CollectRows(rows, pgx.RowToStructByPos[Note])
+		if got != nil {
+			notes = got
+		}
+		return err
+	})
 	return notes, err
 }
 
-func (d *DB) InsertNote(ctx context.Context, authorID, authorEmail, body string) (Note, error) {
-	rows, _ := d.pool.Query(ctx, `insert into notes (author_id, author_email, body) values ($1, $2, $3) returning id, author_id, author_email, body, created_at`, authorID, authorEmail, body)
-	return pgx.CollectOneRow(rows, pgx.RowToStructByPos[Note])
+func (d *DB) InsertNote(ctx context.Context, c Caller, authorID, authorEmail, body string) (Note, error) {
+	var note Note
+	err := d.For(ctx, c, func(tx pgx.Tx) error {
+		rows, _ := tx.Query(ctx, `insert into notes (author_id, author_email, body) values ($1, $2, $3) returning id, author_id, author_email, body, created_at`, authorID, authorEmail, body)
+		var err error
+		note, err = pgx.CollectOneRow(rows, pgx.RowToStructByPos[Note])
+		return err
+	})
+	return note, err
 }
 
-func (d *DB) DeleteNote(ctx context.Context, id int64) error {
-	_, err := d.pool.Exec(ctx, `delete from notes where id = $1`, id)
-	return err
+func (d *DB) DeleteNote(ctx context.Context, c Caller, id int64) error {
+	return d.For(ctx, c, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `delete from notes where id = $1`, id)
+		return err
+	})
 }
 
-func (d *DB) CountNotes(ctx context.Context) (int, error) {
+// CountNotes counts the notes the caller may see, with no filter in the query.
+func (d *DB) CountNotes(ctx context.Context, c Caller) (int, error) {
+	var n int
+	err := d.For(ctx, c, func(tx pgx.Tx) error { return tx.QueryRow(ctx, `select count(*) from notes`).Scan(&n) })
+	return n, err
+}
+
+// CountNotesUnscoped counts notes on the pool itself, saying nothing about who is asking. The
+// policy answers it with none; /diag/rows checks that it does.
+func (d *DB) CountNotesUnscoped(ctx context.Context) (int, error) {
 	var n int
 	err := d.pool.QueryRow(ctx, `select count(*) from notes`).Scan(&n)
 	return n, err

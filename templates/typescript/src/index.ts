@@ -5,7 +5,7 @@ import { desc, eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { html } from "hono/html";
 import { serve as inngestServe } from "inngest/hono";
-import { db, notes, sql } from "./db.js";
+import { dbFor, notes, sql } from "./db.js";
 import { functions } from "./functions.js";
 import { canChange, canSee, enqueue, env, identity, inngest, log, scopeFor, tracing } from "./whisk.js";
 
@@ -48,19 +48,22 @@ app.get("/health", async (c) => {
 });
 
 // Each note belongs to its author (authorId). The team sees every note; a customer, when the app
-// has customer_identity, sees only their own (whisk.ts scopeFor).
+// has customer_identity, sees only their own (whisk.ts scopeFor), and the table's row-level
+// security keeps to the same rule should a query forget it (dbFor).
 app.get("/notes", async (c) => {
-  const scope = scopeFor(who(c));
+  const id = who(c);
+  const scope = scopeFor(id);
   if (scope.kind === "none") return c.json([]);
   const mine = scope.kind === "owner" ? eq(notes.authorId, scope.ownerId) : undefined;
-  return c.json(await db.select().from(notes).where(mine).orderBy(desc(notes.id)).limit(100));
+  return c.json(await dbFor(id, (tx) => tx.select().from(notes).where(mine).orderBy(desc(notes.id)).limit(100)));
 });
 app.post("/notes", async (c) => {
   const id = who(c);
-  if (!id.userId) return c.json({ error: "a signed-in person is required" }, 403);
-  const body = (await c.req.json().catch(() => ({}))) as { body?: string };
-  if (!body.body?.trim()) return c.json({ error: "body is required" }, 400);
-  const [note] = await db.insert(notes).values({ authorId: id.userId, authorEmail: id.email ?? "", body: body.body.trim() }).returning();
+  const authorId = id.userId;
+  if (!authorId) return c.json({ error: "a signed-in person is required" }, 403);
+  const text = ((await c.req.json().catch(() => ({}))) as { body?: string }).body?.trim();
+  if (!text) return c.json({ error: "body is required" }, 400);
+  const [note] = await dbFor(id, (tx) => tx.insert(notes).values({ authorId, authorEmail: id.email ?? "", body: text }).returning());
   // Hand the slow part to a function. A preview runs no functions, so it sends no events.
   if (process.env.WHISK_QUEUE_URL && !(process.env.WHISK_ENV ?? "").startsWith("preview:")) {
     await enqueue("note.added", { note_id: note.id }, `note-${note.id}`).catch((err: unknown) =>
@@ -73,12 +76,14 @@ app.delete("/notes/:id", async (c) => {
   const id = who(c);
   const noteId = Number(c.req.param("id"));
   if (!Number.isSafeInteger(noteId) || noteId < 1 || noteId > 2147483647) return c.json({ error: "no such note" }, 404);
-  const [note] = await db.select().from(notes).where(eq(notes.id, noteId));
-  // A note the person may not see is answered as if it did not exist.
-  if (!note || !canSee(id, note.authorId)) return c.json({ error: "no such note" }, 404);
-  if (!canChange(id, note.authorId)) return c.json({ error: "only its author or an owner or admin can delete it" }, 403);
-  await db.delete(notes).where(eq(notes.id, note.id));
-  return c.body(null, 204);
+  return dbFor(id, async (tx) => {
+    const [note] = await tx.select().from(notes).where(eq(notes.id, noteId));
+    // A note the person may not see is answered as if it did not exist.
+    if (!note || !canSee(id, note.authorId)) return c.json({ error: "no such note" }, 404);
+    if (!canChange(id, note.authorId)) return c.json({ error: "only its author or an owner or admin can delete it" }, 403);
+    await tx.delete(notes).where(eq(notes.id, note.id));
+    return c.body(null, 204);
+  });
 });
 
 // Function runs arrive here from the platform with the service identity (queue.endpoint).

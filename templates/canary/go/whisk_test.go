@@ -116,3 +116,23 @@ func TestDeliveriesHandle(t *testing.T) {
 	t.Setenv("WHISK_DELIVERY_KEY", "")
 	refused("no key", func(http.Header) {}, f.body)
 }
+
+// TestCallerSettings: what each caller tells Postgres before its queries run.
+func TestCallerSettings(t *testing.T) {
+	cases := []struct {
+		name             string
+		in               Caller
+		audience, userID string
+	}{
+		{"team member", callerOf(Identity{Audience: "team", UserID: "u1"}), "team", "u1"},
+		{"customer", callerOf(Identity{Audience: "customer", UserID: "c1"}), "customer", "c1"},
+		{"anonymous", callerOf(identityFrom(http.Header{})), "anonymous", ""},
+		{"no audience at all", Caller{UserID: "u1"}, "anonymous", "u1"},
+		{"the app's own work", systemCaller, "system", ""},
+	}
+	for _, c := range cases {
+		if a, u := callerSettings(c.in); a != c.audience || u != c.userID {
+			t.Errorf("%s: got (%q, %q), want (%q, %q)", c.name, a, u, c.audience, c.userID)
+		}
+	}
+}

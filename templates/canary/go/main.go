@@ -93,7 +93,7 @@ func run() error {
 	// Private routes: the platform has already signed the caller in.
 	r.Get("/me", func(w http.ResponseWriter, req *http.Request) { writeJSON(w, 200, whiskHeaders(req.Header)) })
 	r.Get("/notes", func(w http.ResponseWriter, req *http.Request) {
-		notes, err := db.ListNotes(req.Context())
+		notes, err := db.ListNotes(req.Context(), callerOf(identityFrom(req.Header)))
 		respond(w, notes, err)
 	})
 	r.Post("/notes", func(w http.ResponseWriter, req *http.Request) {
@@ -110,7 +110,7 @@ func run() error {
 			writeJSON(w, 400, map[string]string{"error": "body is required"})
 			return
 		}
-		note, err := db.InsertNote(req.Context(), id.UserID, id.Email, strings.TrimSpace(body.Body))
+		note, err := db.InsertNote(req.Context(), callerOf(id), id.UserID, id.Email, strings.TrimSpace(body.Body))
 		if err != nil {
 			respond(w, nil, err)
 			return
@@ -118,12 +118,13 @@ func run() error {
 		writeJSON(w, 201, note)
 	})
 	r.Delete("/notes/{id}", func(w http.ResponseWriter, req *http.Request) {
-		if !identityFrom(req.Header).HasRole("owner", "admin") {
+		who := identityFrom(req.Header)
+		if !who.HasRole("owner", "admin") {
 			writeJSON(w, 403, map[string]string{"error": "owner or admin role required"})
 			return
 		}
 		id, _ := strconv.ParseInt(chi.URLParam(req, "id"), 10, 64)
-		if err := db.DeleteNote(req.Context(), id); err != nil {
+		if err := db.DeleteNote(req.Context(), callerOf(who), id); err != nil {
 			respond(w, nil, err)
 			return
 		}
@@ -143,6 +144,18 @@ func run() error {
 
 	// Diagnostics used by the platform canary; private, and safe to delete in your own app.
 	r.Get("/diag", func(w http.ResponseWriter, req *http.Request) { writeJSON(w, 200, diagReport()) })
+	// The notes the caller's row-level security lets through with no filter in the query, counted
+	// once as the caller (DB.For) and once saying nothing about who is asking (the pool), which
+	// must be none.
+	r.Get("/diag/rows", func(w http.ResponseWriter, req *http.Request) {
+		scoped, err := db.CountNotes(req.Context(), callerOf(identityFrom(req.Header)))
+		if err != nil {
+			respond(w, nil, err)
+			return
+		}
+		unscoped, err := db.CountNotesUnscoped(req.Context())
+		respond(w, map[string]int{"scoped": scoped, "unscoped": unscoped}, err)
+	})
 	r.Get("/diag/call", diagCall)
 	r.Post("/diag/call", diagPost)
 	r.Get("/diag/pg", diagPG)

@@ -13,7 +13,8 @@ from .whisk import client
 @client.create_function(fn_id="note-added", trigger=inngest.TriggerEvent(event="note.added"), retries=3)
 def note_added(ctx: inngest.ContextSync) -> dict[str, Any]:
     """Runs for every note.added event POST /notes sends. Each step runs once and its result is
-    kept, so a retry resumes after the last finished step; both steps are safe to run twice."""
+    kept, so a retry resumes after the last finished step; both steps are safe to run twice. A
+    function runs for nobody in particular, so its helpers read and write as the system."""
     note_id = int(ctx.event.data.get("note_id", 0))
 
     def count_words() -> int:
