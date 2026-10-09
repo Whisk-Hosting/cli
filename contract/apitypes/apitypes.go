@@ -394,6 +394,30 @@ type Node struct {
 	Usage        map[string]any `json:"usage"`
 	LastSeenAt   *time.Time     `json:"last_seen_at,omitempty"`
 	Apps         int            `json:"apps"`
+	// Copy is where the node's databases are copied (CONTROL-PLANE.md §6.35); absent where the
+	// answer is not the operator's nodes list.
+	Copy *NodeCopy `json:"copy,omitempty"`
+	// Failover is the node's failover while it is not yet fenced.
+	Failover *NodeFailover `json:"failover,omitempty"`
+}
+
+// NodeCopy is the copy another node keeps of a node's databases, as the operator reads it.
+type NodeCopy struct {
+	Holder      string `json:"holder"` // the holder's name; empty when no node holds one
+	State       string `json:"state"`  // copying | streaming | waiting | failed | stopped | none
+	LagMs       int64  `json:"lag_ms"`
+	BehindBytes int64  `json:"behind_bytes"`
+	Line        string `json:"line"` // the sentence the machines page and whisk operator nodes print
+}
+
+// NodeFailover is a down node's move of its Promoted apps to the node holding its copy.
+type NodeFailover struct {
+	StartedAt time.Time  `json:"started_at"`
+	Holder    string     `json:"holder"`
+	Apps      []string   `json:"apps"`
+	Stranded  []string   `json:"stranded"`
+	Reason    string     `json:"reason"`
+	FencedAt  *time.Time `json:"fenced_at,omitempty"`
 }
 
 // Manifest is the recorded manifest at a commit.

@@ -141,6 +141,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("CapacityStatus", "CAPACITY_STATUSES", CapacityOK, CapacityNear, CapacityAddServer))
 	add(enumOf("CapacityPeakSource", "CAPACITY_PEAK_SOURCES", PeakHistory, PeakNow))
 	add(enumOf("CapacityResource", "CAPACITY_RESOURCES", FirstMemory, FirstDisk))
+	add(enumOf("UptimeStatus", "UPTIME_STATUSES", UptimeUp, UptimeDown, UptimeUnknown))
 	return m
 }()
 
@@ -152,9 +153,10 @@ var wire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
+	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
-	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, Manifest{}, Validation{},
+	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, NodeCopy{}, NodeFailover{}, Manifest{}, Validation{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, NeedsYou{},

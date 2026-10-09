@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/apitypes"
 )
 
 // whisk operator reads the platform's lines, nodes and deploys with the filters it was given
@@ -26,7 +27,7 @@ func TestOperatorCommands(t *testing.T) {
 		case "/v1/operator/logs/labels":
 			_, _ = w.Write([]byte(`{"units":["whisk-node.service","whiskd.service"],"hosts":["node-1"]}`))
 		case "/v1/operator/nodes":
-			_, _ = w.Write([]byte(`{"items":[{"id":"n1","name":"node-1","region":"eu","status":"ready","agent_version":"1.4.0","apps":7,"usage":{"free":{"line":"Free apps: 9.1 of 16 GB in use, 3 waits today"}}}]}`))
+			_, _ = w.Write([]byte(`{"items":[{"id":"n1","name":"node-1","region":"eu","status":"ready","agent_version":"1.4.0","apps":7,"usage":{"free":{"line":"Free apps: 9.1 of 16 GB in use, 3 waits today"}},"copy":{"holder":"node-2","state":"streaming","lag_ms":200,"behind_bytes":0,"line":"Copied to node-2: streaming, 0.2 s behind."}}]}`))
 		case "/v1/operator/deploys":
 			_, _ = w.Write([]byte(`{"items":[{"id":"d1","app_id":"a1","environment":"production","commit_sha":"abcdef123","status":"failed","error":{"code":"BUILD_FAILED"},"created_at":"2026-09-29T04:00:00Z"}]}`))
 		default:
@@ -48,7 +49,7 @@ func TestOperatorCommands(t *testing.T) {
 		t.Fatalf("units: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, nil, "operator", "nodes")
-	if r.Code != 0 || !strings.Contains(r.Stdout, "node-1") || !strings.Contains(r.Stdout, "1.4.0") || !strings.Contains(r.Stdout, "node-1: Free apps: 9.1 of 16 GB in use, 3 waits today") {
+	if r.Code != 0 || !strings.Contains(r.Stdout, "node-1") || !strings.Contains(r.Stdout, "1.4.0") || !strings.Contains(r.Stdout, "node-1: Free apps: 9.1 of 16 GB in use, 3 waits today") || !strings.Contains(r.Stdout, "node-1: Copied to node-2: streaming, 0.2 s behind.") {
 		t.Fatalf("nodes: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, nil, "operator", "deploys", "--status", "all", "--since", "7d")
@@ -68,5 +69,21 @@ func TestFormatPlatformLine(t *testing.T) {
 	}
 	if got := formatPlatformLine(api.LogLine{At: at, Line: "hi", Unit: "whisk-caddy-1"}); got != "09-29 04:00:00.000 whisk-caddy-1  hi" {
 		t.Errorf("container line = %q", got)
+	}
+}
+
+// A node's copy line, and while it has a failover not yet fenced, what moved and what waits.
+func TestCopyLines(t *testing.T) {
+	if got := copyLines(api.Node{}); len(got) != 0 {
+		t.Errorf("no copy reported: %v", got)
+	}
+	n := api.Node{Copy: &apitypes.NodeCopy{Line: "No copy: no other server holds one."}}
+	if got := copyLines(n); len(got) != 1 || got[0] != "No copy: no other server holds one." {
+		t.Errorf("one node: %v", got)
+	}
+	n.Failover = &apitypes.NodeFailover{Holder: "node-2", StartedAt: time.Date(2026, 10, 9, 3, 0, 0, 0, time.UTC), Apps: []string{"shop"}, Stranded: []string{"admin"}, Reason: "the copy was 45s behind"}
+	got := copyLines(n)
+	if len(got) != 2 || !strings.Contains(got[1], "Failed over to node-2") || !strings.Contains(got[1], "shop moved") || !strings.Contains(got[1], "waiting: admin (the copy was 45s behind)") {
+		t.Errorf("failover: %v", got)
 	}
 }

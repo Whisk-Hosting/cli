@@ -156,6 +156,12 @@ func operatorNodesCmd(s *session) *cobra.Command {
 						fmt.Fprintf(w, "%s: %s\n", n.Name, line)
 					}
 				}
+				// Where each node's databases are copied, and a failover not yet fenced.
+				for _, n := range nodes {
+					for _, line := range copyLines(n) {
+						fmt.Fprintf(w, "%s: %s\n", n.Name, line)
+					}
+				}
 			})
 			return nil
 		},
@@ -198,6 +204,26 @@ func operatorDeploysCmd(s *session) *cobra.Command {
 	c.Flags().StringVar(&status, "status", "failed", "a deploy status, or all")
 	c.Flags().StringVar(&since, "since", "24h", "how far back to read: 6h, 7d, or an RFC 3339 time")
 	return c
+}
+
+// copyLines are the node's copy line, as the control plane words it (CONTROL-PLANE.md §6.35),
+// and, while it has a failover not yet fenced, what moved and what waits.
+func copyLines(n api.Node) []string {
+	var out []string
+	if n.Copy != nil && n.Copy.Line != "" {
+		out = append(out, n.Copy.Line)
+	}
+	if f := n.Failover; f != nil {
+		line := "Failed over to " + orDash(f.Holder) + " at " + at(f.StartedAt)
+		if len(f.Apps) > 0 {
+			line += ": " + strings.Join(f.Apps, ", ") + " moved"
+		}
+		if len(f.Stranded) > 0 {
+			line += "; waiting: " + strings.Join(f.Stranded, ", ") + " (" + f.Reason + ")"
+		}
+		out = append(out, line+". It is fenced before it takes work again.")
+	}
+	return out
 }
 
 // freeLine is the node's free apps line from its usage, or "" when it keeps no budget.

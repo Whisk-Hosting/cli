@@ -4,7 +4,9 @@
 // in a browser (CADDY.md §5, CONTROL-PLANE.md §9). They are in the Workbench Mustard design
 // (DASHBOARD.md §2): warm white paper, navy ink, the dot-and-serif wordmark and one mustard
 // accent. Each page is one self-contained document with its styles inline, because it is served
-// from an app's own address where nothing else of Whisk's can be loaded.
+// from an app's own address where nothing else of Whisk's can be loaded. A plain page (Page.Plain)
+// is the same page in a neutral design with the app's name in place of the wordmark and nothing
+// of Whisk's on it, for the app's own customers (CADDY.md §5.1, "Plain pages").
 package platformpage
 
 import (
@@ -36,6 +38,10 @@ type Page struct {
 	// Retry makes the page heal itself (RESILIENCE.md 1): a Retry button, and one reload on
 	// its own; nil leaves both out.
 	Retry *Retry
+	// Plain draws the page without Whisk's name, wordmark or colours: a neutral grey design,
+	// the app's name at the top in place of the wordmark, no footer, and PlainReloadFlag for
+	// its one reload. Every line on it must leave Whisk out too (PlainLines).
+	Plain bool
 }
 
 // Retry is how a page heals itself. The page reloads itself at most once within five minutes
@@ -59,25 +65,30 @@ type Retry struct {
 }
 
 // ReloadFlag is the query parameter a page that cannot use session storage adds to the address
-// it reloads, so it reloads only once.
-const ReloadFlag = "__whisk_reload"
+// it reloads, so it reloads only once. A plain page uses PlainReloadFlag, which names nobody.
+const (
+	ReloadFlag      = "__whisk_reload"
+	PlainReloadFlag = "__reload"
+)
 
 // healScript defines whiskHeal(seconds): reload the page once after seconds, or, when it has
 // already done so for this address in the last five minutes, stop the spinner and show the
-// Retry line. whiskGiveUp() does the second part alone.
-const healScript = `var whiskKey='whisk_reload:'+location.pathname+location.search;` +
-	`function whiskMay(){` +
-	`if(/[?&]` + ReloadFlag + `=1(&|$)/.test(location.search))return '';` +
-	`try{var s=window.sessionStorage,t=Number(s.getItem(whiskKey))||0;` +
-	`if(Date.now()-t<300000)return '';` +
-	`s.setItem(whiskKey,String(Date.now()));if(s.getItem(whiskKey))return 'reload';}catch(e){}` +
-	`return 'flag';}` +
-	`function whiskGiveUp(){var s=document.querySelector('.spin');if(s)s.style.display='none';` +
-	`var r=document.getElementById('whisk-retry');if(r)r.hidden=false;}` +
-	`function whiskHeal(after){var how=whiskMay();if(!how){whiskGiveUp();return;}` +
-	`setTimeout(function(){if(how==='reload'){location.reload();return;}` +
-	`var u=location.href.replace(/#.*$/,'');` +
-	`location.replace(u+(u.indexOf('?')<0?'?':'&')+'` + ReloadFlag + `=1');},after*1000);}`
+// Retry line. whiskGiveUp() does the second part alone. flag is the page's reload flag.
+func healScript(flag string) string {
+	return `var whiskKey='whisk_reload:'+location.pathname+location.search;` +
+		`function whiskMay(){` +
+		`if(/[?&]` + flag + `=1(&|$)/.test(location.search))return '';` +
+		`try{var s=window.sessionStorage,t=Number(s.getItem(whiskKey))||0;` +
+		`if(Date.now()-t<300000)return '';` +
+		`s.setItem(whiskKey,String(Date.now()));if(s.getItem(whiskKey))return 'reload';}catch(e){}` +
+		`return 'flag';}` +
+		`function whiskGiveUp(){var s=document.querySelector('.spin');if(s)s.style.display='none';` +
+		`var r=document.getElementById('whisk-retry');if(r)r.hidden=false;}` +
+		`function whiskHeal(after){var how=whiskMay();if(!how){whiskGiveUp();return;}` +
+		`setTimeout(function(){if(how==='reload'){location.reload();return;}` +
+		`var u=location.href.replace(/#.*$/,'');` +
+		`location.replace(u+(u.indexOf('?')<0?'?':'&')+'` + flag + `=1');},after*1000);}`
+}
 
 // script is the page's inline JavaScript: the healing functions and the reload when the page
 // has a Retry, then its own Script.
@@ -86,7 +97,11 @@ func (p Page) script() string {
 	if r == nil {
 		return p.Script
 	}
-	out := healScript
+	flag := ReloadFlag
+	if p.Plain {
+		flag = PlainReloadFlag
+	}
+	out := healScript(flag)
 	switch {
 	case r.AfterJS != "":
 		out += `whiskHeal(Math.min(Math.max(parseInt(` + r.AfterJS + `,10)||5,1),120));`
@@ -129,6 +144,27 @@ const style = `:root{color-scheme:light}*{box-sizing:border-box}` +
 	`.retry a:focus-visible{outline:3px solid #e3a92b;outline-offset:2px}` +
 	`@media (max-width:480px){.card{padding:1.5rem}h1{font-size:1.5rem}}`
 
+// plainStyle is the neutral design of a plain page: greys on white, system fonts, no accent
+// colour, the app's name where the wordmark would be.
+const plainStyle = `:root{color-scheme:light}*{box-sizing:border-box}` +
+	`body{margin:0;min-height:100vh;display:flex;flex-direction:column;background:#f5f6f8;color:#1f2328;` +
+	`font:16px/1.5 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}` +
+	`header{padding:1.25rem 1.5rem}` +
+	`.name{font-weight:600;font-size:1.05rem;color:#1f2328}` +
+	`main{flex:1;display:flex;align-items:center;justify-content:center;padding:1.5rem}` +
+	`.card{width:100%;max-width:34rem;background:#fff;border:1px solid #d8dee4;border-radius:10px;padding:2rem}` +
+	`h1{margin:0 0 .75rem;font:600 1.5rem/1.25 ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}` +
+	`p{margin:.5rem 0;color:#57606a}` +
+	`.small{margin-top:1.25rem;padding-top:1rem;border-top:1px solid #d8dee4;font-size:.8rem}` +
+	`code{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:.9em;color:#1f2328}` +
+	`.spin{width:2rem;height:2rem;margin:0 0 1.25rem;border:3px solid #d8dee4;border-top-color:#57606a;` +
+	`border-radius:50%;animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}` +
+	`@media (prefers-reduced-motion:reduce){.spin{animation-duration:3s}}` +
+	`.retry a{display:inline-block;min-height:2.75rem;margin-top:.5rem;padding:.6rem 1.25rem;` +
+	`background:#1f2328;color:#fff;border-radius:6px;text-decoration:none;font-weight:600}` +
+	`.retry a:focus-visible{outline:3px solid #57606a;outline-offset:2px}` +
+	`@media (max-width:480px){.card{padding:1.5rem}h1{font-size:1.35rem}}`
+
 // Render draws a page as a complete HTML document; every value is escaped.
 func Render(p Page) string {
 	esc := html.EscapeString
@@ -136,16 +172,25 @@ func Render(p Page) string {
 	if p.App != "" {
 		title = p.Heading + " · " + p.App
 	}
+	css := style
+	if p.Plain {
+		css = plainStyle
+	}
 	var b strings.Builder
 	b.WriteString(`<!doctype html><html lang="en"><head><meta charset="utf-8">`)
 	b.WriteString(`<meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex">`)
-	b.WriteString(`<title>` + esc(title) + `</title><style>` + style + `</style></head><body>`)
-	b.WriteString(`<header><span class="mark"><span class="dot" aria-hidden="true"></span>whisk</span></header>`)
+	b.WriteString(`<title>` + esc(title) + `</title><style>` + css + `</style></head><body>`)
+	switch {
+	case !p.Plain:
+		b.WriteString(`<header><span class="mark"><span class="dot" aria-hidden="true"></span>whisk</span></header>`)
+	case p.App != "":
+		b.WriteString(`<header><span class="name">` + esc(p.App) + `</span></header>`)
+	}
 	b.WriteString(`<main><div class="card">`)
 	if p.Waiting {
 		b.WriteString(`<div class="spin" role="presentation"></div>`)
 	}
-	if p.App != "" {
+	if p.App != "" && !p.Plain {
 		b.WriteString(`<p class="kicker">` + esc(p.App) + `</p>`)
 	}
 	b.WriteString(`<h1>` + esc(p.Heading) + `</h1>`)
@@ -179,7 +224,9 @@ func Render(p Page) string {
 		b.WriteString(`<p class="small">` + small + `</p>`)
 	}
 	b.WriteString(`</div></main>`)
-	b.WriteString(`<footer>` + esc(hosted(p.App)) + `</footer>`)
+	if !p.Plain {
+		b.WriteString(`<footer>` + esc(hosted(p.App)) + `</footer>`)
+	}
 	if js := p.script(); js != "" {
 		b.WriteString(`<script>` + js + `</script>`)
 	}
@@ -196,6 +243,33 @@ func smallPrint(p Page) string {
 		parts = append(parts, `request <code>`+html.EscapeString(p.RequestID)+`</code>`)
 	}
 	return strings.Join(parts, " · ")
+}
+
+// PlainLines are the paragraphs a plain page shows for an error: its message, unless the message
+// names Whisk, then one sentence the app's customer can act on for the status. The error's fix
+// is left out: it is written for the app's developer and their agent, and names Whisk's files
+// and commands. Pure, table-tested.
+func PlainLines(message string, status int) []string {
+	var out []string
+	if message != "" && !strings.Contains(strings.ToLower(message), "whisk") {
+		out = append(out, message)
+	}
+	return append(out, plainNext(status))
+}
+
+// plainNext is what a customer can do about a status, in words that name nobody.
+func plainNext(status int) string {
+	switch {
+	case status >= 500:
+		return "Try again in a moment."
+	case status == 401:
+		return "Open the app again to sign in."
+	case status == 403:
+		return "If you think you should have access, ask whoever gave you this address."
+	case status == 429:
+		return "Wait a moment, then try again."
+	}
+	return "Go back and try again."
 }
 
 func hosted(app string) string {

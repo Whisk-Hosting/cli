@@ -452,7 +452,8 @@ When: the action needs a plan setting the org's plan does not include: a custom 
 org's own log service (`log_forwarding`), setting or changing the org's own storage bucket,
 which also receives the backup copy (`own_bucket`, Business only; sending the bucket the org
 already has again with new keys is allowed on any plan), checking an app's packages now
-(`package_scanning`), serving an app through the CDN (`cdn`), making an app a Promoted app
+(`package_scanning`), serving an app through the CDN (`cdn`; a Promoted app has it on any plan
+with their price), making an app a Promoted app
 (`promoted`), an app registering sending domains of its own for its customers
 (`app_email_domains`, on every plan with custom domains), or an app's inbox receiving at the
 business's own domain (`inbox`, Team and above). `details.setting` names it and `details.plan`
@@ -460,7 +461,8 @@ the plan. `kv` on a plan without it is not refused: the app deploys without a ca
 says so; nor is `inbox`: the app deploys and every message to it is dropped as `not_on_plan`
 (doctor-rules.md).
 
-Fix: Ask an owner to upgrade the plan at the billing URL, or stop using the setting.
+Fix: Ask an owner to upgrade the plan at the billing URL, or stop using the setting. For `cdn` on
+a plan with Promoted apps, making the app a Promoted app also includes it.
 
 ```json
 {"error":{"code":"PLAN_FEATURE","message":"Custom domains are not included in the Free plan.","fix":"Ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_FEATURE","details":{"setting":"custom_domains","plan":"free"}}}
@@ -480,6 +482,24 @@ end the trial or choose a plan on the billing page, then promote the app.
 
 ```json
 {"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is inside its free trial, and a Promoted app is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
+```
+
+## PROMOTED_ONLY
+
+Status: 409 · Surface: api
+
+When: someone asked for something only a Promoted app in force has, for an app that is not one:
+setting up or verifying a status page (`details.feature: status_page`). Hourly backup points,
+the 30-day restore window and uptime alerts need no request; they start when the app is promoted.
+An app stays marked as promoted after its plan stops including Promoted apps, and is not one in
+force until the plan includes them again (`details.in_force: false`).
+
+Fix: An owner or billing contact makes the app a Promoted app on its overview in the dashboard
+(the link in the message), then try again. When the app is promoted but not in force, move to a
+plan that includes Promoted apps first.
+
+```json
+{"error":{"code":"PROMOTED_ONLY","message":"A status page is for Promoted apps, and shop is not one.","fix":"An owner or billing contact can promote shop at https://whisk.run/o/acme/apps/shop, then try again.","docs":"https://skill.whisk.run/errors/PROMOTED_ONLY","details":{"feature":"status_page","app":"shop","in_force":false}}}
 ```
 
 ## TRIAL_USED
@@ -2384,6 +2404,23 @@ Fix: Ask Whisk to renew the licence, then install the new file on the operator p
 {"error":{"code":"LICENCE_EXPIRED","message":"The Whisk licence ended on 2027-10-08. Running apps keep running; new deploys wait for a current licence.","fix":"Ask Whisk for a current licence, then install it on the operator page or with `whiskd licence install < licence.txt`.","docs":"https://skill.whisk.run/errors/LICENCE_EXPIRED","details":{"licence":"lic_2026_0001","ended":"2027-10-08"}}}
 ```
 
+## NODE_DRAIN_NO_COPY
+
+Status: 409 · Surface: api
+
+When: the operator drains a node and the database of at least one environment live on it has no
+usable copy to move to: no other node holds the node's copy, the node holding it is not ready,
+or the copy is not streaming (still being made, or failed). A drain moves each database out of
+that copy, so without it the app would start with no data. Nothing is moved and the node's status
+is unchanged.
+
+Fix: Wait until `whisk operator nodes` shows the node's copy streaming, or bring its holder back,
+then drain again.
+
+```json
+{"error":{"code":"NODE_DRAIN_NO_COPY","message":"No usable copy of node1's databases is on another node (node2's copy is being made), so job-tracker cannot be moved and node1 cannot be drained.","fix":"Wait until whisk operator nodes shows node1's copy streaming, or bring node2 back, then drain again.","docs":"https://skill.whisk.run/errors/NODE_DRAIN_NO_COPY","details":{"node":"node1","holder":"node2","state":"copying","apps":["job-tracker"]}}}
+```
+
 ## SUPPORT_DOOR_CLOSED
 
 Status: 409 · Surface: api
@@ -3030,6 +3067,71 @@ Fix: Nothing in the app causes this, and the operator has been paged with the ca
 
 ```json
 {"error":{"code":"DATABASE_FAILED","message":"The app's database could not be prepared on node node1: the node's network rules would not load (nft: exit status 1: /dev/stdin:14:40-58: Error: Could not process rule: Invalid argument).","fix":"Nothing in the app causes this, and the operator has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_FAILED","details":{"step":"database","node":"node1","cause_code":"POLICY_APPLY_FAILED","cause":"nft: exit status 1: /dev/stdin:14:40-58: Error: Could not process rule: Invalid argument","fault":"platform"}}}
+```
+
+## DATABASE_MOVE_FAILED
+
+Status: - · Surface: deploy
+
+When: a deploy placed on another node than the one its database is on (a drain, or a Promoted
+app moving after its node went down) could not move the database there. It arrives as
+`PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`; `details` carries `step`
+(`database_move`), `from_node`, `node`, `database`, `cause_code` (`COPY_UNAVAILABLE`,
+`COPY_BEHIND` or `DATABASE_FAILED`), `cause` and `fault: platform`. When the database's node
+answered, its roles were given their login back, so the app runs on where it was. No password is
+ever included.
+
+Fix: Nothing in the app causes this, and the operator has been paged with the cause. Run `whisk
+deploy` again later; if it fails the same way, report the deploy id with `details.cause`.
+
+```json
+{"error":{"code":"DATABASE_MOVE_FAILED","message":"The app's database could not be moved from node1 to node2: node2's copy of node1 did not catch up within 2 minutes.","fix":"Nothing in the app causes this, and the operator has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_MOVE_FAILED","details":{"step":"database_move","from_node":"node1","node":"node2","database":"app_01jabc","cause_code":"COPY_BEHIND","cause":"the copy replayed to 0/3A000060, short of 0/3A0001F8","fault":"platform"}}}
+```
+
+## COPY_UNAVAILABLE
+
+Status: - · Surface: node
+
+When: a node was asked to move a database out of its copy of another node, and it holds no copy
+of that node, or its copy cluster does not answer (NODE-AGENT.md §A6b). Nothing was changed.
+
+Fix: Nothing on the tenant's side; the operator is paged. The operator checks the holder's copy on
+the machines page and in `whisk operator nodes`, then the deploy is run again.
+
+```json
+{"error":{"code":"COPY_UNAVAILABLE","message":"node2 holds no running copy of node1.","fix":"Check node2's copy in whisk operator nodes; once it streams, deploy again.","docs":"https://skill.whisk.run/errors/COPY_UNAVAILABLE","details":{"node":"node2","source":"node1"}}}
+```
+
+## COPY_BEHIND
+
+Status: - · Surface: node
+
+When: a node was asked to move a database out of its copy of a node that is still up, and the copy
+did not replay to the position the source reported after closing the database within 2 minutes.
+Nothing was copied.
+
+Fix: Nothing on the tenant's side; the operator is paged. The operator checks the copy's lag in
+`whisk operator nodes`, then the deploy is run again.
+
+```json
+{"error":{"code":"COPY_BEHIND","message":"node2's copy of node1 did not catch up within 2 minutes.","fix":"Check the copy's lag in whisk operator nodes; once it is caught up, deploy again.","docs":"https://skill.whisk.run/errors/COPY_BEHIND","details":{"node":"node2","source":"node1","replayed":"0/3A000060","wanted":"0/3A0001F8"}}}
+```
+
+## COPY_VERSION_MISMATCH
+
+Status: - · Surface: node
+
+When: a node was asked to make a copy of another node's cluster, and the source runs another
+Postgres major version than this node does. A copy streams only between the same major version,
+so no base backup was taken and the copy's directory was left as it was. The copy reads `failed`
+with this message until both nodes run the same major version.
+
+Fix: Nothing on the tenant's side; the operator is paged once. The operator brings both nodes to
+the one Postgres major version server setup names (`whisk_postgres_version`); the next attempt
+makes the copy.
+
+```json
+{"error":{"code":"COPY_VERSION_MISMATCH","message":"COPY_VERSION_MISMATCH: node1 runs Postgres major 17 and this node runs major 18; a copy streams only between the same major version","fix":"Bring both nodes to the same Postgres major version (whisk_postgres_version); the copy is made again on its own.","docs":"https://skill.whisk.run/errors/COPY_VERSION_MISMATCH","details":{"node":"node2","source":"node1","source_major":17,"major":18}}}
 ```
 
 ## DATABASE_CREDENTIALS_REJECTED
