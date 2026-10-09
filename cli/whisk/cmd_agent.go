@@ -88,25 +88,91 @@ func schemaCmd(s *session) *cobra.Command {
 	return c
 }
 
+// cronEntry is one cron function as whisk cron list prints it.
+type cronEntry struct {
+	Name   string   `json:"name"`
+	Cron   string   `json:"cron"`
+	TZ     string   `json:"tz"`
+	RunsAs string   `json:"runs_as,omitempty"`
+	Next   []string `json:"next"`
+}
+
+// deployedCrons is the cron triggers of the deployed functions, one entry each.
+func deployedCrons(fns []api.Function) []cronEntry {
+	var out []cronEntry
+	for _, f := range fns {
+		for _, t := range f.Triggers {
+			if t.Cron == "" {
+				continue
+			}
+			e := cronEntry{Name: f.Name, Cron: t.Cron, TZ: t.TZ, RunsAs: t.RunsAs, Next: []string{}}
+			if e.TZ == "" {
+				e.TZ = "UTC"
+			}
+			if t.NextRun != nil {
+				e.Next = []string{t.NextRun.UTC().Format(time.RFC3339)}
+			}
+			out = append(out, e)
+		}
+	}
+	return out
+}
+
+// cronRows is the table rows: the next run in local time, and the schedule a plan runs it as
+// beside the declared one when the two differ.
+func cronRows(entries []cronEntry) [][]string {
+	rows := make([][]string, len(entries))
+	for i, e := range entries {
+		next := "never"
+		if len(e.Next) > 0 {
+			t, _ := time.Parse(time.RFC3339, e.Next[0])
+			next = t.Local().Format("2006-01-02 15:04 MST")
+		}
+		cron := e.Cron
+		if e.RunsAs != "" && e.RunsAs != e.Cron {
+			cron += " (runs as " + e.RunsAs + ")"
+		}
+		rows[i] = []string{e.Name, cron, e.TZ, next}
+	}
+	return rows
+}
+
+func (s *session) printDeployedCrons(org, app string, fns []api.Function) error {
+	entries := deployedCrons(fns)
+	s.printer.Result(map[string]any{"org": org, "app": app, "source": "deployed", "functions": entries}, func(w io.Writer) {
+		if len(entries) == 0 {
+			fmt.Fprintf(w, "%s/%s has no cron functions deployed.\n", org, app)
+			return
+		}
+		s.printer.Table(w, []string{"FUNCTION", "CRON", "TZ", "NEXT RUN"}, cronRows(entries))
+	})
+	return nil
+}
+
 func cronCmd(s *session) *cobra.Command {
 	cron := &cobra.Command{Use: "cron", Short: "Scheduled functions"}
 	list := &cobra.Command{
 		Use:   "list",
-		Short: "List cron functions from the manifest with their next run times",
+		Short: "List the app's cron functions as deployed, or from whisk.yaml before a deploy, with their next run times",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			// What is deployed is what runs, so an app this directory is bound to, with a
+			// token, is read from the platform; only without either is the local whisk.yaml read.
+			if org, app, err := s.target(); err == nil {
+				if client, _, err := s.client(); err == nil {
+					fns, err := client.ListFunctions(s.ctx, org, app)
+					if err != nil {
+						return wrap(err)
+					}
+					return s.printDeployedCrons(org, app, fns)
+				}
+			}
 			m, err := loadManifest(s.env.Dir)
 			if err != nil {
 				return err
 			}
 			now := time.Now().UTC()
-			type entry struct {
-				Name string   `json:"name"`
-				Cron string   `json:"cron"`
-				TZ   string   `json:"tz"`
-				Next []string `json:"next"`
-			}
-			var entries []entry
+			var entries []cronEntry
 			for _, fn := range m.Functions {
 				if fn.Cron == "" {
 					continue
@@ -119,7 +185,7 @@ func cronCmd(s *session) *cobra.Command {
 				if err != nil {
 					loc = time.UTC
 				}
-				e := entry{Name: fn.Name, Cron: fn.Cron, TZ: tz}
+				e := cronEntry{Name: fn.Name, Cron: fn.Cron, TZ: tz}
 				after := now
 				for i := 0; i < 3; i++ {
 					next, ok := manifest.NextCron(fn.Cron, loc, after)
@@ -131,21 +197,13 @@ func cronCmd(s *session) *cobra.Command {
 				}
 				entries = append(entries, e)
 			}
-			s.printer.Result(map[string]any{"functions": entries}, func(w io.Writer) {
+			s.printer.Result(map[string]any{"source": "whisk.yaml", "functions": entries}, func(w io.Writer) {
+				fmt.Fprintln(w, "From whisk.yaml in this directory, not what is deployed: bind the directory (whisk use <org>/<app>) and sign in to see the deployed schedules.")
 				if len(entries) == 0 {
 					fmt.Fprintln(w, "No cron functions in whisk.yaml.")
 					return
 				}
-				rows := make([][]string, len(entries))
-				for i, e := range entries {
-					next := "never"
-					if len(e.Next) > 0 {
-						t, _ := time.Parse(time.RFC3339, e.Next[0])
-						next = t.Local().Format("2006-01-02 15:04 MST")
-					}
-					rows[i] = []string{e.Name, e.Cron, e.TZ, next}
-				}
-				s.printer.Table(w, []string{"FUNCTION", "CRON", "TZ", "NEXT RUN"}, rows)
+				s.printer.Table(w, []string{"FUNCTION", "CRON", "TZ", "NEXT RUN"}, cronRows(entries))
 			})
 			return nil
 		},
