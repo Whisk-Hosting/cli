@@ -162,14 +162,16 @@ const (
 )
 
 // OrgSettings is GET /orgs/:org/settings (DASHBOARD.md §4.18): which channels carry each kind of
-// notification, the webhooks, single sign-on and database access. Secrets are reported as set
-// or not, never shown.
+// notification, the webhooks, single sign-on, how everyone signs in and database access. Secrets
+// are reported as set or not, never shown. PasskeysRequired is "Everyone signs in with a passkey
+// or company sign-in" (CONTROL-PLANE.md §4.1, "A business's sign-in rule").
 type OrgSettings struct {
-	Notifications   map[string][]NotificationChannel `json:"notifications"`
-	SlackWebhookSet bool                             `json:"slack_webhook_set"`
-	WebhookURL      string                           `json:"webhook_url,omitempty"`
-	SSO             SSOSettings                      `json:"sso"`
-	DBAccess        bool                             `json:"db_access"`
+	Notifications    map[string][]NotificationChannel `json:"notifications"`
+	SlackWebhookSet  bool                             `json:"slack_webhook_set"`
+	WebhookURL       string                           `json:"webhook_url,omitempty"`
+	SSO              SSOSettings                      `json:"sso"`
+	PasskeysRequired bool                             `json:"passkeys_required"`
+	DBAccess         bool                             `json:"db_access"`
 }
 
 // SSOSettings is the org's single sign-on, without its client secret. Verified is true once the
@@ -199,6 +201,9 @@ type OrgSettingsRequest struct {
 	WebhookURL      *string                          `json:"webhook_url,omitempty"`
 	SSO             *SSORequest                      `json:"sso,omitempty"`
 	DBAccess        *bool                            `json:"db_access,omitempty"`
+	// PasskeysRequired is the owner's alone to change, and turning it on needs a session that
+	// meets it: a passkey or company sign-in.
+	PasskeysRequired *bool `json:"passkeys_required,omitempty"`
 }
 
 // SSORequest carries the client secret once, on the way in; without it the kept one stays.

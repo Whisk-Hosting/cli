@@ -301,12 +301,41 @@ func (s *session) target() (org, app string, err error) {
 
 // wrap turns an API transport failure into the platform-unavailable error and passes
 // platform errors through with their code.
+// needsHumanLogin turns BUSINESS_NOT_IN_LOGIN into the NEEDS_HUMAN block (pure): the login is
+// used in a business it does not cover, and only the person, signed in, adds it, at the link the
+// platform sent. The block keeps that link as details.url, so it prints plainly, and names the
+// platform's code as details.reason. nil for any other error, or one without a link.
+func needsHumanLogin(ae *api.Error) *output.Error {
+	if ae.Code != "BUSINESS_NOT_IN_LOGIN" {
+		return nil
+	}
+	link, _ := ae.Details["url"].(string)
+	if link == "" {
+		return nil
+	}
+	name, _ := ae.Details["org_name"].(string)
+	if name == "" {
+		name, _ = ae.Details["org"].(string)
+	}
+	details := map[string]any{"reason": ae.Code}
+	for k, v := range ae.Details {
+		details[k] = v
+	}
+	return &output.Error{Code: "NEEDS_HUMAN", Message: ae.Message,
+		Fix:     "Ask the person to open this link signed in, check the login is theirs and tap Add " + name + ", then run the command again. No new login is needed.",
+		Docs:    "https://skill.whisk.run/errors/BUSINESS_NOT_IN_LOGIN",
+		Details: details, Status: ae.Status}
+}
+
 func wrap(err error) error {
 	if err == nil {
 		return nil
 	}
 	var ae *api.Error
 	if errors.As(err, &ae) {
+		if e := needsHumanLogin(ae); e != nil {
+			return e
+		}
 		return &output.Error{Code: ae.Code, Message: ae.Message, Fix: ae.Fix, Docs: ae.Docs, Details: ae.Details, Status: ae.Status}
 	}
 	var u *api.Unavailable

@@ -67,6 +67,8 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("SignInMethod", "SIGN_IN_METHODS", MethodPasskey, MethodPassword, MethodCode, MethodSSO, MethodTest))
 	add(enumOf("ActorKind", "ACTOR_KINDS", ActorUser, ActorAgent, ActorSystem, ActorOperator, ActorService))
 	add(enumOf("DeviceStatus", "DEVICE_STATUSES", DevicePending, DeviceApproved, DeviceDenied, DeviceExpired))
+	add(enumOf("DeviceScope", "DEVICE_SCOPES", DeviceScopeApp, DeviceScopeOrg, DeviceScopePick, DeviceScopeNew))
+	add(enumOf("LoginScope", "LOGIN_SCOPES", LoginScopeAccount, LoginScopeBusiness, LoginScopeApp))
 	add(enumOf("HoldStatus", "HOLD_STATUSES", HoldHeld, HoldReleased, HoldRemoved))
 	add(enumOf("HoldKind", "HOLD_KINDS", HoldPhishingPage, HoldBlocklist, HoldWebRisk, HoldEmailLink, HoldLinked))
 	add(enumOf("AbuseKind", "ABUSE_KINDS", AbuseEgress, AbuseEmailThrottled, AbuseCPUPegged, AbuseRunGuard, AbuseDisposableSignup))
@@ -150,6 +152,7 @@ var wire = []any{
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, Manifest{}, Validation{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
+	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, NeedsYou{},
 	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PatchMemberRequest{},
 	GroupRequest{}, GroupMembersRequest{}, CreateAppRequest{}, PatchAppRequest{}, ValidateRequest{},

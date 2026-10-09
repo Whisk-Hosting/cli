@@ -149,11 +149,15 @@ Every command takes `--org <slug>` and `--app <slug>` instead of `.whisk/app.jso
 `--quiet` to drop progress lines. In CI, where nobody can approve a login, a person runs
 `whisk agent-token create --label "ci"` and puts the token in `WHISK_TOKEN`.
 
-A login approved for all the person's businesses (the approval page's default) acts as them in
-every business they belong to, ones added later included: `whisk orgs` lists them and
-`--org <slug>` picks one when the folder names none. A login approved for one business reaches
-only that one; to work in another, run `whisk login` again and ask them to approve it for all
-their businesses. A person adds a business themselves at `https://whisk.run/new`.
+Run `whisk login` in the app's folder, or with `--org` (and `--app`): the approval page then
+starts on that app or business, the narrowest login that fits. The person can choose all their
+businesses instead; that login acts as them in the businesses they belong to when they approve
+it, never one they join later: `whisk orgs` lists them and `--org <slug>` picks one when the
+folder names none. When a login meets a business it does not cover, the command exits 2 with a
+NEEDS_HUMAN block whose link (`details.url`, `details.reason` `BUSINESS_NOT_IN_LOGIN`) is where
+the person, signed in, adds that business to this login with one tap: show them the link, then
+run the command again. Do not run `whisk login` again for it. A person adds a new business
+themselves at `https://whisk.run/new`.
 
 An agency builds for its clients with the login it already has: `whisk clients` lists its client
 businesses, `whisk clients add <name> --contact <email>` adds one, `whisk init --org <client>`

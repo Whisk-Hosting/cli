@@ -102,6 +102,26 @@ operator for a read token created with `feedback:resolve` on the operator page.
 {"error":{"code":"TOKEN_SCOPE","message":"This token is scoped to app job-tracker and cannot act on app reporting-api.","fix":"Run whisk use acme/job-tracker, or ask an admin for a token scoped to reporting-api.","docs":"https://skill.whisk.run/errors/TOKEN_SCOPE","details":{"required":"app:01J9X4","token_scopes":["org:01J9W2","app:01J9X3","deploy"]}}}
 ```
 
+## BUSINESS_NOT_IN_LOGIN
+
+Status: 403 · Surface: api, git
+
+When: a `whisk login` was used in a business it does not cover, though the person it acts for
+belongs to that business. A login covers the businesses it was approved for: a login for all
+the person's businesses covers the ones they belonged to when they approved it, and never one
+they joined later; a login for one business covers that business. A person can add a business
+to either without a new login. `details.url` is the page where they do it, `details.org` and
+`details.org_name` name the business, `details.login` is the login's id and `details.device` the
+computer it is bound to. The CLI prints this as `NEEDS_HUMAN` with the link.
+
+Fix: Show the person `details.url`. They open it signed in, check the login is theirs by its
+computer and when it was made, and tap Add; then retry. No new login is needed. Do not run
+`whisk login` again for this.
+
+```json
+{"error":{"code":"BUSINESS_NOT_IN_LOGIN","message":"This login does not cover Northwind Bakery.","fix":"Ask the person to open https://whisk.run/me/logins/01J9Y2?add=northwind, check the login is theirs and tap Add Northwind Bakery, then retry. No new login is needed.","docs":"https://skill.whisk.run/errors/BUSINESS_NOT_IN_LOGIN","details":{"org":"northwind","org_name":"Northwind Bakery","url":"https://whisk.run/me/logins/01J9Y2?add=northwind","login":"01J9Y2","device":"ana-laptop"}}}
+```
+
 ## TOKEN_SIGNATURE
 
 Status: 401 · Surface: api, git
@@ -918,6 +938,42 @@ make the change within ten minutes.
 
 ```json
 {"error":{"code":"REAUTH_REQUIRED","message":"Confirm it's you before you add a passkey.","fix":"Open https://auth.whisk.run/passkeys/confirm, confirm with a passkey, your password or an emailed code, then try again within ten minutes.","docs":"https://skill.whisk.run/errors/REAUTH_REQUIRED"}}
+```
+
+## PASSKEY_REQUIRED
+
+Status: 403 · Surface: api, dashboard, edge
+
+When: a member of a business acted in it through a session that began with an emailed code or a
+password, and an owner of the business turned on "Everyone signs in with a passkey or company
+sign-in". Only that business refuses the session: the person stays signed in and acts in their
+other businesses as before. An app of the business answers its private routes with this too, and
+serves its public routes as to anyone. An owner turning the setting on from such a session gets
+it as well, so nobody shuts themselves out.
+
+Fix: Sign out, then sign in on the sign-in host with your passkey (or your company's sign-in). If
+you have no passkey yet, add one at `/passkeys` on the sign-in host first, then sign in with it.
+
+```json
+{"error":{"code":"PASSKEY_REQUIRED","message":"Acme asks everyone to sign in with a passkey or company sign-in, and this session began with an emailed code or a password.","fix":"Sign out, then sign in at https://auth.whisk.run/session/login with your passkey. No passkey yet? Add one at https://auth.whisk.run/passkeys first, then sign in with it.","docs":"https://skill.whisk.run/errors/PASSKEY_REQUIRED","details":{"method":"code","org":"acme"}}}
+```
+
+## SSO_REQUIRED
+
+Status: 403 · Surface: api, dashboard, edge
+
+When: a member of a business that requires company sign-in (single sign-on enabled and its
+domain verified) acted in it through a session its own identity provider did not make: an
+emailed code, a password, a passkey, or another business's provider. It applies to every member,
+whatever the domain of their email. Only that business refuses the session; an app of the
+business answers its private routes with this too.
+
+Fix: Sign out, then sign in on the sign-in host with your email at the business's domain, which
+sends you to its provider. If you are in the business under another email, ask an owner to
+invite your address at the business's domain.
+
+```json
+{"error":{"code":"SSO_REQUIRED","message":"Acme signs its people in through its own provider, and this session did not come from it.","fix":"Sign out, then sign in at https://auth.whisk.run/session/login with your @acme.com email. If you are in Acme under another email, ask an owner to invite your @acme.com address.","docs":"https://skill.whisk.run/errors/SSO_REQUIRED","details":{"domain":"acme.com","method":"code","org":"acme"}}}
 ```
 
 ## PATH_AMBIGUOUS

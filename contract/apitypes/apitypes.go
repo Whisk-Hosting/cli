@@ -415,6 +415,9 @@ type DeviceToken struct {
 	Scopes    []string     `json:"scopes,omitempty"`
 	Org       *Org         `json:"org,omitempty"`
 	User      *User        `json:"user,omitempty"`
+	// Orgs is, for a login for the whole account, the businesses recorded on it: the ones the
+	// person belonged to when they approved it (CONTROL-PLANE.md §4.4).
+	Orgs []Org `json:"orgs,omitempty"`
 }
 
 // DeviceInfo describes a pending code to the person approving it (GET /device/:code).
@@ -424,6 +427,9 @@ type DeviceInfo struct {
 	ExpiresAt     time.Time     `json:"expires_at"`
 	Orgs          []Org         `json:"orgs"` // the caller's orgs to choose from
 	RequestedFrom RequestedFrom `json:"requested_from"`
+	// Suggested is the choice the page starts on: the narrowest login that fits what whisk
+	// login said it is working on (CONTROL-PLANE.md §4.5).
+	Suggested DeviceSuggestion `json:"suggested"`
 }
 
 // RequestedFrom is the computer that asked for a device code and where the request came from
@@ -440,12 +446,16 @@ type RequestedFrom struct {
 
 // DeviceCodeRequest is POST /device/code: the public key whisk login made for this computer
 // (Ed25519, standard base64), the coding agent's own name for itself (Claude Code, Codex), the
-// computer's name and its system (os/arch).
+// computer's name and its system (os/arch), and the business and app it is working on when it
+// knows them (slugs, from the directory's binding or --org and --app), so the approval page
+// starts on the narrowest login that fits.
 type DeviceCodeRequest struct {
 	PublicKey  string `json:"public_key"`
 	Agent      string `json:"agent,omitempty"`
 	DeviceName string `json:"device_name,omitempty"`
 	OS         string `json:"os,omitempty"`
+	Org        string `json:"org,omitempty"`
+	App        string `json:"app,omitempty"`
 }
 
 // WhoamiToken is the token in use as GET /whoami describes it. Bound says the token is bound to
@@ -600,10 +610,10 @@ type DeployKeyResponse struct {
 }
 
 // DeviceApproveRequest is POST /device/approve (session).
-// AllOrgs approves the login for the person's whole account: every org they belong to, now or
-// later, as themselves (CONTROL-PLANE.md §4.5). Otherwise org_id (with app_id to narrow it to one
-// app) or new_org names what the login is for. Agent is the name the login goes by, as the person
-// kept or changed it; empty keeps the name the agent gave.
+// AllOrgs approves the login for the person's whole account: every org they belong to now, as
+// themselves, and never one they join later (CONTROL-PLANE.md §4.5). Otherwise org_id (with
+// app_id to narrow it to one app) or new_org names what the login is for. Agent is the name the
+// login goes by, as the person kept or changed it; empty keeps the name the agent gave.
 type DeviceApproveRequest struct {
 	UserCode string `json:"user_code"`
 	Agent    string `json:"agent,omitempty"`

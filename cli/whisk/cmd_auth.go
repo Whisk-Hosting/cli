@@ -3,6 +3,7 @@ package whisk
 import (
 	"crypto/sha256"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -41,7 +42,15 @@ approving can change the name.
 
 The token is bound to this computer: login makes a key pair, sends the public key with the
 code request, and keeps the private key with the token. Every request is signed with it, so a
-copied token is useless on its own.`,
+copied token is useless on its own.
+
+The code request also says what this directory is working on: the app and business from
+.whisk/app.json, or --org and --app. The approval page then starts on the narrowest login that
+fits: that app, else that business, else the person's only business, else it asks them to pick
+one. The person can still choose all their businesses: such a login covers the businesses they
+belong to when they approve it, never one they join later. When a login is used in a business
+it does not cover, commands answer NEEDS_HUMAN with the link where the person adds it, with no
+new login.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client := s.anonymousClient()
@@ -68,7 +77,16 @@ copied token is useless on its own.`,
 					return fmt.Errorf("making this computer's key: %v", err)
 				}
 				privateKey = priv
-				if dc, err = client.RequestDeviceCode(s.ctx, api.DeviceCodeRequest{PublicKey: publicKey, Agent: agentName(agent, s.env.Getenv), DeviceName: deviceName(), OS: runtime.GOOS + "/" + runtime.GOARCH}); err != nil {
+				org, app := s.loginContext()
+				req := api.DeviceCodeRequest{PublicKey: publicKey, Agent: agentName(agent, s.env.Getenv), DeviceName: deviceName(), OS: runtime.GOOS + "/" + runtime.GOARCH, Org: org, App: app}
+				dc, err = client.RequestDeviceCode(s.ctx, req)
+				if contextRefused(req, err) {
+					// A platform from before login context refuses fields it does not know; ask
+					// again without them, and its approval page starts as it always did.
+					req.Org, req.App = "", ""
+					dc, err = client.RequestDeviceCode(s.ctx, req)
+				}
+				if err != nil {
 					return wrap(err)
 				}
 				deadline = time.Now().Add(time.Duration(dc.ExpiresIn) * time.Second)
@@ -106,16 +124,26 @@ copied token is useless on its own.`,
 					}
 					_ = s.store.Delete(config.PendingProfile(s.profile))
 					// A login for the whole account comes back with no org: it acts as the person
-					// in every org they belong to.
+					// in the businesses recorded on it, which a current platform names.
 					allOrgs := tok.Org == nil
 					result := map[string]any{"user": user, "all_orgs": allOrgs, "scopes": tok.Scopes, "expires_at": expires, "profile": s.profile, "stored_in": s.store.Where(), "bound": true, "device_name": deviceName()}
 					if !allOrgs {
 						result["org"] = org
 					}
+					covered := make([]string, 0, len(tok.Orgs))
+					for _, o := range tok.Orgs {
+						covered = append(covered, o.Slug)
+					}
+					if allOrgs && len(covered) > 0 {
+						result["orgs"] = covered
+					}
 					s.printer.Result(result, func(w io.Writer) {
 						what := "org " + org.Slug
 						if allOrgs {
 							what = "all your orgs"
+							if len(covered) > 0 {
+								what = "your businesses " + strings.Join(covered, ", ")
+							}
 						}
 						fmt.Fprintf(w, "Signed in as %s (%s), profile %s, token stored in %s and bound to this computer.\n", user.Email, what, s.profile, s.store.Where())
 					})
@@ -138,6 +166,41 @@ copied token is useless on its own.`,
 	c.Flags().StringVar(&resume, "resume", "", "wait for an existing device code's approval and collect its token")
 	c.Flags().StringVar(&agent, "agent", "", `the coding agent's own name, such as "Claude Code" (else WHISK_AGENT)`)
 	return c
+}
+
+// loginContext is what this directory says it is working on, for the approval page's default:
+// --org and --app, else the binding in .whisk/app.json. An app is named only with its business.
+func (s *session) loginContext() (org, app string) {
+	b, ok, _ := config.LoadBinding(s.env.Dir)
+	return pickLoginContext(s.orgFlag, s.appFlag, b, ok)
+}
+
+// pickLoginContext is the decision for loginContext (pure): flags win over the binding, and an
+// app with no business to name it in is dropped.
+func pickLoginContext(orgFlag, appFlag string, b config.Binding, bound bool) (org, app string) {
+	org, app = orgFlag, appFlag
+	if bound {
+		if org == "" {
+			org = b.Org
+		}
+		if app == "" && org == b.Org {
+			app = b.App
+		}
+	}
+	if org == "" {
+		app = ""
+	}
+	return org, app
+}
+
+// contextRefused reports whether a platform from before login context refused the code request
+// because of the context fields (pure): its strict decoder names the unknown field.
+func contextRefused(req api.DeviceCodeRequest, err error) bool {
+	var ae *api.Error
+	if req.Org == "" || !errors.As(err, &ae) || ae.Code != "INVALID_REQUEST" {
+		return false
+	}
+	return strings.Contains(ae.Message, "unknown field")
 }
 
 // loginWaits decides whether a fresh login waits for the approval: at a terminal a person is
