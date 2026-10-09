@@ -1871,7 +1871,8 @@ Status: 422 · Surface: api
 When: a log destination did not accept the test line Whisk sends when an owner adds one, or
 when someone asks for a test: it answered with a status outside 200 to 299, did not answer within
 10 seconds, does not resolve, or resolves to an address that is not public. `details.status` is the
-status it answered (0 when it did not answer) and `details.answer` the start of what it said.
+status it answered (0 when it did not answer) and `details.answer` the start of what it said. A
+destination that did not answer reads "did not answer" whatever the reason, naming no address.
 Nothing is saved when adding fails.
 
 Fix: Check the URL (or the Datadog site), the headers and the key with the log service, then
@@ -1893,6 +1894,25 @@ Fix: Delete objects you no longer need, or ask an owner to upgrade.
 
 ```json
 {"error":{"code":"STORAGE_QUOTA","message":"acme is using 1.0 GB of its 1.0 GB storage allowance.","fix":"Delete objects under the app's prefix you no longer need, or ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/STORAGE_QUOTA","details":{"limit_bytes":1073741824,"used_bytes":1073741824}}}
+```
+
+## BUCKET_UNREACHABLE
+
+Status: 502 · Surface: api, deploy, edge
+
+When: a bucket the business brought did not answer the platform: the connection was refused,
+reset or timed out, the name did not resolve, or it resolved to an address that is not on the
+public internet. Every one of these reads the same, so the answer names no address and does not
+say which happened. A deploy that writes static folders to the bucket stops with this code, and an
+export that reads it names it as the cause. On the edge: a static file of an app whose business
+brought its bucket could not be read from it (the bucket did not answer or refused), which the
+control plane reads for the edge; the answer carries none of the bucket's own words or status.
+
+Fix: Check that the endpoint is your provider's public https:// S3 address and that it is up,
+then try again.
+
+```json
+{"error":{"code":"BUCKET_UNREACHABLE","message":"The bucket this business brought did not answer.","fix":"Check that the endpoint is your provider's public https:// S3 address and that it is up, then try again.","docs":"https://skill.whisk.run/errors/BUCKET_UNREACHABLE","details":{}}}
 ```
 
 ## UPLOAD_TOO_LARGE
@@ -2502,7 +2522,9 @@ visible to this token. On the edge: the hostname belongs to no app (a removed pr
 app, a typo under the apps domain); every name under a wildcard certificate reaches the edge, so
 the edge answers this rather than an empty response. `details.kind` is `hostname`. Also on the
 edge: a path only an attacker's scanner asks for (WordPress, PHP, secrets or version control files such as
-`/.env` and `.git`), which nothing on Whisk serves; `details.kind` is `path`.
+`/.env` and `.git`), which nothing on Whisk serves; `details.kind` is `path`. Also on the edge: a static file
+of an app whose business brought its bucket that the bucket does not have, or a request for one
+that is not a GET or HEAD.
 
 Fix: Check the identifiers with the matching `list` command; `whisk use <org>/<app>` fixes a
 directory bound to the wrong app.
