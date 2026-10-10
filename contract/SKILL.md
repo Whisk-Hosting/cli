@@ -417,7 +417,10 @@ the platform deletes the person, and a later invitation makes a new id.
 owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never
 sleeps and has more memory (1 GB guaranteed, up to 4 GB). A Promoted app may keep its own
 sign-in: list every route under `routes.public` (`["/**"]`) and the app's own login decides who
-gets in, and doctor leaves out W090 for it. Everything else in this skill still applies. Only
+gets in, and doctor leaves out W090 for it. The edge then limits each address as it would one
+signed-in person (600 requests a minute, 3000 on Business); every request counts, the files the
+app serves itself included, so keep a cold load (a service worker's precache too) well under
+that. Everything else in this skill still applies. Only
 build or keep a login of the app's own on a Promoted app; never ask for promotion to get round
 §4, and never promote an app yourself: it is charged, so it is the owner's choice. An app that
 cannot run any other way (the shop template) says `promoted: true` in whisk.yaml: its production
