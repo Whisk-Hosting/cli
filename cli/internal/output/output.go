@@ -93,6 +93,7 @@ var exitByCode = map[string]int{
 	"HEALTH_CHECK_FAILED":             ExitDeploy,
 	"CONTAINER_CRASHED":               ExitDeploy,
 	"MIGRATE_FAILED":                  ExitDeploy,
+	"PACKAGE_MALICIOUS":               ExitDeploy,
 	"DEPLOY_CANCELLED":                ExitDeploy,
 	"PLATFORM_DEPLOY_FAILED":          ExitUnavailable,
 }

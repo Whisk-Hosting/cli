@@ -382,8 +382,9 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 		writeJSON(w, 201, map[string]any{"token": map[string]any{"id": "t9", "kind": "deploy", "label": "ci", "scopes": []string{"app:a1", "deploy"}, "created_at": "2026-09-08T00:00:00Z"}, "value": "whsk_deploy_ONCE", "git_url": "https://git.whisk.run/01J/a1.git"})
 	}))
 	finding := map[string]any{"id": "CVE-2020-8203", "aliases": []string{"GHSA-p6mc-m468-83gw"}, "package": "lodash", "ecosystem": "npm", "version": "4.17.15", "fixed": "4.17.19", "severity": "high", "where": "source", "path": "package-lock.json", "tool": "osv-scanner"}
-	scan := map[string]any{"id": "ps1", "status": "done", "trigger": "deploy", "commit_sha": "abc1234def", "counts": map[string]int{"high": 1, "low": 1, "fixable": 1, "attention": 1},
-		"findings":   []map[string]any{finding, {"id": "CVE-2023-42366", "package": "busybox", "version": "1.35.0-r17", "severity": "low", "where": "image", "tool": "trivy"}},
+	scan := map[string]any{"id": "ps1", "status": "done", "trigger": "deploy", "commit_sha": "abc1234def", "counts": map[string]int{"high": 1, "low": 1, "fixable": 1, "attention": 1, "not_called": 1},
+		"findings": []map[string]any{finding, {"id": "CVE-2023-42366", "package": "busybox", "version": "1.35.0-r17", "severity": "low", "where": "image", "tool": "trivy", "reach": "unknown"},
+			{"id": "CVE-2022-32149", "package": "golang.org/x/text", "version": "0.3.0", "fixed": "0.3.8", "severity": "high", "where": "source", "path": "go.mod", "tool": "osv-scanner", "reach": "not_called"}},
 		"created_at": "2026-10-05T09:00:00Z", "finished_at": "2026-10-05T09:01:00Z"}
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/packages", auth(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"included": true, "scan": scan})

@@ -319,9 +319,26 @@ const (
 	FoundInSource PackageWhere = "source"
 )
 
+// PackageReach is whether the app's own code calls the vulnerable part of a package, as
+// OSV-Scanner's call analysis found it (CONTROL-PLANE.md §6.28): called, not_called, or unknown
+// where no analysis ran (every ecosystem but Go, the image's packages, and lockfiles checked
+// before a deploy).
+type PackageReach string
+
+const (
+	ReachCalled    PackageReach = "called"
+	ReachNotCalled PackageReach = "not_called"
+	ReachUnknown   PackageReach = "unknown"
+)
+
+// NotCalled reports whether a finding is set aside as not called by the app's code. Only an
+// analysis that found no call sets it aside: unknown, and an empty value from a scan made before
+// reachability was recorded, count as called.
+func (r PackageReach) NotCalled() bool { return r == ReachNotCalled }
+
 // PackageFinding is one known vulnerability in one installed package. Fixed is the lowest version
 // that fixes it, above the installed one; empty when there is no fix yet. Path is the file inside
-// the image or the lockfile in the commit.
+// the image or the lockfile in the commit. Reach says whether the app's code calls it.
 type PackageFinding struct {
 	ID        string          `json:"id"`
 	Aliases   []string        `json:"aliases,omitempty"`
@@ -335,10 +352,12 @@ type PackageFinding struct {
 	Where     PackageWhere    `json:"where"`
 	Path      string          `json:"path,omitempty"`
 	Tool      string          `json:"tool"`
+	Reach     PackageReach    `json:"reach"`
 }
 
-// PackageCounts is how many findings there are of each severity, how many have a fix, and how
-// many want attention now.
+// PackageCounts is how many findings the app's code may call there are of each severity, how
+// many of those have a fix, and how many want attention now; NotCalled is how many findings
+// were set aside because the app's code does not call them, counted in none of the others.
 type PackageCounts struct {
 	Critical  int `json:"critical"`
 	High      int `json:"high"`
@@ -347,9 +366,10 @@ type PackageCounts struct {
 	Unknown   int `json:"unknown"`
 	Fixable   int `json:"fixable"`
 	Attention int `json:"attention"`
+	NotCalled int `json:"not_called"`
 }
 
-// Total is every finding.
+// Total is every finding the app's code may call.
 func (c PackageCounts) Total() int { return c.Critical + c.High + c.Medium + c.Low + c.Unknown }
 
 // ScanStatus is where a check of an app's packages stands.

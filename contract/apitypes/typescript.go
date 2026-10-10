@@ -111,6 +111,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("MediaKind", "MEDIA_KINDS", MediaVideo, MediaAudio))
 	add(enumOf("PackageSeverity", "PACKAGE_SEVERITIES", SeverityCritical, SeverityHigh, SeverityMedium, SeverityLow, SeverityUnknown))
 	add(enumOf("PackageWhere", "PACKAGE_LOCATIONS", FoundInImage, FoundInSource))
+	add(enumOf("PackageReach", "PACKAGE_REACH", ReachCalled, ReachNotCalled, ReachUnknown))
 	add(enumOf("ScanStatus", "SCAN_STATUSES", ScanQueued, ScanRunning, ScanDone, ScanFailed, ScanSkipped))
 	add(enumOf("ScanTrigger", "SCAN_TRIGGERS", ScanOnDeploy, ScanDaily, ScanOnRequest))
 	add(enumOf("LogDestinationKind", "LOG_DESTINATION_KINDS", LogToHTTPS, LogToDatadog, LogToOTLP))

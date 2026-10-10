@@ -632,7 +632,11 @@ func w063(r Repo, c Context) outcome {
 	// longer pin. The image is only known once it is built, so it comes from the live scan.
 	var findings []api.PackageFinding
 	if c.LockCheck != nil {
-		findings = append(findings, c.LockCheck.Findings...)
+		var live []api.PackageFinding
+		if c.Packages.Scan != nil {
+			live = c.Packages.Scan.Findings
+		}
+		findings = append(findings, withLiveReach(c.LockCheck.Findings, live)...)
 	}
 	if c.Packages.Scan != nil {
 		for _, f := range c.Packages.Scan.Findings {
@@ -662,13 +666,14 @@ type packageGroup struct {
 	Count int
 }
 
-// toFix folds the critical and high findings that have a fix into one group per package version
-// and place, keeping the worst severity, the first finding's ID and the highest fixed version.
+// toFix folds the critical and high findings that have a fix, less those the app's code does
+// not call, into one group per package version and place, keeping the worst severity, the first
+// finding's ID and the highest fixed version.
 func toFix(fs []api.PackageFinding) []packageGroup {
 	var out []packageGroup
 	index := map[string]int{}
 	for _, f := range fs {
-		if (f.Severity != "critical" && f.Severity != "high") || f.Fixed == "" {
+		if (f.Severity != "critical" && f.Severity != "high") || f.Fixed == "" || f.Reach.NotCalled() {
 			continue
 		}
 		key := string(f.Where) + "\x00" + f.Path + "\x00" + f.Package + "\x00" + f.Version
@@ -685,6 +690,33 @@ func toFix(fs []api.PackageFinding) []packageGroup {
 		}
 		if versionLess(g.Fixed, f.Fixed) {
 			g.Fixed = f.Fixed
+		}
+	}
+	return out
+}
+
+// withLiveReach gives each finding of the local lockfile check, which sees no code and so has no
+// call analysis, the live scan's answer for the same vulnerability (by any of its names) in the
+// same package version and lockfile, so a hole the deployed code does not call is not reported
+// before every deploy. A finding the live scan does not have keeps its own answer.
+func withLiveReach(check, live []api.PackageFinding) []api.PackageFinding {
+	reach := map[string]api.PackageReach{}
+	for _, f := range live {
+		if f.Where != "source" || (f.Reach != api.ReachCalled && f.Reach != api.ReachNotCalled) {
+			continue
+		}
+		for _, n := range append([]string{f.ID}, f.Aliases...) {
+			reach[f.Path+"\x00"+f.Package+"\x00"+f.Version+"\x00"+n] = f.Reach
+		}
+	}
+	out := make([]api.PackageFinding, len(check))
+	for i, f := range check {
+		out[i] = f
+		for _, n := range append([]string{f.ID}, f.Aliases...) {
+			if r, ok := reach[f.Path+"\x00"+f.Package+"\x00"+f.Version+"\x00"+n]; ok {
+				out[i].Reach = r
+				break
+			}
 		}
 	}
 	return out

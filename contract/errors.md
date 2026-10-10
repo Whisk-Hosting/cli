@@ -1449,6 +1449,50 @@ Then run `whisk deploy` again, which registers the functions afresh.
 {"error":{"code":"FUNCTIONS_NOT_REGISTERED","message":"whisk.yaml declares nightly-report, which the app's code does not serve under that name, so it never runs.","fix":"Make each name under functions in whisk.yaml the id the code gives the function (createFunction's id, fn_id, the ID option), then deploy again.","details":{"functions":["nightly-report"]},"docs":"https://skill.whisk.run/errors/FUNCTIONS_NOT_REGISTERED"}}
 ```
 
+## PACKAGE_MALICIOUS
+
+Status: - · Surface: deploy, cli
+
+When: one of the commit's lockfiles names a package version on the OpenSSF list of known
+malicious packages (an osv.dev advisory whose id starts `MAL-`). Whisk checks the lockfiles on
+every deploy, on every plan, before the build, so the deploy stopped before any step installed
+or ran the package, and the previous deploy is still live. `details.packages` names each one
+(`package`, `ecosystem`, `version`, `path` of the lockfile, `advisory`, `url`), at most 10, and
+`details.count` how many there are. An `osv-scanner.toml` in the repository does not change
+this check.
+
+Fix: Remove each package in `details.packages` from the app's dependencies and its lockfile, along
+with whatever brought it in, then deploy again. Do not install it anywhere to look at it. If it was
+ever installed, on a laptop, in CI or in an earlier build, treat every secret that machine or the
+app could read as exposed: ask the human to set new values for the app's secrets and to rotate any
+token that was on that machine.
+
+```json
+{"error":{"code":"PACKAGE_MALICIOUS","message":"flatmap-stream 0.1.1 in package-lock.json (MAL-2025-20690) is a known malicious package, so Whisk stopped this deploy before building it.","fix":"Remove each package in details.packages from the app's dependencies and its lockfile, along with whatever brought it in, then deploy again. Do not install it anywhere to look at it. If it was ever installed, on a laptop, in CI or in an earlier build, treat every secret that machine or the app could read as exposed: ask the human to set new values for the app's secrets and to rotate any token that was on that machine.","docs":"https://skill.whisk.run/errors/PACKAGE_MALICIOUS","details":{"build_id":"01J9","fault":"app","count":1,"packages":[{"package":"flatmap-stream","ecosystem":"npm","version":"0.1.1","path":"package-lock.json","advisory":"MAL-2025-20690","url":"https://osv.dev/vulnerability/MAL-2025-20690"}]}}}
+```
+
+## PACKAGE_LOOKALIKE
+
+Status: - · Surface: deploy (a warning), cli
+
+When: the deploy went live, but a package one of its lockfiles names looks like a popular
+package's name and is not popular itself: one letter added or missing, two neighbouring letters
+swapped, a look-alike character (`0` for `o`, `1` for `l`), only the separators different
+(`crossenv` for `cross-env`), or an npm scope joined into the name (`babel-core` for
+`@babel/core`). That is how typo-squatted packages get in. It is a warning on the deploy
+(`warnings`), not a failure: the name may be a real package of its own. `details.packages` names
+each one (`package`, `ecosystem`, `version`, `path`, `like`, `why`), at most 10, and
+`details.count` how many there are.
+
+Fix: Check each package in `details.packages` is the one you meant. If it is a typo, put the
+popular package in its place, update the lockfile and deploy again, and since the look-alike may
+already have run on a laptop or in an earlier build, set new values for the app's secrets. If the
+name is right, nothing needs doing.
+
+```json
+{"error":{"code":"PACKAGE_LOOKALIKE","message":"expresss 4.18.2 in package-lock.json looks like the popular package express (one letter added) and is not popular itself; check it is the package you meant.","fix":"Check each package in details.packages is the one you meant. If it is a typo, put the popular package in its place, update the lockfile and deploy again, and since the look-alike may already have run on a laptop or in an earlier build, set new values for the app's secrets. If the name is right, nothing needs doing.","details":{"count":1,"packages":[{"package":"expresss","ecosystem":"npm","version":"4.18.2","path":"package-lock.json","like":"express","why":"one letter added"}]},"docs":"https://skill.whisk.run/errors/PACKAGE_LOOKALIKE"}}
+```
+
 ## FUNCTION_NOT_LIVE
 
 Status: 409 · Surface: api, cli

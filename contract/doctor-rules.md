@@ -356,7 +356,7 @@ moves its last stage to `node:24-trixie-slim` and installs them with `apt-get`.
 ## W063
 
 Level: warning
-Check: a local lockfile, or the live app's image, has a critical or high package finding with a fix (Business plan).
+Check: a local lockfile, or the live app's image, has a critical or high package finding with a fix that the app's code may call (Business plan).
 Fix: Move the package to the fixed version or newer in the lockfile (an image package by moving to a newer base image), deploy, then whisk scan --now.
 Safe fix: no
 
@@ -369,7 +369,11 @@ no longer holds that version (for `package-lock.json`, no `node_modules/<package
 for other lockfiles, no line naming both), and the check's failure is listed as skipped. Image
 findings come from the newest scan, name the `Dockerfile` and stay until the next deploy is
 scanned. One finding per package version and place, with how many known vulnerabilities it has,
-the worst severity, one ID and the highest fixed version. Nothing is reported on other plans.
+the worst severity, one ID and the highest fixed version. A finding that call analysis found the
+live code does not call (`reach: not_called`) is left out; the check of the local lockfiles sees
+no code, so each of its findings takes the newest scan's answer for the same vulnerability (by
+any of its names) in the same package version and lockfile, and is otherwise reported. Nothing
+is reported on other plans.
 
 ## W064
 

@@ -204,6 +204,14 @@ func TestW063PackageFindings(t *testing.T) {
 		f("minimist", "1.2.0", "1.2.6", "critical", "source", "package-lock.json"),
 		f("qs", "6.5.2", "", "high", "source", "package-lock.json"),
 	}}
+	notCalled := func(x api.PackageFinding) api.PackageFinding { x.Reach = api.ReachNotCalled; return x }
+	// The live code does not call axios's hole, nor minimist's: set aside, before and after a
+	// deploy.
+	asideScan := &api.PackageScan{Findings: []api.PackageFinding{
+		notCalled(f("axios", "1.11.0", "1.12.0", "high", "source", "package-lock.json")),
+		notCalled(f("minimist", "1.2.0", "1.2.6", "critical", "source", "package-lock.json")),
+		f("zlib1g", "1.2.13", "1.2.13-2", "critical", "image", ""),
+	}}
 	cases := []struct {
 		name  string
 		pkgs  *api.Packages
@@ -211,6 +219,12 @@ func TestW063PackageFindings(t *testing.T) {
 		want  []string
 	}{
 		{"not asked", nil, nil, nil},
+		{"not called by the live code, from the live scan", &api.Packages{Included: true, Scan: asideScan}, nil, []string{
+			"Dockerfile: zlib1g 1.2.13 in the live image has 1 known critical vulnerability (CVE-zlib1g-1.2.13-2); 1.2.13-2 fixes it.",
+		}},
+		{"not called by the live code, lockfiles checked", &api.Packages{Included: true, Scan: asideScan}, check, []string{
+			"Dockerfile: zlib1g 1.2.13 in the live image has 1 known critical vulnerability (CVE-zlib1g-1.2.13-2); 1.2.13-2 fixes it.",
+		}},
 		{"other plan", &api.Packages{Included: false}, nil, nil},
 		{"no scan yet", &api.Packages{Included: true}, nil, nil},
 		{"no scan yet, lockfiles checked", &api.Packages{Included: true}, check, []string{
@@ -237,6 +251,42 @@ func TestW063PackageFindings(t *testing.T) {
 		if strings.Join(got, "\n") != strings.Join(c.want, "\n") {
 			t.Errorf("%s:\n got %q\nwant %q", c.name, got, c.want)
 		}
+	}
+}
+
+// A local lockfile finding takes the live scan's call analysis for the same vulnerability in the
+// same package version and lockfile, by any of its names, and keeps its own otherwise.
+func TestWithLiveReach(t *testing.T) {
+	g := func(id, pkg, version, path string, reach api.PackageReach, aliases ...string) api.PackageFinding {
+		return api.PackageFinding{ID: id, Aliases: aliases, Package: pkg, Version: version, Where: "source", Path: path, Reach: reach}
+	}
+	live := []api.PackageFinding{
+		g("CVE-1", "golang.org/x/text", "0.3.0", "go.mod", api.ReachNotCalled, "GO-2020-0015"),
+		g("CVE-2", "golang.org/x/text", "0.3.0", "go.mod", api.ReachCalled),
+		g("CVE-3", "golang.org/x/net", "0.1.0", "go.mod", api.ReachUnknown),
+		{ID: "CVE-4", Package: "zlib", Version: "1", Where: "image", Reach: api.ReachNotCalled},
+	}
+	for _, c := range []struct {
+		name string
+		in   api.PackageFinding
+		want api.PackageReach
+	}{
+		{"same id", g("CVE-1", "golang.org/x/text", "0.3.0", "go.mod", api.ReachUnknown), api.ReachNotCalled},
+		{"by an alias", g("GO-2020-0015", "golang.org/x/text", "0.3.0", "go.mod", api.ReachUnknown), api.ReachNotCalled},
+		{"called", g("CVE-2", "golang.org/x/text", "0.3.0", "go.mod", api.ReachUnknown), api.ReachCalled},
+		{"another version", g("CVE-1", "golang.org/x/text", "0.3.7", "go.mod", api.ReachUnknown), api.ReachUnknown},
+		{"another lockfile", g("CVE-1", "golang.org/x/text", "0.3.0", "tools/go.mod", api.ReachUnknown), api.ReachUnknown},
+		{"live has no answer", g("CVE-3", "golang.org/x/net", "0.1.0", "go.mod", api.ReachUnknown), api.ReachUnknown},
+		{"only the image has it", g("CVE-4", "zlib", "1", "", api.ReachUnknown), api.ReachUnknown},
+		{"not in the live scan", g("CVE-9", "lodash", "4.17.15", "package-lock.json", api.ReachUnknown), api.ReachUnknown},
+	} {
+		got := withLiveReach([]api.PackageFinding{c.in}, live)
+		if len(got) != 1 || got[0].Reach != c.want {
+			t.Errorf("%s: %+v, want reach %q", c.name, got, c.want)
+		}
+	}
+	if got := withLiveReach(nil, live); len(got) != 0 {
+		t.Errorf("no findings: %+v", got)
 	}
 }
 

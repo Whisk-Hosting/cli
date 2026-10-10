@@ -10,7 +10,18 @@ import (
 // PackageFinding is one known vulnerability in one installed package (CONTROL-PLANE.md §6.28).
 type PackageFinding = apitypes.PackageFinding
 
-// PackageCounts is how many findings a scan has at each severity, with a fix, and serious.
+// PackageReach is whether the app's code calls a finding: called, not_called or unknown.
+type PackageReach = apitypes.PackageReach
+
+// The reaches.
+const (
+	ReachCalled    = apitypes.ReachCalled
+	ReachNotCalled = apitypes.ReachNotCalled
+	ReachUnknown   = apitypes.ReachUnknown
+)
+
+// PackageCounts is how many findings the app's code may call a scan has at each severity, with a
+// fix, and serious, and how many were set aside as not called.
 type PackageCounts = apitypes.PackageCounts
 
 // PackageScan is one check of an app's packages.

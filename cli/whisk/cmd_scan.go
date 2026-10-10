@@ -88,10 +88,20 @@ func followScan(ctx context.Context, client *api.Client, org, app, id string, ev
 	}
 }
 
-// scanSummary is a scan's counts in words: "2 to fix now, 14 in all (1 critical, 1 high, ...)".
+// scanSummary is a scan's counts in words: "2 to fix now, 14 in all (1 critical, 1 high, ...)",
+// then how many were set aside as not called by the app's code.
 func scanSummary(c api.PackageCounts) string {
-	if c.Total() == 0 {
+	aside := ""
+	if c.NotCalled > 0 {
+		aside = fmt.Sprintf("%d not called by your code", c.NotCalled)
+	}
+	switch {
+	case c.Total() == 0 && aside == "":
 		return "no known vulnerabilities"
+	case c.Total() == 0:
+		return "no known vulnerabilities your code calls; " + aside
+	case aside != "":
+		aside = "; " + aside
 	}
 	parts := []string{}
 	for _, p := range []struct {
@@ -102,8 +112,37 @@ func scanSummary(c api.PackageCounts) string {
 			parts = append(parts, fmt.Sprintf("%d %s", p.n, p.word))
 		}
 	}
-	return fmt.Sprintf("%d to fix now, %d in all (%s)", c.Attention, c.Total(), strings.Join(parts, ", "))
+	return fmt.Sprintf("%d to fix now, %d in all (%s)%s", c.Attention, c.Total(), strings.Join(parts, ", "), aside)
 }
+
+// splitByReach is a scan's findings in two lists, each in the scan's order: the ones the app's
+// code may call, and the ones set aside because call analysis found no call
+// (apitypes.PackageReach.NotCalled).
+func splitByReach(fs []api.PackageFinding) (called, notCalled []api.PackageFinding) {
+	for _, f := range fs {
+		if f.Reach.NotCalled() {
+			notCalled = append(notCalled, f)
+		} else {
+			called = append(called, f)
+		}
+	}
+	return called, notCalled
+}
+
+// findingRows is the table's rows for findings.
+func findingRows(fs []api.PackageFinding) [][]string {
+	rows := make([][]string, len(fs))
+	for i, f := range fs {
+		where := f.Path
+		if where == "" {
+			where = string(f.Where)
+		}
+		rows[i] = []string{string(f.Severity), f.Package, f.Version, orDash(f.Fixed), f.ID, where}
+	}
+	return rows
+}
+
+var findingHeader = []string{"SEVERITY", "PACKAGE", "INSTALLED", "FIXED IN", "ID", "FOUND IN"}
 
 // printPackages is the human view: the summary, a row per finding, and what to do.
 func printPackages(p output.Printer, w io.Writer, app string, pk api.Packages) {
@@ -120,22 +159,21 @@ func printPackages(p output.Printer, w io.Writer, app string, pk api.Packages) {
 	}
 	sc := pk.Scan
 	fmt.Fprintf(w, "%s: %s. Checked %s on %s.\n", app, scanSummary(sc.Counts), at(sc.FinishedAt), short(sc.CommitSHA))
-	if len(sc.Findings) == 0 {
-		return
-	}
-	rows := make([][]string, len(sc.Findings))
-	for i, f := range sc.Findings {
-		where := f.Path
-		if where == "" {
-			where = string(f.Where)
+	called, notCalled := splitByReach(sc.Findings)
+	if len(called) > 0 {
+		p.Table(w, findingHeader, findingRows(called))
+		if sc.Counts.Total() > len(called) {
+			fmt.Fprintf(w, "The %d most serious of %d are shown.\n", len(called), sc.Counts.Total())
 		}
-		rows[i] = []string{string(f.Severity), f.Package, f.Version, orDash(f.Fixed), f.ID, where}
+		fmt.Fprintln(w, "Update each package to its FIXED IN version or newer (a base image package by moving to a newer base image), deploy, then run whisk scan --now.")
 	}
-	p.Table(w, []string{"SEVERITY", "PACKAGE", "INSTALLED", "FIXED IN", "ID", "FOUND IN"}, rows)
-	if sc.Counts.Total() > len(sc.Findings) {
-		fmt.Fprintf(w, "The %d most serious of %d are shown.\n", len(sc.Findings), sc.Counts.Total())
+	if len(notCalled) > 0 {
+		fmt.Fprintln(w, "\nNot called by your code: call analysis found no call to the vulnerable part, so these need no action now. Update them when convenient.")
+		p.Table(w, findingHeader, findingRows(notCalled))
+		if sc.Counts.NotCalled > len(notCalled) {
+			fmt.Fprintf(w, "%d of %d are shown.\n", len(notCalled), sc.Counts.NotCalled)
+		}
 	}
-	fmt.Fprintln(w, "Update each package to its FIXED IN version or newer (a base image package by moving to a newer base image), deploy, then run whisk scan --now.")
 }
 
 // packagesLine is whisk status's line about the newest check, or "" when there is nothing to say.

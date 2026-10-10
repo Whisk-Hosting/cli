@@ -353,7 +353,10 @@ each one with its severity, the installed version, the version that fixes it (`f
 was found (a lockfile, or a path in the image). Fix the critical and high ones that have a fix: move
 the package to that version or newer in the lockfile (a base image package by moving to a newer base
 image), deploy, then `whisk scan --now` to check again. A finding with no `fixed` has no fix yet;
-leave it. Most image findings come from the operating system in a full base image: the TypeScript
+leave it. For Go, Whisk also checks whether the app's code calls the vulnerable part: a finding
+with `reach: not_called` is listed apart under "Not called by your code" and is not counted as
+one to fix now; update it when convenient, never ahead of the ones to fix. Every other language
+is `unknown` and counts as called. Most image findings come from the operating system in a full base image: the TypeScript
 and Go templates run on a distroless image (`gcr.io/distroless/nodejs24-debian13:nonroot` for Node,
 the Python one on `python:3.14-slim`), which has no shell or package manager, so keep `migrate` a plain command such as `node dist/migrate.js`, not `npm run`
 or shell syntax (`whisk doctor` warns, `W062`). An app that needs a system program (ffmpeg,
@@ -1036,6 +1039,8 @@ run itself; `retries` in `whisk.yaml` only describes it for people. `details.fau
 | `HEALTH_CHECK_FAILED` | listen on `PORT` on `0.0.0.0`; make the health route return 200; read the log excerpt |
 | `CONTAINER_CRASHED` | the app exited; read the log lines (`whisk deploys log <id>`), usually a missing variable or file |
 | `FUNCTIONS_NOT_REGISTERED` | a warning on a live deploy: make each function name in `whisk.yaml` the id the code uses |
+| `PACKAGE_MALICIOUS` | a lockfile names a known malicious package: remove it and whatever brought it in, never install it to look, and if it was ever installed ask the human to rotate the secrets it could read |
+| `PACKAGE_LOOKALIKE` | a warning on a live deploy: a dependency's name looks like a popular package's; fix the typo and redeploy, or leave it if the name is right |
 | `BUILD_FAILED` | read the log excerpt; usually a dependency or compile error |
 | `MIGRATE_FAILED` | fix the migration and redeploy; the message says whether the database was rolled back and where users' writes were kept |
 | `AUTH_REQUIRED` | the route is private; list it under `routes.public` or sign in; from the CLI, `whisk login` |
