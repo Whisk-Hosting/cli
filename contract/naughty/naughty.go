@@ -6,11 +6,15 @@
 // request body, a query) is tested with each of them: it must answer with a value or one of its
 // stable errors, never panic, hang or let the string change what it does (docs/HARNESS.md §8).
 // The fuzz targets seed their corpora from the same list.
+//
+// A change's checks try a sample (every one of Extra and one in 25 of the list); the nightly run
+// sets WHISK_TESTS=full and tries them all (DEPLOYMENT.md "Checks").
 package naughty
 
 import (
 	_ "embed"
 	"encoding/json"
+	"os"
 )
 
 //go:embed blns.json
@@ -24,11 +28,22 @@ var list = func() []string {
 	return out
 }()
 
-// Strings is every naughty string, plus the extra ones Whisk adds for its own inputs (Extra).
-// The returned slice is a fresh copy, so a test may change it.
+// Strings is the naughty strings a test tries, plus the extra ones Whisk adds for its own inputs
+// (Extra): every one of the list with WHISK_TESTS=full, one in sampleEvery otherwise. The returned
+// slice is a fresh copy, so a test may change it.
 func Strings() []string {
+	return pick(os.Getenv("WHISK_TESTS") == "full")
+}
+
+const sampleEvery = 25
+
+func pick(full bool) []string {
 	out := make([]string, 0, len(list)+len(Extra))
-	out = append(out, list...)
+	for i, s := range list {
+		if full || i%sampleEvery == 0 {
+			out = append(out, s)
+		}
+	}
 	return append(out, Extra...)
 }
 
