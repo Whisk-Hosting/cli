@@ -52,6 +52,8 @@ type Context struct {
 // timestamp header and the signature over it agree.
 type Env struct {
 	Secrets map[string]string
+	// Vendor is the vendor app's client_id and client_secret, when the recipe names one.
+	Vendor  map[string]string
 	Request *Request
 	Token   string
 	Now     time.Time
@@ -185,6 +187,30 @@ func closing(s string, i int) int {
 		}
 	}
 	return -1
+}
+
+// readsVendor reports whether the template reads the vendor app anywhere.
+func (t Template) readsVendor() bool {
+	var reads func(n node) bool
+	reads = func(n node) bool {
+		switch n := n.(type) {
+		case ref:
+			return n.path[0] == "vendor"
+		case call:
+			for _, a := range n.args {
+				if reads(a) {
+					return true
+				}
+			}
+		}
+		return false
+	}
+	for _, p := range t.parts {
+		if reads(p) {
+			return true
+		}
+	}
+	return false
 }
 
 // Eval renders the template in env.
@@ -331,6 +357,10 @@ func (p *parser) reference(name string) (node, error) {
 		if len(parts) != 1 {
 			return bad("takes no field")
 		}
+	case "vendor":
+		if len(parts) != 2 || parts[1] != "client_id" && parts[1] != "client_secret" {
+			return bad("one of vendor.client_id, vendor.client_secret")
+		}
 	case "token":
 		if !p.ctx.Token {
 			return bad("token needs a token step under auth.token, and is not available inside it")
@@ -371,6 +401,12 @@ func (r ref) eval(env Env) (value, error) {
 		return str(env.UUID), nil
 	case "token":
 		return str(env.Token), nil
+	case "vendor":
+		v, ok := env.Vendor[r.path[1]]
+		if !ok || v == "" {
+			return value{}, &MissingSecretError{Name: "vendor." + r.path[1]}
+		}
+		return str(v), nil
 	}
 	return value{}, errors.New("unknown reference")
 }

@@ -77,6 +77,11 @@ func Usage(c Connection) []Use {
 				}
 			}
 		}
+		if l := t.Logout; l != nil {
+			for _, k := range sortedKeys(l.Headers) {
+				visit(l.Headers[k], th, Context{Token: true})
+			}
+		}
 	}
 	names := make([]string, 0, len(seen))
 	for n := range seen {
@@ -128,10 +133,12 @@ type Summary struct {
 	Pin string `json:"pin,omitempty"`
 	// Keypair is the secret holding the key pair Whisk makes for the connection, when it asks
 	// for one.
-	Keypair   string `json:"keypair,omitempty"`
+	Keypair string `json:"keypair,omitempty"`
+	// VendorApp is Whisk's own developer app the connection signs in as, when it names one.
+	VendorApp string `json:"vendor_app,omitempty"`
 	TokenHost string `json:"token_host,omitempty"`
 	// Revokes is true when revoking the grant also asks the token host to cancel the tokens the
-	// broker holds.
+	// broker holds, by revoking them or by logging their sessions out.
 	Revokes    bool               `json:"revokes"`
 	Operations []SummaryOperation `json:"operations"`
 	Secrets    []Use              `json:"secrets"`
@@ -156,7 +163,7 @@ var verbs = map[string]string{"GET": "Read", "HEAD": "Read", "POST": "Create", "
 func Describe(c Connection) Summary {
 	c = c.WithDefaults()
 	u, _ := url.Parse(c.URL)
-	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}, BodyFields: sortedKeys(c.Auth.Body), Pin: c.Pin}
+	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}, BodyFields: sortedKeys(c.Auth.Body), Pin: c.Pin, VendorApp: c.Auth.VendorApp}
 	if c.Keypair != nil {
 		s.Keypair = c.Keypair.Secret
 	}
@@ -172,7 +179,7 @@ func Describe(c Connection) Summary {
 	}
 	if c.Auth.Token != nil {
 		s.TokenHost = hostOf(c.Auth.Token.URL)
-		s.Revokes = c.Auth.Token.Revoke != nil
+		s.Revokes = c.Auth.Token.Revoke != nil || c.Auth.Token.Logout != nil
 	}
 	for _, o := range c.Operations {
 		s.Operations = append(s.Operations, SummaryOperation{Method: o.Method, Path: o.Path, Verb: verbs[o.Method], Label: o.Name, Body: o.Body})

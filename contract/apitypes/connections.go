@@ -148,3 +148,29 @@ type ConnectionsChanged struct {
 	Provider ProviderRevocation `json:"provider,omitempty"`
 	Deleted  []string           `json:"deleted"`
 }
+
+// VendorApp is one of Whisk's own developer apps with an outside system, as the operator page
+// shows it (GET /v1/operator/vendor-apps): never its values, only the client ID's hint.
+type VendorApp struct {
+	Name         string    `json:"name"`
+	ClientIDHint string    `json:"client_id_hint"`
+	WebhookKey   bool      `json:"webhook_key"`
+	PerSecond    int       `json:"per_second"`
+	PerMinute    int       `json:"per_minute"`
+	PerDay       int       `json:"per_day"`
+	SetBy        string    `json:"set_by"`
+	SetAt        time.Time `json:"set_at"`
+	// Grants counts the grants not revoked whose recipe names it.
+	Grants int `json:"grants"`
+}
+
+// VendorAppRequest sets a vendor app (PUT /v1/operator/vendor-apps/:name). An empty secret or
+// webhook key keeps the one set; a new vendor app needs its secret.
+type VendorAppRequest struct {
+	ClientID     string `json:"client_id"`
+	ClientSecret string `json:"client_secret,omitempty"`
+	WebhookKey   string `json:"webhook_key,omitempty"`
+	PerSecond    int    `json:"per_second"`
+	PerMinute    int    `json:"per_minute"`
+	PerDay       int    `json:"per_day"`
+}

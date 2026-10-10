@@ -161,7 +161,7 @@ var wire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, AppManaged{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, OperatorRelease{}, OperatorCopy{}, OperatorProduct{}, OperatorProductRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, AppManaged{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, OperatorRelease{}, OperatorCopy{}, OperatorProduct{}, OperatorProductRequest{}, ProductsOrg{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
 	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, NodeCopy{}, NodeFailover{}, Manifest{}, Validation{},
@@ -214,7 +214,7 @@ var wire = []any{
 	CdnProvider{}, CdnHostname{}, AppCdn{},
 	// connections.go, with contract/connect's summary
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
-	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
+	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{}, VendorApp{}, VendorAppRequest{},
 	GrantConnectionRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
 	GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
 	GitHubBranch{}, GitHubLink{}, GitHubAppRecord{}, GitHubAppInfo{}, GitHubManifestStart{},

@@ -591,6 +591,20 @@ Fix: Use the copy that is already linked, or delete it first.
 {"error":{"code":"MANAGED_LINK_TAKEN","message":"shop already has an ERP link, erp-link.","fix":"Use erp-link, or delete it at https://whisk.run/o/acme/apps/erp-link first.","docs":"https://skill.whisk.run/errors/MANAGED_LINK_TAKEN","details":{"product":"erp-link","app":"shop","copy":"erp-link"}}}
 ```
 
+## MANAGED_PRODUCTS_ORG_TAKEN
+
+Status: 409 · Surface: api
+
+When: an operator asked to mark a business as Whisk's own, whose apps may be products' sources,
+while another business is already marked (MANAGED-APPS.md §2). `details.marked` names the marked
+business's slug.
+
+Fix: Register products from apps in the marked business, or name that business's ID.
+
+```json
+{"error":{"code":"MANAGED_PRODUCTS_ORG_TAKEN","message":"whisk is already Whisk's own business, so acme cannot be.","fix":"Register products from apps in whisk, or name whisk's ID.","docs":"https://skill.whisk.run/errors/MANAGED_PRODUCTS_ORG_TAKEN","details":{"org":"acme","marked":"whisk"}}}
+```
+
 ## MANAGED_SOURCE_IN_USE
 
 Status: 409 · Surface: api
@@ -1004,6 +1018,35 @@ Fix: Send a JSON body with a placeholder (any value) at every pointer under the 
 
 ```json
 {"error":{"code":"CONNECTION_BODY_UNPLACEABLE","message":"The broker will not send this call: the body has no value at /params/args/2 for the broker to replace.","fix":"Send a JSON body with a placeholder at every pointer under the connection's auth.body; the broker replaces it.","docs":"https://skill.whisk.run/errors/CONNECTION_BODY_UNPLACEABLE","details":{"connection":"odoo"}}}
+```
+
+## CONNECTION_VENDOR_APP_REFUSED
+
+Status: 403 · Surface: deploy, container, api, dashboard
+
+When: the connection's recipe names one of Whisk's own developer apps (`auth.vendor_app`), and
+the app is not one Whisk manages. Only a managed app may sign in as Whisk, since any other app's
+code could spend Whisk's identity and limits. A deploy declaring it fails at once, and granting
+it and every call it makes are refused. Nothing was sent.
+
+Fix: Remove `auth.vendor_app` and name the business's own credentials as secrets, or use the
+managed app Whisk offers for this system (the ERP link).
+
+```json
+{"error":{"code":"CONNECTION_VENDOR_APP_REFUSED","message":"Only an app Whisk manages may sign in as Whisk's xero app.","fix":"Remove auth.vendor_app from the connection erp and use the business's own credentials, or add Whisk's ERP link.","docs":"https://skill.whisk.run/errors/CONNECTION_VENDOR_APP_REFUSED","details":{"connection":"erp","vendor_app":"xero"}}}
+```
+
+## CONNECTION_VENDOR_APP_UNSET
+
+Status: 503 · Surface: container
+
+When: the connection's recipe names one of Whisk's own developer apps (`auth.vendor_app`) that
+Whisk's operators have not set up on this platform. Nothing was sent.
+
+Fix: Retry later; Whisk's operators set the vendor app up on the operator page.
+
+```json
+{"error":{"code":"CONNECTION_VENDOR_APP_UNSET","message":"Whisk's myob app is not set up on this platform yet.","fix":"Retry later; an operator sets up the myob app on the operator page.","docs":"https://skill.whisk.run/errors/CONNECTION_VENDOR_APP_UNSET","details":{"connection":"erp","vendor_app":"myob"}}}
 ```
 
 ## CONNECTION_BUSY
@@ -2210,6 +2253,35 @@ key.
 
 ```json
 {"error":{"code":"CDN_IN_USE","message":"2 apps are still served through the CDN.","fix":"Turn the CDN off for those apps, wait until each shows off, then remove the key.","docs":"https://skill.whisk.run/errors/CDN_IN_USE","details":{"apps":["acme/crm","acme/site"]}}}
+```
+
+## VENDOR_APP_INVALID
+
+Status: 400 · Surface: api, dashboard
+
+When: a vendor app's name, client ID, secret, webhook key or limit is not one the platform
+takes (CONTROL-PLANE.md §6.8 "Whisk's vendor apps"). `details.field` names it. Nothing was
+saved.
+
+Fix: Copy the client ID and secret whole from the vendor's developer portal, with no spaces or
+line breaks, and keep each limit between 0 and 1,000,000.
+
+```json
+{"error":{"code":"VENDOR_APP_INVALID","message":"The client ID has a space in it.","fix":"Copy the client ID whole from the vendor's developer portal.","docs":"https://skill.whisk.run/errors/VENDOR_APP_INVALID","details":{"field":"client_id"}}}
+```
+
+## VENDOR_APP_IN_USE
+
+Status: 409 · Surface: api, dashboard
+
+When: an operator asked to remove a vendor app that grants still use. `details.grants` counts
+them.
+
+Fix: Wait until those connections are revoked, or set new values with PUT instead of removing
+it.
+
+```json
+{"error":{"code":"VENDOR_APP_IN_USE","message":"3 connections still sign in as Whisk's xero app.","fix":"Set new values for xero instead, or wait until those connections are revoked.","docs":"https://skill.whisk.run/errors/VENDOR_APP_IN_USE","details":{"vendor_app":"xero","grants":3}}}
 ```
 
 ## GITHUB_NOT_SET_UP

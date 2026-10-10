@@ -474,7 +474,12 @@ write.
 
 ## 5. Database
 
-`DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is. No
+`DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is, with one
+exception: Node's `pg` (node-postgres, also under Prisma's `@prisma/adapter-pg`) reads
+`sslmode=require` as `verify-full` and refuses the platform's certificate with
+`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, so in code using `pg` add `uselibpqcompat=true` to the URL
+(`new URL(process.env.DATABASE_URL)` then `searchParams.set("uselibpqcompat", "true")`). Only `pg`
+reads that parameter; other drivers refuse it. No
 session-level state: no `SET` outside a transaction, no advisory locks held across statements,
 no `LISTEN`. Prepared statements are fine inside a transaction. Before a migration relies on a
 function from a recent release (such as `uuidv7()`), check the server's version:

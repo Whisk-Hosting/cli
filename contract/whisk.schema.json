@@ -376,6 +376,7 @@
           "type": "object",
           "additionalProperties": false,
           "properties": {
+            "vendor_app": { "description": "Whisk's own developer app with the system, read as {vendor.client_id} and {vendor.client_secret}; only an app Whisk manages may use one.", "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" },
             "headers": { "$ref": "#/$defs/templates" },
             "query": { "$ref": "#/$defs/templates" },
             "body": {
@@ -407,6 +408,17 @@
                     "url": { "type": "string", "maxLength": 500 },
                     "headers": { "$ref": "#/$defs/templates" },
                     "form": { "$ref": "#/$defs/templates" }
+                  }
+                },
+                "logout": {
+                  "description": "Ends the token's session at its issuer whenever the broker lets go of the token. Headers default to the call's own.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "maxLength": 500 },
+                    "method": { "type": "string", "enum": ["POST", "GET", "DELETE", "post", "get", "delete"] },
+                    "headers": { "$ref": "#/$defs/templates" }
                   }
                 }
               }

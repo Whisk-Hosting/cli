@@ -59,8 +59,12 @@ type Connection struct {
 
 // Auth is the recipe: where credentials go on each call, and an optional token step.
 type Auth struct {
-	Headers map[string]string `json:"headers,omitempty"`
-	Query   map[string]string `json:"query,omitempty"`
+	// VendorApp names Whisk's own developer app with the outside system, whose client ID and
+	// secret templates read as {vendor.client_id} and {vendor.client_secret}; only an app Whisk
+	// manages may use one (CONTROL-PLANE.md §6.8).
+	VendorApp string            `json:"vendor_app,omitempty"`
+	Headers   map[string]string `json:"headers,omitempty"`
+	Query     map[string]string `json:"query,omitempty"`
 	// Body places values into a call's JSON body, keyed by JSON pointer (RFC 6901): the app
 	// sends a placeholder at each pointer and the broker replaces it (PlaceBody).
 	Body  map[string]string `json:"body,omitempty"`
@@ -80,6 +84,7 @@ type TokenStep struct {
 	ExpiresField string            `json:"expires_field,omitempty"`
 	Lifetime     int               `json:"lifetime,omitempty"`
 	Revoke       *RevokeStep       `json:"revoke,omitempty"`
+	Logout       *LogoutStep       `json:"logout,omitempty"`
 	// Cookies names cookies the token answer sets that the broker keeps with the token and
 	// sends on every call and on the revocation (SAP's load balancer keeps a session on one node
 	// with ROUTEID).
@@ -94,6 +99,17 @@ type RevokeStep struct {
 	URL     string            `json:"url"`
 	Headers map[string]string `json:"headers,omitempty"`
 	Form    map[string]string `json:"form,omitempty"`
+}
+
+// LogoutStep ends the session a token holds, at its issuer, whenever the broker lets go of the
+// token (a fresher one, a grant given again, a pause, a revoke, the broker stopping): a session
+// login that holds a licence slot until it times out (SAP Business One) frees it at once. A
+// request to a URL on the token step's own host; its headers default to the call's own
+// (auth.headers) and may read secrets and {token}. Kept cookies go with it.
+type LogoutStep struct {
+	URL     string            `json:"url"`
+	Method  string            `json:"method,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
 }
 
 // Keypair names the secret that holds a key pair Whisk makes (CONTROL-PLANE.md §6.8).
@@ -124,6 +140,9 @@ const (
 	MaxBodyMatches      = 4
 	MaxBodyMatch        = 200
 )
+
+// VendorAppName is the form of a vendor app's name.
+var VendorAppName = regexp.MustCompile(`^[a-z][a-z0-9-]{1,39}$`)
 
 // pinForm is a certificate pin: sha256/ and 44 characters of standard base64.
 var pinForm = regexp.MustCompile(`^sha256/[A-Za-z0-9+/]{43}=$`)
@@ -159,6 +178,14 @@ func (c Connection) WithDefaults() Connection {
 			r.Form = map[string]string{"token": "{token}", "token_type_hint": "access_token"}
 			t.Revoke = &r
 		}
+		if t.Logout != nil {
+			l := *t.Logout
+			if l.Method == "" {
+				l.Method = http.MethodPost
+			}
+			l.Method = strings.ToUpper(l.Method)
+			t.Logout = &l
+		}
 		c.Auth.Token = &t
 	}
 	ops := make([]Operation, len(c.Operations))
@@ -182,14 +209,20 @@ func Check(c Connection) ([]Problem, []string) {
 		add("/pin", "sha256/ and the base64 SHA-256 of the certificate's public key, on an https address")
 	}
 	var secrets []string
+	if c.Auth.VendorApp != "" && !VendorAppName.MatchString(c.Auth.VendorApp) {
+		add("/auth/vendor_app", "a vendor app's name: 2 to 40 lower-case letters, digits and hyphens, such as xero")
+	}
 	tmpl := func(path, src string, ctx Context) {
 		if len(src) > MaxTemplate {
 			add(path, "longer than %d characters", MaxTemplate)
 			return
 		}
-		_, s, err := ParseTemplate(src, ctx)
+		t, s, err := ParseTemplate(src, ctx)
 		if err != nil {
 			add(path, "%s", err.Error())
+		}
+		if err == nil && c.Auth.VendorApp == "" && t.readsVendor() {
+			add(path, "vendor.client_id and vendor.client_secret need auth.vendor_app")
 		}
 		secrets = append(secrets, s...)
 	}
@@ -274,6 +307,32 @@ func Check(c Connection) ([]Problem, []string) {
 			}
 			for _, k := range sortedKeys(r.Form) {
 				tmpl("/auth/token/revoke/form/"+k, r.Form[k], revoke)
+			}
+		}
+		if l := t.Logout; l != nil {
+			if msg := checkURL(l.URL); msg != "" {
+				add("/auth/token/logout/url", "%s", msg)
+			} else if hostOf(l.URL) != hostOf(t.URL) {
+				add("/auth/token/logout/url", "on the token step's own host, %s", hostOf(t.URL))
+			}
+			if l.Method != http.MethodPost && l.Method != http.MethodGet && l.Method != http.MethodDelete {
+				add("/auth/token/logout/method", "POST, GET or DELETE")
+			}
+			switch {
+			case len(l.Headers) > 0:
+				for _, k := range sortedKeys(l.Headers) {
+					checkHeader("/auth/token/logout/headers/"+k, k, add)
+					tmpl("/auth/token/logout/headers/"+k, l.Headers[k], Context{Token: true})
+				}
+			case len(c.Auth.Headers) == 0:
+				add("/auth/token/logout/headers", "name the headers that carry {token} to the logout")
+			default:
+				for _, k := range sortedKeys(c.Auth.Headers) {
+					if _, _, err := ParseTemplate(c.Auth.Headers[k], Context{Token: true}); err != nil {
+						add("/auth/token/logout/headers", "the call's headers read the call itself, so name the logout's own")
+						break
+					}
+				}
 			}
 		}
 	}
@@ -758,6 +817,26 @@ func RenderRevoke(r RevokeStep, env Env, token string) (TokenRequest, error) {
 	}
 	out.Body = []byte(f.Encode())
 	out.Headers.Set("Content-Type", "application/x-www-form-urlencoded")
+	return out, nil
+}
+
+// RenderLogout renders the request that ends a token's session (LogoutStep): its headers, or the
+// call's own when it names none, with the token placed.
+func RenderLogout(c Connection, env Env, token string) (TokenRequest, error) {
+	l := *c.Auth.Token.Logout
+	env.Request, env.Token = nil, token
+	headers := l.Headers
+	if len(headers) == 0 {
+		headers = c.Auth.Headers
+	}
+	out := TokenRequest{Method: l.Method, URL: l.URL, Headers: http.Header{}}
+	for _, k := range sortedKeys(headers) {
+		v, err := render(headers[k], Context{Token: true}, env)
+		if err != nil {
+			return TokenRequest{}, err
+		}
+		out.Headers.Set(k, v)
+	}
 	return out, nil
 }
 

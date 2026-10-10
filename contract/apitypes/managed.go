@@ -115,6 +115,14 @@ type OperatorProduct struct {
 	Copies      []OperatorCopy    `json:"copies"`
 }
 
+// ProductsOrg is what PUT /operator/orgs/:org/products answers: the business marked as Whisk's
+// own, whose apps may be products' sources.
+type ProductsOrg struct {
+	ID            string `json:"id"`
+	Slug          string `json:"slug"`
+	WhiskProducts bool   `json:"whisk_products"`
+}
+
 // OperatorProductRequest is POST /operator/managed-products.
 type OperatorProductRequest struct {
 	AppID string `json:"app_id"`
