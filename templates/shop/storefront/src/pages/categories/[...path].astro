@@ -1,0 +1,25 @@
+---
+import Shop from "../../layouts/Shop.astro"
+import ProductGrid from "../../components/ProductGrid.astro"
+import { api } from "../../lib/medusa"
+import { categoryByPath, products } from "../../lib/store"
+
+const shop = Astro.locals.shop
+const a = api(shop, Astro.request)
+const handle = (Astro.params.path ?? "").split("/").filter(Boolean).pop() ?? ""
+const category = handle ? await categoryByPath(a, handle) : null
+if (!category) return Astro.rewrite("/404")
+const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
+const perPage = 24
+const { products: list, count } = await products(a, shop, { category: category.id, limit: perPage, offset: (page - 1) * perPage })
+---
+<Shop title={category.name} description={category.description || `${category.name} at ${shop.name}.`}>
+  <h1>{category.name}</h1>
+  {category.description && <p class="muted">{category.description}</p>}
+  {(category.category_children ?? []).length > 0 && (
+    <nav class="cats" aria-label="Subcategories" style="padding-left:0">
+      {category.category_children.map((c: any) => <a href={`/categories/${c.handle}`}>{c.name}</a>)}
+    </nav>
+  )}
+  <ProductGrid products={list} count={count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} />
+</Shop>

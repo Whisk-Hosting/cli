@@ -1,0 +1,98 @@
+---
+import Shop from "../../layouts/Shop.astro"
+import { api } from "../../lib/medusa"
+import { product as getProduct } from "../../lib/store"
+import { fromPrice, money, picture, variantFor } from "../../lib/format"
+
+const shop = Astro.locals.shop
+const p = await getProduct(api(shop, Astro.request), shop, Astro.params.handle ?? "")
+if (!p) return Astro.rewrite("/404")
+
+const options: any[] = p.options ?? []
+const variants: any[] = p.variants ?? []
+// The choice for each option: from the address (?option_<id>=value), else the first value.
+const chosen: Record<string, string> = Object.fromEntries(
+  options.map((o) => [o.id, Astro.url.searchParams.get(`option_${o.id}`) ?? o.values?.[0]?.value ?? ""]),
+)
+const variant = variants.length === 1 ? variants[0] : variantFor(variants, chosen)
+const price = variant?.calculated_price
+const range = fromPrice(variants)
+const inStock = (v: any) => !v.manage_inventory || v.allow_backorder || Number(v.inventory_quantity ?? 0) > 0
+const available = variant ? inStock(variant) : false
+const images: any[] = p.images?.length ? p.images : p.thumbnail ? [{ url: p.thumbnail }] : []
+const added = Astro.url.searchParams.get("added") === "1"
+const failed = Astro.url.searchParams.get("error")
+const description = (p.subtitle || p.description || "").slice(0, 160)
+const ld = {
+  "@context": "https://schema.org",
+  "@type": "Product",
+  name: p.title,
+  description: p.description ?? undefined,
+  image: images.map((i) => i.url),
+  sku: variant?.sku ?? undefined,
+  offers: variants.filter((v) => v.calculated_price).map((v) => ({
+    "@type": "Offer",
+    price: v.calculated_price.calculated_amount,
+    priceCurrency: v.calculated_price.currency_code.toUpperCase(),
+    availability: inStock(v) ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+    sku: v.sku ?? undefined,
+  })),
+}
+---
+<Shop title={p.title} description={description} image={images[0]?.url}>
+  <script slot="head" type="application/ld+json" set:html={JSON.stringify(ld)} />
+  <div class="product">
+    <div class="gallery">
+      {images.map((img, i) => {
+        const pic = picture(img.url, 800)
+        return pic && <img src={pic.src} srcset={pic.srcset} alt={i === 0 ? p.title : ""} width="800" height="800" loading={i === 0 ? "eager" : "lazy"} fetchpriority={i === 0 ? "high" : "auto"} />
+      })}
+    </div>
+    <div>
+      <h1>{p.title}</h1>
+      {price ? (
+        <p class={price.calculated_amount < price.original_amount ? "price sale" : "price"}>
+          {money(price.calculated_amount, price.currency_code)}
+          {price.calculated_amount < price.original_amount && <s>{money(price.original_amount, price.currency_code)}</s>}
+        </p>
+      ) : range && <p class="price">From {money(range.amount, range.currency)}</p>}
+
+      {variants.length > 1 && options.length > 0 && (
+        <form method="get" id="options">
+          {options.map((o) => (
+            <>
+              <label for={`option_${o.id}`}>{o.title}</label>
+              <select id={`option_${o.id}`} name={`option_${o.id}`}>
+                {(o.values ?? []).map((v: any) => <option value={v.value} selected={chosen[o.id] === v.value}>{v.value}</option>)}
+              </select>
+            </>
+          ))}
+          <noscript><button class="quiet" type="submit">Choose</button></noscript>
+        </form>
+      )}
+
+      {variant && !available && <p class="stock error">Sold out</p>}
+      {variant && available && variant.manage_inventory && !variant.allow_backorder && Number(variant.inventory_quantity) <= 5 && <p class="stock">Only {variant.inventory_quantity} left</p>}
+      {!variant && variants.length > 1 && <p class="stock error">That combination isn't available.</p>}
+
+      {added && <p class="notice" role="status">Added to your cart. <a href="/cart">View cart</a></p>}
+      {failed && <p class="notice error" role="alert">{failed}</p>}
+
+      <form method="post" action="/cart/add">
+        <input type="hidden" name="variant_id" value={variant?.id ?? ""} />
+        <input type="hidden" name="return" value={Astro.url.pathname + Astro.url.search} />
+        <label for="quantity">Quantity</label>
+        <input id="quantity" name="quantity" type="number" inputmode="numeric" min="1" max="999" value="1" style="max-width:120px" />
+        <p style="margin-top:16px"><button class="wide" type="submit" disabled={!variant || !available}>Add to cart</button></p>
+      </form>
+
+      {p.description && <div class="description"><h2>Details</h2><p style="white-space:pre-line">{p.description}</p></div>}
+    </div>
+  </div>
+  <script>
+    // Choosing an option shows that variant's price and stock straight away.
+    document.querySelectorAll<HTMLSelectElement>("#options select").forEach((s) =>
+      s.addEventListener("change", () => (s.form as HTMLFormElement).submit()),
+    )
+  </script>
+</Shop>

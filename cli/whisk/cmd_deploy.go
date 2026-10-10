@@ -834,6 +834,9 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 		})
 		return nil
 	case status.DeployBlocked:
+		if e := s.blockedOnPromotion(client, org, app, ev); e != nil {
+			return e
+		}
 		grants, unset := blockedDetail(ev.Error)
 		if len(ev.Unset) > 0 {
 			unset = ev.Unset
@@ -862,6 +865,32 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 		status.DeployStarting, status.DeployHealthChecking, status.DeploySwitching, status.DeployDraining:
 	}
 	return s.deployFailure(client, org, app, ev)
+}
+
+// blockedOnPromotion is the NEEDS_HUMAN for a production deploy that waits for the app to be
+// made a Promoted app (PROMOTED_APP_REQUIRED), or nil when the deploy waits for something else.
+func (s *session) blockedOnPromotion(client *api.Client, org, app string, ev api.DeployEvent) *output.Error {
+	code, message, fix, details := "", "", "", map[string]any{}
+	if ev.Error != nil {
+		code, message, fix, details = ev.Error.Code, ev.Error.Message, ev.Error.Fix, ev.Error.Details
+	} else if d, err := client.GetDeploy(s.ctx, org, app, ev.DeployID); err == nil && d.Error != nil {
+		code, message, fix, details = d.Error.Code, d.Error.Message, d.Error.Fix, d.Error.Details
+	}
+	if code != "PROMOTED_APP_REQUIRED" {
+		return nil
+	}
+	out := map[string]any{"deploy_id": ev.DeployID, "blocked_on": code}
+	for k, v := range details {
+		out[k] = v
+	}
+	return &output.Error{
+		Exit:    output.ExitNeedsHuman,
+		Code:    "NEEDS_HUMAN",
+		Message: fmt.Sprintf("Deploy %s is blocked: %s", ev.DeployID, message),
+		Fix:     fix,
+		Docs:    "https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED",
+		Details: out,
+	}
 }
 
 // grantsNeeded is what a blocked deploy waits on a person to grant, read from the deploy when

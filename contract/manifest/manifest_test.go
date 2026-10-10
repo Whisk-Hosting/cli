@@ -60,12 +60,12 @@ func TestFixturesInvalid(t *testing.T) {
 }
 
 func TestTemplatesPass(t *testing.T) {
-	// The three starters and the three canaries.
+	// The three starters, the shop and the three canaries.
 	files, _ := filepath.Glob("../../templates/*/whisk.yaml")
 	canaries, _ := filepath.Glob("../../templates/canary/*/whisk.yaml")
 	files = append(files, canaries...)
-	if len(files) != 6 {
-		t.Skipf("expected 6 template manifests, found %d", len(files))
+	if len(files) != 7 {
+		t.Skipf("expected 7 template manifests, found %d", len(files))
 	}
 	for _, f := range files {
 		src, err := os.ReadFile(f)

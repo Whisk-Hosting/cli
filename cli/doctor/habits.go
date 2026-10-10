@@ -64,7 +64,7 @@ func staticProblem(files []File, dir string, git, onDisk bool) string {
 
 func w005(r Repo, _ Context) outcome {
 	line := yamlLine(r.ManifestNode, "/health/timeout")
-	if !yamlHas(r.ManifestNode, "health", "timeout") || r.Manifest.AlwaysOn || r.Manifest.Health.Timeout <= WakeLimitSeconds {
+	if !yamlHas(r.ManifestNode, "health", "timeout") || r.Manifest.AlwaysOn || r.Manifest.Promoted || r.Manifest.Health.Timeout <= WakeLimitSeconds {
 		return outcome{}
 	}
 	return one("W005", manifestFile, line, fmt.Sprintf("health.timeout is %d seconds, but a sleeping app has %d seconds to answer when a visitor wakes it.", r.Manifest.Health.Timeout, WakeLimitSeconds))

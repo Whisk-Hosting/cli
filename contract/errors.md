@@ -484,6 +484,21 @@ end the trial or choose a plan on the billing page, then promote the app.
 {"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is inside its free trial, and a Promoted app is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
 ```
 
+## PROMOTED_APP_REQUIRED
+
+Status: 409 · Surface: deploy, cli
+
+When: the app's whisk.yaml says `promoted: true` (it runs only as a Promoted app, as a shop does)
+and the app is not a Promoted app in force. Its production deploy is blocked; previews run.
+`details.dashboard` is the app's page, whose Promoted card makes it one.
+
+Fix: Ask an owner or billing contact to make the app a Promoted app at the URL; never promote it
+yourself, since it is charged. The blocked deploy goes live on its own once it is one.
+
+```json
+{"error":{"code":"PROMOTED_APP_REQUIRED","message":"This app runs only as a Promoted app, and is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop. The deploy goes live on its own once it is one.","docs":"https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED","details":{"dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
+```
+
 ## PROMOTED_ONLY
 
 Status: 409 · Surface: api

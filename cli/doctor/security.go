@@ -228,6 +228,11 @@ func w099(r Repo, _ Context) outcome {
 			out = out.add("W099", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/routes/public/%d", i)), fmt.Sprintf("routes.public lists %s, which is named for staff; anyone on the internet can open it.", p))
 		}
 	}
+	if r.Manifest.Promoted || medusaShop(r) {
+		// A Promoted app with its own sign-in, or a Medusa shop, lists every route as public;
+		// its sign-in decides who may write.
+		return out
+	}
 	seen := map[string]bool{}
 	for _, f := range serverCode(r) {
 		for _, re := range writeRoute[stack.LangOf(f.Path)] {

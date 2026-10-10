@@ -3,6 +3,7 @@ package doctor
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -427,7 +428,7 @@ func TestFixes(t *testing.T) {
 
 // The three templates pass doctor with zero warnings (CONTRACT.md §11).
 func TestTemplatesAreClean(t *testing.T) {
-	for _, name := range []string{"typescript", "python", "go"} {
+	for _, name := range []string{"typescript", "python", "go", "shop"} {
 		dir := filepath.Join("..", "..", "templates", name)
 		if _, err := os.Stat(dir); err != nil {
 			t.Skipf("%s not present", dir)
@@ -601,6 +602,56 @@ func TestInboxHandlerRoute(t *testing.T) {
 			for _, id := range c.none {
 				if has(rep, id) {
 					t.Errorf("%s reported: %+v", id, rep.Findings)
+				}
+			}
+		})
+	}
+}
+
+// An app that runs only as a Promoted app keeps its own sign-in, lists every route as public and
+// never sleeps (doctor-rules.md W005, W052, W090, W099); a Medusa route file counts as a route
+// (W022).
+func TestPromotedOnlyApp(t *testing.T) {
+	manifest := `whisk: 1
+name: shop
+routes:
+  public: ["/**"]
+health:
+  path: /health/ready
+  timeout: 90
+database: app
+promoted: %s
+`
+	files := map[string]string{
+		"package.json":                  `{"name":"shop","dependencies":{"@medusajs/medusa":"2.21.2"}}`,
+		"package-lock.json":             `{"name":"shop","lockfileVersion":3}`,
+		"src/api/health/ready/route.ts": "export const GET = async (req, res) => res.json({ ok: true })\n",
+		"src/api/sign-in/route.ts":      "export const POST = async (req, res) => res.json({})\n",
+		"storefront/src/pages/a.astro":  "<form method=\"post\"><input type=\"password\" name=\"p\"></form>\n",
+		"storefront/src/lib/client.ts":  "export const save = (a) => a.post(\"/store/customers\", {})\n",
+		"Dockerfile":                    "FROM node:22-slim\nWORKDIR /app\nCOPY . .\nUSER node\nEXPOSE 8080\nCMD [\"node\",\"index.js\"]\n",
+		".gitignore":                    ".env\n",
+	}
+	// A Medusa shop keeps its customers' sign-in on any plan; another app only as a Promoted app.
+	const other = `{"name":"shop","dependencies":{"express":"5.1.0"}}`
+	for _, tc := range []struct {
+		name, promoted, pkg string
+		want                []string
+	}{
+		{"promoted", "true", files["package.json"], nil},
+		{"medusa", "false", files["package.json"], []string{"W005"}},
+		{"promoted other", "true", other, nil},
+		{"other", "false", other, []string{"W005", "W090", "W099"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rep := runDoctor(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.promoted), "package.json": tc.pkg}), false)
+			for _, id := range []string{"W005", "W022", "W052", "W090", "W099"} {
+				want := false
+				for _, w := range tc.want {
+					want = want || w == id
+				}
+				if has(rep, id) != want {
+					t.Errorf("%s reported = %v, want %v: %+v", id, has(rep, id), want, rep.Findings)
 				}
 			}
 		})

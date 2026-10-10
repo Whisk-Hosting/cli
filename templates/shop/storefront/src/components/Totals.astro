@@ -1,0 +1,15 @@
+---
+import { money } from "../lib/format"
+type Props = { of: any }
+const o = Astro.props.of
+const c = o.currency_code
+---
+<table class="totals">
+  <tbody>
+    <tr><td>Subtotal</td><td>{money(o.item_total, c)}</td></tr>
+    {Number(o.discount_total) > 0 && <tr><td>Discount</td><td>-{money(o.discount_total, c)}</td></tr>}
+    <tr><td>Shipping</td><td>{(o.shipping_methods ?? []).length ? money(o.shipping_total, c) : "Chosen at checkout"}</td></tr>
+    <tr class="grand"><td>Total</td><td>{money(o.total, c)}</td></tr>
+    <tr><td class="muted">Includes GST</td><td class="muted">{money(o.tax_total, c)}</td></tr>
+  </tbody>
+</table>

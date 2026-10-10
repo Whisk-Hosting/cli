@@ -77,14 +77,15 @@ the deploy with `MANIFEST_INVALID` naming the folder.
 ## W005
 
 Level: warning
-Check: health.timeout is set above 60 seconds and the app is not always_on.
+Check: health.timeout is set above 60 seconds and the app is neither always_on nor promoted.
 Fix: Make the app answer its health check within 60 seconds (doctor W100 to W104 name the usual causes), or set always_on: true so it never sleeps.
 Safe fix: no
 
 Details: a deploy waits `health.timeout` seconds for the health check, but a wake waits 60
 (NODE-AGENT.md §A8): an app that needs longer deploys, then fails every wake after it sleeps
 with `WAKE_TIMEOUT`. Only a timeout written in whisk.yaml is read; the default (90) is not
-reported, since most apps answer in a few seconds.
+reported, since most apps answer in a few seconds. An app with `promoted: true` runs only as a
+Promoted app, which never sleeps.
 
 ## W006
 
@@ -160,7 +161,7 @@ Details: the string of `health.path` (default `/health`) must appear as a route 
 `app.get("/health"`, `@app.get("/health")`, `r.Get("/health"`, `HandleFunc("/health"`,
 `HandleFunc("GET /health"`, a plain `node:http` comparison (`req.url === "/health"`,
 `pathname == "/health"`, `case "/health":`), or a file-system route (`app/health/route.ts`,
-`pages/api/health.ts`). When the code declares no route in any of these forms (a route table
+`pages/api/health.ts`, Medusa's `src/api/health/route.ts`). When the code declares no route in any of these forms (a route table
 held in an object, for instance) the check is skipped, and the skip names the route it could not
 confirm and the forms doctor reads.
 
@@ -314,7 +315,8 @@ Fix: Remove it from routes.public; the platform delivers to these routes itself 
 Safe fix: yes
 
 Details: listing them does not open them, because the edge refuses internet requests to service
-routes regardless, but it signals a misunderstanding and is removed.
+routes regardless, but it signals a misunderstanding and is removed. The queue endpoint counts
+only when the app declares functions, so a Promoted app's `["/**"]` passes when it has none.
 
 ## W053
 
@@ -444,7 +446,10 @@ password is what the abuse scan holds for review. Matched in code and in templat
 `.type = "password"`, and Python's `PasswordField` and `PasswordInput`. Tests and vendored
 folders are left out. One finding per file, at its first match. Skipped for a Promoted app,
 which may keep its own sign-in: known when the directory is bound to an app and
-`/apps/:app/validate` answers `promoted: true`.
+`/apps/:app/validate` answers `promoted: true`, or when whisk.yaml says `promoted: true`, since such
+an app never goes live otherwise. Skipped too for a Medusa shop (`@medusajs/medusa` among
+package.json's dependencies, as in the shop template), whose customers sign in to the shop on any
+plan.
 
 ## W091
 
@@ -580,7 +585,8 @@ PATCH or DELETE route whose path matches `routes.public`, as registered in code 
 like and `HandleFunc("POST /…")`), with path parameters (`:id`, `{id}`, `<id>`) read as one
 segment. Webhook handlers and the queue endpoint are service routes and not matched. Also any
 `routes.public` entry with a segment `admin`, `administrator`, `manage`, `internal` or `staff`,
-reported at its line in whisk.yaml.
+reported at its line in whisk.yaml. The routes in code are not read for an app with `promoted:
+true`, or for a Medusa shop, which keeps its own sign-in and so lists every route as public.
 
 ## W100
 

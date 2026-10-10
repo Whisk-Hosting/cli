@@ -1,0 +1,13 @@
+---
+// Where Windcave sends the customer back. The order is placed if Windcave says they paid.
+import { api } from "../../../lib/medusa"
+import { cartIdOf } from "../../../lib/store"
+import { complete } from "../../../lib/checkout"
+
+const result = Astro.url.searchParams.get("result")
+const cartId = cartIdOf(Astro.cookies)
+if (!cartId) return Astro.redirect("/account")
+if (result !== "approved") return Astro.redirect(`/checkout?error=${encodeURIComponent(result === "cancelled" ? "Payment cancelled." : "Your card was declined. Try again or pay another way.")}`)
+const done = await complete(api(Astro.locals.shop, Astro.request), Astro.cookies, cartId)
+return "order" in done ? Astro.redirect(`/order/${done.order.id}`) : Astro.redirect(`/checkout?error=${encodeURIComponent(done.error)}`)
+---

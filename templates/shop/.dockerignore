@@ -1,0 +1,6 @@
+node_modules
+.medusa
+storefront/dist
+storefront/.astro
+.git
+.whisk

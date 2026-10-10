@@ -1,4 +1,4 @@
-// Package templates carries the three starter apps from ../../templates inside the binary so
+// Package templates carries the three starter apps and the shop from ../../templates inside the binary so
 // whisk init --template works anywhere. files_gen.go is produced by `go generate` from the
 // sibling folder; the test fails when the two drift.
 package templates
@@ -24,7 +24,7 @@ type File struct {
 }
 
 // Names maps the --template flag values to folder names.
-var Names = map[string]string{"ts": "typescript", "typescript": "typescript", "py": "python", "python": "python", "go": "go"}
+var Names = map[string]string{"ts": "typescript", "typescript": "typescript", "py": "python", "python": "python", "go": "go", "shop": "shop"}
 
 // Files returns a template's files by relative slash path, or false for an unknown name.
 func Files(name string) (map[string]File, bool) {
@@ -53,7 +53,7 @@ func List() []string {
 func Write(dir, name, slug string) ([]string, error) {
 	tf, ok := Files(name)
 	if !ok {
-		return nil, fmt.Errorf("unknown template %q; use ts, py or go", name)
+		return nil, fmt.Errorf("unknown template %q; use ts, py, go or shop", name)
 	}
 	paths := make([]string, 0, len(tf))
 	for p := range tf {

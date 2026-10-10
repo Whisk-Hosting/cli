@@ -119,7 +119,9 @@ whisk login --agent "<your name>"
                          (whisk login --resume <device_code>), which waits for approval.
                          The token works only from this computer: use it through whisk,
                          never copy it elsewhere
-whisk init --template ts|py|go      writes whisk.yaml, .whisk/app.json, and the template
+whisk init --template ts|py|go|shop writes whisk.yaml, .whisk/app.json, and the template;
+                         shop is a whole online shop (Medusa) for a business selling
+                         to the public, and runs only as a Promoted app
 whisk doctor             checks the repository; exit 3 means fix the listed problems
 whisk deploy -m "…"      commits, pushes, builds, migrates, health-checks, switches traffic
 whisk logs -f            tails the app
@@ -227,6 +229,7 @@ storage: false                    # files, uploads, images, video (§9) · every
 kv: false                         # a Redis of its own (§9) · paid
 email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
+promoted: false                   # runs only as a Promoted app, e.g. a shop (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
 network: internal                 # Whisk On-Premise only: internal (default) | public; not on whisk.run
@@ -421,7 +424,11 @@ sleeps and has more memory (1 GB guaranteed, up to 4 GB). A Promoted app may kee
 sign-in: list every route under `routes.public` (`["/**"]`) and the app's own login decides who
 gets in, and doctor leaves out W090 for it. Everything else in this skill still applies. Only
 build or keep a login of the app's own on a Promoted app; never ask for promotion to get round
-§4, and never promote an app yourself: it is charged, so it is the owner's choice.
+§4, and never promote an app yourself: it is charged, so it is the owner's choice. An app that
+cannot run any other way (the shop template) says `promoted: true` in whisk.yaml: its production
+deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it, and goes
+live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted app's
+memory without waiting.
 
 Who may open the app (groups, people, everyone in the business) is an owner's or admin's choice
 in the dashboard: `whisk access show` reads it and `whisk open access` gives the link to relay.

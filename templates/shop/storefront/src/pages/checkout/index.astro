@@ -1,0 +1,151 @@
+---
+import Shop from "../../layouts/Shop.astro"
+import Totals from "../../components/Totals.astro"
+import AddressFields from "../../components/AddressFields.astro"
+import { api } from "../../lib/medusa"
+import { cart as getCart, me } from "../../lib/store"
+import { activeSession, paymentMethods, shippingOptions } from "../../lib/checkout"
+import { money } from "../../lib/format"
+
+const shop = Astro.locals.shop
+const a = api(shop, Astro.request)
+const [cart, customer] = await Promise.all([getCart(a, Astro.cookies), me(a)])
+if (!cart || !(cart.items ?? []).length) return Astro.redirect("/cart")
+
+const failed = Astro.url.searchParams.get("error")
+const editing = Astro.url.searchParams.get("edit")
+const detailsDone = !!cart.email && !!cart.shipping_address?.address_1 && editing !== "details"
+const options = detailsDone ? await shippingOptions(a, cart.id) : []
+const chosenOption = cart.shipping_methods?.[0]?.shipping_option_id
+const deliveryDone = detailsDone && !!chosenOption && editing !== "delivery"
+const methods = paymentMethods(shop)
+const session = deliveryDone ? activeSession(cart) : null
+const paying = Astro.url.searchParams.get("pay") === "1" && session
+const saved: any[] = customer?.addresses ?? []
+const prefill = cart.shipping_address?.address_1 ? cart.shipping_address : saved.find((x) => x.is_default_shipping) ?? saved[0] ?? null
+---
+<Shop title="Checkout" noindex>
+  <h1>Checkout</h1>
+  {failed && <p class="notice error" role="alert">{failed}</p>}
+  <div class="checkout">
+    <div class="steps">
+      <section class="step" aria-labelledby="s1">
+        <h2 id="s1">Contact and delivery {detailsDone && <a class="link" href="/checkout?edit=details">Change</a>}</h2>
+        {detailsDone ? (
+          <p>{cart.email}<br />{[cart.shipping_address.first_name, cart.shipping_address.last_name].join(" ")}, {cart.shipping_address.address_1}, {cart.shipping_address.city} {cart.shipping_address.postal_code}</p>
+        ) : (
+          <form method="post" action="/checkout/details">
+            {!customer && <p class="muted"><a href="/account?return=/checkout">Sign in</a> to use your saved details.</p>}
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required value={cart.email ?? customer?.email ?? ""} />
+            {saved.length > 1 && (
+              <>
+                <label for="saved">Saved addresses</label>
+                <select id="saved" name="saved_address_id">
+                  <option value="">Enter an address</option>
+                  {saved.map((s) => <option value={s.id} selected={prefill?.id === s.id}>{[s.address_name, s.address_1, s.city].filter(Boolean).join(", ")}</option>)}
+                </select>
+              </>
+            )}
+            <AddressFields value={prefill} />
+            {customer && <label class="choice"><input type="checkbox" name="save_address" value="1" /> Save this address to my account</label>}
+            <p style="margin-top:16px"><button class="wide" type="submit">Continue</button></p>
+          </form>
+        )}
+      </section>
+
+      <section class="step" aria-labelledby="s2">
+        <h2 id="s2">Delivery {deliveryDone && <a class="link" href="/checkout?edit=delivery">Change</a>}</h2>
+        {!detailsDone ? <p class="muted">Enter your address first.</p> : deliveryDone ? (
+          <p>{cart.shipping_methods[0].name}, {money(cart.shipping_methods[0].amount, cart.currency_code)}</p>
+        ) : options.length === 0 ? (
+          <p class="error">We don't deliver to that address yet.</p>
+        ) : (
+          <form method="post" action="/checkout/delivery">
+            {options.map((o, i) => (
+              <label class="choice"><input type="radio" name="option_id" value={o.id} checked={chosenOption ? o.id === chosenOption : i === 0} required />
+                <span style="flex:1">{o.name}{o.type?.description && <span class="muted"><br />{o.type.description}</span>}</span>
+                <span class="price">{money(o.calculated_price?.calculated_amount ?? o.amount, cart.currency_code)}</span>
+              </label>
+            ))}
+            <button class="wide" type="submit">Continue</button>
+          </form>
+        )}
+      </section>
+
+      <section class="step" aria-labelledby="s3">
+        <h2 id="s3">Payment</h2>
+        {!deliveryDone ? <p class="muted">Choose delivery first.</p> : methods.length === 0 ? (
+          <p class="error">This shop isn't taking payments yet.</p>
+        ) : paying && session.provider_id === "pp_stripe_stripe" ? (
+          <form id="stripe-form" data-key={shop.stripeKey} data-secret={session.data?.client_secret} data-return={new URL("/checkout/return/stripe", Astro.url).toString()}>
+            <div id="stripe-element"></div>
+            <p class="error" id="stripe-error" role="alert"></p>
+            <button class="wide" type="submit">Pay {money(cart.total, cart.currency_code)}</button>
+            <p><a class="link" href="/checkout">Pay another way</a></p>
+          </form>
+        ) : paying && session.provider_id === "pp_paypal_paypal" ? (
+          <div id="paypal" data-client={shop.paypalClientId} data-order={session.data?.id} data-currency={cart.currency_code.toUpperCase()}>
+            <div id="paypal-buttons"></div>
+            <p class="error" id="paypal-error" role="alert"></p>
+            <p><a class="link" href="/checkout">Pay another way</a></p>
+          </div>
+        ) : (
+          <form method="post" action="/checkout/payment">
+            {methods.map((m, i) => (
+              <label class="choice"><input type="radio" name="provider_id" value={m.id} checked={session ? session.provider_id === m.id : i === 0} required /> {m.label}</label>
+            ))}
+            <button class="wide" type="submit">Pay {money(cart.total, cart.currency_code)}</button>
+          </form>
+        )}
+      </section>
+    </div>
+    <aside class="summary" aria-label="Order summary">
+      <ul class="lines">
+        {(cart.items ?? []).map((i: any) => (
+          <li style="display:flex;justify-content:space-between;gap:12px;padding:4px 0"><span>{i.quantity} × {i.product_title ?? i.title}{i.variant_title && <span class="muted"> ({i.variant_title})</span>}</span><span>{money(i.total, cart.currency_code)}</span></li>
+        ))}
+      </ul>
+      <Totals of={cart} />
+    </aside>
+  </div>
+  {paying && session.provider_id === "pp_stripe_stripe" && (
+    <script src="https://js.stripe.com/v3/" is:inline></script>
+  )}
+  {paying && session.provider_id === "pp_paypal_paypal" && (
+    <script is:inline src={`https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(shop.paypalClientId ?? "")}&currency=${cart.currency_code.toUpperCase()}&intent=${session.data?.intent === "AUTHORIZE" ? "authorize" : "capture"}`}></script>
+  )}
+  <script>
+    // Card details go straight to Stripe from its own field, never through the shop.
+    const sf = document.getElementById("stripe-form") as HTMLFormElement | null
+    const Stripe = (window as any).Stripe
+    if (sf && Stripe) {
+      const stripe = Stripe(sf.dataset.key)
+      const elements = stripe.elements({ clientSecret: sf.dataset.secret })
+      elements.create("payment").mount("#stripe-element")
+      sf.addEventListener("submit", async (e) => {
+        e.preventDefault()
+        const button = sf.querySelector("button") as HTMLButtonElement
+        button.disabled = true
+        const { error } = await stripe.confirmPayment({ elements, confirmParams: { return_url: sf.dataset.return } })
+        ;(document.getElementById("stripe-error") as HTMLElement).textContent = error?.message ?? ""
+        button.disabled = false
+      })
+    }
+    // PayPal's buttons approve the order the shop made; the shop then completes it.
+    const pp = document.getElementById("paypal") as HTMLElement | null
+    const paypal = (window as any).paypal
+    if (pp && paypal) {
+      paypal.Buttons({
+        createOrder: () => pp.dataset.order,
+        onApprove: async () => {
+          const res = await fetch("/checkout/complete", { method: "POST", headers: { accept: "application/json" } })
+          const out = await res.json()
+          if (out.location) location.href = out.location
+          else (document.getElementById("paypal-error") as HTMLElement).textContent = out.error ?? "The payment didn't go through."
+        },
+        onError: () => ((document.getElementById("paypal-error") as HTMLElement).textContent = "PayPal couldn't take the payment. Try again or pay another way."),
+      }).render("#paypal-buttons")
+    }
+  </script>
+</Shop>

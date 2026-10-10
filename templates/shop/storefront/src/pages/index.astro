@@ -1,0 +1,15 @@
+---
+import Shop from "../layouts/Shop.astro"
+import ProductGrid from "../components/ProductGrid.astro"
+import { api } from "../lib/medusa"
+import { products } from "../lib/store"
+
+const shop = Astro.locals.shop
+const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
+const perPage = 24
+const { products: list, count } = await products(api(shop, Astro.request), shop, { limit: perPage, offset: (page - 1) * perPage })
+---
+<Shop description={`Shop online at ${shop.name}.`}>
+  <h1>{shop.name}</h1>
+  <ProductGrid products={list} count={count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} empty="No products yet." />
+</Shop>

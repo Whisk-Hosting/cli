@@ -53,6 +53,7 @@ storage: false
 kv: false
 email: false
 always_on: false
+promoted: false
 calls: []
 customer_identity: none
 

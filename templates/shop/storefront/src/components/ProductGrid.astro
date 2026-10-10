@@ -1,0 +1,22 @@
+---
+import ProductCard from "./ProductCard.astro"
+type Props = { products: any[]; count: number; page: number; perPage: number; base: string; empty?: string }
+const { products, count, page, perPage, base, empty = "Nothing here yet." } = Astro.props
+const pages = Math.max(1, Math.ceil(count / perPage))
+const at = (p: number) => {
+  const u = new URL(base, "http://x")
+  if (p > 1) u.searchParams.set("page", String(p))
+  else u.searchParams.delete("page")
+  return u.pathname + u.search
+}
+---
+{products.length === 0 ? <p class="muted">{empty}</p> : (
+  <ul class="grid">{products.map((p) => <ProductCard product={p} />)}</ul>
+)}
+{pages > 1 && (
+  <nav class="pager" aria-label="Pages">
+    {page > 1 ? <a class="button quiet" href={at(page - 1)} rel="prev">Previous</a> : <span />}
+    <span class="muted">Page {page} of {pages}</span>
+    {page < pages ? <a class="button quiet" href={at(page + 1)} rel="next">Next</a> : <span />}
+  </nav>
+)}

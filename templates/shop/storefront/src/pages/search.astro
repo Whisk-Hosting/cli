@@ -1,0 +1,16 @@
+---
+import Shop from "../layouts/Shop.astro"
+import ProductGrid from "../components/ProductGrid.astro"
+import { api } from "../lib/medusa"
+import { products } from "../lib/store"
+
+const shop = Astro.locals.shop
+const q = (Astro.url.searchParams.get("q") ?? "").trim().slice(0, 100)
+const page = Math.max(1, Number(Astro.url.searchParams.get("page")) || 1)
+const perPage = 24
+const found = q ? await products(api(shop, Astro.request), shop, { q, limit: perPage, offset: (page - 1) * perPage }) : { products: [], count: 0 }
+---
+<Shop title={q ? `Search: ${q}` : "Search"} noindex>
+  <h1>{q ? `Results for “${q}”` : "Search"}</h1>
+  <ProductGrid products={found.products} count={found.count} page={page} perPage={perPage} base={Astro.url.pathname + Astro.url.search} empty={q ? "Nothing matches that." : "Type what you're looking for."} />
+</Shop>

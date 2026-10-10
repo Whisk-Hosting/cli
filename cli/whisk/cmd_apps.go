@@ -151,7 +151,7 @@ unless --no-create. Safe to run again: existing files are kept.`,
 			return nil
 		},
 	}
-	c.Flags().StringVar(&template, "template", "", "copy a template into an empty directory: ts, py or go")
+	c.Flags().StringVar(&template, "template", "", "copy a template into an empty directory: ts, py, go or shop")
 	c.Flags().StringVar(&name, "name", "", "app slug (default: the directory name)")
 	c.Flags().BoolVar(&noTemplate, "no-template", false, "never copy a template")
 	c.Flags().BoolVar(&noCreate, "no-create", false, "write files only; do not create the app on the platform")
@@ -423,7 +423,7 @@ func templateFix(err error) string {
 	if strings.Contains(err.Error(), " exists;") {
 		return "Move that file aside (the template writes its own), run whisk init --template again, then merge anything you need back."
 	}
-	return "Use --template ts, py or go."
+	return "Use --template ts, py, go or shop."
 }
 
 // namesList is up to five names, then how many more. Pure.

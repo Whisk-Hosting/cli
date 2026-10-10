@@ -1,0 +1,52 @@
+---
+import Shop from "../../layouts/Shop.astro"
+import Totals from "../../components/Totals.astro"
+import { api } from "../../lib/medusa"
+import { cart as getCart } from "../../lib/store"
+import { money, picture } from "../../lib/format"
+
+const shop = Astro.locals.shop
+const cart = await getCart(api(shop, Astro.request), Astro.cookies)
+const items: any[] = cart?.items ?? []
+const failed = Astro.url.searchParams.get("error")
+---
+<Shop title="Cart" noindex>
+  <h1>Cart</h1>
+  {failed && <p class="notice error" role="alert">{failed}</p>}
+  {items.length === 0 ? (
+    <p>Your cart is empty. <a href="/">Keep shopping</a></p>
+  ) : (
+    <div class="checkout">
+      <ul class="lines">
+        {items.map((i) => {
+          const pic = picture(i.thumbnail, 72)
+          return (
+            <li class="line">
+              {pic ? <img src={pic.src} srcset={pic.srcset} alt="" width="72" height="72" /> : <span />}
+              <div>
+                <a href={`/products/${i.product_handle ?? i.variant?.product?.handle ?? ""}`}>{i.product_title ?? i.title}</a>
+                {i.variant_title && <div class="muted">{i.variant_title}</div>}
+                <form method="post" action="/cart/update" class="qty">
+                  <input type="hidden" name="line_id" value={i.id} />
+                  <label class="skip" for={`q-${i.id}`}>Quantity</label>
+                  <input id={`q-${i.id}`} name="quantity" type="number" inputmode="numeric" min="0" max="999" value={i.quantity} />
+                  <button class="quiet" type="submit">Update</button>
+                </form>
+                <form method="post" action="/cart/update">
+                  <input type="hidden" name="line_id" value={i.id} />
+                  <input type="hidden" name="quantity" value="0" />
+                  <button class="link" type="submit">Remove</button>
+                </form>
+              </div>
+              <div class="price">{money(i.total, cart.currency_code)}</div>
+            </li>
+          )
+        })}
+      </ul>
+      <div class="summary">
+        <Totals of={cart} />
+        <a class="button wide" href="/checkout">Check out</a>
+      </div>
+    </div>
+  )}
+</Shop>

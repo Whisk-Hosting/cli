@@ -226,6 +226,11 @@
       "type": "boolean",
       "default": false
     },
+    "promoted": {
+      "description": "true when the app runs only as a Promoted app (it needs a Promoted app's memory): its production deploy waits until the app is one.",
+      "type": "boolean",
+      "default": false
+    },
     "calls": {
       "description": "Slugs of apps in the same org this app may call with its service identity.",
       "type": "array",

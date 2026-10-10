@@ -12,7 +12,7 @@ import (
 // The embedded copy must equal the sibling templates folder. When the sibling is absent (the
 // published module on its own) there is nothing to compare against.
 func TestEmbeddedMatchesSource(t *testing.T) {
-	for _, name := range []string{"typescript", "python", "go"} {
+	for _, name := range []string{"typescript", "python", "go", "shop"} {
 		root := filepath.Join("..", "..", "templates", name)
 		if _, err := os.Stat(root); err != nil {
 			t.Skipf("%s not present; generated copy cannot be compared", root)

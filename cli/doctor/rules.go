@@ -566,8 +566,13 @@ func w053(r Repo, _ Context) outcome {
 
 func w052(r Repo, _ Context) outcome {
 	var out outcome
+	service := r.Manifest.ServiceRoutes()
+	if len(r.Manifest.Functions) == 0 {
+		// With no functions the platform delivers nothing to the queue endpoint.
+		service = service[1:]
+	}
 	for i, p := range r.Manifest.Routes.Public {
-		for _, s := range r.Manifest.ServiceRoutes() {
+		for _, s := range service {
 			if p == s || routes.Match(p, s) {
 				out = out.add("W052", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/routes/public/%d", i)), fmt.Sprintf("routes.public entry %s covers %s, which the platform delivers to itself.", p, s))
 				break
@@ -1021,9 +1026,29 @@ func w090(r Repo, c Context) outcome {
 	if c.Validation != nil && c.Validation.Promoted {
 		return skip("W090", "the app is a Promoted app, which may keep its own sign-in")
 	}
+	if r.Manifest.Promoted {
+		return skip("W090", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
+	}
+	if medusaShop(r) {
+		return skip("W090", "the app is a Medusa shop, which keeps its customers' sign-in")
+	}
 	var out outcome
 	for _, h := range passwordFields(r) {
 		out = out.add("W090", h.File, h.Line, fmt.Sprintf("%s line %d asks for a password; the platform signs people in, so the app never does.", h.File, h.Line))
 	}
 	return out
+}
+
+// medusaShop is whether the app is a Medusa shop (the shop template, CONTRACT.md §11): its
+// customers sign in to the shop itself, on any plan.
+func medusaShop(r Repo) bool {
+	var pkg struct {
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	src := r.Read("package.json")
+	if src == nil || json.Unmarshal(src, &pkg) != nil {
+		return false
+	}
+	_, ok := pkg.Dependencies["@medusajs/medusa"]
+	return ok
 }

@@ -1,0 +1,67 @@
+---
+// Every page's frame: the header with search, cart and account, the top categories, the footer.
+import "../styles/shop.css"
+import { api } from "../lib/medusa"
+import { cart as getCart, categories as getCategories } from "../lib/store"
+
+type Props = { title?: string; description?: string; canonical?: string; noindex?: boolean; image?: string }
+const { title, description, canonical, noindex, image } = Astro.props
+const shop = Astro.locals.shop
+const a = api(shop, Astro.request)
+const [cart, cats] = await Promise.all([getCart(a, Astro.cookies).catch(() => null), getCategories(a).catch(() => [])])
+const count = (cart?.items ?? []).reduce((n: number, i: any) => n + Number(i.quantity), 0)
+const top = cats.filter((c: any) => !c.parent_category_id).sort((x: any, y: any) => (x.rank ?? 0) - (y.rank ?? 0)).slice(0, 12)
+const fullTitle = title ? `${title} | ${shop.name}` : shop.name
+const url = canonical ?? new URL(Astro.url.pathname, Astro.url).toString()
+const q = Astro.url.searchParams.get("q") ?? ""
+---
+<!doctype html>
+<html lang="en-NZ">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    {description && <meta name="description" content={description} />}
+    <link rel="canonical" href={url} />
+    {noindex && <meta name="robots" content="noindex" />}
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:site_name" content={shop.name} />
+    <meta property="og:url" content={url} />
+    {description && <meta property="og:description" content={description} />}
+    {image && <meta property="og:image" content={image} />}
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <slot name="head" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="top">
+      <div class="wrap">
+        <a class="brand" href="/">{shop.name}</a>
+        <form class="search" action="/search" method="get" role="search">
+          <label class="skip" for="q">Search</label>
+          <input id="q" name="q" type="search" placeholder="Search" value={q} />
+        </form>
+        <nav aria-label="Account and cart">
+          <a href="/account">Account</a>
+          <a class="cart-link" href="/cart">Cart {count > 0 && <span class="count" aria-label={`${count} items`}>{count}</span>}</a>
+        </nav>
+      </div>
+      {top.length > 0 && (
+        <nav class="cats" aria-label="Categories">
+          {top.map((c: any) => <a href={`/categories/${c.handle}`}>{c.name}</a>)}
+        </nav>
+      )}
+    </header>
+    <main id="main">
+      <div class="wrap">
+        <slot />
+      </div>
+    </main>
+    <footer class="foot">
+      <div class="wrap">
+        <span>© {new Date().getFullYear()} {shop.name}</span>
+        <span>Prices in {shop.currency.toUpperCase()}, GST included</span>
+      </div>
+    </footer>
+  </body>
+</html>

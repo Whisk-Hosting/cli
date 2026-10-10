@@ -185,6 +185,7 @@ func fileRouteExists(r Repo, routePath string) bool {
 		"app/" + p + "/route", "src/app/" + p + "/route",
 		"pages/api/" + p, "src/pages/api/" + p, "pages/" + p, "src/pages/" + p,
 		"pages/api/" + p + "/index", "pages/" + p + "/index",
+		"src/api/" + p + "/route", // Medusa
 	}
 	for _, f := range r.Files {
 		ext := path.Ext(f.Path)

@@ -51,7 +51,10 @@ type Manifest struct {
 	KV            bool              `json:"kv"`
 	Email         bool              `json:"email"`
 	AlwaysOn      bool              `json:"always_on"`
-	Calls         []string          `json:"calls"`
+	// Promoted is true when the app runs only as a Promoted app: its production deploy waits
+	// until it is one (CONTROL-PLANE.md §6.15).
+	Promoted bool     `json:"promoted"`
+	Calls    []string `json:"calls"`
 	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
 	Connections      map[string]connect.Connection `json:"connections"`
 	CustomerIdentity string                        `json:"customer_identity"`

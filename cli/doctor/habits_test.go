@@ -20,6 +20,7 @@ func TestHabitRules(t *testing.T) {
 
 		{"timeout over the wake", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1)}, true},
 		{"timeout over the wake, always on", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1) + "always_on: true\n"}, false},
+		{"timeout over the wake, promoted", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1) + "promoted: true\n"}, false},
 		{"timeout within the wake", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 45\n", 1)}, false},
 
 		{"setInterval", "W023", map[string]string{"src/poll.ts": "setInterval(() => sync(), 60_000);\n"}, true},
