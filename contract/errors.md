@@ -533,6 +533,20 @@ For `not_carried`, remove `b2b: true`; the shop works without trade ordering.
 {"error":{"code":"B2B_UNAVAILABLE","message":"Trade ordering comes only with Promoted apps, and kiwi-shop is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop, then deploy again.","docs":"https://skill.whisk.run/errors/B2B_UNAVAILABLE","details":{"reason":"promotion","dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
 ```
 
+## CMS_UNAVAILABLE
+
+Status: 503 · Surface: app
+
+When: a request to the shop template's site editor (`/cms`, CONTRACT.md §11) reached the shop
+while its editor was starting or starting again. The shop starts it again by itself.
+
+Fix: Try again in a few seconds, as `Retry-After` says. If it lasts, read the app's logs for the
+lines starting `cms:`.
+
+```json
+{"error":{"code":"CMS_UNAVAILABLE","message":"The site editor is starting.","fix":"Try again in a few seconds.","docs":"https://skill.whisk.run/errors/CMS_UNAVAILABLE"}}
+```
+
 ## PROMOTED_ONLY
 
 Status: 409 · Surface: api

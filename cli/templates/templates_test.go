@@ -25,16 +25,16 @@ func TestEmbeddedMatchesSource(t *testing.T) {
 		for p, f := range want {
 			g, ok := got[p]
 			if !ok {
-				t.Errorf("%s: %s missing from files_gen.go; run go generate ./templates", name, p)
+				t.Errorf("%s: %s missing from the files_*_gen.go files; run go generate ./templates", name, p)
 				continue
 			}
 			if g.Content != f.Content || g.Mode != f.Mode {
-				t.Errorf("%s: %s differs from files_gen.go; run go generate ./templates", name, p)
+				t.Errorf("%s: %s differs from the files_*_gen.go files; run go generate ./templates", name, p)
 			}
 		}
 		for p := range got {
 			if _, ok := want[p]; !ok {
-				t.Errorf("%s: %s is in files_gen.go but not on disk; run go generate ./templates", name, p)
+				t.Errorf("%s: %s is in the files_*_gen.go files but not on disk; run go generate ./templates", name, p)
 			}
 		}
 	}

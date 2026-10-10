@@ -1,9 +1,0 @@
-node_modules
-.medusa
-storefront/dist
-storefront/.astro
-.git
-.whisk
-site/node_modules
-site/dist
-site/.astro

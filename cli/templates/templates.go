@@ -1,6 +1,6 @@
 // Package templates carries the three starter apps and the shop from ../../templates inside the binary so
-// whisk init --template works anywhere. files_gen.go is produced by `go generate` from the
-// sibling folder; the test fails when the two drift.
+// whisk init --template works anywhere. The files_*_gen.go files are produced by `go generate`
+// from the sibling folder, each adding part of a template; the test fails when the two drift.
 package templates
 
 //go:generate go run ./gen
@@ -21,6 +21,19 @@ import (
 type File struct {
 	Mode    os.FileMode
 	Content string
+}
+
+// files holds each template's files by folder name, filled by the generated files' init.
+var files = map[string]map[string]File{}
+
+// add puts part of a template into files.
+func add(name string, set map[string]File) {
+	if files[name] == nil {
+		files[name] = map[string]File{}
+	}
+	for p, f := range set {
+		files[name][p] = f
+	}
 }
 
 // Names maps the --template flag values to folder names.
