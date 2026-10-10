@@ -107,6 +107,16 @@ type EmailSender struct {
 	SetAt     *time.Time      `json:"set_at,omitempty"`
 	Fallback  string          `json:"fallback"`
 	Allowance *EmailAllowance `json:"allowance,omitempty"`
+	Receiving *EmailReceiving `json:"receiving,omitempty"`
+}
+
+// EmailReceiving is the platform's receiving domain, where apps get mail, in the operator's
+// Resend account: the records to publish at the domain's DNS provider and whether Resend has
+// verified them. Whisk registers the domain with the key already set.
+type EmailReceiving struct {
+	Domain   string      `json:"domain"`
+	Verified bool        `json:"verified"`
+	Records  []DNSRecord `json:"records"`
 }
 
 // EmailAllowance is how much of the Resend plan's sending allowance is used: today and this

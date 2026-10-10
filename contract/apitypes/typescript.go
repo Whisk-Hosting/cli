@@ -194,7 +194,7 @@ var wire = []any{
 	ExportToken{}, ExportAuditEvent{}, ExportFeedback{}, LastOwnerOrg{},
 	// data.go
 	EmailDomain{}, EmailAttachment{}, EmailStatus{}, EmailProviderRequest{}, EmailProviderSet{}, EmailSender{},
-	EmailAllowance{}, EmailAllowancePeriod{}, StorageInfo{}, StorageProviderRequest{},
+	EmailAllowance{}, EmailAllowancePeriod{}, EmailReceiving{}, StorageInfo{}, StorageProviderRequest{},
 	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, MediaLink{},
 	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
 	PackageCounts{}, PackageScan{}, Packages{}, LogDestination{}, LogDestinationList{},
