@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 	"github.com/santhosh-tekuri/jsonschema/v6/kind"
@@ -71,6 +73,32 @@ type Managed struct {
 	Settings []string           `json:"settings"`
 	Links    []string           `json:"links"`
 	Variants map[string]Variant `json:"variants"`
+	// Notify are the codes a copy may tell its business's owners about through the platform's
+	// notify route, each emailed once per occurrence (MANAGED-APPS.md §6.1).
+	Notify []Notice `json:"notify"`
+}
+
+// Notice is one code a product's copies may tell their business's owners about, and the
+// subject of the email (MANAGED-APPS.md §6.1).
+type Notice struct {
+	Code    string `json:"code"`
+	Subject string `json:"subject"`
+}
+
+// NoticeCode is the shape of a notice's code: the error-code shape (contract/errors.md).
+var NoticeCode = regexp.MustCompile(`^[A-Z][A-Z0-9_]{2,63}$`)
+
+// MaxNoticeSubject is the longest subject a notice may have, in characters.
+const MaxNoticeSubject = 120
+
+// Notice is the product's notice for code, or false when it declares none. Pure.
+func (m Managed) Notice(code string) (Notice, bool) {
+	for _, n := range m.Notify {
+		if n.Code == code {
+			return n, true
+		}
+	}
+	return Notice{}, false
 }
 
 // Variant is one form a product comes in: what a copy of it adds to the release manifest.
@@ -516,6 +544,9 @@ func withDefaults(m Manifest) Manifest {
 	if m.Managed != nil {
 		m.Managed.Settings = orEmpty(m.Managed.Settings)
 		m.Managed.Links = orEmpty(m.Managed.Links)
+		if m.Managed.Notify == nil {
+			m.Managed.Notify = []Notice{}
+		}
 		if m.Managed.Variants == nil {
 			m.Managed.Variants = map[string]Variant{}
 		}
@@ -779,6 +810,20 @@ func checkManaged(m Manifest) Problems {
 			add(fmt.Sprintf("/managed/settings/%d", i), n+" is a secret; a setting is a plain value the business sets on its copy")
 		}
 	}
+	seen := map[string]bool{}
+	for i, n := range m.Managed.Notify {
+		path := fmt.Sprintf("/managed/notify/%d", i)
+		if !NoticeCode.MatchString(n.Code) {
+			add(path+"/code", n.Code+" is not a code: upper-case letters, digits and _, starting with a letter, 3 to 64 of them")
+		}
+		if seen[n.Code] {
+			add(path+"/code", n.Code+" is declared twice; a code has one subject")
+		}
+		seen[n.Code] = true
+		if msg := noticeSubject(n.Subject); msg != "" {
+			add(path+"/subject", msg)
+		}
+	}
 	for _, name := range sortedVariants(m.Managed.Variants) {
 		v := m.Managed.Variants[name]
 		for i, n := range v.Settings {
@@ -830,6 +875,20 @@ func checkManaged(m Manifest) Problems {
 		}
 	}
 	return ps
+}
+
+// noticeSubject says what is wrong with a notice's subject, "" when nothing: it is an email's
+// subject line, so one short line of plain text. Pure.
+func noticeSubject(s string) string {
+	switch {
+	case strings.TrimSpace(s) == "":
+		return "a notice's subject is a short sentence for the email's subject line"
+	case utf8.RuneCountInString(s) > MaxNoticeSubject:
+		return fmt.Sprintf("a notice's subject is at most %d characters", MaxNoticeSubject)
+	case strings.IndexFunc(s, unicode.IsControl) >= 0:
+		return "a notice's subject is one line of plain text, without control characters"
+	}
+	return ""
 }
 
 func sortedVariants(m map[string]Variant) []string {

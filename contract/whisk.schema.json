@@ -266,6 +266,21 @@
           "uniqueItems": true,
           "default": []
         },
+        "notify": {
+          "description": "Codes a copy may tell its business's owners about through the platform's notify route; each is emailed once per occurrence with this subject (MANAGED-APPS.md 6.1).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "subject"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$" },
+              "subject": { "type": "string", "minLength": 1, "maxLength": 120 }
+            }
+          },
+          "maxItems": 32,
+          "default": []
+        },
         "variants": {
           "description": "The forms the product comes in; a copy picks one when it is added.",
           "type": "object",

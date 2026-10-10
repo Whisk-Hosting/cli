@@ -1,0 +1,6 @@
+# expect: MANIFEST_UNKNOWN_KEY notify
+whisk: 1
+name: app
+notify:
+  - code: LINK_ERP_RECONNECT
+    subject: Sign in to the ERP again

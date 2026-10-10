@@ -1,0 +1,11 @@
+# expect: MANIFEST_INVALID LINK_ERP_RECONNECT is declared twice
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  notify:
+    - code: LINK_ERP_RECONNECT
+      subject: Sign in to the ERP again
+    - code: LINK_ERP_RECONNECT
+      subject: The ERP wants a sign-in

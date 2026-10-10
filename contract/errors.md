@@ -524,7 +524,8 @@ Status: 503 · Surface: edge, api
 
 When: a request reached a managed app a person paused (MANAGED-APPS.md §4). The edge answers
 its public hostnames with the plain paused page, and the app itself answers its other routes
-with this code while `WHISK_PAUSED` is set.
+with this code while `WHISK_PAUSED` is set. The platform's notify route answers a paused
+copy's notice with it too (MANAGED-APPS.md §6.1): a paused copy tells nobody.
 
 Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 
@@ -586,6 +587,69 @@ Fix: An operator retires the product first; its copies stay on their last releas
 
 ```json
 {"error":{"code":"MANAGED_SOURCE_IN_USE","message":"erp-link is the source of the ERP link, which 12 businesses use.","fix":"Retire the product on the operator page first, then delete the app.","docs":"https://skill.whisk.run/errors/MANAGED_SOURCE_IN_USE","details":{"product":"erp-link","copies":12}}}
+```
+
+## NOTIFY_NOT_MANAGED
+
+Status: 403 · Surface: container
+
+When: an app called the platform's notify route, `POST
+http://connect.internal.whisk:8443/.whisk/notify` (MANAGED-APPS.md §6.1), and it is not the
+production of a managed app's copy. Only a copy tells its business's owners through it; a
+product's source app, an ordinary app and a preview are refused.
+
+Fix: Treat the notice as not sent and carry on; an ordinary app emails its own people through
+the email send API instead (CONTRACT.md §8).
+
+```json
+{"error":{"code":"NOTIFY_NOT_MANAGED","message":"erp-link is not a copy of a managed product, so it cannot tell the business's owners through Whisk.","fix":"Treat the notice as not sent and carry on.","docs":"https://skill.whisk.run/errors/NOTIFY_NOT_MANAGED","details":{"app":"erp-link"}}}
+```
+
+## NOTIFY_NOT_DECLARED
+
+Status: 403 · Surface: container
+
+When: a managed app's copy sent a notice whose code the release it runs does not declare in
+`managed.notify` (MANAGED-APPS.md §6.1). `details.declared` lists the codes it may send.
+
+Fix: Send only a code the product's `whisk.yaml` declares under `managed.notify`, or declare the
+code there and release the product again.
+
+```json
+{"error":{"code":"NOTIFY_NOT_DECLARED","message":"The ERP link's release declares no notice LINK_ERP_DOWN.","fix":"Send one of the declared codes, or declare LINK_ERP_DOWN under managed.notify and release the product again.","docs":"https://skill.whisk.run/errors/NOTIFY_NOT_DECLARED","details":{"code":"LINK_ERP_DOWN","declared":["LINK_ERP_RECONNECT","LINK_PRICES_UNREADABLE"]}}}
+```
+
+## NOTIFY_INVALID
+
+Status: 400 · Surface: container
+
+When: a notice sent to the platform's notify route is not `POST` with a JSON body of at most
+4 KiB, `{code, occurrence, detail?}`: `code` in the error-code shape, `occurrence` 1 to 100
+letters, digits and `. _ : / -`, and `detail` at most 1000 characters of plain text
+(MANAGED-APPS.md §6.1). `details.field` names the part that is wrong.
+
+Fix: Send the notice in that shape; the occurrence is the app's own key for one occurrence,
+such as the day it began.
+
+```json
+{"error":{"code":"NOTIFY_INVALID","message":"A notice's occurrence is 1 to 100 letters, digits and . _ : / -.","fix":"Send {code, occurrence, detail?} with an occurrence such as erp:2026-10-10.","docs":"https://skill.whisk.run/errors/NOTIFY_INVALID","details":{"field":"occurrence"}}}
+```
+
+## NOTIFY_LIMIT
+
+Status: 429 · Surface: container
+
+When: a managed app's copy has already told its owners about 10 different occurrences this UTC
+day, the most the platform sends for one copy in a day, so a fault in the product cannot fill
+an owner's inbox (MANAGED-APPS.md §6.1). A notice it already sent still answers 202 as a
+duplicate. `details.retry_after` is the seconds until the next UTC day, also sent as
+`Retry-After`.
+
+Fix: Treat the notice as not sent; the copy's own status still shows it. Send it again after
+the time given if it still holds.
+
+```json
+{"error":{"code":"NOTIFY_LIMIT","message":"erp-link has told its owners about 10 occurrences today, the most in a day.","fix":"Send it again after midnight UTC if it still holds.","docs":"https://skill.whisk.run/errors/NOTIFY_LIMIT","details":{"app":"erp-link","limit":10,"retry_after":3600}}}
 ```
 
 ## TRIAL_USED

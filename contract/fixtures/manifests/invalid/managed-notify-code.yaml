@@ -1,0 +1,9 @@
+# expect: MANIFEST_INVALID notify
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  notify:
+    - code: link-reconnect
+      subject: Sign in to the ERP again
