@@ -1,0 +1,14 @@
+# expect: MANIFEST_INVALID names no setting of the product or this variant
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  variants:
+    odoo:
+      name: Odoo
+      connections:
+        erp:
+          url: https://{setting.HOST}/json
+          operations:
+            - { name: Read records, method: POST, path: /json }

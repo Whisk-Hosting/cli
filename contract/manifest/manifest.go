@@ -799,7 +799,20 @@ func checkManaged(m Manifest) Problems {
 			if !connect.Name.MatchString(cn) {
 				add(base, cn+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30")
 			}
-			found, _ := connect.Check(v.Connections[cn])
+			c := v.Connections[cn]
+			placeholders := map[string]string{}
+			for _, n := range connect.Settings(c) {
+				if !contains(m.Managed.Settings, n) && !contains(v.Settings, n) {
+					add(base, "{setting."+n+"} names no setting of the product or this variant")
+				}
+				placeholders[n] = connect.SettingPlaceholder
+			}
+			filled, err := connect.FillSettings(c, placeholders)
+			if err != nil {
+				add(base, err.Error())
+				continue
+			}
+			found, _ := connect.Check(filled.WithDefaults())
 			for _, p := range found {
 				add(base+p.Path, p.Message)
 			}

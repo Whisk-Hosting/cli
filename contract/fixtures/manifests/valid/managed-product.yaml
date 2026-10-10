@@ -19,3 +19,15 @@ managed:
       name: Xero
       env: {CONNECTOR: xero}
       settings: [XERO_TENANT]
+    odoo:
+      name: Odoo
+      env: {CONNECTOR: odoo}
+      settings: [HOST, DATABASE]
+      connections:
+        erp:
+          url: https://{setting.HOST}/json
+          auth:
+            headers:
+              X-Odoo-Database: "{setting.DATABASE}"
+          operations:
+            - { name: Read records, method: POST, path: /json }
