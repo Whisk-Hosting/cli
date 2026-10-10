@@ -691,7 +691,7 @@ needs `require` defined, which esbuild adds with a banner:
 
 ```
 esbuild src/index.ts --bundle --platform=node --format=esm --outfile=dist/index.mjs \
-  --banner:js="import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);"
+  --banner:js="import { createRequire as whiskCreateRequire } from 'node:module'; const require = whiskCreateRequire(import.meta.url);"
 ```
 
 Then copy only `dist/` into the final image, not node_modules, and start with
