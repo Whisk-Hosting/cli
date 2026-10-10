@@ -82,6 +82,11 @@ and the exit codes of `CLI.md §3`:
   each, on the Business plan; `--now` checks again and waits (`CLI.md §5.5`).
 - `whisk secrets list/declare/set/link/versions/rollback/delete/reads` — names and metadata only;
   `set` always prints the dashboard link and exits 2.
+- `whisk connections list/show/grant/pause` — the app's connections through Whisk's broker:
+  grants by environment, Whisk's summary of what a grant allows and how each key is used;
+  `grant` always prints the connections page and exits 2; `pause NAME [--env]` and
+  `pause --all` stop calls at once (`CLI.md §5.6`). A deploy blocked on a grant answers
+  `GRANT_NEEDED` with that page, exit 2.
 - `whisk domains add/verify/list/remove`, `whisk envs list/delete`.
 - `whisk github` (and `status`), `whisk github repos/link/sync/unlink/install`: the app's
   optional two-way copy on GitHub; linking and installing are a person's (`CLI.md §5.7`).

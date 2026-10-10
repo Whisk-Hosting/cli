@@ -20,6 +20,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/whisk-run/contract"
+	"github.com/whisk-run/contract/connect"
 	"github.com/whisk-run/contract/redirects"
 	"github.com/whisk-run/contract/routes"
 	"github.com/whisk-run/contract/webhook"
@@ -27,29 +28,31 @@ import (
 
 // Manifest is a parsed, validated whisk.yaml with every default applied.
 type Manifest struct {
-	Whisk            int               `json:"whisk"`
-	Name             string            `json:"name"`
-	Routes           Routes            `json:"routes"`
-	Health           Health            `json:"health"`
-	Database         string            `json:"database"`
-	Migrate          string            `json:"migrate,omitempty"`
-	DatabaseRole     string            `json:"database_role"`
-	Build            Build             `json:"build"`
-	Secrets          []string          `json:"secrets"`
-	Env              map[string]string `json:"env"`
-	Queue            Queue             `json:"queue"`
-	Functions        []Function        `json:"functions"`
-	Webhooks         []Webhook         `json:"webhooks"`
-	Inbox            *Inbox            `json:"inbox,omitempty"`
-	Static           []Static          `json:"static"`
-	Redirects        []redirects.Rule  `json:"redirects"`
-	RedirectsFile    string            `json:"redirects_file,omitempty"`
-	Storage          bool              `json:"storage"`
-	KV               bool              `json:"kv"`
-	Email            bool              `json:"email"`
-	AlwaysOn         bool              `json:"always_on"`
-	Calls            []string          `json:"calls"`
-	CustomerIdentity string            `json:"customer_identity"`
+	Whisk         int               `json:"whisk"`
+	Name          string            `json:"name"`
+	Routes        Routes            `json:"routes"`
+	Health        Health            `json:"health"`
+	Database      string            `json:"database"`
+	Migrate       string            `json:"migrate,omitempty"`
+	DatabaseRole  string            `json:"database_role"`
+	Build         Build             `json:"build"`
+	Secrets       []string          `json:"secrets"`
+	Env           map[string]string `json:"env"`
+	Queue         Queue             `json:"queue"`
+	Functions     []Function        `json:"functions"`
+	Webhooks      []Webhook         `json:"webhooks"`
+	Inbox         *Inbox            `json:"inbox,omitempty"`
+	Static        []Static          `json:"static"`
+	Redirects     []redirects.Rule  `json:"redirects"`
+	RedirectsFile string            `json:"redirects_file,omitempty"`
+	Storage       bool              `json:"storage"`
+	KV            bool              `json:"kv"`
+	Email         bool              `json:"email"`
+	AlwaysOn      bool              `json:"always_on"`
+	Calls         []string          `json:"calls"`
+	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
+	Connections      map[string]connect.Connection `json:"connections"`
+	CustomerIdentity string                        `json:"customer_identity"`
 	// Network is where the app is served: NetworkInternal or NetworkPublic, or empty for the
 	// edition's default (public on whisk.run, internal on Whisk On-Premise).
 	Network  string   `json:"network,omitempty"`
@@ -515,6 +518,11 @@ func withDefaults(m Manifest) Manifest {
 		m.Redirects = []redirects.Rule{}
 	}
 	m.Calls = orEmpty(m.Calls)
+	conns := make(map[string]connect.Connection, len(m.Connections))
+	for name, c := range m.Connections {
+		conns[name] = c.WithDefaults()
+	}
+	m.Connections = conns
 	if m.CustomerIdentity == "" {
 		m.CustomerIdentity = CustomerIdentityNone
 	}
@@ -605,6 +613,32 @@ func checkRules(m Manifest) Problems {
 			}
 		}
 	}
+	held := map[string]string{}
+	for i, n := range m.Secrets {
+		held[n] = fmt.Sprintf("/secrets/%d", i)
+	}
+	for i, n := range m.Build.Secrets {
+		held[n] = fmt.Sprintf("/build/secrets/%d", i)
+	}
+	for _, name := range sortedConnections(m.Connections) {
+		c := m.Connections[name]
+		base := "/connections/" + name
+		if !connect.Name.MatchString(name) {
+			add(base, name+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30")
+		}
+		found, secrets := connect.Check(c)
+		for _, p := range found {
+			add(base+p.Path, p.Message)
+		}
+		for _, n := range secrets {
+			if msg := reservedName(n); msg != "" {
+				add(base+"/auth", msg)
+			}
+			if where, ok := held[n]; ok {
+				add(base+"/auth", fmt.Sprintf("%s is also listed at %s, which would give the app the value; a connection's keys stay with Whisk, so remove it there", n, where))
+			}
+		}
+	}
 	if m.Inbox != nil {
 		if i, clash := seenHooks[InboxSource]; clash {
 			add(fmt.Sprintf("/webhooks/%d/name", i), "the webhook name inbox is the inbox's own while inbox: is declared; rename the source")
@@ -620,6 +654,31 @@ func checkRules(m Manifest) Problems {
 		return nil
 	}
 	return dedupe(ps)
+}
+
+func sortedConnections(m map[string]connect.Connection) []string {
+	names := make([]string, 0, len(m))
+	for n := range m {
+		names = append(names, n)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ConnectionSecrets is every secret name the manifest's connections read, sorted.
+func ConnectionSecrets(m Manifest) []string {
+	seen := map[string]bool{}
+	var out []string
+	for _, name := range sortedConnections(m.Connections) {
+		for _, n := range connect.Secrets(m.Connections[name]) {
+			if !seen[n] {
+				seen[n] = true
+				out = append(out, n)
+			}
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 // WithFile returns the manifest with the redirects file's rules after its own, so the

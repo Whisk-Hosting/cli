@@ -223,6 +223,19 @@ a whole string literal anywhere in code (`"HUBSPOT_API_KEY"`, `'HUBSPOT_API_KEY'
 reading secrets through a table of names (`env[KEYS.hubspot]`). A secret referenced only in
 `webhooks[].secret` or `build.secrets` is not unused.
 
+## W032
+
+Level: warning
+Check: code reads a connection's secret from the environment, where it never arrives.
+Fix: Call the connection's address in WHISK_CONNECTION_<NAME>_URL with the app's WHISK_SERVICE_TOKEN in the Whisk-Service-Token header; Whisk's broker adds the key, so the app never needs it.
+Safe fix: no
+
+Details: a connection's secrets are the names its recipe reads as `secret.NAME` (CONTRACT.md
+§3.1). Whisk's broker holds them and never delivers them to a container, so code that reads one
+gets nothing. Uses the same read idioms as W030 and reports each name once, at its first read;
+a name that only appears as a string literal is not reported. W030 does not report such a name,
+since the connection declares it.
+
 ## W040
 
 Level: error

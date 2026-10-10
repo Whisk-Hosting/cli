@@ -38,6 +38,7 @@ version. Read them from the environment at start; never commit values; never ren
 | `DATABASE_URL` | `database` is `app` or `shared:<name>` | `postgres://…?sslmode=require`, pooled in transaction mode. For `shared:`, the app's own schema is first on `search_path`. With `database_role: restricted` the running app's is the run login, `<owner>_run`, which reads and writes rows and cannot change the schema; the `migrate` step's is the owner over a direct connection. |
 | `WHISK_STORAGE_ENDPOINT`, `WHISK_STORAGE_BUCKET`, `WHISK_STORAGE_ACCESS_KEY`, `WHISK_STORAGE_SECRET_KEY`, `WHISK_STORAGE_PREFIX`, `WHISK_STORAGE_REGION` | `storage: true` | S3-compatible credentials for the org's bucket, which is the tenant boundary. Write under the prefix, which is your app's own. Use path-style addressing; the endpoint is reachable from the container and from browsers. |
 | `WHISK_KV_URL` | `kv: true` | `redis://…` to a Valkey the app has to itself: no prefix, no sharing. Empty after the app sleeps; sized by the plan, and full means the app's own least recently used keys go. |
+| `WHISK_CONNECTION_<NAME>_URL` | each entry under `connections` | `http://connect.internal.whisk:8443/<name>`, the broker's address for that connection. The connection's secrets are never set. |
 | every name in `secrets:` | always | the value a human set; absent until then |
 | every name in `env:` | always | the literal value from the manifest |
 

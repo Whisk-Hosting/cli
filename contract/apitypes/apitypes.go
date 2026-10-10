@@ -218,10 +218,13 @@ type Deploy struct {
 	StartMS *int64 `json:"start_ms,omitempty"`
 	// Warnings are what went wrong once the deploy was live without failing it, such as
 	// FUNCTIONS_NOT_REGISTERED (CONTROL-PLANE.md §6.5); [] when nothing did.
-	Warnings   []Warning  `json:"warnings"`
-	StartedAt  *time.Time `json:"started_at,omitempty"`
-	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	Warnings []Warning `json:"warnings"`
+	// GrantsNeeded lists what a blocked deploy waits on a person to grant (GRANT_NEEDED,
+	// CONTROL-PLANE.md §6.8); [] when nothing.
+	GrantsNeeded []GrantNeeded `json:"grants_needed"`
+	StartedAt    *time.Time    `json:"started_at,omitempty"`
+	FinishedAt   *time.Time    `json:"finished_at,omitempty"`
+	CreatedAt    time.Time     `json:"created_at"`
 }
 
 // DeployEvent is one SSE event on GET /deploys/:id/events. The last one of a live deploy
@@ -715,6 +718,9 @@ type NeedsYou struct {
 	// FailingLogs names the log destinations whose last batch was refused or not answered
 	// (CONTROL-PLANE.md §6.17), as each destination's where.
 	FailingLogs []string `json:"failing_logs"`
+	// Grants names the connections a blocked production deploy waits on, as "app/name"
+	// (CONTROL-PLANE.md §6.8).
+	Grants []string `json:"grants"`
 }
 
 // Comp is a business on a paid plan free of charge, as the operator reads it.

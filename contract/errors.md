@@ -732,6 +732,206 @@ app may use the same value as that app; if they agree, run
 {"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask an owner, admin or developer to set the rest at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/secrets"}}}
 ```
 
+## GRANT_NEEDED
+
+Status: 409 · Surface: api, deploy, cli
+
+When: a production deploy declares something only a person may allow, and no grant covers it
+yet: a connection (CONTRACT.md §3.1) whose address or recipe differs from the granted one, or
+that names an operation not granted. The deploy is `blocked`; `details.grants` lists one entry
+per grant needed, `{kind, name, environment, recipe_changed, new_operations}`, and `details.url`
+the page where an owner or admin grants it. Unset secrets the deploy also needs are named in
+`details.unset_secrets`.
+
+Fix: Relay the names and the URL to the human and say what each grant would allow. Do not try
+to grant it yourself: only a person, freshly signed in, can. The deploy starts on its own once it is granted.
+
+```json
+{"error":{"code":"GRANT_NEEDED","message":"The connection erp needs a person to grant it before this deploy can go live.","fix":"Ask an owner or admin to review and grant erp at https://whisk.run/o/acme/apps/crm/connections. The deploy starts when it is granted.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"connection","name":"erp","environment":"production","recipe_changed":true,"new_operations":[{"name":"Read stock levels","method":"GET","path":"/stock/**"}]}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/connections"}}}
+```
+
+## CONFIRMATION_NEEDED
+
+Status: 403 · Surface: api
+
+When: a person asked for something that needs a confirmed session (CONTROL-PLANE.md §4.2),
+such as granting or resuming a connection, and they were not checked in the last 10 minutes by
+an emailed code, a company sign-in whose provider reported re-checking them (auth_time), or a
+passkey. A password alone does not confirm. `details.sign_in` is the sign-in link that comes
+back.
+
+Fix: Sign in again at the link with an emailed code or company sign-in, then repeat the action
+within 10 minutes.
+
+```json
+{"error":{"code":"CONFIRMATION_NEEDED","message":"Granting a connection needs you to confirm it's you.","fix":"Sign in again at https://auth.whisk.run/session/login?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections with an emailed code or company sign-in (or a passkey), then repeat this within 10 minutes. A password alone does not confirm.","docs":"https://skill.whisk.run/errors/CONFIRMATION_NEEDED","details":{"sign_in":"https://auth.whisk.run/session/login?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections"}}}
+```
+
+## CONNECTION_CALLER_UNKNOWN
+
+Status: 401 · Surface: container
+
+When: the broker could not tell which app made a call: no service token, a token the platform
+does not know, or a call from an address that is not one of that app's containers.
+
+Fix: Send the app's own `WHISK_SERVICE_TOKEN` in the `Whisk-Service-Token` header, from the
+app's own code, to the address in `WHISK_CONNECTION_<NAME>_URL`.
+
+```json
+{"error":{"code":"CONNECTION_CALLER_UNKNOWN","message":"The broker could not tell which app made this call.","fix":"Send WHISK_SERVICE_TOKEN in the Whisk-Service-Token header.","docs":"https://skill.whisk.run/errors/CONNECTION_CALLER_UNKNOWN","details":{}}}
+```
+
+## CONNECTION_UNKNOWN
+
+Status: 404 · Surface: container
+
+When: a call names a connection the running deploy's `whisk.yaml` does not declare.
+
+Fix: Declare the connection under `connections` and deploy, or call one the app declares
+(`WHISK_CONNECTION_<NAME>_URL` holds each address).
+
+```json
+{"error":{"code":"CONNECTION_UNKNOWN","message":"This app declares no connection named billing.","fix":"Declare billing under connections in whisk.yaml and deploy.","docs":"https://skill.whisk.run/errors/CONNECTION_UNKNOWN","details":{"connection":"billing"}}}
+```
+
+## CONNECTION_NOT_GRANTED
+
+Status: 403 · Surface: container
+
+When: the call's method and path match no operation a person granted for this environment, the
+connection has no grant for it (a preview with no previews grant), or the running code's address
+or recipe is not the granted one. Nothing was sent to the outside system.
+
+Fix: If the app needs this operation, add it under the connection's `operations` and deploy; a
+person then grants it. Do not work around the broker.
+
+```json
+{"error":{"code":"CONNECTION_NOT_GRANTED","message":"GET /payroll is not an operation granted on erp.","fix":"Add the operation to erp in whisk.yaml and deploy; an owner or admin then grants it.","docs":"https://skill.whisk.run/errors/CONNECTION_NOT_GRANTED","details":{"connection":"erp","method":"GET","path":"/payroll","environment":"production"}}}
+```
+
+## CONNECTION_REQUEST_AMBIGUOUS
+
+Status: 400 · Surface: container
+
+When: the call could be read differently by the broker and the outside system, so it is refused
+before it is checked against the grant: a dot segment in any spelling (`..;` included), `;` path
+parameters, an empty segment, an encoded `/` or `\`, a control character, a method other than
+GET, HEAD, POST, PUT, PATCH, DELETE or OPTIONS, or a header or query key that overrides the method
+or path (`X-HTTP-Method-Override`, `X-Original-URL`, `Forwarded`, `_method`, ...). Nothing was
+sent.
+
+Fix: Send the call with a plain path and its real method, and no override header or key.
+
+```json
+{"error":{"code":"CONNECTION_REQUEST_AMBIGUOUS","message":"The broker will not send this call: the call sets X-Http-Method-Override, which overrides the method or path.","fix":"Send the call with a plain path and its real method, and no override header or key.","docs":"https://skill.whisk.run/errors/CONNECTION_REQUEST_AMBIGUOUS","details":{"connection":"erp","method":"POST","path":"/orders"}}}
+```
+
+## CONNECTION_BUSY
+
+Status: 429 · Surface: container
+
+When: the broker is already carrying as many calls for this business at once as it takes (32),
+or as many as it takes for everyone (256). Calls that wait on a slow outside system hold their
+place until they end. Nothing was sent. `Retry-After` is 1.
+
+Fix: Retry after a second, and make fewer calls at once to slow outside systems.
+
+```json
+{"error":{"code":"CONNECTION_BUSY","message":"The broker is carrying as many calls for this business as it takes at once.","fix":"Retry after a second, and make fewer calls at once to slow outside systems.","docs":"https://skill.whisk.run/errors/CONNECTION_BUSY","details":{"connection":"erp","retry_after":1}}}
+```
+
+## CONNECTION_PAUSED
+
+Status: 403 · Surface: container
+
+When: someone paused the connection. Nothing was sent.
+
+Fix: Tell the human; an owner or admin resumes it on the app's connections page when they are
+ready. Do not retry in a loop.
+
+```json
+{"error":{"code":"CONNECTION_PAUSED","message":"The connection erp is paused.","fix":"Ask an owner or admin to resume erp at https://whisk.run/o/acme/apps/crm/connections.","docs":"https://skill.whisk.run/errors/CONNECTION_PAUSED","details":{"connection":"erp"}}}
+```
+
+## CONNECTION_REVOKED
+
+Status: 403 · Surface: container
+
+When: a person revoked the connection and its keys were deleted. Nothing was sent.
+
+Fix: Tell the human. Using it again needs its keys set and a new grant.
+
+```json
+{"error":{"code":"CONNECTION_REVOKED","message":"The connection erp was revoked.","fix":"Ask an owner or admin whether erp should be set up again.","docs":"https://skill.whisk.run/errors/CONNECTION_REVOKED","details":{"connection":"erp"}}}
+```
+
+## CONNECTION_LIMIT
+
+Status: 429 · Surface: container
+
+When: the call would go over the connection's calls a minute or a day. `Retry-After` and
+`details.retry_after` give the seconds until the window resets.
+
+Fix: Wait and retry after `retry_after` seconds, or ask the human to raise the limit when the
+app needs more calls.
+
+```json
+{"error":{"code":"CONNECTION_LIMIT","message":"erp has made its 60 calls this minute.","fix":"Retry after 17 seconds, or ask an owner or admin to raise the limit.","docs":"https://skill.whisk.run/errors/CONNECTION_LIMIT","details":{"connection":"erp","window":"minute","limit":60,"retry_after":17}}}
+```
+
+## CONNECTION_SECRET_UNSET
+
+Status: 409 · Surface: container
+
+When: a key the connection's recipe reads has no value.
+
+Fix: Ask an owner or admin to set it on the app's Keys page (`whisk secrets link NAME`).
+
+```json
+{"error":{"code":"CONNECTION_SECRET_UNSET","message":"ERP_KEY, which erp signs with, has no value.","fix":"Ask an owner or admin to set ERP_KEY.","docs":"https://skill.whisk.run/errors/CONNECTION_SECRET_UNSET","details":{"connection":"erp","name":"ERP_KEY"}}}
+```
+
+## CONNECTION_TOKEN_FAILED
+
+Status: 502 · Surface: container
+
+When: the connection's token step did not return a token: the endpoint refused, answered
+without the token at the named field, or could not be reached. `details.status` is its status;
+its body is never passed on.
+
+Fix: Check the token step in whisk.yaml against the system's documentation, and ask the human
+whether the keys it sends are right.
+
+```json
+{"error":{"code":"CONNECTION_TOKEN_FAILED","message":"The token endpoint for erp answered 401.","fix":"Check the token step and ask the human whether ERP_ID and ERP_SECRET are right.","docs":"https://skill.whisk.run/errors/CONNECTION_TOKEN_FAILED","details":{"connection":"erp","status":401}}}
+```
+
+## CONNECTION_UPSTREAM
+
+Status: 502 · Surface: container
+
+When: the broker could not reach the outside system: the name does not resolve, it resolves to
+a private address, the port is not 443, TLS failed, or it did not answer within 60 seconds.
+
+Fix: Check the connection's `url`. If it is right, the outside system is down; retry later.
+
+```json
+{"error":{"code":"CONNECTION_UPSTREAM","message":"api.example-erp.com could not be reached: timed out.","fix":"Check erp's url; retry later if it is right.","docs":"https://skill.whisk.run/errors/CONNECTION_UPSTREAM","details":{"connection":"erp","host":"api.example-erp.com","reason":"timeout"}}}
+```
+
+## CONNECTION_UNCONFIRMED
+
+Status: 503 · Surface: container
+
+When: the broker could not confirm with the platform that the call is still allowed, so it
+refused it rather than risk a call nobody permits. Nothing was sent.
+
+Fix: Retry shortly. It clears when the platform answers again.
+
+```json
+{"error":{"code":"CONNECTION_UNCONFIRMED","message":"The broker could not confirm erp is still granted.","fix":"Retry in a few seconds.","docs":"https://skill.whisk.run/errors/CONNECTION_UNCONFIRMED","details":{"connection":"erp"}}}
+```
+
 ## SECRET_SHARED_EXISTS
 
 Status: 409 · Surface: api, cli, dashboard

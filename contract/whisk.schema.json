@@ -231,6 +231,12 @@
       "uniqueItems": true,
       "default": []
     },
+    "connections": {
+      "description": "Outside systems this app reaches through Whisk's broker without holding their credentials (CONTRACT.md 3.1). A person grants each one.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/connection" },
+      "default": {}
+    },
     "network": {
       "description": "Where the app is served on Whisk On-Premise: internal (the default there) on the company's network only, public also on the outside address. whisk.run serves every app publicly and refuses internal.",
       "type": "string",
@@ -258,6 +264,68 @@
     }
   },
   "$defs": {
+    "templates": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "maxLength": 2048 }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "operations"],
+      "properties": {
+        "url": { "description": "The system's base address: https, no query, no credentials.", "type": "string", "maxLength": 500 },
+        "auth": {
+          "description": "The recipe: templates set on every call, and an optional token step.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "headers": { "$ref": "#/$defs/templates" },
+            "query": { "$ref": "#/$defs/templates" },
+            "token": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url"],
+              "properties": {
+                "url": { "type": "string", "maxLength": 500 },
+                "method": { "type": "string", "enum": ["GET", "POST", "get", "post"] },
+                "headers": { "$ref": "#/$defs/templates" },
+                "form": { "$ref": "#/$defs/templates" },
+                "json": { "$ref": "#/$defs/templates" },
+                "field": { "type": "string", "maxLength": 100 },
+                "expires_field": { "type": "string", "maxLength": 100 },
+                "lifetime": { "type": "integer", "minimum": 1, "maximum": 86400 },
+                "revoke": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "maxLength": 500 },
+                    "headers": { "$ref": "#/$defs/templates" },
+                    "form": { "$ref": "#/$defs/templates" }
+                  }
+                }
+              }
+            }
+          },
+          "default": {}
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "method", "path"],
+            "properties": {
+              "name": { "description": "Plain words; the app's own description of the operation.", "type": "string", "maxLength": 60 },
+              "method": { "type": "string", "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "*", "get", "head", "post", "put", "patch", "delete"] },
+              "path": { "$ref": "#/$defs/routeGlob" }
+            }
+          }
+        }
+      }
+    },
     "path": {
       "description": "An absolute URL path without query or fragment.",
       "type": "string",

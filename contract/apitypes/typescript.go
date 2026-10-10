@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/whisk-run/contract/connect"
 	werrors "github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/graph"
 	"github.com/whisk-run/contract/status"
@@ -60,6 +61,11 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("FrozenReason", "FROZEN_REASONS", FrozenPayment, FrozenOperator, FrozenInactive, FrozenAbuse))
 	add(enumOf("ShreddingFor", "SHREDDING_REASONS", ShreddingDeleted, ShreddingPayment, ShreddingInactive, ShreddingOperator, ShreddingAbuse))
 	add(enumOf("SecretScope", "SECRET_SCOPES", ScopeOrg, ScopeApp))
+	add(enumOf("GrantKind", "GRANT_KINDS", GrantConnection))
+	add(enumOf("ConnectionEnvironment", "CONNECTION_ENVIRONMENTS", ConnectionProduction, ConnectionPreviews))
+	add(enumOf("ConnectionState", "CONNECTION_STATES", ConnectionActive, ConnectionPaused, ConnectionRevoked))
+	add(enumOf("BrokerDrop", "BROKER_DROPS", BrokerDropped, BrokerUnreachable))
+	add(enumOf("ProviderRevocation", "PROVIDER_REVOCATIONS", ProviderRevoked, ProviderFailed, ProviderNotSupported, ProviderNoneHeld, ProviderUnknown))
 	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderBreakglass))
 	add(enumOf("SubjectKind", "SUBJECT_KINDS", SubjectUser, SubjectGroup, SubjectEveryone))
 	add(enumOf("Audience", "AUDIENCES", AudienceTeam, AudienceCustomer))
@@ -204,7 +210,12 @@ var wire = []any{
 	CustomerList{}, WebhookSource{}, WebhookEvent{}, DeliveryError{},
 	Inbox{}, InboxDomain{}, InboxDomainRequest{}, InboxMessage{},
 	// integrations.go
-	CdnProvider{}, CdnHostname{}, AppCdn{}, GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
+	CdnProvider{}, CdnHostname{}, AppCdn{},
+	// connections.go, with contract/connect's summary
+	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
+	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{},
+	GrantConnectionRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
+	GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
 	GitHubBranch{}, GitHubLink{}, GitHubAppRecord{}, GitHubAppInfo{}, GitHubManifestStart{},
 	// money.go
 	Money{}, MoneyAttention{}, MoneyUpcoming{}, MoneySubscription{}, MoneyEvent{}, MoneyPayout{},

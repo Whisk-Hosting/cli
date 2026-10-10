@@ -206,6 +206,8 @@ func run() error {
 		logger.Info("canary secret log line", "value", v)
 		writeJSON(w, 200, map[string]any{"logged": true, "length": len(v)})
 	})
+	r.Get("/diag/connection", diagConnection)
+	r.Get("/diag/env", diagEnv)
 	r.Post("/diag/domains", diagDomains)
 	r.Get("/diag/kv", kvRoute)
 	r.Get("/diag/sync", syncRoute)

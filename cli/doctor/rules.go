@@ -18,6 +18,7 @@ import (
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/stack"
 	"github.com/whisk-run/contract"
+	"github.com/whisk-run/contract/connect"
 	rules "github.com/whisk-run/contract/doctor"
 	"github.com/whisk-run/contract/graph"
 	"github.com/whisk-run/contract/manifest"
@@ -85,6 +86,7 @@ var ruleTable = []rule{
 	{"W024", false, w024},
 	{"W030", true, w030},
 	{"W031", true, w031},
+	{"W032", true, w032},
 	{"W040", true, w040},
 	{"W041", true, w041},
 	{"W042", true, w042},
@@ -332,6 +334,10 @@ func declaredNames(r Repo) map[string]bool {
 
 func w030(r Repo, _ Context) outcome {
 	declared := declaredNames(r)
+	// A connection's secrets are declared by the connection; reading one is W032's.
+	for n := range connectionKeyOwners(r.Manifest) {
+		declared[n] = true
+	}
 	seen := map[string]bool{}
 	var out outcome
 	for _, f := range r.AllCode() {
@@ -364,6 +370,61 @@ func w031(r Repo, _ Context) outcome {
 		if !read[n] {
 			out = out.add("W031", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/secrets/%d", i)), n+" is declared under secrets but never read in code.")
 		}
+	}
+	return out
+}
+
+// connectionKeyOwners maps each secret a connection's recipe reads to the connections that
+// read it, sorted (CONTRACT.md §3.1). Pure.
+func connectionKeyOwners(m manifest.Manifest) map[string][]string {
+	names := make([]string, 0, len(m.Connections))
+	for name := range m.Connections {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	out := map[string][]string{}
+	for _, name := range names {
+		for _, n := range connect.Secrets(m.Connections[name]) {
+			out[n] = append(out[n], name)
+		}
+	}
+	return out
+}
+
+// connectionKeyReads is the first read of each connection secret among hits, in order. Pure.
+func connectionKeyReads(owners map[string][]string, hits []hit) []hit {
+	seen := map[string]bool{}
+	var out []hit
+	for _, h := range hits {
+		if _, ok := owners[h.Name]; ok && !seen[h.Name] {
+			seen[h.Name] = true
+			out = append(out, h)
+		}
+	}
+	return out
+}
+
+// connectionKeyMessage is W032's message for one read.
+func connectionKeyMessage(name string, connections []string) string {
+	which := "the connection " + connections[0]
+	if len(connections) > 1 {
+		which = "the connections " + strings.Join(connections, ", ")
+	}
+	return fmt.Sprintf("%s is read from the environment, but it is a key of %s: Whisk's broker holds it and it never reaches the app.", name, which)
+}
+
+func w032(r Repo, _ Context) outcome {
+	owners := connectionKeyOwners(r.Manifest)
+	if len(owners) == 0 {
+		return outcome{}
+	}
+	var hits []hit
+	for _, f := range r.AllCode() {
+		hits = append(hits, envReads(f)...)
+	}
+	var out outcome
+	for _, h := range connectionKeyReads(owners, hits) {
+		out = out.add("W032", h.File, h.Line, connectionKeyMessage(h.Name, owners[h.Name]))
 	}
 	return out
 }

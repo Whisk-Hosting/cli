@@ -839,8 +839,47 @@ sent them (§7), so between apps: read another app's tables through a shared dat
 it to ask something or to have it act by its own rules; to hand over work that can wait, call a
 route that sends an event to the other app's own queue and answers `202` at once.
 
-**Services outside Whisk.** An API key or token your app uses to call a service outside Whisk
-is a secret (§6): declare its name and a person sets the value in the dashboard.
+**Services outside Whisk: connections.** Reach an outside API (an ERP, accounting, CRM, a
+payment provider) through a connection, so the app never holds its key. Whisk's broker makes
+each call, checks it against what a person granted, adds the credential and sends it on.
+
+```yaml
+connections:
+  erp:                                     # the app gets WHISK_CONNECTION_ERP_URL
+    url: https://api.example-erp.com/v2    # https, no query, no credentials
+    auth:                                  # how a request is signed; empty for an API with no key
+      headers:
+        Authorization: "Bearer {secret.ERP_API_KEY}"
+    operations:                            # only these calls pass; ask for the least you need
+      - { name: Read stock levels, method: GET, path: "/stock/**" }
+      - { name: Create sales orders, method: POST, path: /orders }
+```
+
+Call `$WHISK_CONNECTION_ERP_URL/stock/42` with the header `Whisk-Service-Token:
+$WHISK_SERVICE_TOKEN` (or `Authorization: Bearer $WHISK_SERVICE_TOKEN` when the API's own
+credential goes in another header); a client library pointed at that address needs only that
+default header. Never put the API's key in code or under `secrets`: the keys a recipe reads
+(`secret.NAME`) are declared for you, a person sets them, and they never reach the app.
+
+The recipe is text with `{expression}` placeholders built from fixed functions, so any API's
+sign-in can be described: `basic(secret.USER, secret.PASSWORD)`; a signature such as
+`{base64(hmac_sha256(secret.KEY, concat(request.method, request.path, time.unix)))}` with
+`{time.unix}` in another header; a token step that posts a client id and secret and places
+`{token}`; a signed JWT, `{jwt('RS256', secret.KEY_PEM, json('iss', secret.EMAIL, 'iat',
+time.unix, 'exp', add(time.unix, 3600)))}`. CONTRACT.md §3.1 lists every reference and function.
+
+A person grants each connection, freshly signed in, on the app's Connections page. The
+first production deploy, and any deploy that changes the address or recipe or adds an
+operation, waits with `GRANT_NEEDED`: relay its names and link to the human, and say plainly
+what each operation lets the app do. Previews are refused until a person grants previews too.
+Use a connection for every outside API whose key the app should not hold; one with no key can
+still be a connection, with an empty `auth`. The broker's own refusals carry the header
+`Whisk-Broker: refused` and an error code (`CONNECTION_NOT_GRANTED`, `CONNECTION_PAUSED`,
+`CONNECTION_LIMIT`, `CONNECTION_REQUEST_AMBIGUOUS`, `CONNECTION_BUSY`, ...); anything else is the
+API's own answer. Send plain paths with the real method: dot segments, `;` parameters and method
+override headers are refused. Redirects come back to you unfollowed, and a credential the API
+echoes back arrives as `[redacted by Whisk]`. If the app may be misbehaving, `whisk connections pause NAME` stops
+its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).
 
 ## 9. Storage, email, key-value
 

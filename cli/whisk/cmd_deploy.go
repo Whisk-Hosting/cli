@@ -831,7 +831,16 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 		})
 		return nil
 	case status.DeployBlocked:
-		unset := ev.Unset
+		grants, unset := blockedDetail(ev.Error)
+		if len(ev.Unset) > 0 {
+			unset = ev.Unset
+		}
+		if len(grants) == 0 {
+			grants = s.grantsNeeded(client, org, app, ev.DeployID)
+		}
+		if len(grants) > 0 {
+			return grantsNeededBlock(ev.DeployID, grants, unset, connectionsURL(s.dashboard(), org, app), secretsURL(s.dashboard(), org, app))
+		}
 		if len(unset) == 0 {
 			// Best effort: the deploy is blocked either way, and that is the error to report,
 			// so a failed lookup only leaves the secret names out of it.
@@ -850,6 +859,18 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 		status.DeployStarting, status.DeployHealthChecking, status.DeploySwitching, status.DeployDraining:
 	}
 	return s.deployFailure(client, org, app, ev)
+}
+
+// grantsNeeded is what a blocked deploy waits on a person to grant, read from the deploy when
+// its event did not carry it. Best effort, as the unset secrets are: a failed read leaves the
+// deploy reported as waiting on secrets.
+func (s *session) grantsNeeded(client *api.Client, org, app, id string) []api.GrantNeeded {
+	d, err := client.GetDeploy(s.ctx, org, app, id)
+	if err != nil {
+		s.printer.Progress("Could not read what the deploy waits on: %v", err)
+		return nil
+	}
+	return d.GrantsNeeded
 }
 
 // deployFailure is exit 6: the code and fix from the deploy record, with the last 40 lines

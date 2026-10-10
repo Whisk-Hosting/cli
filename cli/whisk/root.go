@@ -161,7 +161,7 @@ func newRoot(s *session) *cobra.Command {
 		loginCmd(s), logoutCmd(s), whoamiCmd(s), accountCmd(s), orgsCmd(s), useCmd(s), cloneCmd(s), gitCredentialCmd(s),
 		initCmd(s), appsCmd(s), doctorCmd(s), devCmd(s),
 		deployCmd(s), deploysCmd(s), rollbackCmd(s), statusCmd(s), scanCmd(s), openCmd(s),
-		secretsCmd(s), domainsCmd(s), redirectsCmd(s), cdnCmd(s), envsCmd(s), githubCmd(s),
+		secretsCmd(s), connectionsCmd(s), domainsCmd(s), redirectsCmd(s), cdnCmd(s), envsCmd(s), githubCmd(s),
 		membersCmd(s), accessCmd(s), deployKeysCmd(s), customersCmd(s), uploadsCmd(s), clientsCmd(s),
 		agentTokenCmd(s), tokensCmd(s), feedbackCmd(s),
 		functionsCmd(s), runsCmd(s), eventsCmd(s), approvalsCmd(s),
