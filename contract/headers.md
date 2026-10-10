@@ -107,6 +107,10 @@ or adds named headers. Defaults: `Strict-Transport-Security`, `X-Content-Type-Op
 no-store` on private routes when the app set none. Previews add `X-Robots-Tag: noindex,
 nofollow`. There is no default `Content-Security-Policy`; set one in `routes.headers`.
 
+The edge compresses text answers (HTML, CSS, JavaScript, JSON, SVG and the like) with zstd or gzip
+for browsers that accept them. An answer the app already sends with a `Content-Encoding` passes
+unchanged.
+
 ### Edge response cache
 
 The edge keeps an answer the app marks cacheable and answers the same request again itself,
