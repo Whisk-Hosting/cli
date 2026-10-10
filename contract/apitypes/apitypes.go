@@ -109,6 +109,8 @@ type App struct {
 	// Promoted is set while the app is a Promoted app, absent when it is not one
 	// (CONTROL-PLANE.md §6.15).
 	Promoted *AppPromoted `json:"promoted,omitempty"`
+	// Boosted is set while the app has Boost, absent when it has none (CONTROL-PLANE.md §6.15).
+	Boosted *AppBoosted `json:"boosted,omitempty"`
 	// Managed is set when the app is a copy of a product Whisk runs, absent otherwise
 	// (MANAGED-APPS.md §10).
 	Managed *AppManaged `json:"managed,omitempty"`
@@ -125,6 +127,16 @@ type AppPromoted struct {
 	Since   time.Time `json:"since"`
 	By      string    `json:"by"`
 	InForce bool      `json:"in_force"`
+}
+
+// AppBoosted is when an app was given Boost and by whom (a user id), whether it is in force
+// (false while the business's plan has no price for Boost, or while the app is a Promoted app in
+// force, which has more; Boost then adds and costs nothing), and how much memory it adds.
+type AppBoosted struct {
+	Since       time.Time `json:"since"`
+	By          string    `json:"by"`
+	InForce     bool      `json:"in_force"`
+	MemoryBytes int64     `json:"memory_bytes"`
 }
 
 // AppProblem is the latest thing that stopped the app answering: CONTAINER_CRASHED with the
@@ -418,7 +430,8 @@ type NodeCopy struct {
 	Line        string `json:"line"` // the sentence the machines page and whisk operator nodes print
 }
 
-// NodeFailover is a down node's move of its Promoted apps to the node holding its copy.
+// NodeFailover is a down node's move of its apps, Promoted apps first, to the node holding its
+// copy (an app without a database to another node when that one has no room).
 type NodeFailover struct {
 	StartedAt time.Time  `json:"started_at"`
 	Holder    string     `json:"holder"`

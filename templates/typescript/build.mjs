@@ -14,5 +14,6 @@ await build({
   legalComments: "none",
   logLevel: "warning",
   // Some dependencies are CommonJS and call require(); an ES module bundle has none of its own.
-  banner: { js: "import { createRequire } from 'node:module'; const require = createRequire(import.meta.url);" },
+  // The import is renamed because bundled ES modules (Sentry's) import createRequire themselves.
+  banner: { js: "import { createRequire as whiskCreateRequire } from 'node:module'; const require = whiskCreateRequire(import.meta.url);" },
 });

@@ -484,6 +484,22 @@ end the trial or choose a plan on the billing page, then promote the app.
 {"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is inside its free trial, and a Promoted app is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
 ```
 
+## BOOST_UNAVAILABLE
+
+Status: 409 · Surface: api
+
+When: an owner or billing contact asked to give an app Boost for a business that does not pay
+its own extras, where Boost is charged: a client business its agency pays for
+(`details.reason: client`, with `details.agency` naming the agency), or a business inside its
+free trial (`details.reason: trial`, with `details.trial_ends_at`).
+
+Fix: For a client business, hand it over and let it choose its own plan first. During the trial,
+end the trial or choose a plan on the billing page, then boost the app.
+
+```json
+{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is inside its free trial, and Boost is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
+```
+
 ## PROMOTED_APP_REQUIRED
 
 Status: 409 · Surface: deploy, cli
@@ -3213,10 +3229,10 @@ first kill of an app, and then at most once per app per 24 hours.
 
 Fix: Reduce the app's peak memory: stream large downloads and uploads instead of buffering them,
 keep less in `/tmp` (hydrate only what a run needs, or read it from storage on demand), and
-process work in smaller batches. Otherwise move the org to a plan with more memory.
+process work in smaller batches. Otherwise give the app Boost (2 GiB more memory, on any paid plan).
 
 ```json
-{"error":{"code":"APP_OUT_OF_MEMORY","message":"whisk-init: the previous run was killed with SIGKILL without a stop request, which means it used more than its memory limit of 256 MiB (files in /tmp count as memory).","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or move to a plan with more memory.","docs":"https://skill.whisk.run/errors/APP_OUT_OF_MEMORY","details":{}}}
+{"error":{"code":"APP_OUT_OF_MEMORY","message":"whisk-init: the previous run was killed with SIGKILL without a stop request, which means it used more than its memory limit of 256 MiB (files in /tmp count as memory).","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB more memory, on any paid plan).","docs":"https://skill.whisk.run/errors/APP_OUT_OF_MEMORY","details":{}}}
 ```
 
 ## APP_CPU_SLEEP
@@ -3253,7 +3269,7 @@ from storage on demand), and process work in smaller batches. Otherwise move the
 with more memory.
 
 ```json
-{"error":{"code":"APP_MEMORY_HIGH","message":"whisk-init: the app is using 230 MiB (peak 240 MiB, 93%) of its memory limit of 256 MiB, and files in /tmp count as memory.","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or move to a plan with more memory.","docs":"https://skill.whisk.run/errors/APP_MEMORY_HIGH","details":{}}}
+{"error":{"code":"APP_MEMORY_HIGH","message":"whisk-init: the app is using 230 MiB (peak 240 MiB, 93%) of its memory limit of 256 MiB, and files in /tmp count as memory.","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB more memory, on any paid plan).","docs":"https://skill.whisk.run/errors/APP_MEMORY_HIGH","details":{}}}
 ```
 
 ## INIT_CONFIG

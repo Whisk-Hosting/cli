@@ -121,10 +121,12 @@ type Billing struct {
 	HandedOver   bool             `json:"handed_over,omitempty"`
 	Comp         *BillingComp     `json:"comp,omitempty"`
 	Promoted     BillingPromoted  `json:"promoted"`
+	// Boosted is the business's boosted apps in force and the monthly price of Boost on each.
+	Boosted BillingPromoted `json:"boosted"`
 }
 
-// BillingPromoted is the business's Promoted apps in force and the monthly price of each, 0 when
-// the plan has no price for them (CONTROL-PLANE.md §6.15).
+// BillingPromoted is the business's Promoted (or boosted) apps in force and the monthly price of
+// each, 0 when the plan has no price for them (CONTROL-PLANE.md §6.15).
 type BillingPromoted struct {
 	Apps      int   `json:"apps"`
 	UnitCents int64 `json:"unit_cents"`
