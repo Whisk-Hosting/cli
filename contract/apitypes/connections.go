@@ -82,6 +82,22 @@ type Connection struct {
 	Grants []ConnectionGrant `json:"grants"`
 	// Waiting is whether a blocked deploy waits on this connection's grant.
 	Waiting bool `json:"waiting"`
+	// Keypair is the key pair Whisk made for the connection, when its recipe asks for one: nil
+	// until a person makes it.
+	Keypair *ConnectionKeypair `json:"keypair,omitempty"`
+}
+
+// ConnectionKeypair is a key pair Whisk made for a connection: the private key is the named
+// secret, which nobody can read; the certificate is what a person uploads to the outside system.
+type ConnectionKeypair struct {
+	Secret string `json:"secret"`
+	// Certificate is the self-signed certificate, PEM.
+	Certificate string `json:"certificate"`
+	// Fingerprint is the SHA-256 of the certificate, upper-case hex pairs joined by colons.
+	Fingerprint string    `json:"fingerprint"`
+	MadeBy      string    `json:"made_by"`
+	MadeAt      time.Time `json:"made_at"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 // GrantConnectionRequest grants exactly the version whose hash the person was shown.

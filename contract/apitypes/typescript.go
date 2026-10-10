@@ -214,7 +214,7 @@ var wire = []any{
 	CdnProvider{}, CdnHostname{}, AppCdn{},
 	// connections.go, with contract/connect's summary
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
-	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{},
+	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
 	GrantConnectionRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
 	GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
 	GitHubBranch{}, GitHubLink{}, GitHubAppRecord{}, GitHubAppInfo{}, GitHubManifestStart{},

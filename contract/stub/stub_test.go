@@ -25,7 +25,7 @@ routes:
 secrets: [STRIPE_WEBHOOK_SECRET]
 webhooks:
   - { name: stripe, preset: stripe, secret: STRIPE_WEBHOOK_SECRET, handler: /hooks/stripe }
-  - { name: legacy, preset: token, handler: /hooks/legacy }
+  - { name: legacy, preset: token, handler: /hooks/legacy, handshake: { query: validationToken } }
 `
 
 // echoApp stands in for a template: it echoes the X-Whisk-* headers it received as JSON.
@@ -273,6 +273,20 @@ func TestWebhookIngress(t *testing.T) {
 	rec, _ = get(t, a, "POST", "/hooks/"+s.orgID+"/"+s.appID+"/legacy", nil, "x")
 	if rec.Code != 401 {
 		t.Fatalf("token source without token: %d", rec.Code)
+	}
+	before := len(s.store.eventsFor("legacy"))
+	hs := httptest.NewRecorder()
+	a.ServeHTTP(hs, httptest.NewRequest("POST", "/hooks/"+s.orgID+"/"+s.appID+"/legacy/tok123?validationToken=abc-1", nil))
+	if hs.Code != 200 || hs.Body.String() != "abc-1" || !strings.HasPrefix(hs.Header().Get("Content-Type"), "text/plain") {
+		t.Fatalf("handshake: %d %q", hs.Code, hs.Body.String())
+	}
+	hs = httptest.NewRecorder()
+	a.ServeHTTP(hs, httptest.NewRequest("POST", "/hooks/"+s.orgID+"/"+s.appID+"/legacy?validationToken=abc-1", nil))
+	if hs.Code != 401 || strings.Contains(hs.Body.String(), "abc-1") {
+		t.Fatalf("handshake without the token: %d %q", hs.Code, hs.Body.String())
+	}
+	if len(s.store.eventsFor("legacy")) != before {
+		t.Fatal("a handshake was stored as a delivery")
 	}
 }
 

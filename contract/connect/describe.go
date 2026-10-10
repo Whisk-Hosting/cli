@@ -60,6 +60,9 @@ func Usage(c Connection) []Use {
 	for _, k := range sortedKeys(c.Auth.Query) {
 		visit(c.Auth.Query[k], host, call)
 	}
+	for _, k := range sortedKeys(c.Auth.Body) {
+		visit(c.Auth.Body[k], host, Context{Token: c.Auth.Token != nil})
+	}
 	if t := c.Auth.Token; t != nil {
 		th := hostOf(t.URL)
 		for _, m := range []map[string]string{t.Headers, t.Form, t.JSON} {
@@ -117,10 +120,15 @@ func hostOf(raw string) string {
 // rules the broker enforces (CONTROL-PLANE.md §6.8). Label on an operation is the app's own
 // description and is never the basis of a decision.
 type Summary struct {
-	Host      string `json:"host"`
-	Port      string `json:"port"`
-	BasePath  string `json:"base_path"`
-	Insecure  bool   `json:"insecure"`
+	Host     string `json:"host"`
+	Port     string `json:"port"`
+	BasePath string `json:"base_path"`
+	Insecure bool   `json:"insecure"`
+	// Pin is the one certificate key the host must present, when the connection pins one.
+	Pin string `json:"pin,omitempty"`
+	// Keypair is the secret holding the key pair Whisk makes for the connection, when it asks
+	// for one.
+	Keypair   string `json:"keypair,omitempty"`
 	TokenHost string `json:"token_host,omitempty"`
 	// Revokes is true when revoking the grant also asks the token host to cancel the tokens the
 	// broker holds.
@@ -128,6 +136,8 @@ type Summary struct {
 	Operations []SummaryOperation `json:"operations"`
 	Secrets    []Use              `json:"secrets"`
 	SignsBody  bool               `json:"signs_body"`
+	// BodyFields are the JSON pointers in each call's body where the broker places a value.
+	BodyFields []string `json:"body_fields"`
 }
 
 // SummaryOperation is one operation as enforced, with the app's label beside it.
@@ -136,6 +146,8 @@ type SummaryOperation struct {
 	Path   string `json:"path"`
 	Verb   string `json:"verb"`
 	Label  string `json:"label"`
+	// Body is what the call's JSON body must hold, by JSON pointer.
+	Body map[string]string `json:"body,omitempty"`
 }
 
 var verbs = map[string]string{"GET": "Read", "HEAD": "Read", "POST": "Create", "PUT": "Replace", "PATCH": "Change", "DELETE": "Delete", "*": "Any method"}
@@ -144,7 +156,10 @@ var verbs = map[string]string{"GET": "Read", "HEAD": "Read", "POST": "Create", "
 func Describe(c Connection) Summary {
 	c = c.WithDefaults()
 	u, _ := url.Parse(c.URL)
-	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}}
+	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}, BodyFields: sortedKeys(c.Auth.Body), Pin: c.Pin}
+	if c.Keypair != nil {
+		s.Keypair = c.Keypair.Secret
+	}
 	if u != nil {
 		s.Host, s.Port, s.Insecure = u.Hostname(), u.Port(), u.Scheme != "https"
 		if s.Port == "" {
@@ -160,7 +175,7 @@ func Describe(c Connection) Summary {
 		s.Revokes = c.Auth.Token.Revoke != nil
 	}
 	for _, o := range c.Operations {
-		s.Operations = append(s.Operations, SummaryOperation{Method: o.Method, Path: o.Path, Verb: verbs[o.Method], Label: o.Name})
+		s.Operations = append(s.Operations, SummaryOperation{Method: o.Method, Path: o.Path, Verb: verbs[o.Method], Label: o.Name, Body: o.Body})
 	}
 	return s
 }

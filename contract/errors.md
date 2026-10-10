@@ -912,6 +912,21 @@ Fix: Send the call with a plain path and its real method, and no override header
 {"error":{"code":"CONNECTION_REQUEST_AMBIGUOUS","message":"The broker will not send this call: the call sets X-Http-Method-Override, which overrides the method or path.","fix":"Send the call with a plain path and its real method, and no override header or key.","docs":"https://skill.whisk.run/errors/CONNECTION_REQUEST_AMBIGUOUS","details":{"connection":"erp","method":"POST","path":"/orders"}}}
 ```
 
+## CONNECTION_BODY_UNPLACEABLE
+
+Status: 400 · Surface: container
+
+When: the connection's recipe places values into each call's JSON body (`auth.body`), and this
+call's body is not one JSON document, or has no value at a pointer the recipe fills in. Nothing
+was sent.
+
+Fix: Send a JSON body with a placeholder (any value) at every pointer under the connection's
+`auth.body`; the broker replaces it.
+
+```json
+{"error":{"code":"CONNECTION_BODY_UNPLACEABLE","message":"The broker will not send this call: the body has no value at /params/args/2 for the broker to replace.","fix":"Send a JSON body with a placeholder at every pointer under the connection's auth.body; the broker replaces it.","docs":"https://skill.whisk.run/errors/CONNECTION_BODY_UNPLACEABLE","details":{"connection":"odoo"}}}
+```
+
 ## CONNECTION_BUSY
 
 Status: 429 · Surface: container

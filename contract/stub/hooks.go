@@ -41,6 +41,19 @@ func (h *hooks) receive(w http.ResponseWriter, r *http.Request, rest string) {
 		writeError(w, r, 404, werrors.New("WEBHOOK_SOURCE_UNKNOWN", "No webhook source named "+parts[2]+" exists on app "+s.manifest.Name+".", "Declare the source under webhooks in whisk.yaml and restart the stub.", map[string]any{"source": parts[2]}))
 		return
 	}
+	if src.Handshake != nil {
+		if text, ok := src.Handshake.Echo(r.Method, r.URL.Query()); ok {
+			if src.Preset == webhook.PresetToken && (len(parts) != 4 || parts[3] != s.urlTokens[src.Name]) {
+				writeError(w, r, 401, werrors.New("WEBHOOK_UNVERIFIED", "This handshake to source "+src.Name+" does not carry the source's token.", "Give the provider the whole URL the stub printed, token included.", map[string]any{"source": src.Name}))
+				return
+			}
+			w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+			w.Header().Set("X-Content-Type-Options", "nosniff")
+			w.WriteHeader(http.StatusOK)
+			_, _ = io.WriteString(w, text)
+			return
+		}
+	}
 	if r.Method != http.MethodPost {
 		writeError(w, r, 405, werrors.New("INVALID_REQUEST", "Webhook deliveries are POST.", "POST the provider's payload to this URL.", nil))
 		return

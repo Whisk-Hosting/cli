@@ -221,6 +221,15 @@ func TestCheck(t *testing.T) {
 	bad(func(c *Connection) { c.URL = "https://u:p@x.com" }, "/url")
 	bad(func(c *Connection) { c.URL = "https://x.com/a?b=1" }, "/url")
 	bad(func(c *Connection) { c.URL = "https://x.com/a/../b" }, "/url")
+	bad(func(c *Connection) { c.URL = "https://x.com:25/a" }, "/url")
+	bad(func(c *Connection) { c.URL = "https://x.com:80/a" }, "/url")
+	bad(func(c *Connection) { c.Auth.Token.URL = "https://login.x.com:587/token" }, "/auth/token/url")
+	bad(func(c *Connection) { c.Pin = "sha256/short=" }, "/pin")
+	bad(func(c *Connection) { c.Keypair = &Keypair{Secret: "lower"} }, "/keypair/secret")
+	bad(func(c *Connection) { c.Keypair = &Keypair{Secret: "UNREAD_KEY"} }, "/keypair/secret")
+	bad(func(c *Connection) { c.URL, c.Pin = "http://x.com/a", "sha256/"+strings.Repeat("A", 43)+"=" }, "/pin")
+	bad(func(c *Connection) { c.Auth.Token.Cookies = []string{"ROUTE ID"} }, "/auth/token/cookies/0")
+	bad(func(c *Connection) { c.Auth.Token.Cookies = []string{"a", "b", "c", "d", "e"} }, "/auth/token/cookies")
 	bad(func(c *Connection) { c.Auth.Headers["Host"] = "x" }, "/auth/headers/Host")
 	bad(func(c *Connection) { c.Auth.Headers["X-Whisk-Org"] = "x" }, "/auth/headers/X-Whisk-Org")
 	bad(func(c *Connection) { c.Auth.Headers["Bad Header"] = "x" }, "/auth/headers/Bad Header")
@@ -235,6 +244,23 @@ func TestCheck(t *testing.T) {
 	bad(func(c *Connection) { c.Operations[0].Path = "/a/../b" }, "/operations/0/path")
 	bad(func(c *Connection) { c.Operations[0].Path = "stock" }, "/operations/0/path")
 	bad(func(c *Connection) { c.Auth.Headers = nil }, "/auth")
+
+	ns := conn()
+	ns.Keypair = &Keypair{Secret: "SIGN"}
+	if ps, _ := Check(ns.WithDefaults()); len(ps) != 0 {
+		t.Fatalf("a key pair the recipe signs with is refused: %v", ps)
+	}
+
+	b1 := conn()
+	b1.URL = "https://b1.example.com:50000/b1s/v2"
+	b1.Pin = "sha256/" + strings.Repeat("A", 43) + "="
+	b1.Auth.Token.Cookies = []string{"ROUTEID"}
+	if PinFor(b1, "https://b1.example.com:50000/b1s/v2/Login") != b1.Pin || PinFor(b1, "https://login.example.com/token") != "" {
+		t.Errorf("the pin holds only on the connection's own host")
+	}
+	if ps, _ := Check(b1.WithDefaults()); len(ps) != 0 {
+		t.Fatalf("SAP Business One's port 50000 is refused: %v", ps)
+	}
 
 	keyless := Connection{URL: "https://api.weather.example", Operations: []Operation{{Name: "Forecast", Method: "GET", Path: "/**"}}}.WithDefaults()
 	if ps, _ := Check(keyless); len(ps) != 0 {
@@ -309,7 +335,7 @@ func TestMatch(t *testing.T) {
 		{"GET", "/stock/a%5cb", false},
 		{"GET", "/stock/%zz", false},
 	} {
-		if _, ok := Match(ops, c.method, c.path); ok != c.ok {
+		if _, ok := Match(ops, c.method, c.path, nil); ok != c.ok {
 			t.Errorf("%s %s matched %v, want %v", c.method, c.path, ok, c.ok)
 		}
 	}

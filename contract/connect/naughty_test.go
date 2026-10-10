@@ -22,7 +22,7 @@ func TestNaughty(t *testing.T) {
 				}
 			}
 		}
-		_, _ = Match(c.Operations, "GET", s)
+		_, _ = Match(c.Operations, "GET", s, nil)
 		bad := c
 		bad.URL = s
 		_, _ = Check(bad)

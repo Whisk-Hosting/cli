@@ -34,7 +34,7 @@ func FuzzMatch(f *testing.F) {
 	}
 	f.Add("/**", "/a/%2e%2e/b")
 	f.Fuzz(func(t *testing.T, pattern, path string) {
-		_, ok := Match([]Operation{{Name: "x", Method: "*", Path: pattern}}, "GET", path)
+		_, ok := Match([]Operation{{Name: "x", Method: "*", Path: pattern}}, "GET", path, nil)
 		lower := strings.ToLower(path)
 		if ok && (strings.Contains(lower, "%2f") || strings.Contains(lower, "%5c") || strings.Contains(lower, "/../") || strings.HasSuffix(path, "/..")) {
 			t.Fatalf("%q matched %q", path, pattern)

@@ -128,6 +128,8 @@ type Webhook struct {
 	Handler     string          `json:"handler"`
 	IPAllowlist []string        `json:"ip_allowlist"`
 	HMAC        *webhook.Preset `json:"hmac,omitempty"`
+	// Handshake, when set, answers the provider's check of the address (webhook.Handshake).
+	Handshake *webhook.Handshake `json:"handshake,omitempty"`
 }
 
 // Inbox is the app's inbound email (CONTRACT.md §7, "Inbound email"): every message to the app's

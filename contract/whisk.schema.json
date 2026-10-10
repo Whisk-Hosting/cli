@@ -343,6 +343,14 @@
       "required": ["url", "operations"],
       "properties": {
         "url": { "description": "The system's base address: https, no query, no credentials.", "type": "string", "maxLength": 500 },
+        "keypair": {
+          "description": "A key pair Whisk makes for the connection: the private key is kept as this secret, and a person downloads the certificate to upload to the outside system.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["secret"],
+          "properties": { "secret": { "$ref": "#/$defs/secretName" } }
+        },
+        "pin": { "description": "The one certificate key the host may present: sha256/ and the base64 SHA-256 of its public key info.", "type": "string", "pattern": "^sha256/[A-Za-z0-9+/]{43}=$" },
         "auth": {
           "description": "The recipe: templates set on every call, and an optional token step.",
           "type": "object",
@@ -350,6 +358,13 @@
           "properties": {
             "headers": { "$ref": "#/$defs/templates" },
             "query": { "$ref": "#/$defs/templates" },
+            "body": {
+              "description": "Values the broker places into each call's JSON body, keyed by JSON pointer; the app sends a placeholder at each.",
+              "type": "object",
+              "maxProperties": 8,
+              "propertyNames": { "pattern": "^/", "maxLength": 200 },
+              "additionalProperties": { "type": "string", "maxLength": 2048 }
+            },
             "token": {
               "type": "object",
               "additionalProperties": false,
@@ -363,6 +378,7 @@
                 "field": { "type": "string", "maxLength": 100 },
                 "expires_field": { "type": "string", "maxLength": 100 },
                 "lifetime": { "type": "integer", "minimum": 1, "maximum": 86400 },
+                "cookies": { "description": "Cookies the token answer sets that are kept with the token and sent on every call.", "type": "array", "maxItems": 4, "items": { "type": "string", "pattern": "^[A-Za-z0-9!#$%&'*+.^_|~-]{1,64}$" } },
                 "revoke": {
                   "type": "object",
                   "additionalProperties": false,
@@ -389,7 +405,15 @@
             "properties": {
               "name": { "description": "Plain words; the app's own description of the operation.", "type": "string", "maxLength": 60 },
               "method": { "type": "string", "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "*", "get", "head", "post", "put", "patch", "delete"] },
-              "path": { "$ref": "#/$defs/routeGlob" }
+              "path": { "$ref": "#/$defs/routeGlob" },
+              "body": {
+                "description": "The string the call's JSON body must hold at each JSON pointer, for an API that names the call inside its body (JSON-RPC).",
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 4,
+                "propertyNames": { "pattern": "^/", "maxLength": 200 },
+                "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 200 }
+              }
             }
           }
         }
@@ -491,7 +515,17 @@
           "uniqueItems": true,
           "default": []
         },
-        "hmac": { "$ref": "#/$defs/hmacSettings" }
+        "hmac": { "$ref": "#/$defs/hmacSettings" },
+        "handshake": {
+          "description": "How the provider checks the address before it sends deliveries: it calls with a value in a query parameter and wants it back as text/plain (Business Central: query validationToken).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["query"],
+          "properties": {
+            "method": { "type": "string", "enum": ["GET", "POST"] },
+            "query": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$" }
+          }
+        }
       }
     },
     "cidr": {

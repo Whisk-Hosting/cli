@@ -781,7 +781,10 @@ plus `X-Whisk-Webhook-Id`, `X-Whisk-Webhook-Source` and `X-Whisk-Webhook-Receive
 carries the same id. The handler does not need to be in `routes.public` and cannot be reached
 from the internet. `ip_allowlist` (CIDRs) also refuses deliveries from anywhere else; a provider
 with no preset uses `preset: hmac` with its signature settings under `hmac` (the fields of a
-preset in `webhook-presets.yaml`). `whisk webhooks events <name>` lists recent deliveries with why
+preset in `webhook-presets.yaml`). A provider that checks the address first by sending a value
+to echo (Business Central, Microsoft Graph: `?validationToken=`) needs `handshake: {query:
+validationToken}` on the source; the platform answers it and the handler never sees it.
+`whisk webhooks events <name>` lists recent deliveries with why
 the last attempt failed (the handler's status and answer), and `whisk webhooks replay <name>
 <id>` sends one to the handler again.
 
@@ -898,7 +901,12 @@ Use a connection for every outside API whose key the app should not hold; one wi
 still be a connection, with an empty `auth`. The broker's own refusals carry the header
 `Whisk-Broker: refused` and an error code (`CONNECTION_NOT_GRANTED`, `CONNECTION_PAUSED`,
 `CONNECTION_LIMIT`, `CONNECTION_REQUEST_AMBIGUOUS`, `CONNECTION_BUSY`, ...); anything else is the
-API's own answer. Send plain paths with the real method: dot segments, `;` parameters and method
+API's own answer. A connection with `auth.body` (Odoo 16 to 18) needs a JSON body with a placeholder
+at each of its pointers; the broker fills in the key. A system with its own certificate takes `pin: sha256/…`
+(ask the human for its public key's hash). When the outside system wants a certificate you upload
+(NetSuite), name `keypair: {secret: NAME}` and sign with that secret: never make or ask for a
+private key; the human presses "Make key pair" on the connections page and uploads the
+certificate it offers. Send plain paths with the real method: dot segments, `;` parameters and method
 override headers are refused. Redirects come back to you unfollowed, and a credential the API
 echoes back arrives as `[redacted by Whisk]`. If the app may be misbehaving, `whisk connections pause NAME` stops
 its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).
