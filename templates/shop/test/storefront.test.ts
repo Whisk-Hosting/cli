@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { addressFrom, fromPrice, money, picture, robotsTxt, safeReturn, sitemap, variantFor } from "../storefront/src/lib/format"
+import { addressFrom, fromPrice, lineAmount, money, picture, robotsTxt, safeReturn, sitemap, sums, variantFor } from "../storefront/src/lib/format"
 import { mergedCookies, query } from "../storefront/src/lib/medusa"
 import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
 
@@ -76,4 +76,13 @@ test("robots.txt keeps the website's lines first, then the shop's", () => {
   assert.equal(robotsTxt("https://k.nz", undefined), shop)
   assert.equal(robotsTxt("https://k.nz", "  \n"), shop)
   assert.equal(robotsTxt("https://k.nz", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)
+})
+
+test("sums and lineAmount follow whether prices include the tax", () => {
+  const o = { item_total: 1163.8, item_subtotal: 1058, shipping_total: 16.5, shipping_subtotal: 15, tax_total: 107.3, total: 1180.3 }
+  assert.deepEqual(sums(o, true), { subtotal: 1163.8, shipping: 16.5, discount: 0, tax: 107.3, total: 1180.3 })
+  assert.deepEqual(sums(o, false), { subtotal: 1058, shipping: 15, discount: 0, tax: 107.3, total: 1180.3 })
+  assert.equal(lineAmount({ total: 1163.8, subtotal: 1058 }, true), 1163.8)
+  assert.equal(lineAmount({ total: 1163.8, subtotal: 1058 }, false), 1058)
+  assert.equal(lineAmount({ total: 10 }, false), 10)
 })

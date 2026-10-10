@@ -26,7 +26,9 @@ test("secretsFrom derives three different secrets from the app's key", () => {
   assert.notEqual(secretsFrom({ WHISK_DELIVERY_KEY: Buffer.alloc(32, 8).toString("base64") }).jwt, s.jwt)
 })
 
-test("secretsFrom stops a server without the key, and lets a build or a laptop through", () => {
+test("secretsFrom stops a server without the key, and lets a build, the migrate step or a laptop through", () => {
+  assert.equal(secretsFrom({ SHOP_STEP: "migrate" }).jwt, "development-only")
+  assert.throws(() => secretsFrom({ SHOP_STEP: "start" }), /WHISK_DELIVERY_KEY/)
   assert.throws(() => secretsFrom({}), /WHISK_DELIVERY_KEY/)
   assert.throws(() => secretsFrom({ WHISK_DELIVERY_KEY: "c2hvcnQ=" }), /WHISK_DELIVERY_KEY/)
   assert.equal(secretsFrom({}, true).jwt, "development-only")

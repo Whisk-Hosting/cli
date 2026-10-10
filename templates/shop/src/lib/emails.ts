@@ -30,8 +30,9 @@ export type OrderView = {
   poNumber?: string | null
 }
 
+const LOCALES: Record<string, string> = { nzd: "en-NZ", aud: "en-AU" }
 export const money = (amount: number, currency: string) =>
-  new Intl.NumberFormat("en-NZ", { style: "currency", currency: currency.toUpperCase() }).format(amount)
+  new Intl.NumberFormat(LOCALES[currency.toLowerCase()] ?? "en-NZ", { style: "currency", currency: currency.toUpperCase() }).format(amount)
 
 const esc = (s: string) =>
   s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!)
@@ -67,8 +68,9 @@ const totalsTable = (o: OrderView) =>
     row("Subtotal", money(o.subtotal, o.currency)),
     o.discount > 0 ? row("Discount", `-${money(o.discount, o.currency)}`) : "",
     row(o.shippingMethod ? `Shipping (${o.shippingMethod})` : "Shipping", money(o.shipping, o.currency)),
+    o.taxIncluded ? "" : row("GST", money(o.tax, o.currency)),
     row("Total", money(o.total, o.currency), true),
-    row(o.taxIncluded ? "Includes GST" : "GST", money(o.tax, o.currency)),
+    o.taxIncluded ? row("Includes GST", money(o.tax, o.currency)) : "",
   ].join("")}</table>`
 
 const addressBlock = (a?: Address | null) =>
@@ -80,8 +82,9 @@ const totalsText = (o: OrderView) =>
     `Subtotal ${money(o.subtotal, o.currency)}`,
     o.discount > 0 ? `Discount -${money(o.discount, o.currency)}` : "",
     `Shipping ${money(o.shipping, o.currency)}`,
+    o.taxIncluded ? "" : `GST ${money(o.tax, o.currency)}`,
     `Total ${money(o.total, o.currency)}`,
-    `${o.taxIncluded ? "Includes GST" : "GST"} ${money(o.tax, o.currency)}`,
+    o.taxIncluded ? `Includes GST ${money(o.tax, o.currency)}` : "",
   ]
     .filter(Boolean)
     .join("\n")

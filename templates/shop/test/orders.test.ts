@@ -80,3 +80,18 @@ test("every email renders a subject, html and text", () => {
   assert.match(templates.signInCode(data.signInCode).text, /123456/)
   assert.equal(money(55, "nzd"), "$55.00")
 })
+
+test("an order whose prices are before tax shows them so, with the tax above the total", () => {
+  const before = {
+    ...order, item_total: 1163.8, item_subtotal: 1058, shipping_total: 16.5, shipping_subtotal: 15, tax_total: 107.3, total: 1180.3,
+    items: [{ title: "Breathalyser", quantity: 1, total: 1163.8, subtotal: 1058, is_tax_inclusive: false }],
+  }
+  const v = orderView(before, shop, bank)
+  assert.deepEqual([v.lines[0].total, v.subtotal, v.shipping, v.tax, v.total, v.taxIncluded], [1058, 1058, 15, 107.3, 1180.3, false])
+  const text = templates.orderPlaced(v).text
+  assert.ok(text.indexOf("GST") < text.indexOf("Total"), text)
+  assert.ok(!text.includes("Includes GST"), text)
+  const included = orderView(order, shop, bank)
+  assert.equal(included.subtotal, 45)
+  assert.ok(templates.orderPlaced(included).text.includes("Includes GST"))
+})

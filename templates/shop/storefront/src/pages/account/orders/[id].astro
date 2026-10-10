@@ -13,7 +13,7 @@ const o = await getOrder(a, Astro.params.id ?? "").catch((e) => {
   throw e
 })
 if (!o || o.customer_id !== customer.id) return Astro.rewrite("/404")
-const date = new Intl.DateTimeFormat("en-NZ", { dateStyle: "medium", timeZone: "Pacific/Auckland" }).format(new Date(o.created_at))
+const date = new Intl.DateTimeFormat(Astro.locals.shop.market.locale, { dateStyle: "medium", timeZone: Astro.locals.shop.market.timeZone }).format(new Date(o.created_at))
 ---
 <Shop title={`Order ${o.display_id}`} noindex>
   <p><a href="/account">Account</a></p>

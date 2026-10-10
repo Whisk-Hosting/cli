@@ -19,6 +19,6 @@ const id = (n: string) => `${prefix}${n}`
   <div><label for={id("city")}>Town or city</label><input id={id("city")} name={id("city")} autocomplete="address-level2" required value={v.city ?? ""} /></div>
   <div><label for={id("postal_code")}>Postcode</label><input id={id("postal_code")} name={id("postal_code")} autocomplete="postal-code" inputmode="numeric" required value={v.postal_code ?? ""} /></div>
 </div>
-<input type="hidden" name={id("country_code")} value={v.country_code ?? "nz"} />
+<input type="hidden" name={id("country_code")} value={v.country_code ?? Astro.locals.shop.market.country} />
 <label for={id("phone")}>Phone <span class="muted">(for the courier)</span></label>
 <input id={id("phone")} name={id("phone")} type="tel" autocomplete="tel" value={v.phone ?? ""} />

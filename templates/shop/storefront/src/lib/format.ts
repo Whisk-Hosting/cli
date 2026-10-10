@@ -1,7 +1,10 @@
 // Pure helpers for showing the catalogue: prices, pictures and addresses.
 
+// Money as the currency's own country writes it: $1,058.00 in Australian dollars on an
+// Australian shop, $10.00 in New Zealand dollars on a New Zealand one.
+const LOCALES: Record<string, string> = { nzd: "en-NZ", aud: "en-AU" }
 export const money = (amount: number | null | undefined, currency: string) =>
-  amount == null ? "" : new Intl.NumberFormat("en-NZ", { style: "currency", currency: currency.toUpperCase() }).format(amount)
+  amount == null ? "" : new Intl.NumberFormat(LOCALES[currency.toLowerCase()] ?? "en-NZ", { style: "currency", currency: currency.toUpperCase() }).format(amount)
 
 // A picture stored on Whisk is resized by the edge: ask for the width the layout shows, and
 // twice that for sharp screens. Any other address is used as it is.
@@ -46,7 +49,7 @@ export type AddressInput = {
 const field = (form: FormData, name: string) => String(form.get(name) ?? "").trim()
 
 // An address from a checkout or account form, or the fields still missing.
-export const addressFrom = (form: FormData, prefix = ""): { address: AddressInput } | { missing: string[] } => {
+export const addressFrom = (form: FormData, prefix = "", country = "nz"): { address: AddressInput } | { missing: string[] } => {
   const a: AddressInput = {
     first_name: field(form, `${prefix}first_name`),
     last_name: field(form, `${prefix}last_name`),
@@ -56,7 +59,7 @@ export const addressFrom = (form: FormData, prefix = ""): { address: AddressInpu
     city: field(form, `${prefix}city`),
     postal_code: field(form, `${prefix}postal_code`),
     province: field(form, `${prefix}province`) || undefined,
-    country_code: (field(form, `${prefix}country_code`) || "nz").toLowerCase(),
+    country_code: (field(form, `${prefix}country_code`) || country).toLowerCase(),
     phone: field(form, `${prefix}phone`) || undefined,
   }
   const missing = (["first_name", "last_name", "address_1", "city", "postal_code"] as const).filter((k) => !a[k])
@@ -85,3 +88,17 @@ export const robotsTxt = (origin: string, siteRobots: string | undefined): strin
   const ours = [...shop, "", `Sitemap: ${origin}/sitemap.xml`, ""]
   return (siteRobots?.trim() ? [siteRobots.replace(/\s*$/, ""), "", "# The shop", ...ours] : ours).join("\n")
 }
+
+// A cart's or order's sums as the market writes them. Where prices include the tax, lines and the
+// subtotal carry it and a note under the total says how much was in it; where the tax is added on
+// top, lines and the subtotal are before it and the tax is its own line above the total.
+type Sums = { item_total?: number; item_subtotal?: number; shipping_total?: number; shipping_subtotal?: number; discount_total?: number; tax_total?: number; total?: number }
+export const lineAmount = (line: { total?: number; subtotal?: number }, taxInclusive: boolean) =>
+  taxInclusive ? line.total : line.subtotal ?? line.total
+export const sums = (o: Sums, taxInclusive: boolean) => ({
+  subtotal: taxInclusive ? o.item_total : o.item_subtotal ?? o.item_total,
+  shipping: taxInclusive ? o.shipping_total : o.shipping_subtotal ?? o.shipping_total,
+  discount: Number(o.discount_total ?? 0),
+  tax: o.tax_total,
+  total: o.total,
+})

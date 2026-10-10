@@ -20,7 +20,7 @@ const orders = customer ? (await myOrders(a, 20, 0)).orders : []
 const addresses: any[] = customer?.addresses ?? []
 const editing = p.get("address")
 const editAddress = editing && editing !== "new" ? addresses.find((x) => x.id === editing) : null
-const date = (s: string) => new Intl.DateTimeFormat("en-NZ", { dateStyle: "medium", timeZone: "Pacific/Auckland" }).format(new Date(s))
+const date = (s: string) => new Intl.DateTimeFormat(Astro.locals.shop.market.locale, { dateStyle: "medium", timeZone: Astro.locals.shop.market.timeZone }).format(new Date(s))
 const status = (o: any) =>
   o.status === "canceled" ? "Cancelled"
   : o.fulfillment_status === "delivered" ? "Delivered"

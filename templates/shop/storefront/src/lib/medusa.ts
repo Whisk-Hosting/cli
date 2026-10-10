@@ -13,6 +13,7 @@ export type ShopContext = {
   stripeKey: string | null // STRIPE_PUBLISHABLE_KEY
   paypalClientId: string | null
   providers: string[] // payment providers the region takes and the server has loaded
+  market: { country: string; currency: string; name: string; locale: string; timeZone: string; taxRate: number; taxName: string; taxInclusive: boolean } // src/lib/market.ts
 }
 
 export class ApiError extends Error {

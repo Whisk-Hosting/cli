@@ -2,7 +2,7 @@
 
 A shop on Whisk: [Medusa](https://medusajs.com) for products, carts, orders, payments and the
 staff admin, and the shop's own pages beside it, in one app. It sells in New Zealand dollars with
-GST included, takes cards, Apple Pay, Google Pay and Afterpay through Stripe, cards through
+GST included, or in Australia (`SHOP_COUNTRY`, below), takes cards, Apple Pay, Google Pay and Afterpay through Stripe, cards through
 Windcave, PayPal, and bank transfer, and emails customers their orders. Customers sign in with an
 emailed code or a password; the business's Whisk team runs the shop at `/app` with their Whisk
 sign-in. Any business can run it. Medusa needs about 525 MB of memory, which a Promoted app
@@ -50,6 +50,33 @@ These lines work the same in PowerShell, Command Prompt and a Unix shell. `whisk
 migration (`node migrate.js` in the build) first. Open http://127.0.0.1:3000 for the shop and
 http://127.0.0.1:3000/app for the admin (the shop's home is /shop once `site/` holds a website). `npm run dev` instead rebuilds the server as its source
 changes.
+
+## Where it sells
+
+New Zealand, in New Zealand dollars with 15% GST included in prices, unless `env` in
+`whisk.yaml` says otherwise before the first deploy (setup adds the market's region, tax and
+delivery once and then leaves them to the admin):
+
+| Setting | Values |
+|---|---|
+| `SHOP_COUNTRY` | `nz` (default) or `au`: Australian dollars, 10% GST |
+| `SHOP_PRICES_INCLUDE_TAX` | `false` when prices are entered before tax and the tax is added at checkout |
+| `SHOP_TIME_ZONE` | the time zone order dates are shown in, such as `Australia/Perth` |
+
+With prices before tax, the cart, checkout, order pages and emails show lines and the subtotal
+before tax, the tax on its own line, then the total.
+
+## Start with a catalogue
+
+`catalogue/catalogue.json` lists products to start with: `{"products": [{"handle":
+"impairment-goggles", "title": "Impairment Goggles", "price": 325, "sku": "IG", "categories":
+["Goggles"], "options": [{"title": "Type", "values": ["Low", "High"]}], "images":
+["goggles.jpg"]}]}`. Prices are entered as the market enters them (with or without tax);
+`inStock: false` lists a product as sold out until staff add stock. A picture is a file in
+`catalogue/images`, stored on Whisk, or an address (`/catalogue/goggles.jpg` from
+`storefront/public`, or `https://…`) used as it is. A job adds every product and category the
+shop does not have yet, by handle, within a minute of each deploy, so products staff change in
+the admin are never overwritten.
 
 ## Take payments
 

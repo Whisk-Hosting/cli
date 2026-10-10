@@ -17,6 +17,9 @@ RUN --mount=type=cache,target=/root/.npm npm run build
 WORKDIR /app/.medusa/server
 RUN --mount=type=cache,target=/root/.npm npm ci --omit=dev
 COPY --from=whisk-shop-b2b / node_modules/@whisk/shop-b2b/
+# Medusa's migrate makes an empty migrations folder for each module that ships none; the image's
+# files are read-only to the user it runs as, so the folders are made here.
+RUN for d in node_modules/@medusajs/*/dist; do mkdir -p "$d/migrations"; done
 
 # The shop runs on Google's distroless Node image: Node and the system libraries it needs, with
 # no shell, package manager or other tools.
@@ -24,6 +27,8 @@ FROM gcr.io/distroless/nodejs24-debian13:nonroot
 # The image starts node itself; on the PATH it also runs the migrate command from whisk.yaml.
 ENV PATH=/nodejs/bin:/usr/local/bin:/usr/bin:/bin
 ENV NODE_ENV=production
+# The nonroot user's home is /nonexistent; Medusa's CLI keeps its settings under XDG_CONFIG_HOME.
+ENV XDG_CONFIG_HOME=/tmp
 WORKDIR /app
 COPY --from=build /app/.medusa/server ./
 USER nonroot

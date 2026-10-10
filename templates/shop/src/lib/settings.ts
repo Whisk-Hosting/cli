@@ -25,8 +25,9 @@ export const databaseFrom = (raw: string): Database => {
 // Medusa signs its tokens and session cookies with two secrets, and the shop keys its sign-in
 // codes with a third. A shop needs nobody to set them: each is derived from WHISK_DELIVERY_KEY,
 // the app's own key that the platform derives and never shares, under a label of its own, so
-// none reveals the key or another. Without the key (a build, which reads the config but signs
-// nothing, or a laptop) they are fixed values that only work there; a server without it stops.
+// none reveals the key or another. Without the key (a build or the migrate step, which read the
+// config but sign nothing, or a laptop) they are fixed values that only work there; a server
+// without it stops.
 export type Secrets = { jwt: string; cookie: string; codes: string }
 
 const derive = (key: Buffer, label: string) => createHmac("sha256", key).update(`whisk-shop:${label}`).digest("hex")
@@ -34,7 +35,7 @@ const derive = (key: Buffer, label: string) => createHmac("sha256", key).update(
 export const secretsFrom = (env: Env, building = false): Secrets => {
   const key = Buffer.from(env.WHISK_DELIVERY_KEY ?? "", "base64")
   if (key.length < 32) {
-    if (building || env.WHISK_DEV === "1" || env.NODE_ENV === "test") return { jwt: "development-only", cookie: "development-only", codes: "development-only" }
+    if (building || env.SHOP_STEP === "migrate" || env.WHISK_DEV === "1" || env.NODE_ENV === "test") return { jwt: "development-only", cookie: "development-only", codes: "development-only" }
     throw new Error("WHISK_DELIVERY_KEY is missing: the shop derives its token secrets from it.")
   }
   return { jwt: derive(key, "jwt"), cookie: derive(key, "cookie"), codes: derive(key, "codes") }

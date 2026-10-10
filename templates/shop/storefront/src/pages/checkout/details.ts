@@ -17,7 +17,7 @@ export const POST: APIRoute = async ({ request, locals, cookies, redirect }) => 
   const customer = await me(a)
   const savedId = String(form.get("saved_address_id") ?? "")
   const saved = savedId ? (customer?.addresses ?? []).find((x: any) => x.id === savedId) : null
-  const parsed = saved ? { address: saved } : addressFrom(form)
+  const parsed = saved ? { address: saved } : addressFrom(form, "", locals.shop.market.country)
   if ("missing" in parsed) return redirect(back("Fill in your name and full address."), 303)
   const { id: _id, customer_id: _c, created_at: _ca, updated_at: _ua, deleted_at: _da, address_name: _n, is_default_billing: _b, is_default_shipping: _s, metadata: _m, ...address } = parsed.address as any
   try {

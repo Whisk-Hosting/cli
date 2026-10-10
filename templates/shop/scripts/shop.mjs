@@ -1,7 +1,7 @@
 // The shop's build, start and migrate steps, in Node so they run the same in PowerShell,
 // Command Prompt and a Unix shell.
-//   node scripts/shop.mjs build     the Medusa server and admin, then the storefront and the
-//                                   website (site/) beside them
+//   node scripts/shop.mjs build     the Medusa server and admin, then the storefront, the website
+//                                   (site/) and the starting catalogue (catalogue/) beside them
 //   node scripts/shop.mjs start     the built shop (.medusa/server)
 //   node scripts/shop.mjs migrate   the built shop's migrations and setup
 //   node scripts/shop.mjs dev       the storefront and website built once, then Medusa watching
@@ -55,6 +55,8 @@ const steps = {
     for (const part of ["dist", "redirects.json"]) {
       if (existsSync(path.join(site, part))) cpSync(path.join(site, part), path.join(server, "site", part), { recursive: true })
     }
+    rmSync(path.join(server, "catalogue"), { recursive: true, force: true })
+    if (existsSync(path.join(root, "catalogue"))) cpSync(path.join(root, "catalogue"), path.join(server, "catalogue"), { recursive: true })
   },
   start: () => run([medusa, "start"], server),
   migrate: () => run(["migrate.js"], server),

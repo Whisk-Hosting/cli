@@ -8,7 +8,7 @@ type Api = ReturnType<typeof api>
 
 const PRODUCT_FIELDS = "*variants.calculated_price,+variants.inventory_quantity,*variants.options,*options,*options.values,*images,*categories"
 const CARD_FIELDS = "id,handle,title,thumbnail,*variants.calculated_price"
-const CART_FIELDS = "*items,*items.variant,*items.variant.product,*shipping_methods,*shipping_address,*billing_address,*payment_collection,*payment_collection.payment_sessions,*promotions"
+const CART_FIELDS = "*items,*items.variant,*items.variant.product,*shipping_methods,*shipping_address,*billing_address,*payment_collection,*payment_collection.payment_sessions,*promotions,+item_subtotal,+shipping_subtotal,+items.subtotal"
 
 export const products = async (a: Api, shop: ShopContext, opts: { q?: string; category?: string; collection?: string; limit?: number; offset?: number; ids?: string[] }) =>
   a.get<{ products: any[]; count: number }>(
@@ -94,7 +94,7 @@ export const myOrders = async (a: Api, limit = 20, offset = 0) =>
   a.get<{ orders: any[]; count: number }>(`/store/orders${query({ limit, offset, order: "-created_at", fields: "id,display_id,created_at,total,currency_code,status,fulfillment_status,payment_status,*items" })}`)
 
 export const order = async (a: Api, id: string) =>
-  (await a.get<{ order: any }>(`/store/orders/${encodeURIComponent(id)}${query({ fields: "id,display_id,email,customer_id,created_at,status,payment_status,fulfillment_status,currency_code,*items,*shipping_address,*shipping_methods,+item_total,+shipping_total,+tax_total,+discount_total,+total,*payment_collections.payments,*payment_collections.payment_sessions" })}`)).order
+  (await a.get<{ order: any }>(`/store/orders/${encodeURIComponent(id)}${query({ fields: "id,display_id,email,customer_id,created_at,status,payment_status,fulfillment_status,currency_code,*items,*shipping_address,*shipping_methods,+item_total,+item_subtotal,+shipping_total,+shipping_subtotal,+items.subtotal,+tax_total,+discount_total,+total,*payment_collections.payments,*payment_collections.payment_sessions" })}`)).order
 
 // After a customer signs in, the cart they were filling becomes theirs.
 export const claimCart = async (a: Api, cookies: AstroCookies) => {

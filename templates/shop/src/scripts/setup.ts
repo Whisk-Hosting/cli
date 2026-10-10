@@ -1,10 +1,10 @@
-// Makes a new shop ready to sell in New Zealand, and keeps it so on every deploy. It runs after
-// the migrations (migrate.ts) and only adds what is missing, so staff changes in the admin are
-// never undone. A new shop gets: New Zealand dollars with GST included in every price; a New
-// Zealand region with 15% GST; a sales channel and the key the storefront uses; a stock
-// location; standard delivery at NZ$10 that staff change in the admin; every payment
-// provider whose keys are set (bank transfer always); and the table the website's forms are
-// kept in.
+// Makes a new shop ready to sell in its market (src/lib/market.ts: New Zealand unless
+// SHOP_COUNTRY says otherwise), and keeps it so on every deploy. It runs after the migrations
+// (migrate.ts) and only adds what is missing, so staff changes in the admin are never undone. A
+// new shop gets: the market's currency, with tax included in prices or added on top as the market
+// says; a region with the market's tax; a sales channel and the key the storefront uses; a stock
+// location; standard delivery that staff change in the admin; every payment provider whose keys
+// are set (bank transfer always); and the table the website's forms are kept in.
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import {
@@ -14,6 +14,7 @@ import {
 } from "@medusajs/medusa/core-flows"
 import { paymentProvidersFrom, providerIds, tradeOrdering } from "../lib/settings"
 import { missingProviders, storeName } from "../lib/setup"
+import { marketFrom } from "../lib/market"
 
 export default async function setup({ container }: ExecArgs) {
   const logger = container.resolve(ContainerRegistrationKeys.LOGGER)
@@ -26,6 +27,7 @@ export default async function setup({ container }: ExecArgs) {
   const locations = container.resolve(Modules.STOCK_LOCATION)
   const fulfillment = container.resolve(Modules.FULFILLMENT)
 
+  const market = marketFrom(process.env)
   const [store] = await stores.listStores({}, { take: 1, relations: ["supported_currencies"] })
 
   // Sales channel.
@@ -38,12 +40,12 @@ export default async function setup({ container }: ExecArgs) {
     logger.info("setup: made the Online shop sales channel")
   }
 
-  // Store: its name, NZD with GST included, the sales channel.
+  // Store: its name, the market's currency, the sales channel.
   const currencies = store.supported_currencies ?? []
   const update: Record<string, unknown> = {}
-  if (!currencies.some((c) => c.currency_code === "nzd")) {
+  if (!currencies.some((c) => c.currency_code === market.currency)) {
     update.supported_currencies = [
-      { currency_code: "nzd", is_default: true, is_tax_inclusive: true },
+      { currency_code: market.currency, is_default: true, is_tax_inclusive: market.taxInclusive },
       ...currencies.map((c) => ({ currency_code: c.currency_code, is_default: false })),
     ]
   }
@@ -57,13 +59,13 @@ export default async function setup({ container }: ExecArgs) {
 
   // Region and its payment providers.
   const wanted = providerIds(paymentProvidersFrom(process.env, tradeOrdering()))
-  let [region] = await regions.listRegions({ currency_code: "nzd" }, { take: 1 })
+  let [region] = await regions.listRegions({ currency_code: market.currency }, { take: 1 })
   if (!region) {
     const { result } = await createRegionsWorkflow(container).run({
-      input: { regions: [{ name: "New Zealand", currency_code: "nzd", countries: ["nz"], automatic_taxes: true, is_tax_inclusive: true, payment_providers: wanted }] },
+      input: { regions: [{ name: market.name, currency_code: market.currency, countries: [market.country], automatic_taxes: true, is_tax_inclusive: market.taxInclusive, payment_providers: wanted }] },
     })
     region = result[0]
-    logger.info("setup: made the New Zealand region")
+    logger.info(`setup: made the ${market.name} region`)
   } else {
     const { data } = await query.graph({ entity: "region", fields: ["id", "payment_providers.id"], filters: { id: region.id } })
     const have = ((data[0] as any)?.payment_providers ?? []).map((p: { id: string }) => p.id)
@@ -74,20 +76,20 @@ export default async function setup({ container }: ExecArgs) {
     }
   }
 
-  // GST.
-  const [taxRegion] = await taxes.listTaxRegions({ country_code: "nz" }, { take: 1 })
+  // The market's tax.
+  const [taxRegion] = await taxes.listTaxRegions({ country_code: market.country }, { take: 1 })
   if (!taxRegion) {
     await createTaxRegionsWorkflow(container).run({
-      input: [{ country_code: "nz", provider_id: "tp_system", default_tax_rate: { rate: 15, code: "GST", name: "GST" } }],
+      input: [{ country_code: market.country, provider_id: "tp_system", default_tax_rate: { rate: market.taxRate, code: market.taxName, name: market.taxName } }],
     })
-    logger.info("setup: GST at 15%")
+    logger.info(`setup: ${market.taxName} at ${market.taxRate}%`)
   }
 
   // Stock location, linked to the sales channel and to manual fulfilment.
   let [location] = await locations.listStockLocations({}, { take: 1 })
   if (!location) {
     const { result } = await createStockLocationsWorkflow(container).run({
-      input: { locations: [{ name: "Main", address: { address_1: "", city: "", country_code: "NZ" } }] },
+      input: { locations: [{ name: "Main", address: { address_1: "", city: "", country_code: market.country.toUpperCase() } }] },
     })
     location = result[0]
     await link.create({ [Modules.STOCK_LOCATION]: { stock_location_id: location.id }, [Modules.FULFILLMENT]: { fulfillment_provider_id: "manual_manual" } })
@@ -96,7 +98,7 @@ export default async function setup({ container }: ExecArgs) {
     logger.info("setup: made the Main stock location")
   }
 
-  // Delivery: one shipping profile, one zone (New Zealand), standard delivery.
+  // Delivery: one shipping profile, one zone (the market's country), standard delivery.
   let [profile] = await fulfillment.listShippingProfiles({ type: "default" }, { take: 1 })
   if (!profile) {
     const { result } = await createShippingProfilesWorkflow(container).run({ input: { data: [{ name: "Default", type: "default" }] } })
@@ -107,7 +109,7 @@ export default async function setup({ container }: ExecArgs) {
     const made = await fulfillment.createFulfillmentSets({
       name: "Delivery",
       type: "shipping",
-      service_zones: [{ name: "New Zealand", geo_zones: [{ country_code: "nz", type: "country" }] }],
+      service_zones: [{ name: market.name, geo_zones: [{ country_code: market.country, type: "country" }] }],
     })
     await link.create({ [Modules.STOCK_LOCATION]: { stock_location_id: location.id }, [Modules.FULFILLMENT]: { fulfillment_set_id: made.id } })
     await createShippingOptionsWorkflow(container).run({
@@ -119,7 +121,7 @@ export default async function setup({ container }: ExecArgs) {
           service_zone_id: made.service_zones[0].id,
           shipping_profile_id: profile.id,
           type: { label: "Standard", description: "Delivered in 1 to 5 working days.", code: "standard" },
-          prices: [{ currency_code: "nzd", amount: 10 }, { region_id: region.id, amount: 10 }],
+          prices: [{ currency_code: market.currency, amount: market.delivery }, { region_id: region.id, amount: market.delivery }],
           rules: [
             { attribute: "enabled_in_store", value: "true", operator: "eq" },
             { attribute: "is_return", value: "false", operator: "eq" },
@@ -127,7 +129,7 @@ export default async function setup({ container }: ExecArgs) {
         },
       ],
     })
-    logger.info("setup: standard delivery across New Zealand")
+    logger.info(`setup: standard delivery across ${market.name}`)
   }
 
   // The key the storefront sends with every store request.

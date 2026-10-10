@@ -9,7 +9,9 @@ export const ORDER_FIELDS = [
   "currency_code",
   "metadata",
   "item_total",
+  "item_subtotal",
   "shipping_total",
+  "shipping_subtotal",
   "discount_total",
   "tax_total",
   "total",
@@ -17,6 +19,7 @@ export const ORDER_FIELDS = [
   "items.variant_title",
   "items.quantity",
   "items.total",
+  "items.subtotal",
   "items.thumbnail",
   "items.is_tax_inclusive",
   "shipping_methods.name",
@@ -37,11 +40,13 @@ export type OrderLike = {
   currency_code: string
   metadata?: Record<string, unknown> | null
   item_total?: Num
+  item_subtotal?: Num
   shipping_total?: Num
+  shipping_subtotal?: Num
   discount_total?: Num
   tax_total?: Num
   total?: Num
-  items?: { title: string; variant_title?: string | null; quantity: Num; total?: Num; thumbnail?: string | null; is_tax_inclusive?: boolean }[] | null
+  items?: { title: string; variant_title?: string | null; quantity: Num; total?: Num; subtotal?: Num; thumbnail?: string | null; is_tax_inclusive?: boolean }[] | null
   shipping_methods?: { name: string }[] | null
   shipping_address?: {
     first_name?: string | null
@@ -89,19 +94,23 @@ export const orderView = (o: OrderLike, shop: { name: string; url: string }, ban
   const method = paymentMethodOf(providerOf(o))
   const id = displayId(o)
   const items = o.items ?? []
+  // Where the tax is added on top, lines, the subtotal and shipping are shown before it, and the
+  // tax has its own line above the total (storefront/src/lib/format.ts, sums).
+  const taxIncluded = items.length === 0 || items.every((i) => i.is_tax_inclusive !== false)
+  const before = (withTax: Num, withoutTax: Num) => num(taxIncluded || withoutTax == null ? withTax : withoutTax)
   return {
     shop: shop.name,
     shopUrl: shop.url,
     displayId: id,
     email: o.email ?? "",
     currency: o.currency_code,
-    lines: items.map((i) => ({ title: i.title, variant: i.variant_title ?? null, quantity: num(i.quantity), total: num(i.total), thumbnail: i.thumbnail ?? null })),
-    subtotal: num(o.item_total),
-    shipping: num(o.shipping_total),
+    lines: items.map((i) => ({ title: i.title, variant: i.variant_title ?? null, quantity: num(i.quantity), total: before(i.total, i.subtotal), thumbnail: i.thumbnail ?? null })),
+    subtotal: before(o.item_total, o.item_subtotal),
+    shipping: before(o.shipping_total, o.shipping_subtotal),
     discount: num(o.discount_total),
     tax: num(o.tax_total),
     total: num(o.total),
-    taxIncluded: items.length === 0 || items.every((i) => i.is_tax_inclusive !== false),
+    taxIncluded,
     shippingMethod: o.shipping_methods?.[0]?.name ?? null,
     shippingAddress: addressOf(o.shipping_address),
     paymentMethod: method,

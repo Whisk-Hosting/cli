@@ -16,7 +16,7 @@ const url = canonical ?? new URL(Astro.url.pathname, Astro.url).toString()
 const q = Astro.url.searchParams.get("q") ?? ""
 ---
 <!doctype html>
-<html lang="en-NZ">
+<html lang={shop.market.locale}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -61,7 +61,7 @@ const q = Astro.url.searchParams.get("q") ?? ""
     <footer class="foot">
       <div class="wrap">
         <span>© {new Date().getFullYear()} {shop.name}</span>
-        <span>Prices in {shop.currency.toUpperCase()}, GST included</span>
+        <span>Prices in {shop.currency.toUpperCase()}, {shop.market.taxInclusive ? `${shop.market.taxName} included` : `plus ${shop.market.taxName}`}</span>
       </div>
     </footer>
   </body>

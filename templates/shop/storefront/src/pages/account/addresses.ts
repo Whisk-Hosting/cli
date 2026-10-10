@@ -14,7 +14,7 @@ export const POST: APIRoute = async ({ request, locals, redirect }) => {
     if (action === "delete") await a.del(`/store/customers/me/addresses/${id}`)
     else if (action === "default") await a.post(`/store/customers/me/addresses/${id}`, { is_default_shipping: true, is_default_billing: true })
     else if (action === "add" || action === "edit") {
-      const parsed = addressFrom(form)
+      const parsed = addressFrom(form, "", locals.shop.market.country)
       if ("missing" in parsed) return back("Fill in your name and full address.")
       await a.post(action === "add" ? "/store/customers/me/addresses" : `/store/customers/me/addresses/${id}`, parsed.address)
     } else return back("Unknown change.")

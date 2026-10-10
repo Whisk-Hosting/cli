@@ -5,7 +5,7 @@ import AddressFields from "../../components/AddressFields.astro"
 import { api } from "../../lib/medusa"
 import { cart as getCart, me } from "../../lib/store"
 import { activeSession, paymentMethods, shippingOptions } from "../../lib/checkout"
-import { money } from "../../lib/format"
+import { lineAmount, money } from "../../lib/format"
 
 const shop = Astro.locals.shop
 const a = api(shop, Astro.request)
@@ -103,7 +103,7 @@ const prefill = cart.shipping_address?.address_1 ? cart.shipping_address : saved
     <aside class="summary" aria-label="Order summary">
       <ul class="lines">
         {(cart.items ?? []).map((i: any) => (
-          <li style="display:flex;justify-content:space-between;gap:12px;padding:4px 0"><span>{i.quantity} × {i.product_title ?? i.title}{i.variant_title && <span class="muted"> ({i.variant_title})</span>}</span><span>{money(i.total, cart.currency_code)}</span></li>
+          <li style="display:flex;justify-content:space-between;gap:12px;padding:4px 0"><span>{i.quantity} × {i.product_title ?? i.title}{i.variant_title && <span class="muted"> ({i.variant_title})</span>}</span><span>{money(lineAmount(i, Astro.locals.shop.market.taxInclusive), cart.currency_code)}</span></li>
         ))}
       </ul>
       <Totals of={cart} />
