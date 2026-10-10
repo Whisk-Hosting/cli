@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { browserKeysFrom, databaseFrom, paymentProvidersFrom, providerIds, secretsFrom } from "../src/lib/settings"
+import { browserKeysFrom, databaseFrom, paymentProvidersFrom, providerIds, secretsFrom, tradeOrdering } from "../src/lib/settings"
 
 test("databaseFrom hands the driver what libpq means by sslmode", () => {
   const cases: [string, string, unknown][] = [
@@ -64,6 +64,15 @@ test("providerIds names bank transfer first, then each provider as Medusa regist
     providerIds(paymentProvidersFrom({ STRIPE_API_KEY: "sk", PAYPAL_CLIENT_ID: "i", PAYPAL_CLIENT_SECRET: "s" })),
     ["pp_system_default", "pp_stripe_stripe", "pp_paypal_paypal"],
   )
+  assert.deepEqual(providerIds(paymentProvidersFrom({}, true)), ["pp_system_default", "pp_account_whisk"])
+})
+
+test("trade ordering is on when the build installed it", () => {
+  assert.equal(tradeOrdering(() => "/app/node_modules/@whisk/shop-b2b/package.json"), true)
+  assert.equal(tradeOrdering(() => {
+    throw new Error("Cannot find module")
+  }), false)
+  assert.equal(tradeOrdering(), false)
 })
 
 test("browserKeysFrom hands the pages only the public keys", () => {

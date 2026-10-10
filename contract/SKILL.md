@@ -224,7 +224,8 @@ storage: false                    # files, uploads, images, video (§9) · every
 kv: false                         # a Redis of its own (§9) · paid
 email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
-promoted: false                   # runs only as a Promoted app, e.g. a shop (§4) · paid
+promoted: false                   # runs only as a Promoted app (§4) · paid
+b2b: false                        # the shop template's trade ordering, beside promoted: true (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
 network: internal                 # Whisk On-Premise only: internal (default) | public; not on whisk.run
@@ -423,10 +424,13 @@ app serves itself included, so keep a cold load (a service worker's precache too
 that. Everything else in this skill still applies. Only
 build or keep a login of the app's own on a Promoted app; never ask for promotion to get round
 §4, and never promote an app yourself: it is charged, so it is the owner's choice. An app that
-cannot run any other way (the shop template) says `promoted: true` in whisk.yaml: its production
+cannot run any other way says `promoted: true` in whisk.yaml: its production
 deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it, and goes
 live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted app's
-memory without waiting.
+memory without waiting. The shop template (a Medusa shop) runs on any plan with room for it
+and keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
+account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and a
+preview of an app not yet promoted fails with `B2B_UNAVAILABLE`.
 
 Who may open the app (groups, people, everyone in the business) is an owner's or admin's choice
 in the dashboard: `whisk access show` reads it and `whisk open access` gives the link to relay.

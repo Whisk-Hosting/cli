@@ -2,9 +2,11 @@ whisk: 1
 name: whisk-shop
 
 # The shop has its own sign-in for customers, so the edge lets every request through and the shop
-# decides. Staff reach the admin at /app through their Whisk sign-in (/auth/whisk).
+# decides. Staff reach the admin at /app through their Whisk sign-in (/auth/whisk). The website's
+# forms (site/) pass the edge's challenge first, so robots cannot fill them.
 routes:
   public: ["/**"]
+  challenge: ["/forms/*"]
 
 health:
   path: /health/ready

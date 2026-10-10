@@ -14,7 +14,7 @@ const failed = Astro.url.searchParams.get("error")
   <h1>Cart</h1>
   {failed && <p class="notice error" role="alert">{failed}</p>}
   {items.length === 0 ? (
-    <p>Your cart is empty. <a href="/">Keep shopping</a></p>
+    <p>Your cart is empty. <a href="/shop">Keep shopping</a></p>
   ) : (
     <div class="checkout">
       <ul class="lines">

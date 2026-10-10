@@ -52,8 +52,12 @@ export const browserKeysFrom = (env: Env): { stripe: string | null; paypal: stri
   paypal: env["PAYPAL_CLIENT_ID"] || null,
 })
 
-export const paymentProvidersFrom = (env: Env): PaymentProvider[] => {
-  const out: PaymentProvider[] = []
+// Paying on account comes with trade ordering (the private @whisk/shop-b2b plugin), when the
+// build installed it.
+export const ACCOUNT_PROVIDER: PaymentProvider = { resolve: "@whisk/shop-b2b/providers/account", id: "whisk", options: {} }
+
+export const paymentProvidersFrom = (env: Env, trade = false): PaymentProvider[] => {
+  const out: PaymentProvider[] = trade ? [ACCOUNT_PROVIDER] : []
   if (env["STRIPE_API_KEY"]) {
     out.push({
       resolve: "@medusajs/medusa/payment-stripe",
@@ -99,5 +103,16 @@ export const paymentProvidersFrom = (env: Env): PaymentProvider[] => {
 // The provider ids Medusa gives them, pp_<module id>_<provider id>: what a region lists.
 export const providerIds = (providers: PaymentProvider[]): string[] => [
   "pp_system_default",
-  ...providers.map((p) => (p.id === "stripe" ? "pp_stripe_stripe" : `pp_${p.id}_${p.id}`)),
+  ...providers.map((p) => (p === ACCOUNT_PROVIDER ? "pp_account_whisk" : p.id === "stripe" ? "pp_stripe_stripe" : `pp_${p.id}_${p.id}`)),
 ]
+
+// tradeOrdering is whether the build installed trade ordering: the platform installs
+// @whisk/shop-b2b only for a Promoted app whose whisk.yaml says b2b: true (SHOP-B2B.md §9).
+export const tradeOrdering = (resolve: (name: string) => string = require.resolve): boolean => {
+  try {
+    resolve("@whisk/shop-b2b/package.json")
+    return true
+  } catch {
+    return false
+  }
+}

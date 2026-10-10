@@ -2,8 +2,9 @@
 // the migrations (migrate.ts) and only adds what is missing, so staff changes in the admin are
 // never undone. A new shop gets: New Zealand dollars with GST included in every price; a New
 // Zealand region with 15% GST; a sales channel and the key the storefront uses; a stock
-// location; standard delivery at NZ$10 that staff change in the admin; and every payment
-// provider whose keys are set (bank transfer always).
+// location; standard delivery at NZ$10 that staff change in the admin; every payment
+// provider whose keys are set (bank transfer always); and the table the website's forms are
+// kept in.
 import type { ExecArgs } from "@medusajs/framework/types"
 import { ContainerRegistrationKeys, Modules } from "@medusajs/framework/utils"
 import {
@@ -11,7 +12,7 @@ import {
   createShippingProfilesWorkflow, createStockLocationsWorkflow, createTaxRegionsWorkflow, linkSalesChannelsToApiKeyWorkflow,
   linkSalesChannelsToStockLocationWorkflow, updateRegionsWorkflow, updateStoresWorkflow,
 } from "@medusajs/medusa/core-flows"
-import { paymentProvidersFrom, providerIds } from "../lib/settings"
+import { paymentProvidersFrom, providerIds, tradeOrdering } from "../lib/settings"
 import { missingProviders, storeName } from "../lib/setup"
 
 export default async function setup({ container }: ExecArgs) {
@@ -55,7 +56,7 @@ export default async function setup({ container }: ExecArgs) {
   }
 
   // Region and its payment providers.
-  const wanted = providerIds(paymentProvidersFrom(process.env))
+  const wanted = providerIds(paymentProvidersFrom(process.env, tradeOrdering()))
   let [region] = await regions.listRegions({ currency_code: "nzd" }, { take: 1 })
   if (!region) {
     const { result } = await createRegionsWorkflow(container).run({
@@ -136,4 +137,13 @@ export default async function setup({ container }: ExecArgs) {
     await linkSalesChannelsToApiKeyWorkflow(container).run({ input: { id: result[0].id, add: [channel.id] } })
     logger.info("setup: made the storefront's key")
   }
+
+  // The website's form entries (src/api/middlewares.ts, formPost).
+  await container.resolve(ContainerRegistrationKeys.PG_CONNECTION).raw(`create table if not exists form_entries (
+    id bigint generated always as identity primary key,
+    form text not null,
+    page text,
+    data jsonb not null,
+    created_at timestamptz not null default now()
+  )`)
 }

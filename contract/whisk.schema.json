@@ -231,6 +231,11 @@
       "type": "boolean",
       "default": false
     },
+    "b2b": {
+      "description": "true asks the build for trade ordering, the shop template's private plugin, given only to Promoted apps in force. Needs promoted: true.",
+      "type": "boolean",
+      "default": false
+    },
     "calls": {
       "description": "Slugs of apps in the same org this app may call with its service identity.",
       "type": "array",

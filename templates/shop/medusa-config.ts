@@ -2,13 +2,17 @@
 // pooled database, the app's own cache for events, workflows, locks and the cache, the
 // business's storage, Whisk's email, and secrets derived from the app's own key.
 import { defineConfig, Modules } from "@medusajs/framework/utils"
-import { databaseFrom, paymentProvidersFrom, secretsFrom } from "./src/lib/settings"
+import { databaseFrom, paymentProvidersFrom, secretsFrom, tradeOrdering } from "./src/lib/settings"
 
 const env = process.env
 const db = databaseFrom(env.DATABASE_URL ?? "postgres://localhost/shop")
 // `medusa build` reads this file too, with none of the app's environment.
 const secrets = secretsFrom(env, process.argv.includes("build"))
 const kv = env.WHISK_KV_URL
+// Trade ordering (companies, branches, trade prices, approvals, paying on account, the ERP link)
+// is the private @whisk/shop-b2b plugin, which the platform installs for a Promoted app whose
+// whisk.yaml says b2b: true. Without it this is a plain public shop.
+const trade = tradeOrdering()
 const publicUrl = (env.WHISK_PUBLIC_URL ?? "http://localhost:8080").replace(/\/$/, "")
 
 // With a cache, Medusa's events, workflows and locks are shared through it; without one (a
@@ -88,6 +92,7 @@ module.exports = defineConfig({
     // Customers stay signed in for thirty days from their last visit.
     sessionOptions: { ttl: 30 * 24 * 3600 * 1000, rolling: true, name: "shop_session" },
   },
+  plugins: trade ? [{ resolve: "@whisk/shop-b2b", options: {} }] : [],
   admin: {
     path: "/app",
     backendUrl: "/",
@@ -99,7 +104,7 @@ module.exports = defineConfig({
     {
       key: Modules.PAYMENT,
       resolve: "@medusajs/medusa/payment",
-      options: { providers: paymentProvidersFrom(env) },
+      options: { providers: paymentProvidersFrom(env, trade) },
     },
   ],
 })

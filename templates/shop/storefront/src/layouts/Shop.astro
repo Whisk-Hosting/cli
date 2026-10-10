@@ -42,6 +42,7 @@ const q = Astro.url.searchParams.get("q") ?? ""
           <input id="q" name="q" type="search" placeholder="Search" value={q} />
         </form>
         <nav aria-label="Account and cart">
+          <a href="/shop">Shop</a>
           <a href="/account">Account</a>
           <a class="cart-link" href="/cart">Cart {count > 0 && <span class="count" aria-label={`${count} items`}>{count}</span>}</a>
         </nav>

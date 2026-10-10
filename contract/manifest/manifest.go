@@ -53,8 +53,11 @@ type Manifest struct {
 	AlwaysOn      bool              `json:"always_on"`
 	// Promoted is true when the app runs only as a Promoted app: its production deploy waits
 	// until it is one (CONTROL-PLANE.md §6.15).
-	Promoted bool     `json:"promoted"`
-	Calls    []string `json:"calls"`
+	Promoted bool `json:"promoted"`
+	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
+	// gives only to Promoted apps in force (CONTRACT.md §11).
+	B2B   bool     `json:"b2b"`
+	Calls []string `json:"calls"`
 	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
 	Connections      map[string]connect.Connection `json:"connections"`
 	CustomerIdentity string                        `json:"customer_identity"`
@@ -644,6 +647,9 @@ func checkRules(m Manifest) Problems {
 		if routes.MatchAny(m.Routes.Public, r) || contains(m.Routes.Public, r) {
 			add(fmt.Sprintf("/routes/apps/%d", i), r+" is also a public route; a route only apps may call cannot be public")
 		}
+	}
+	if m.B2B && !m.Promoted {
+		add("/b2b", "trade ordering comes only with Promoted apps; set promoted: true as well")
 	}
 	ps = append(ps, checkManaged(m)...)
 	for i, n := range m.Build.Secrets {

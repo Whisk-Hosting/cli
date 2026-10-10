@@ -77,3 +77,11 @@ export const sitemap = (origin: string, entries: { path: string; updated?: strin
     `</urlset>`,
     "",
   ].join("\n")
+
+// robots.txt: the website's own first when it has one, then the shop's lines, which keep crawlers
+// out of the cart, checkout, account and admin and name the one sitemap of both.
+export const robotsTxt = (origin: string, siteRobots: string | undefined): string => {
+  const shop = ["User-agent: *", "Disallow: /cart", "Disallow: /checkout", "Disallow: /account", "Disallow: /order/", "Disallow: /app"]
+  const ours = [...shop, "", `Sitemap: ${origin}/sitemap.xml`, ""]
+  return (siteRobots?.trim() ? [siteRobots.replace(/\s*$/, ""), "", "# The shop", ...ours] : ours).join("\n")
+}

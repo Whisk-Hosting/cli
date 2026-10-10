@@ -176,5 +176,8 @@ export const passwordReset = (r: ResetView): Rendered => ({
   text: `Choose a password: ${r.link}\nThe link works for ${r.minutes} minutes. If you didn't ask for it, you can ignore this email.`,
 })
 
-export const templates = { orderPlaced, orderShipped, orderCanceled, refunded, signInCode, passwordReset }
+// An email a plugin rendered itself, such as trade ordering's approval requests.
+export const rendered = (r: Rendered): Rendered => ({ subject: String(r.subject), html: String(r.html), text: String(r.text) })
+
+export const templates = { orderPlaced, orderShipped, orderCanceled, refunded, signInCode, passwordReset, rendered }
 export type TemplateName = keyof typeof templates

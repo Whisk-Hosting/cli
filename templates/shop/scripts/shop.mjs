@@ -1,11 +1,13 @@
 // The shop's build, start and migrate steps, in Node so they run the same in PowerShell,
 // Command Prompt and a Unix shell.
-//   node scripts/shop.mjs build     the Medusa server and admin, then the storefront beside them
+//   node scripts/shop.mjs build     the Medusa server and admin, then the storefront and the
+//                                   website (site/) beside them
 //   node scripts/shop.mjs start     the built shop (.medusa/server)
 //   node scripts/shop.mjs migrate   the built shop's migrations and setup
-//   node scripts/shop.mjs dev       the storefront built once, then Medusa watching the source
+//   node scripts/shop.mjs dev       the storefront and website built once, then Medusa watching
+//                                   the source
 import { spawnSync } from "node:child_process"
-import { cpSync, rmSync } from "node:fs"
+import { cpSync, existsSync, rmSync } from "node:fs"
 import { createRequire } from "node:module"
 import path from "node:path"
 import { fileURLToPath } from "node:url"
@@ -29,17 +31,36 @@ const run = (args, cwd = root) => {
 
 const buildStorefront = () => run([astro, "build", "--root", "storefront"])
 
+// The business's website (site/), when there is one: its own Astro app with its own packages,
+// built to site/dist, which the shop serves at every address that is not the shop's.
+const site = path.join(root, "site")
+const npm = (args) => {
+  const r = spawnSync("npm", args, { cwd: site, stdio: "inherit", shell: process.platform === "win32" })
+  if (r.status !== 0) process.exit(r.status ?? 1)
+}
+const buildSite = () => {
+  if (!existsSync(path.join(site, "package.json"))) return
+  npm(existsSync(path.join(site, "package-lock.json")) ? ["ci"] : ["install"])
+  npm(["run", "build"])
+}
+
 const steps = {
   build: () => {
     run([medusa, "build"])
     buildStorefront()
     rmSync(path.join(server, "storefront"), { recursive: true, force: true })
     cpSync(path.join(root, "storefront", "dist"), path.join(server, "storefront", "dist"), { recursive: true })
+    buildSite()
+    rmSync(path.join(server, "site"), { recursive: true, force: true })
+    for (const part of ["dist", "redirects.json"]) {
+      if (existsSync(path.join(site, part))) cpSync(path.join(site, part), path.join(server, "site", part), { recursive: true })
+    }
   },
   start: () => run([medusa, "start"], server),
   migrate: () => run(["migrate.js"], server),
   dev: () => {
     buildStorefront()
+    buildSite()
     run([medusa, "develop"])
   },
 }

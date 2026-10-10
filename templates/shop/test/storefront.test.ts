@@ -1,6 +1,6 @@
 import { test } from "node:test"
 import assert from "node:assert/strict"
-import { addressFrom, fromPrice, money, picture, safeReturn, sitemap, variantFor } from "../storefront/src/lib/format"
+import { addressFrom, fromPrice, money, picture, robotsTxt, safeReturn, sitemap, variantFor } from "../storefront/src/lib/format"
 import { mergedCookies, query } from "../storefront/src/lib/medusa"
 import { passwordProblem, registerProblem } from "../storefront/src/lib/account"
 
@@ -69,4 +69,11 @@ test("the sitemap lists each page with its date, escaped", () => {
   const xml = sitemap("https://k.whisk.page", [{ path: "/" }, { path: "/products/a&b", updated: "2026-10-09T00:00:00Z" }])
   assert.match(xml, /<loc>https:\/\/k\.whisk\.page\/<\/loc>/)
   assert.match(xml, /<loc>https:\/\/k\.whisk\.page\/products\/a&amp;b<\/loc><lastmod>2026-10-09T00:00:00.000Z<\/lastmod>/)
+})
+
+test("robots.txt keeps the website's lines first, then the shop's", () => {
+  const shop = "User-agent: *\nDisallow: /cart\nDisallow: /checkout\nDisallow: /account\nDisallow: /order/\nDisallow: /app\n\nSitemap: https://k.nz/sitemap.xml\n"
+  assert.equal(robotsTxt("https://k.nz", undefined), shop)
+  assert.equal(robotsTxt("https://k.nz", "  \n"), shop)
+  assert.equal(robotsTxt("https://k.nz", "User-agent: *\nDisallow: /wp-admin/\n\n"), "User-agent: *\nDisallow: /wp-admin/\n\n# The shop\n" + shop)
 })

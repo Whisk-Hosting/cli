@@ -9,19 +9,29 @@ sign-in. Any business can run it. Medusa needs about 525 MB of memory, which a P
 has; trade ordering (companies, trade prices, approvals, pay on account) comes only with a
 Promoted app (`promoted: true` and `b2b: true`).
 
+The business's website and its shop are one app on one address. The website is `site/`: its own
+Astro app (pages, images, documents, forms), built to static pages by `npm run build` and served
+at every address that is not the shop's. The shop's pages are at `/shop` (its home), `/products`,
+`/categories`, `/collections`, `/cart`, `/checkout`, `/account`, `/order` and `/search`, with one
+`sitemap.xml` and `robots.txt` for both. `/` is the website's home, or the shop's when there is no
+`site/`. Edit the website by editing `site/src/pages`; old addresses go in `site/redirects.json`
+(`{"from": "/old", "to": "/new"}`, or `"status": 410` for a page that is gone); a form posting to
+`/forms/<name>` is kept in the database's `form_entries` table.
+
 The pages in `storefront/` (Astro) are a working start: replace their look, or rewrite them, to
-match the business's site. They talk only to Medusa's store API (`storefront/src/lib`), so any
-page that does the same works.
+match the website. They talk only to Medusa's store API (`storefront/src/lib`), so any page that
+does the same works.
 
 ```
 medusa-config.ts            Medusa on Whisk: database, cache, storage, email, payments
 migrate.ts                  the migrate step: Medusa's migrations, then src/scripts/setup.ts
 src/scripts/setup.ts        NZD with GST, the New Zealand region, delivery, the storefront's key
-src/api/middlewares.ts      staff-only admin, rate limits, the storefront mounted on every page
+src/api/middlewares.ts      staff-only admin, rate limits, the website and storefront on every page
 src/api/auth/               sign-in codes for customers; /auth/whisk signs staff in
 src/modules/                Whisk storage and email, and the Windcave and PayPal providers
 src/subscribers/, src/jobs/ order and password emails
 storefront/                 the shop's pages
+site/                       the business's website, when it has one
 scripts/shop.mjs            build, start, migrate, dev
 ```
 
@@ -38,7 +48,7 @@ whisk dev --as you@example.com --roles owner -- npm run start
 
 These lines work the same in PowerShell, Command Prompt and a Unix shell. `whisk dev` runs the
 migration (`node migrate.js` in the build) first. Open http://127.0.0.1:3000 for the shop and
-http://127.0.0.1:3000/app for the admin. `npm run dev` instead rebuilds the server as its source
+http://127.0.0.1:3000/app for the admin (the shop's home is /shop once `site/` holds a website). `npm run dev` instead rebuilds the server as its source
 changes.
 
 ## Take payments

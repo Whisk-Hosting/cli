@@ -515,6 +515,24 @@ yourself, since it is charged. The blocked deploy goes live on its own once it i
 {"error":{"code":"PROMOTED_APP_REQUIRED","message":"This app runs only as a Promoted app, and is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop. The deploy goes live on its own once it is one.","docs":"https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED","details":{"dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
 ```
 
+## B2B_UNAVAILABLE
+
+Status: 409 · Surface: deploy, cli
+
+When: the app's whisk.yaml says `b2b: true` (the shop template's trade ordering, CONTRACT.md §11)
+and Whisk will not give it to this build: the app is not a Promoted app in force and the deploy
+is a preview (`details.reason` `promotion`; a production deploy waits as
+`PROMOTED_APP_REQUIRED` instead), the build does not use a Dockerfile (`dockerfile`), or this
+Whisk does not carry trade ordering, as Whisk On-Premise does not (`not_carried`).
+
+Fix: For `promotion`, ask an owner or billing contact to make the app a Promoted app at the URL
+in `details.dashboard`, then deploy again. For `dockerfile`, keep the shop template's Dockerfile.
+For `not_carried`, remove `b2b: true`; the shop works without trade ordering.
+
+```json
+{"error":{"code":"B2B_UNAVAILABLE","message":"Trade ordering comes only with Promoted apps, and kiwi-shop is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop, then deploy again.","docs":"https://skill.whisk.run/errors/B2B_UNAVAILABLE","details":{"reason":"promotion","dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
+```
+
 ## PROMOTED_ONLY
 
 Status: 409 · Surface: api

@@ -1,14 +1,19 @@
 // What sits in front of Medusa's own routes:
 // - the admin API is for the business's Whisk team only, signed in through Whisk (/auth/whisk);
 // - password sign-ins are rate-limited, since Medusa does not limit them itself;
-// - every address that is not Medusa's is the storefront (storefront/, built with Astro).
+// - every address that is not Medusa's is the storefront: the business's website (site/, built
+//   to site/dist) and the shop's pages (storefront/, built with Astro), on one address.
 import { defineMiddlewares, type MedusaNextFunction, type MedusaRequest, type MedusaResponse } from "@medusajs/framework/http"
-import { createReadStream, promises as fs } from "node:fs"
+import { createReadStream, existsSync, promises as fs, readFileSync, statSync } from "node:fs"
 import path from "node:path"
 import { pathToFileURL } from "node:url"
 import { kv } from "../lib/kv"
 import { personFrom, sessionHolds } from "../lib/staff"
-import { isMedusaPath, limitFor, staticFile, STOREFRONT } from "../lib/routes"
+import { ContainerRegistrationKeys } from "@medusajs/framework/utils"
+import {
+  anyFilled, formFields, formName, formReturn, isMedusaPath, isShopPath, limitFor, redirectFor, siteFiles, staticFile, STOREFRONT, variantFor,
+  type Redirect, type SiteFile,
+} from "../lib/routes"
 import { storefrontContext } from "../lib/shop"
 
 const refuse = (res: MedusaResponse, status: number, code: string, message: string, fix: string) =>
@@ -66,6 +71,101 @@ const sendStatic = async (req: MedusaRequest, res: MedusaResponse, pathname: str
   return true
 }
 
+// The website: its built pages and files, its old addresses, and its forms.
+const siteRoot = () => path.resolve(process.cwd(), "site/dist")
+let redirects: Redirect[] | undefined
+const siteRedirects = (): Redirect[] =>
+  (redirects ??= (() => {
+    try {
+      const list = JSON.parse(readFileSync(path.resolve(process.cwd(), "site/redirects.json"), "utf8"))
+      return Array.isArray(list) ? list : []
+    } catch {
+      return []
+    }
+  })())
+
+const isFile = async (file: string) => (await fs.stat(file).catch(() => null))?.isFile() ?? false
+
+const sendSiteFile = async (req: MedusaRequest, res: MedusaResponse, status: number, found: SiteFile) => {
+  const v = variantFor(found.file, String(req.headers.accept ?? ""), String(req.headers["accept-encoding"] ?? ""), (f) => existsSync(f) && statSync(f).isFile())
+  const stat = await fs.stat(v.file)
+  res.status(status).set({
+    "content-type": v.type ?? found.type,
+    "content-length": String(stat.size),
+    "cache-control": status === 200 ? found.cache : "no-cache",
+    ...(v.encoding ? { "content-encoding": v.encoding } : {}),
+    ...(v.vary ? { vary: v.vary } : {}),
+  })
+  if (req.method === "HEAD") return void res.end()
+  await new Promise<void>((ok, fail) => createReadStream(v.file).on("error", fail).on("end", ok).pipe(res))
+}
+
+// The website's answer for a path, if it has one: an old address's redirect, else its page or
+// file. A path that is neither is the shop's to answer.
+const sendSite = async (req: MedusaRequest, res: MedusaResponse, pathname: string): Promise<boolean> => {
+  if (req.method !== "GET" && req.method !== "HEAD") return false
+  const search = req.originalUrl.includes("?") ? req.originalUrl.slice(req.originalUrl.indexOf("?")) : ""
+  const moved = redirectFor(siteRedirects(), pathname, search)
+  if (moved) {
+    res.status(moved.status).set({ "cache-control": "public, max-age=300", ...(moved.location ? { location: moved.location } : { "content-type": "text/plain; charset=utf-8" }) })
+    res.end(moved.location ? undefined : "This page has been removed.")
+    return true
+  }
+  for (const found of siteFiles(siteRoot(), pathname)) {
+    if (await isFile(found.file)) {
+      await sendSiteFile(req, res, 200, found)
+      return true
+    }
+  }
+  return false
+}
+
+// The website's own "not found" page, for an address that is neither the website's nor the shop's.
+const sendSiteMissing = async (req: MedusaRequest, res: MedusaResponse): Promise<boolean> => {
+  const [missing] = siteFiles(siteRoot(), "/404.html")
+  if (!missing || !(await isFile(missing.file))) return false
+  await sendSiteFile(req, res, 404, missing)
+  return true
+}
+
+// The body of a form post, up to 64 KB, read within ten seconds.
+const readBody = (req: MedusaRequest, limit = 64 * 1024) =>
+  new Promise<string | null>((resolve, reject) => {
+    let size = 0
+    const chunks: Buffer[] = []
+    const timer = setTimeout(() => reject(new Error("the form took too long to arrive")), 10_000)
+    req.on("data", (c: Buffer) => {
+      size += c.length
+      if (size > limit) {
+        clearTimeout(timer)
+        resolve(null)
+        req.resume()
+      } else chunks.push(c)
+    })
+    req.on("end", () => {
+      clearTimeout(timer)
+      resolve(Buffer.concat(chunks).toString("utf8"))
+    })
+    req.on("error", (e) => {
+      clearTimeout(timer)
+      reject(e)
+    })
+  })
+
+// A website form's entry, kept in the shop's form_entries table (made by src/scripts/setup.ts),
+// then back to the page it came from. The edge's challenge (whisk.yaml) keeps robots out.
+const formPost = async (req: MedusaRequest, res: MedusaResponse, name: string) => {
+  const body = await readBody(req)
+  if (body === null) return refuse(res, 413, "BODY_TOO_LARGE", "The form was too large.", "Send less than 64 KB; attach large files by email instead.")
+  const fields = formFields(String(req.headers["content-type"] ?? ""), body)
+  if (!fields) return refuse(res, 400, "INVALID_REQUEST", "The form could not be read.", "Post the form's fields as a form or as a JSON object.")
+  if (!anyFilled(fields)) return refuse(res, 400, "INVALID_REQUEST", "The form was empty.", "Fill in at least one field.")
+  const referer = typeof req.headers.referer === "string" ? req.headers.referer : undefined
+  const db = req.scope.resolve(ContainerRegistrationKeys.PG_CONNECTION)
+  await db("form_entries").insert({ form: name, page: referer ?? null, data: JSON.stringify(fields) }).timeout(5_000, { cancel: true })
+  res.status(303).set({ location: formReturn(referer, name) }).end()
+}
+
 // A middleware with a pattern is mounted the way express mounts a prefix, which takes the matched
 // part off req.url; the storefront needs the address as the browser asked for it.
 const storefront = async (req: MedusaRequest, res: MedusaResponse, next: MedusaNextFunction) => {
@@ -76,7 +176,14 @@ const storefront = async (req: MedusaRequest, res: MedusaResponse, next: MedusaN
   // request's own session is left alone, so it neither saves over that session nor sends a
   // cookie of its own after the API's.
   ;(req as any).session = null
+  const form = formName(pathname)
+  if (form && req.method === "POST") return formPost(req, res, form).catch(next)
+  // The website answers first, except at the shop's own pages. Its home is the address's home;
+  // with no website, the shop's home is.
+  const website = !isShopPath(pathname)
+  if (website && (await sendSite(req, res, pathname))) return
   if (await sendStatic(req, res, pathname)) return
+  if (website && pathname !== "/" && (req.method === "GET" || req.method === "HEAD") && (await sendSiteMissing(req, res))) return
   const [{ handler }, shop] = await Promise.all([storefrontEntry(), storefrontContext(req.scope)])
   return handler(req, res, next, { shop })
 }

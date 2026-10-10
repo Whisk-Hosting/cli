@@ -1,0 +1,4 @@
+# expect: MANIFEST_INVALID only with Promoted apps
+whisk: 1
+name: shop
+b2b: true
