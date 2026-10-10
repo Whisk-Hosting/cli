@@ -844,6 +844,23 @@ sent them (§7), so between apps: read another app's tables through a shared dat
 it to ask something or to have it act by its own rules; to hand over work that can wait, call a
 route that sends an event to the other app's own queue and answers `202` at once.
 
+**Routes only apps may call.** List them under `routes:` as `apps: ["/internal/**"]`. The edge
+refuses everyone but another app's service call there, signed-in people included.
+
+**Apps Whisk runs for the business.** Some apps in a business are managed apps: Whisk supplies
+their code and keeps them up to date (`whisk apps` marks them `managed`; the ERP link is one). You
+cannot push to, clone or deploy one (`APP_MANAGED`). Add one with `whisk managed add <product>
+--link <role>=<app>`, change what it lets you set with `whisk managed set <app> NAME=value`, and
+pause or resume it with `whisk pause` and `whisk resume`. A copy linked to your app can call it,
+and your app finds the copy's id in `WHISK_LINKED_<PRODUCT>` (for the ERP link,
+`WHISK_LINKED_ERP_LINK`) after its next start. The `managed:` block (`product:`, `name:`,
+`settings:`, `links:`, `variants:`) only means something in Whisk's own source apps; elsewhere
+it is ignored.
+
+**Keeping data in.** `egress: closed` lets the app reach only its own database and cache, the
+apps it calls, its connections and email, never the rest of the internet. Use it for an app
+that holds data it must never send anywhere else.
+
 **Services outside Whisk: connections.** Reach an outside API (an ERP, accounting, CRM, a
 payment provider) through a connection, so the app never holds its key. Whisk's broker makes
 each call, checks it against what a person granted, adds the credential and sends it on.

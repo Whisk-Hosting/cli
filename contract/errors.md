@@ -502,6 +502,92 @@ plan that includes Promoted apps first.
 {"error":{"code":"PROMOTED_ONLY","message":"A status page is for Promoted apps, and shop is not one.","fix":"An owner or billing contact can promote shop at https://whisk.run/o/acme/apps/shop, then try again.","docs":"https://skill.whisk.run/errors/PROMOTED_ONLY","details":{"feature":"status_page","app":"shop","in_force":false}}}
 ```
 
+## APP_MANAGED
+
+Status: 409 · Surface: api, git, cli
+
+When: someone asked to change the code of a managed app, an app Whisk supplies and keeps up to
+date in the business (MANAGED-APPS.md §4): a push or clone of its repository, a deploy, a
+GitHub link, opening its database, making it a Promoted app or giving it a domain.
+`details.product` names the product.
+
+Fix: Leave the app's code to Whisk. Change what it lets you set with `whisk managed set <app>
+NAME=value` or on its page in the dashboard, pause it with `whisk pause <app>`, or delete it.
+
+```json
+{"error":{"code":"APP_MANAGED","message":"erp-link is the ERP link, which Whisk runs for Acme, so its code cannot be pushed or deployed.","fix":"Change its settings with whisk managed set erp-link NAME=value or at https://whisk.run/o/acme/apps/erp-link, pause it with whisk pause erp-link, or delete it.","docs":"https://skill.whisk.run/errors/APP_MANAGED","details":{"app":"erp-link","product":"erp-link"}}}
+```
+
+## APP_PAUSED
+
+Status: 503 · Surface: edge, api
+
+When: a request reached a managed app a person paused (MANAGED-APPS.md §4). The edge answers
+its public hostnames with the plain paused page, and the app itself answers its other routes
+with this code while `WHISK_PAUSED` is set.
+
+Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
+
+```json
+{"error":{"code":"APP_PAUSED","message":"erp-link is paused.","fix":"Resume it with whisk resume erp-link or at https://whisk.run/o/acme/apps/erp-link.","docs":"https://skill.whisk.run/errors/APP_PAUSED","details":{"app":"erp-link","paused_at":"2026-10-10T01:00:00Z"}}}
+```
+
+## MANAGED_UNAVAILABLE
+
+Status: 409 · Surface: api
+
+When: the business cannot add this product (MANAGED-APPS.md §7): its plan does not include it
+(`details.reason: plan`), the product has a price and the business is billed through its
+agency (`details.reason: client`) or inside its free trial (`details.reason: trial`), or the
+product was retired (`details.reason: retired`).
+
+Fix: For `plan`, an owner or billing contact chooses a plan that includes it on the billing page.
+For `client`, hand the business over so it chooses its own plan first. For `trial`, end the
+trial or choose a plan first. A retired product cannot be added.
+
+```json
+{"error":{"code":"MANAGED_UNAVAILABLE","message":"The ERP link is not included in the Free plan.","fix":"An owner or billing contact can choose a plan that includes it at https://whisk.run/o/acme/billing, then add it.","docs":"https://skill.whisk.run/errors/MANAGED_UNAVAILABLE","details":{"product":"erp-link","reason":"plan","plan":"free"}}}
+```
+
+## MANAGED_NO_RELEASE
+
+Status: 409 · Surface: api
+
+When: a business asked to add a product that has no release ready for customers yet
+(MANAGED-APPS.md §3).
+
+Fix: Try again later; nothing in the business needs to change.
+
+```json
+{"error":{"code":"MANAGED_NO_RELEASE","message":"The ERP link has no release ready yet.","fix":"Try again later.","docs":"https://skill.whisk.run/errors/MANAGED_NO_RELEASE","details":{"product":"erp-link"}}}
+```
+
+## MANAGED_LINK_TAKEN
+
+Status: 409 · Surface: api
+
+When: a business asked to add a product, or to link a copy, to an app that already has a copy of
+that product linked to it (MANAGED-APPS.md §4). `details.copy` names the copy that has it.
+
+Fix: Use the copy that is already linked, or delete it first.
+
+```json
+{"error":{"code":"MANAGED_LINK_TAKEN","message":"shop already has an ERP link, erp-link.","fix":"Use erp-link, or delete it at https://whisk.run/o/acme/apps/erp-link first.","docs":"https://skill.whisk.run/errors/MANAGED_LINK_TAKEN","details":{"product":"erp-link","app":"shop","copy":"erp-link"}}}
+```
+
+## MANAGED_SOURCE_IN_USE
+
+Status: 409 · Surface: api
+
+When: someone asked to delete the source app of a product that still has copies
+(MANAGED-APPS.md §2).
+
+Fix: An operator retires the product first; its copies stay on their last release.
+
+```json
+{"error":{"code":"MANAGED_SOURCE_IN_USE","message":"erp-link is the source of the ERP link, which 12 businesses use.","fix":"Retire the product on the operator page first, then delete the app.","docs":"https://skill.whisk.run/errors/MANAGED_SOURCE_IN_USE","details":{"product":"erp-link","copies":12}}}
+```
+
 ## TRIAL_USED
 
 Status: 409 · Surface: api

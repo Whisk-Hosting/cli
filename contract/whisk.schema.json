@@ -43,6 +43,13 @@
           "uniqueItems": true,
           "default": []
         },
+        "apps": {
+          "description": "Routes only other apps may call, by their service identity. The edge answers everyone else 401, signed-in people included.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
         "headers": {
           "description": "Response headers to add or override on every response from this app.",
           "type": "object",
@@ -230,6 +237,68 @@
       },
       "uniqueItems": true,
       "default": []
+    },
+    "egress": {
+      "description": "open (the default) lets the app reach the internet. closed limits it to its own database and cache, the apps it may call, the connections broker, DNS and the platform's mail relay.",
+      "type": "string",
+      "enum": ["open", "closed"],
+      "default": "open"
+    },
+    "managed": {
+      "description": "Declares a Whisk product this app is the source of. Honoured only for an app an operator registered as a product's source; ignored elsewhere.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "name"],
+      "properties": {
+        "product": { "type": "string", "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", "minLength": 3, "maxLength": 40 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "settings": {
+          "description": "Environment names a business may set on its copy.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "links": {
+          "description": "Roles a copy links to one of the business's own apps each.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}[a-z0-9]$" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "variants": {
+          "description": "The forms the product comes in; a copy picks one when it is added.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", "maxLength": 40 },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "settings": {
+                "description": "Environment names a business may set on a copy of this variant, besides the product's.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+                "uniqueItems": true,
+                "default": []
+              },
+              "env": {
+                "type": "object",
+                "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+                "additionalProperties": { "type": "string", "maxLength": 4096 },
+                "default": {}
+              },
+              "connections": {
+                "description": "Merged over the manifest's own connections for a copy of this variant.",
+                "type": "object",
+                "additionalProperties": { "$ref": "#/$defs/connection" }
+              }
+            }
+          },
+          "default": {}
+        }
+      }
     },
     "connections": {
       "description": "Outside systems this app reaches through Whisk's broker without holding their credentials (CONTRACT.md 3.1). A person grants each one.",

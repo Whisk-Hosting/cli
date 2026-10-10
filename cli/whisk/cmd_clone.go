@@ -49,6 +49,9 @@ func runClone(s *session, org, app, dir string) error {
 	if err != nil {
 		return wrap(err)
 	}
+	if err := managedRefusal(a); err != nil {
+		return err
+	}
 	if a.GitURL == "" {
 		return output.New("PLATFORM_UNAVAILABLE", fmt.Sprintf("The platform returned no repository URL for %s/%s.", org, app), "The app's repository is not ready yet; retry in a moment. whisk apps info shows git_url once it exists.", nil)
 	}

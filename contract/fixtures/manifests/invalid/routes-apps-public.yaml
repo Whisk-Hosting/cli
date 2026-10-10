@@ -1,0 +1,6 @@
+# expect: MANIFEST_INVALID cannot be public
+whisk: 1
+name: shop
+routes:
+  public: ["/**"]
+  apps: ["/erp-link/**"]

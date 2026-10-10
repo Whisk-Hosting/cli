@@ -266,7 +266,7 @@ func appsCmd(s *session) *cobra.Command {
 			s.printer.Result(map[string]any{"org": org, "apps": all}, func(w io.Writer) {
 				rows := make([][]string, len(all))
 				for i, a := range all {
-					rows[i] = []string{a.Slug, string(a.Status), a.Region, "https://" + a.Hostname}
+					rows[i] = []string{a.Slug, appStatusText(a), a.Region, "https://" + a.Hostname}
 				}
 				s.printer.Table(w, []string{"APP", "STATUS", "REGION", "URL"}, rows)
 			})
@@ -294,9 +294,18 @@ func appsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
+			var linked []api.App
+			if !s.printer.JSON && a.Managed != nil && len(a.Managed.Links) > 0 {
+				// The links name apps by id; the list gives a person their slugs, and the ids
+				// stand when it cannot be read.
+				linked, _ = client.ListApps(s.ctx, org)
+			}
 			s.printer.Result(map[string]any{"org": org, "app": a}, func(w io.Writer) {
 				fmt.Fprintf(w, "%s/%s  %s  %s\n  https://%s\n  git %s\n  created %s\n", org, a.Slug, a.Status, a.Region, a.Hostname, a.GitURL, a.CreatedAt.Local().Format("2006-01-02 15:04"))
 				for _, line := range memoryLines(a.Memory, time.Now()) {
+					fmt.Fprintln(w, "  "+line)
+				}
+				for _, line := range managedLines(a, linked) {
 					fmt.Fprintln(w, "  "+line)
 				}
 			})

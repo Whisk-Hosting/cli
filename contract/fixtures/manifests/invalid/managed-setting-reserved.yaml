@@ -1,0 +1,7 @@
+# expect: MANIFEST_INVALID reserved for the platform
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  settings: [WHISK_LINKED_SHOP]

@@ -57,10 +57,41 @@ type Manifest struct {
 	// edition's default (public on whisk.run, internal on Whisk On-Premise).
 	Network  string   `json:"network,omitempty"`
 	Previews Previews `json:"previews"`
+	// Egress is EgressOpen or EgressClosed (MANAGED-APPS.md §6).
+	Egress string `json:"egress"`
+	// Managed declares the product this app is the source of (MANAGED-APPS.md §2); nil for
+	// every other app.
+	Managed *Managed `json:"managed,omitempty"`
 }
 
+// Managed is a product's declaration in its source app's manifest (MANAGED-APPS.md §2).
+type Managed struct {
+	Product  string             `json:"product"`
+	Name     string             `json:"name"`
+	Settings []string           `json:"settings"`
+	Links    []string           `json:"links"`
+	Variants map[string]Variant `json:"variants"`
+}
+
+// Variant is one form a product comes in: what a copy of it adds to the release manifest.
+type Variant struct {
+	Name string            `json:"name"`
+	Env  map[string]string `json:"env"`
+	// Settings are names a business may set on a copy of this variant, besides the product's.
+	Settings    []string                      `json:"settings,omitempty"`
+	Connections map[string]connect.Connection `json:"connections,omitempty"`
+}
+
+// Egress values (MANAGED-APPS.md §6).
+const (
+	EgressOpen   = "open"
+	EgressClosed = "closed"
+)
+
 type Routes struct {
-	Public    []string          `json:"public"`
+	Public []string `json:"public"`
+	// Apps are routes only other apps' service calls reach (MANAGED-APPS.md §5).
+	Apps      []string          `json:"apps"`
 	Challenge []string          `json:"challenge"`
 	CSRFOff   []string          `json:"csrf_off"`
 	Headers   map[string]string `json:"headers"`
@@ -476,6 +507,23 @@ func withDefaults(m Manifest) Manifest {
 	m.Routes.Public = orEmpty(m.Routes.Public)
 	m.Routes.Challenge = orEmpty(m.Routes.Challenge)
 	m.Routes.CSRFOff = orEmpty(m.Routes.CSRFOff)
+	m.Routes.Apps = orEmpty(m.Routes.Apps)
+	if m.Egress == "" {
+		m.Egress = EgressOpen
+	}
+	if m.Managed != nil {
+		m.Managed.Settings = orEmpty(m.Managed.Settings)
+		m.Managed.Links = orEmpty(m.Managed.Links)
+		if m.Managed.Variants == nil {
+			m.Managed.Variants = map[string]Variant{}
+		}
+		for k, v := range m.Managed.Variants {
+			if v.Env == nil {
+				v.Env = map[string]string{}
+			}
+			m.Managed.Variants[k] = v
+		}
+	}
 	if m.Routes.Headers == nil {
 		m.Routes.Headers = map[string]string{}
 	}
@@ -556,6 +604,12 @@ func checkRules(m Manifest) Problems {
 			add(fmt.Sprintf("/secrets/%d", i), msg)
 		}
 	}
+	for i, r := range m.Routes.Apps {
+		if routes.MatchAny(m.Routes.Public, r) || contains(m.Routes.Public, r) {
+			add(fmt.Sprintf("/routes/apps/%d", i), r+" is also a public route; a route only apps may call cannot be public")
+		}
+	}
+	ps = append(ps, checkManaged(m)...)
 	for i, n := range m.Build.Secrets {
 		if msg := reservedName(n); msg != "" {
 			add(fmt.Sprintf("/build/secrets/%d", i), msg)
@@ -705,6 +759,75 @@ func (m Manifest) WithFile(src []byte) (Manifest, []string) {
 	m.Redirects = all
 	return m, out
 }
+
+// checkManaged checks a product's declaration: its settings, variants' settings and variants'
+// env are names the app may set, a setting is not a secret, a variant's setting is neither the
+// product's nor fixed by its own env, and no variant's env sets a product setting.
+func checkManaged(m Manifest) Problems {
+	if m.Managed == nil {
+		return nil
+	}
+	var ps Problems
+	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
+	for i, n := range m.Managed.Settings {
+		if msg := reservedName(n); msg != "" {
+			add(fmt.Sprintf("/managed/settings/%d", i), msg)
+		}
+		if contains(m.Secrets, n) {
+			add(fmt.Sprintf("/managed/settings/%d", i), n+" is a secret; a setting is a plain value the business sets on its copy")
+		}
+	}
+	for _, name := range sortedVariants(m.Managed.Variants) {
+		v := m.Managed.Variants[name]
+		for i, n := range v.Settings {
+			path := fmt.Sprintf("/managed/variants/%s/settings/%d", name, i)
+			if msg := reservedName(n); msg != "" {
+				add(path, msg)
+			}
+			if contains(m.Secrets, n) {
+				add(path, n+" is a secret; a setting is a plain value the business sets on its copy")
+			}
+			if contains(m.Managed.Settings, n) {
+				add(path, n+" is already one of the product's settings")
+			}
+			if _, fixed := v.Env[n]; fixed {
+				add(path, n+" is fixed by the variant's env; a setting is set by the business")
+			}
+		}
+		for _, cn := range sortedConnections(v.Connections) {
+			base := "/managed/variants/" + name + "/connections/" + cn
+			if !connect.Name.MatchString(cn) {
+				add(base, cn+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30")
+			}
+			found, _ := connect.Check(v.Connections[cn])
+			for _, p := range found {
+				add(base+p.Path, p.Message)
+			}
+		}
+		for _, k := range sortedKeys(m.Managed.Variants[name].Env) {
+			path := "/managed/variants/" + name + "/env/" + k
+			if msg := reservedName(k); msg != "" {
+				add(path, msg)
+			}
+			if contains(m.Managed.Settings, k) {
+				add(path, k+" is a setting the business sets; a variant cannot also fix it")
+			}
+		}
+	}
+	return ps
+}
+
+func sortedVariants(m map[string]Variant) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
+}
+
+// IsApps reports whether path is a route only other apps may call.
+func (m Manifest) IsApps(path string) bool { return routes.MatchAny(m.Routes.Apps, path) }
 
 func reservedName(n string) string {
 	switch {

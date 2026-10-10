@@ -41,6 +41,10 @@ version. Read them from the environment at start; never commit values; never ren
 | `WHISK_CONNECTION_<NAME>_URL` | each entry under `connections` | `http://connect.internal.whisk:8443/<name>`, the broker's address for that connection. The connection's secrets are never set. |
 | every name in `secrets:` | always | the value a human set; absent until then |
 | every name in `env:` | always | the literal value from the manifest |
+| `WHISK_PAUSED` | a managed app a person paused | `true`; the app does no work on a run and answers its routes 503 `APP_PAUSED` until it is resumed |
+| `WHISK_LINKED_<ROLE>` | a managed app with a link | the linked app's id, one per role the product names, e.g. `WHISK_LINKED_SHOP` |
+| `WHISK_LINKED_<PRODUCT>` | an app a managed app is linked to | the copy's id, e.g. `WHISK_LINKED_ERP_LINK`; set from the app's next start or deploy after the link is made |
+| a managed app's variant `env` and settings | a managed app | the variant's literal values and what the business set |
 
 Start any OpenTelemetry SDK's OTLP/HTTP trace exporter and it reads the `OTEL_*` variables
 itself; the templates do this only when `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set. A name the

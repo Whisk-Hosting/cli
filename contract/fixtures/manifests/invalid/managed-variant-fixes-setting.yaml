@@ -1,0 +1,11 @@
+# expect: MANIFEST_INVALID cannot also fix it
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  settings: [CONNECTOR]
+  variants:
+    xero:
+      name: Xero
+      env: {CONNECTOR: xero}

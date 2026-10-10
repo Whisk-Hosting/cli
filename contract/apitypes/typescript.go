@@ -84,6 +84,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("FeedbackKind", "FEEDBACK_KINDS", FeedbackBug, FeedbackDifficulty, FeedbackIdea, FeedbackPraise))
 	add(enumOf("FeedbackStatus", "FEEDBACK_STATUSES", FeedbackOpen, FeedbackResolved))
 	add(enumOf("FeedbackSender", "FEEDBACK_SENDERS", SenderUser, SenderAgent, SenderAnonymous))
+	add(enumOf("ManagedReleaseState", "MANAGED_RELEASE_STATES", ReleaseSoaking, ReleaseRolling, ReleaseHalted, ReleaseDone, ReleaseSuperseded))
 	add(enumOf("Interval", "INTERVALS", Monthly, Yearly))
 	add(enumOf("InvoiceStatus", "INVOICE_STATUSES", InvoiceDraft, InvoiceOpen, InvoicePaid, InvoiceUncollectible, InvoiceVoid))
 	add(enumOf("PayKind", "PAY_KINDS", PaySubscribe, PayCard, PayInvoice))
@@ -160,7 +161,7 @@ var wire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppPromoted{}, AppManaged{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, OperatorRelease{}, OperatorCopy{}, OperatorProduct{}, OperatorProductRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
 	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Node{}, NodeCopy{}, NodeFailover{}, Manifest{}, Validation{},

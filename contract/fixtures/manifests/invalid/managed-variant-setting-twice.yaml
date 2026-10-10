@@ -1,0 +1,11 @@
+# expect: MANIFEST_INVALID already one of the product's settings
+whisk: 1
+name: erp-link
+managed:
+  product: erp-link
+  name: ERP link
+  settings: [LIMIT_PER_SECOND]
+  variants:
+    bc:
+      name: Business Central
+      settings: [LIMIT_PER_SECOND]

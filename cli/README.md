@@ -97,6 +97,9 @@ and the exit codes of `CLI.md §3`:
   Whisk and check back on your own with the team's note; list everyone's with `--everyone`, and
   resolve or reopen a piece with a note, as an operator or with a token carrying
   `feedback:read` or `feedback:resolve` (`CLI.md §5.12`).
+- `whisk managed list/add/set/link`, `whisk pause`, `whisk resume`: the business's managed apps,
+  whose code and releases are Whisk's (`CLI.md §5.2`, `MANAGED-APPS.md`); `whisk apps list`
+  marks a copy `managed` and a paused app `paused`.
 - `whisk runs list/show/replay/cancel`.
 - `whisk db query/schema/shell/url/snapshot`, `whisk restore --at`, `whisk export`.
 
@@ -117,7 +120,8 @@ token in the environment, a fake SSE stream ending live with unset secrets and e
 the build log excerpt, pre-receive rejections, rollback's empty body, `secrets set` exiting 2,
 domains, members, access grants and `--json` shapes; `cmd_data_test.go` does the same for
 `db`, `restore`, `customers`, `tokens` and `runs replay/cancel`; `cmd_github_test.go`
-for the `github` commands against the routes of `CONTROL-PLANE.md §6.26`; `mcp_test.go`
+for the `github` commands against the routes of `CONTROL-PLANE.md §6.26`; `cmd_managed_test.go`
+for `managed`, `managed link`, `pause` and `resume` against the routes of `MANAGED-APPS.md §10`; `mcp_test.go`
 drives the MCP server through initialize, resources and tool calls; `cmd_update_test.go` runs
 `whisk update` against a fake release directory, signed and unsigned. `whisk dev`
 itself is exercised against a local Postgres by running a canary app from `templates/canary/`

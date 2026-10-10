@@ -1,0 +1,21 @@
+whisk: 1
+name: erp-link
+routes:
+  public: ["/health"]
+egress: closed
+calls: []
+env:
+  LOG_LEVEL: info
+managed:
+  product: erp-link
+  name: ERP link
+  settings: [LIMIT_PER_SECOND, ALLOWANCE_DAY]
+  links: [shop]
+  variants:
+    unleashed:
+      name: Unleashed
+      env: {CONNECTOR: unleashed}
+    xero:
+      name: Xero
+      env: {CONNECTOR: xero}
+      settings: [XERO_TENANT]

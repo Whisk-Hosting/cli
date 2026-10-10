@@ -108,9 +108,14 @@ type App struct {
 	Problem *AppProblem `json:"problem,omitempty"`
 	// Promoted is set while the app is a Promoted app, absent when it is not one
 	// (CONTROL-PLANE.md §6.15).
-	Promoted  *AppPromoted `json:"promoted,omitempty"`
-	CreatedAt time.Time    `json:"created_at"`
-	UpdatedAt time.Time    `json:"updated_at"`
+	Promoted *AppPromoted `json:"promoted,omitempty"`
+	// Managed is set when the app is a copy of a product Whisk runs, absent otherwise
+	// (MANAGED-APPS.md §10).
+	Managed *AppManaged `json:"managed,omitempty"`
+	// PausedAt is when a person paused the app, absent while it is not paused (MANAGED-APPS.md §4).
+	PausedAt  *time.Time `json:"paused_at,omitempty"`
+	CreatedAt time.Time  `json:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at"`
 }
 
 // AppPromoted is when an app was made a Promoted app and by whom (a user id), and whether it is
