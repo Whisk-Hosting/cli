@@ -83,6 +83,40 @@ type EmailProviderSet struct {
 	Org      string        `json:"org"`
 }
 
+// EmailSendStatus is what became of a message an app sent (GET …/email/sends/:id), in the order
+// one outranks another: sent (the provider took it and has said nothing since), delayed and
+// delivered (the receiving server accepted it), the furthest the message got, then failed,
+// bounced and complained (the recipient marked it as spam), which for any recipient outrank
+// it. Deliveries and delays name no recipient, so with several recipients delivered can mean
+// only some of them. Whether a delivered message reached the inbox or the spam folder is not
+// something any provider can know.
+type EmailSendStatus string
+
+const (
+	EmailSendSent       EmailSendStatus = "sent"
+	EmailSendDelayed    EmailSendStatus = "delayed"
+	EmailSendDelivered  EmailSendStatus = "delivered"
+	EmailSendFailed     EmailSendStatus = "failed"
+	EmailSendBounced    EmailSendStatus = "bounced"
+	EmailSendComplained EmailSendStatus = "complained"
+)
+
+// EmailSend is GET /orgs/:org/apps/:app/email/sends/:id: the message's status, the provider's
+// detail for it, when it last changed, and each status it reached in time order.
+type EmailSend struct {
+	ID        string           `json:"id"`
+	Status    EmailSendStatus  `json:"status"`
+	Detail    string           `json:"detail"`
+	UpdatedAt time.Time        `json:"updated_at"`
+	Events    []EmailSendEvent `json:"events"`
+}
+
+// EmailSendEvent is one status a message reached and when.
+type EmailSendEvent struct {
+	Status EmailSendStatus `json:"status"`
+	At     time.Time       `json:"at"`
+}
+
 // BucketProvider is whose bucket an org's files are in: Whisk's own (hetzner) or one the
 // business brought (byo).
 type BucketProvider string

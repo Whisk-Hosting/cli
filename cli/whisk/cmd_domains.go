@@ -34,9 +34,32 @@ func printDNS(p output.Printer, w io.Writer, d api.Domain) {
 		rows[i] = []string{r["type"], orDash(r["host"]), orDash(r["name"]), orDash(r["value"])}
 	}
 	p.Table(w, []string{"TYPE", "HOST", "NAME", "VALUE"}, rows)
-	if len(d.Addresses) > 0 && !pointsByAddress(records) {
-		fmt.Fprintf(w, "A bare domain such as example.com cannot have a CNAME: point it with A (IPv4) or AAAA (IPv6) records to %s instead.\n", strings.Join(d.Addresses, ", "))
+	for _, line := range apexAdvice(d, records) {
+		fmt.Fprintln(w, line)
 	}
+}
+
+// apexAdvice is what printDNS says under the records about pointing a bare domain, which cannot
+// have a CNAME: with A and AAAA records, or, where the DNS host offers it, an ALIAS, ANAME or
+// flattened CNAME at the domain itself to the domain's apex_target, which follows the platform
+// if its addresses change (CONTROL-PLANE.md §6.11). Pure.
+func apexAdvice(d api.Domain, records []map[string]string) []string {
+	flatten := func(lead string) string {
+		return lead + " its DNS host offers an ALIAS or ANAME record, or CNAME flattening, at the domain itself, pointing it at " + d.ApexTarget + " that way is better: it follows Whisk if the addresses change."
+	}
+	var out []string
+	switch {
+	case pointsByAddress(records):
+		if d.ApexTarget != "" {
+			out = append(out, flatten("If"))
+		}
+	case len(d.Addresses) > 0:
+		out = append(out, "A bare domain such as example.com cannot have a CNAME: point it with A (IPv4) or AAAA (IPv6) records to "+strings.Join(d.Addresses, ", ")+" instead.")
+		if d.ApexTarget != "" {
+			out = append(out, flatten("Where"))
+		}
+	}
+	return out
 }
 
 func domainsCmd(s *session) *cobra.Command {

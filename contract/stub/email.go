@@ -116,6 +116,29 @@ func (a *api) sendEmail(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, 202, map[string]any{"id": m.ID, "recipients": len(to), "sent_at": m.SentAt})
 }
 
+// keptDetail is what the stub says of every message it took: nothing local delivers mail, so a
+// message stays sent.
+const keptDetail = "whisk dev kept this message rather than sending it; on Whisk the status moves on as the provider reports"
+
+// emailSend answers GET …/email/sends/{id} as the platform does (CONTROL-PLANE.md §6.12,
+// "Delivery"), for a message the stub took: sent, since it delivers nothing. Any other id is
+// EMAIL_SEND_NOT_FOUND.
+func (a *api) emailSend(w http.ResponseWriter, r *http.Request, id string) {
+	if !a.bearerOK(r) {
+		writeError(w, r, 401, authRequired("The email endpoint needs the service token.", "Send Authorization: Bearer $WHISK_SERVICE_TOKEN."))
+		return
+	}
+	m, ok := a.stub.store.mail(id)
+	if !ok || strings.Contains(id, "/") {
+		writeError(w, r, 404, werrors.New("EMAIL_SEND_NOT_FOUND", fmt.Sprintf("whisk dev took no message with id %s.", id),
+			"Send the id POST …/email/send answered in this whisk dev run; the stub keeps its last 200 messages in memory.",
+			map[string]any{"id": id}))
+		return
+	}
+	writeJSON(w, 200, apitypes.EmailSend{ID: m.ID, Status: apitypes.EmailSendSent, Detail: keptDetail, UpdatedAt: m.SentAt,
+		Events: []apitypes.EmailSendEvent{{Status: apitypes.EmailSendSent, At: m.SentAt}}})
+}
+
 // checkMessage is the message's own checks, the platform's wording: the recipients as a list,
 // or why the message cannot go.
 func checkMessage(req sendRequest) ([]string, string) {

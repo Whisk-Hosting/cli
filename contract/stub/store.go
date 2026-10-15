@@ -71,6 +71,18 @@ func (s *store) mailList() []*sentMail {
 	return out
 }
 
+// mail is the message the stub took under id, if it still keeps it.
+func (s *store) mail(id string) (*sentMail, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	for _, m := range s.mails {
+		if m.ID == id {
+			return m, true
+		}
+	}
+	return nil, false
+}
+
 func (s *store) putFile(f *stubFile) {
 	s.mu.Lock()
 	defer s.mu.Unlock()

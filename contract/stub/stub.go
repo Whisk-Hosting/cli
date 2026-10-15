@@ -373,7 +373,7 @@ func (s *stub) describe() map[string]any {
 		"org_id": s.orgID, "app_id": s.appID, "app": s.manifest.Name,
 		"edge": s.edgeURL, "internal": s.internalURL,
 		"events": prefix + "/events", "approvals": prefix + "/approvals", "links": prefix + "/uploads/links", "decide": s.apiURL + "/approvals/{id}",
-		"email": prefix + "/email/send", "email_sent": prefix + "/email/sent",
+		"email": prefix + "/email/send", "email_sent": prefix + "/email/sent", "email_sends": prefix + "/email/sends/{id}",
 		"webhooks": prefix + "/webhooks/{name}/events", "domains": prefix + "/domains", "email_domains": prefix + "/email/domains", "hooks": s.apiURL + "/hooks/" + s.orgID + "/" + s.appID + "/{source}",
 		"inbox":    s.describeInbox(),
 		"identity": s.identity, "public_routes": s.manifest.Routes.Public, "service_routes": s.manifest.ServiceRoutes(),

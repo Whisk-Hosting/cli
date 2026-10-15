@@ -549,6 +549,13 @@ func (c *Client) VerifyInboxDomain(ctx context.Context, org, app, id string) (In
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/inbox/domains/"+pathSeg(id)+"/verify", nil, &out)
 }
 
+// EmailSend reads what became of a message the app sent, by the id its send answered
+// (GET …/email/sends/:id).
+func (c *Client) EmailSend(ctx context.Context, org, app, id string) (apitypes.EmailSend, error) {
+	var out apitypes.EmailSend
+	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/email/sends/"+pathSeg(id), nil, &out)
+}
+
 // RemoveInboxDomain stops the domain reaching the app, by id.
 func (c *Client) RemoveInboxDomain(ctx context.Context, org, app, id string) error {
 	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/inbox/domains/"+pathSeg(id), nil, nil)

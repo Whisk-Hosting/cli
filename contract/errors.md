@@ -2080,7 +2080,7 @@ run `whisk domains verify <hostname>`. An app verifying with its own service tok
 customer `details.records` and calls `POST .../domains/<id>/verify` again later.
 
 ```json
-{"error":{"code":"DOMAIN_UNVERIFIED","message":"jobs.acme.example is not verified: the TXT record was not found yet.","fix":"Add TXT _whisk-verify.jobs.acme.example = whisk-verify-9f3c and CNAME jobs.acme.example -> job-tracker.acme.whisk.page (for a bare domain like example.com, which cannot have a CNAME, A or AAAA records to 95.217.38.236 instead), wait for DNS to update, then run whisk domains verify jobs.acme.example.","docs":"https://skill.whisk.run/errors/DOMAIN_UNVERIFIED","details":{"hostname":"jobs.acme.example","records":[{"type":"TXT","name":"_whisk-verify.jobs.acme.example","value":"whisk-verify-9f3c"},{"type":"CNAME","name":"jobs.acme.example","value":"job-tracker.acme.whisk.page"}],"addresses":["95.217.38.236"],"missing":["TXT"]}}}
+{"error":{"code":"DOMAIN_UNVERIFIED","message":"jobs.acme.example is not verified: the TXT record was not found yet.","fix":"Add TXT _whisk-verify.jobs.acme.example = whisk-verify-9f3c and CNAME jobs.acme.example -> job-tracker.acme.whisk.page (for a bare domain like example.com, which cannot have a CNAME, an ALIAS, ANAME or flattened CNAME to domains.whisk.page where the DNS host offers one, else A or AAAA records to 95.217.38.236), wait for DNS to update, then run whisk domains verify jobs.acme.example.","docs":"https://skill.whisk.run/errors/DOMAIN_UNVERIFIED","details":{"hostname":"jobs.acme.example","records":[{"type":"TXT","name":"_whisk-verify.jobs.acme.example","value":"whisk-verify-9f3c"},{"type":"CNAME","name":"jobs.acme.example","value":"job-tracker.acme.whisk.page"}],"addresses":["95.217.38.236"],"missing":["TXT"]}}}
 ```
 
 ## SSO_DOMAIN_UNVERIFIED
@@ -2249,6 +2249,22 @@ the app wrote; or send the file itself as `content`.
 
 ```json
 {"error":{"code":"EMAIL_ATTACHMENT_NOT_FOUND","message":"Attachment report.pdf names app/01J9ZQ/reports/october.pdf, which is not in this app's storage.","fix":"Send storage_key as the object's full key, the app's WHISK_STORAGE_PREFIX followed by its name, such as app/01J9ZQ/reports/october.pdf.","docs":"https://skill.whisk.run/errors/EMAIL_ATTACHMENT_NOT_FOUND","details":{"attachment":0,"filename":"report.pdf","storage_key":"app/01J9ZQ/reports/october.pdf"}}}
+```
+
+## EMAIL_SEND_NOT_FOUND
+
+Status: 404 · Surface: api, cli
+
+When: `GET …/email/sends/<id>` (or `whisk email status <id>`) names an id that is not one of this
+app's sends: a typo, an id another app or business sent, or a send older than 30 days, after
+which a message's delivery is no longer kept. Under `whisk dev`, an id the local stub did not
+take.
+
+Fix: Send the `id` the app's `POST …/email/send` answered, with the token of the app that sent
+it, within 30 days of sending.
+
+```json
+{"error":{"code":"EMAIL_SEND_NOT_FOUND","message":"crm sent no message with id 4ef9a1b2-0c3d-4e5f-8a9b-1c2d3e4f5a6b in the last 30 days.","fix":"Send the id the app's POST …/email/send answered, with the token of the app that sent it, within 30 days of sending.","docs":"https://skill.whisk.run/errors/EMAIL_SEND_NOT_FOUND","details":{"app":"crm","id":"4ef9a1b2-0c3d-4e5f-8a9b-1c2d3e4f5a6b","kept_days":30}}}
 ```
 
 ## EMAIL_LINK_BLOCKED

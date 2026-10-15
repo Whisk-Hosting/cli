@@ -145,7 +145,7 @@ func (d *domains) add(host, target string) (apitypes.Domain, bool) {
 	}
 	token := "whisk-verify-" + strings.ToLower(randomToken(9))
 	dom := &apitypes.Domain{ID: newULID(), Hostname: host, Kind: apitypes.DomainCustom, CertStatus: "pending",
-		TXTRecord: "_whisk-verify." + host, TXTValue: token, CNAMETarget: target, Addresses: []string{"127.0.0.1"},
+		TXTRecord: "_whisk-verify." + host, TXTValue: token, CNAMETarget: target, Addresses: []string{"127.0.0.1"}, ApexTarget: "domains.whisk.localhost",
 		Records: []apitypes.DNSRecord{{Type: "TXT", Name: "_whisk-verify." + host, Value: token}, {Type: "CNAME", Name: host, Value: target}},
 		Status:  apitypes.DomainPendingDNS, AddedBy: apitypes.DomainAddedByApp, CreatedAt: time.Now().UTC()}
 	d.items[dom.ID] = dom
@@ -161,7 +161,7 @@ func (d *domains) verify(id string) (apitypes.Domain, bool) {
 	}
 	if stubVerifies(x.Hostname) {
 		x.Verified, x.CertStatus, x.Status = true, "issued", apitypes.DomainActive
-		x.TXTRecord, x.TXTValue, x.CNAMETarget, x.Addresses, x.Records = "", "", "", nil, nil
+		x.TXTRecord, x.TXTValue, x.CNAMETarget, x.Addresses, x.ApexTarget, x.Records = "", "", "", nil, "", nil
 	}
 	return *x, true
 }

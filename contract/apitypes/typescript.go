@@ -132,6 +132,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("ExportStatus", "EXPORT_STATUSES", ExportQueued, ExportRunning, ExportDone, ExportFailed, ExportExpired))
 	add(enumOf("EmailProvider", "EMAIL_PROVIDERS", EmailPlatform, EmailSMTP))
 	add(enumOf("EmailDomainStatus", "EMAIL_DOMAIN_STATUSES", EmailDomainPending, EmailDomainVerified, EmailDomainPaused))
+	add(enumOf("EmailSendStatus", "EMAIL_SEND_STATUSES", EmailSendSent, EmailSendDelayed, EmailSendDelivered, EmailSendFailed, EmailSendBounced, EmailSendComplained))
 	add(enumOf("BucketProvider", "BUCKET_PROVIDERS", BucketPlatform, BucketBYO))
 	add(enumOf("UploadStatus", "UPLOAD_STATUSES", UploadAuthorised, UploadClean, UploadInfected, UploadUnscanned, UploadMissing))
 	add(enumOf("Visibility", "VISIBILITIES", VisibilityPrivate, VisibilityPublic))
@@ -194,7 +195,7 @@ var wire = []any{
 	AccountExport{}, ExportProfile{}, ExportMembership{}, ExportSession{}, ExportPasskey{},
 	ExportToken{}, ExportAuditEvent{}, ExportFeedback{}, LastOwnerOrg{}, PersonRequest{}, PersonRequestAnswer{},
 	// data.go
-	EmailDomain{}, EmailAttachment{}, EmailStatus{}, EmailProviderRequest{}, EmailProviderSet{}, StorageInfo{}, StorageProviderRequest{},
+	EmailDomain{}, EmailAttachment{}, EmailStatus{}, EmailSend{}, EmailSendEvent{}, EmailProviderRequest{}, EmailProviderSet{}, StorageInfo{}, StorageProviderRequest{},
 	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, MediaLink{},
 	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
 	PackageCounts{}, PackageScan{}, Packages{}, LogDestination{}, LogDestinationList{},

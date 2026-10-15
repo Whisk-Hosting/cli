@@ -295,11 +295,15 @@ and previews never do.
 **Their own domain.** On a paid plan, `whisk domains add jobs.acme.com` prints two DNS records
 for the human to create: a TXT that proves they own the name and a CNAME to the app's address.
 A bare domain (`acme.com`) cannot have a CNAME, so it takes A (and AAAA) records to the
-addresses printed instead. Relay the records with their HOST, the name as a DNS provider's form
+addresses printed instead. If the human's DNS host offers an ALIAS or ANAME record, or CNAME
+flattening, at the domain itself, pointing it that way at the `apex_target` printed
+(`domains.` and the apps domain) is better, since it follows Whisk if the addresses change;
+never at the app's own address that way. Relay the records with their HOST, the name as a DNS provider's form
 takes it (`@` is the domain itself), changing the name's existing A record rather than adding a
 second one and leaving its MX and other TXT records alone. Then `whisk domains verify jobs.acme.com` once they
 are in place; until then it answers `DOMAIN_UNVERIFIED` naming what is missing. The certificate
-is issued on verification and the app answers on the name with no deploy. Prefer relative
+is issued on verification and the app answers on the name with no deploy. DNS cannot redirect
+`www.acme.com` to `acme.com`: add and verify both, then redirect one to the other (below). Prefer relative
 links; `WHISK_PUBLIC_URL` stays the platform address, and the `Host` header is the name the
 visitor used.
 
@@ -329,7 +333,8 @@ push. `whisk redirects test /old-page` prints what a request gets, and `whisk re
 what is live. To move the old domain itself, add it to the app (`whisk domains add
 old-acme.com`, verify it), then `whisk domains redirect old-acme.com acme.com`: every request
 to the old name gets a 301 to the same path on the new one, and a path a rule names goes
-straight to the rule's target there. The same command sends `www.acme.com` to `acme.com`.
+straight to the rule's target there. The same command sends `www.acme.com` to `acme.com`; a
+human can also set either on the app's domains page in the dashboard.
 
 **Their customers' domains.** An app that serves other businesses under their own names (a
 white-label app) lets each bring a domain of its own from inside the app, with no person running
@@ -1174,6 +1179,17 @@ and `DELETE .../email/domains/<id>` removes one when the customer leaves. A doma
 business or app already has is `EMAIL_DOMAIN_TAKEN`; the plan caps them
 (`PLAN_LIMIT_EMAIL_DOMAINS`) and the free app has none. `whisk dev` answers these routes locally
 and verifies at once.
+The send answers 202 with an `id`; keep it with the record the mail is about. To learn what became
+of the message, `GET /v1/orgs/<org>/apps/<app>/email/sends/<id>` with the service token (or
+`whisk email status <id>`) answers `status` and `events`: `sent` (the provider took it, nothing
+heard since), `delayed`, `delivered` (the receiving server accepted it), `failed`, `bounced`
+(with the reason in `detail`) or `complained` (the recipient marked it as spam): the furthest
+the message got, a complaint, bounce or failure for any recipient outranking it, so with several
+recipients `delivered` can mean only some of them. Nobody can
+know whether a delivered message went to the inbox or the spam folder; only a complaint is
+reported, so never tell a person their mail "reached the inbox". Stop mailing an address that
+bounced or complained. Delivery is kept 30 days, and an id that is not your app's or is older
+answers `EMAIL_SEND_NOT_FOUND`. Under `whisk dev` a kept message stays `sent`.
 Transactional only: at most 20 recipients a message and 100 a minute. The plan includes a daily
 allowance; past it a paid plan keeps sending and is billed, and the free app stops (it also stops
 at 50 a month). `EMAIL_RATE_LIMITED` says which limit with `details.period`.

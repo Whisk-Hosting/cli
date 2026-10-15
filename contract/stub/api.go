@@ -25,6 +25,7 @@ import (
 //	POST /v1/orgs/{org}/apps/{app}/webhooks/{name}/events/{id}/replay
 //	POST /v1/orgs/{org}/apps/{app}/email/send                  send an email (service token), kept here
 //	GET  /v1/orgs/{org}/apps/{app}/email/sent                  what the app sent, newest first
+//	GET  /v1/orgs/{org}/apps/{app}/email/sends/{id}            what became of one (service token)
 //	POST /hooks/{org}/{app}/{source}[/{token}]                  webhook ingress
 //	*    /v1/orgs/{org}/apps/{app}/domains[/{id}[/verify]]       custom domains (domains.go)
 //	*    /v1/orgs/{org}/apps/{app}/email/domains[/{id}[/verify]]  the app's own sending domains
@@ -73,6 +74,8 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		a.sendEmail(w, r)
 	case p == prefix+"/email/sent" && r.Method == http.MethodGet:
 		writeJSON(w, 200, map[string]any{"emails": s.store.mailList()})
+	case strings.HasPrefix(p, prefix+"/email/sends/") && r.Method == http.MethodGet:
+		a.emailSend(w, r, strings.TrimPrefix(p, prefix+"/email/sends/"))
 	case p == prefix+"/domains" || strings.HasPrefix(p, prefix+"/domains/"):
 		a.domains(w, r, strings.TrimPrefix(p, prefix+"/domains"))
 	case p == prefix+"/email/domains" || strings.HasPrefix(p, prefix+"/email/domains/"):

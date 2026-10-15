@@ -350,6 +350,11 @@ type Domain struct {
 	// Addresses are the app hostname's addresses, for a bare domain (example.com), which
 	// cannot have a CNAME: A and AAAA records to them point it at the app instead.
 	Addresses []string `json:"addresses,omitempty"`
+	// ApexTarget is the origin's name, domains.<apps domain>. A bare domain whose DNS host offers
+	// an ALIAS or ANAME record, or CNAME flattening, at the domain itself is better pointed at it
+	// that way than with A and AAAA records to Addresses: it follows the platform if the
+	// addresses change (CONTROL-PLANE.md §6.11). Set with Addresses.
+	ApexTarget string `json:"apex_target,omitempty"`
 	// Records are the DNS records to create, ready to show whoever runs the name's DNS: the
 	// TXT that proves it, then a CNAME to the app, or A and AAAA records for a bare domain.
 	// Empty once the domain is verified, and for every other kind.
