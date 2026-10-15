@@ -29,7 +29,7 @@ text, and an example. `Surface` names where it comes from: `api`, `edge` (an app
 to the control plane, which lands in the deploy record).
 
 Where a section says the platform's team, it means whoever runs the platform: Whisk on
-whisk.run, and the company's own administrators on a Whisk On-Premise install.
+whisk.run, and the company's own administrators on a Whisk Private install.
 
 ## AUTH_REQUIRED
 
@@ -520,7 +520,7 @@ When: the app's whisk.yaml says `b2b: true` (the shop template's trade ordering,
 and Whisk will not give it to this build: the app is not a Promoted app in force and the deploy
 is a preview (`details.reason` `promotion`; a production deploy waits as
 `PROMOTED_APP_REQUIRED` instead), the build does not use a Dockerfile (`dockerfile`), or this
-Whisk does not carry trade ordering, as Whisk On-Premise does not (`not_carried`).
+Whisk does not carry trade ordering, as Whisk Private does not (`not_carried`).
 
 Fix: For `promotion`, ask an owner or billing contact to make the app a Promoted app at the URL
 in `details.dashboard`, then deploy again. For `dockerfile`, keep the shop template's Dockerfile.
@@ -1618,7 +1618,7 @@ one who is, per app, or per token on the API; or sent more feedback in an hour t
 custom domains, or asked to verify more than 120, in an hour (`details.scope` is
 `app_domains`); or sent more than ten browser error reports in a minute from
 one network address to `POST /v1/client-errors` (`details.scope` is `client_errors`); or asked
-whisk.run's Whisk On-Premise release routes more than thirty times in a minute from one network
+whisk.run's Whisk Private release routes more than thirty times in a minute from one network
 address (`details.scope` is `onpremise_releases`); or started more than ten device logins (`POST /v1/device/code`)
 or polled more than sixty times (`POST /v1/device/token`) in a minute from one network address;
 or an app registered more than twenty sending domains of its own in an hour (`details.scope` is
@@ -2356,11 +2356,11 @@ Status: 409 · Surface: dashboard
 When: the GitHub account Whisk was installed on is already connected to another business on
 Whisk.
 
-Fix: Use another GitHub account or organisation, or remove the connection from the other
+Fix: Use another GitHub account or organization, or remove the connection from the other
 business first.
 
 ```json
-{"error":{"code":"GITHUB_INSTALLATION_TAKEN","message":"That GitHub account is already connected to another business on Whisk.","fix":"Use another GitHub account or organisation, or remove the connection from the other business first.","docs":"https://skill.whisk.run/errors/GITHUB_INSTALLATION_TAKEN","details":{"account":"acme"}}}
+{"error":{"code":"GITHUB_INSTALLATION_TAKEN","message":"That GitHub account is already connected to another business on Whisk.","fix":"Use another GitHub account or organization, or remove the connection from the other business first.","docs":"https://skill.whisk.run/errors/GITHUB_INSTALLATION_TAKEN","details":{"account":"acme"}}}
 ```
 
 ## GITHUB_REPO_UNAVAILABLE
@@ -2868,7 +2868,7 @@ been moved.
 
 Status: 403 · Surface: api, git, deploy
 
-When: Whisk On-Premise has no licence installed, so a deploy or a push is refused.
+When: Whisk Private has no licence installed, so a deploy or a push is refused.
 Running apps keep running. The hosted platform never answers it.
 
 Fix: Ask the install's administrators to install a current licence from Whisk. Deploys work
@@ -2882,7 +2882,7 @@ again as soon as it is installed.
 
 Status: 403 · Surface: api, git, deploy
 
-When: the installed Whisk On-Premise licence cannot be used: its signature does not match its
+When: the installed Whisk Private licence cannot be used: its signature does not match its
 terms (the file was changed after Whisk issued it), it was signed with a key this version does
 not know, or its start date is still ahead. Installing such a file is refused with the same
 code. whisk.run answers it too when a licence file sent to the support relay or the release
@@ -2899,7 +2899,7 @@ it is unchanged, ask Whisk for a current licence.
 
 Status: 403 · Surface: api, git, deploy
 
-When: the Whisk On-Premise licence has ended. Running apps keep running and keep their data; new
+When: the Whisk Private licence has ended. Running apps keep running and keep their data; new
 deploys and pushes wait for a current licence.
 
 Fix: Ask the install's administrators to renew the licence with Whisk and install the new file.
@@ -2914,7 +2914,7 @@ Deploys work again at once.
 Status: 409 · Surface: api
 
 When: lockfiles are sent to be checked before a deploy (`whisk doctor`) on a platform that sends
-no lockfile to osv.dev. Whisk On-Premise does not unless its administrators turn it on. Nothing was
+no lockfile to osv.dev. Whisk Private does not unless its administrators turn it on. Nothing was
 checked or sent.
 
 Fix: Deploy as usual: once the app is live the platform's registry checks the packages in its

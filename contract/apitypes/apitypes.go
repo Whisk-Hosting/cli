@@ -17,7 +17,7 @@ type Page[T any] struct {
 	NextCursor string `json:"next_cursor"`
 }
 
-// Org is an organisation. Role is the caller's role when they are a member.
+// Org is an organization. Role is the caller's role when they are a member.
 type Org struct {
 	ID          string         `json:"id"`
 	Slug        string         `json:"slug"`
