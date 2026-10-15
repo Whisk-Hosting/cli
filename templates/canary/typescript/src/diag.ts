@@ -8,6 +8,9 @@ import postgres from "postgres";
 
 // The edge's internal listener, where app-to-app calls arrive (CADDY.md §4.3).
 const internalPort = "8443";
+// How long a call to another app's internal name may take: the edge holds a call to a sleeping
+// app while it wakes, up to its wake_timeout (60 s, CADDY.md §5.2).
+const internalCallDeadlineMs = 70_000;
 
 const writable = (p: string) => { try { accessSync(p, constants.W_OK); return true; } catch { return false; } };
 
@@ -45,7 +48,7 @@ export const diagReport = () => {
 // One HTTP GET with an explicit Host header (fetch forbids setting one).
 const getWithHost = (host: string, port: string, path: string, headers: Record<string, string>) =>
   new Promise<{ status: number; body: string }>((resolve, reject) => {
-    const req = request({ host, port, path, method: "GET", headers, timeout: 5000 }, (res) => {
+    const req = request({ host, port, path, method: "GET", headers, timeout: internalCallDeadlineMs }, (res) => {
       let body = "";
       res.setEncoding("utf8");
       res.on("data", (chunk) => { body += chunk; });
@@ -110,7 +113,7 @@ export const diagPost = async (input: DiagPost) => {
   if (typeof appId !== "string" || !appId || typeof path !== "string" || !path.startsWith("/") || typeof body !== "string" || typeof headers !== "object" || headers === null) return null;
   const sent: Record<string, string> = { ...Object.fromEntries(Object.entries(headers).map(([k, v]) => [k, String(v)])), authorization: `Bearer ${process.env.WHISK_SERVICE_TOKEN ?? ""}` };
   try {
-    const resp = await fetch(`http://${appId}.internal.whisk:${internalPort}${path}`, { method: "POST", headers: sent, body, signal: AbortSignal.timeout(10000) });
+    const resp = await fetch(`http://${appId}.internal.whisk:${internalPort}${path}`, { method: "POST", headers: sent, body, signal: AbortSignal.timeout(internalCallDeadlineMs) });
     return { status: resp.status, body: (await resp.text()).slice(0, 1 << 16), headers: Object.fromEntries(resp.headers.entries()) };
   } catch (e) {
     return { status: 0, error: String(e) };

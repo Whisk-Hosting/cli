@@ -69,6 +69,11 @@ func dbIdentity(raw string) (role, database string) {
 	return u.User.Username(), strings.TrimPrefix(u.Path, "/")
 }
 
+// internalCallDeadline is how long a call to another app's internal name may take. The edge
+// holds a call to a sleeping app while it wakes, up to its wake_timeout (60 s, CADDY.md §5.2),
+// so a deadline shorter than that reports a wake as a failure.
+const internalCallDeadline = 70 * time.Second
+
 // diagCall is GET /diag/call?to=<app id>[&token=none][&via=<app id>]: one request to the
 // named app's internal name with this app's service identity (or none), reporting the status
 // the edge answered and the caller the target app saw. Only the apps this app declares in
@@ -86,7 +91,7 @@ func diagCall(w http.ResponseWriter, req *http.Request) {
 		dial = via
 	}
 	target := "http://" + dial + ".internal.whisk:" + internalPort + "/whoami"
-	ctx, cancel := context.WithTimeout(req.Context(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(req.Context(), internalCallDeadline)
 	defer cancel()
 	out, err := http.NewRequestWithContext(ctx, http.MethodGet, target, nil)
 	if err != nil {
@@ -130,7 +135,7 @@ func diagPost(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	target := "http://" + in.AppID + ".internal.whisk:" + internalPort + in.Path
-	ctx, cancel := context.WithTimeout(req.Context(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(req.Context(), internalCallDeadline)
 	defer cancel()
 	out, err := http.NewRequestWithContext(ctx, http.MethodPost, target, strings.NewReader(in.Body))
 	if err != nil {

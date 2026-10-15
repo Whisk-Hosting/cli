@@ -16,6 +16,9 @@ from psycopg import sql
 
 # The edge's internal listener, where app-to-app calls arrive (CADDY.md section 4.3).
 INTERNAL_PORT = "8443"
+# How long a call to another app's internal name may take: the edge holds a call to a sleeping
+# app while it wakes, up to its wake_timeout (60 s, CADDY.md section 5.2).
+INTERNAL_CALL_DEADLINE = 70
 
 
 def diag_report() -> dict[str, Any]:
@@ -74,7 +77,7 @@ def diag_call(to: str, with_token: bool = True, via: str | None = None) -> dict[
         headers["Authorization"] = "Bearer " + os.environ.get("WHISK_SERVICE_TOKEN", "")
     req = urllib.request.Request(target, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=5) as resp:
+        with urllib.request.urlopen(req, timeout=INTERNAL_CALL_DEADLINE) as resp:
             status, body = resp.status, resp.read()
     except urllib.error.HTTPError as e:
         status, body = e.code, e.read()
@@ -131,7 +134,7 @@ def diag_post(app_id: Any, path: Any, headers: Any = None, body: Any = "") -> di
     sent = {**{str(k): str(v) for k, v in headers.items()}, "Authorization": "Bearer " + os.environ.get("WHISK_SERVICE_TOKEN", "")}
     req = urllib.request.Request(f"http://{app_id}.internal.whisk:{INTERNAL_PORT}{path}", data=body.encode(), headers=sent, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=10) as resp:
+        with urllib.request.urlopen(req, timeout=INTERNAL_CALL_DEADLINE) as resp:
             status, raw, got = resp.status, resp.read(1 << 16), resp.headers
     except urllib.error.HTTPError as e:
         status, raw, got = e.code, e.read(1 << 16), e.headers
