@@ -146,6 +146,19 @@ func variantsText(p api.ManagedProduct) string {
 	return strings.Join(names, ", ")
 }
 
+// settingsText is a product's settings, the link key marked: an app may link a copy for each of
+// its values (MANAGED-APPS.md §4). Pure.
+func settingsText(p api.ManagedProduct) string {
+	names := make([]string, len(p.Settings))
+	for i, s := range p.Settings {
+		names[i] = s
+		if s == p.LinkKey {
+			names[i] += " (a copy per value)"
+		}
+	}
+	return listText(names)
+}
+
 // listText is a list of names, or - when there are none. Pure.
 func listText(names []string) string {
 	if len(names) == 0 {
@@ -242,7 +255,7 @@ func managedCmd(s *session) *cobra.Command {
 			} else {
 				rows := make([][]string, len(m.Products))
 				for i, p := range m.Products {
-					rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), listText(p.Settings), unavailableText(p)}
+					rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), settingsText(p), unavailableText(p)}
 				}
 				s.printer.Table(w, []string{"PRODUCT", "NAME", "PRICE", "VARIANTS", "LINKS", "SETTINGS", "AVAILABLE"}, rows)
 			}

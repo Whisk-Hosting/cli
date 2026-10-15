@@ -493,3 +493,19 @@ func TestManagedRefusal(t *testing.T) {
 		t.Errorf("a copy: %v", err)
 	}
 }
+
+func TestSettingsText(t *testing.T) {
+	cases := []struct {
+		p    api.ManagedProduct
+		want string
+	}{
+		{api.ManagedProduct{}, "-"},
+		{api.ManagedProduct{Settings: []string{"MARKET", "SYNC"}}, "MARKET, SYNC"},
+		{api.ManagedProduct{Settings: []string{"MARKET", "SYNC"}, LinkKey: "MARKET"}, "MARKET (a copy per value), SYNC"},
+	}
+	for _, c := range cases {
+		if got := settingsText(c.p); got != c.want {
+			t.Errorf("settingsText(%+v) = %q, want %q", c.p, got, c.want)
+		}
+	}
+}
