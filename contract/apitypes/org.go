@@ -311,8 +311,8 @@ type Preferences struct {
 	TimeZone      string          `json:"time_zone"`
 }
 
-// Trust is GET /orgs/:org/trust (DASHBOARD.md §4.16): where the data lives, how it is backed up
-// and proven restorable, who can see it, and where the platform's status is.
+// Trust is GET /orgs/:org/trust (DASHBOARD.md §4.16): where the data lives, how it is backed up,
+// who can see it, and where the platform's status is.
 type Trust struct {
 	Statement       string       `json:"statement"`
 	StatementPDFURL string       `json:"statement_pdf_url,omitempty"`
@@ -321,13 +321,9 @@ type Trust struct {
 	Status          TrustStatus  `json:"status"`
 }
 
-// TrustBackups is the backup half of the trust page. LastFullRebuild is the newest kill test
-// (INFRA.md §11): a node destroyed and rebuilt from backups, timed, with the full harness run
-// against the result.
+// TrustBackups is the backup half of the trust page.
 type TrustBackups struct {
 	LastContinuousAt *time.Time `json:"last_continuous_at,omitempty"`
-	Drills           []Drill    `json:"drills"`
-	LastFullRebuild  *Rebuild   `json:"last_full_rebuild,omitempty"`
 }
 
 // TrustAccess is who can see the org's data.
@@ -339,42 +335,6 @@ type TrustAccess struct {
 // TrustStatus is the platform's status page, when there is one.
 type TrustStatus struct {
 	URL string `json:"url,omitempty"`
-}
-
-// DrillStatus is where a restore drill stands. A skipped drill had nothing to restore.
-type DrillStatus string
-
-const (
-	DrillRunning DrillStatus = "running"
-	DrillDone    DrillStatus = "done"
-	DrillFailed  DrillStatus = "failed"
-	DrillSkipped DrillStatus = "skipped"
-)
-
-// Drill is one restore drill as the trust page shows it. Machine and Error are for the
-// platform's team; ReportMD is carried by a drill's own route, not by the trust page's rows.
-type Drill struct {
-	ID             string      `json:"id"`
-	At             time.Time   `json:"at"`
-	Machine        string      `json:"machine,omitempty"`
-	Status         DrillStatus `json:"status"`
-	RestoreSeconds int         `json:"restore_seconds"`
-	ChecksPassed   int         `json:"checks_passed"`
-	ChecksTotal    int         `json:"checks_total"`
-	Passed         bool        `json:"passed"`
-	ReportURL      string      `json:"report_url,omitempty"`
-	ReportMD       string      `json:"report_md,omitempty"`
-	Error          string      `json:"error,omitempty"`
-	FinishedAt     *time.Time  `json:"finished_at,omitempty"`
-}
-
-// Rebuild is one full rebuild as the trust page shows it.
-type Rebuild struct {
-	At             time.Time `json:"at"`
-	RebuildSeconds int       `json:"rebuild_seconds"`
-	Passed         bool      `json:"passed"`
-	Env            string    `json:"env,omitempty"`
-	Node           string    `json:"node,omitempty"`
 }
 
 // ExportStatus is where an export of the whole org stands.

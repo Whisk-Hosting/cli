@@ -129,7 +129,6 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("DemoCopyStatus", "DEMO_COPY_STATUSES", DemoCopyQueued, DemoCopyRunning, DemoCopyDone, DemoCopyFailed))
 	add(enumOf("DemoCopyStep", "DEMO_COPY_STEPS", DemoStepApp, DemoStepCode, DemoStepSecrets, DemoStepFiles, DemoStepDatabase, DemoStepDone))
 	add(enumOf("NotificationChannel", "NOTIFICATION_CHANNELS", ChannelEmail, ChannelSlack, ChannelWebhook))
-	add(enumOf("DrillStatus", "DRILL_STATUSES", DrillRunning, DrillDone, DrillFailed, DrillSkipped))
 	add(enumOf("ExportStatus", "EXPORT_STATUSES", ExportQueued, ExportRunning, ExportDone, ExportFailed, ExportExpired))
 	add(enumOf("EmailProvider", "EMAIL_PROVIDERS", EmailPlatform, EmailSMTP))
 	add(enumOf("EmailDomainStatus", "EMAIL_DOMAIN_STATUSES", EmailDomainPending, EmailDomainVerified, EmailDomainPaused))
@@ -191,7 +190,7 @@ var wire = []any{
 	DeletedApp{}, Branch{}, StartPreviewRequest{}, StartedPreview{}, OrgDomain{}, OrgDomainApp{},
 	OrgDomainRequest{}, MintedToken{}, Demo{}, DemoRequest{}, DemoPeopleRequest{}, DemoPerson{}, DemoCopy{}, DemoOffer{}, DemoBusiness{}, DemoCopyRequest{}, NewDemoBusiness{}, DemoInfo{},
 	DemoApp{}, OrgSettings{}, SSOSettings{}, DNSRecord{}, OrgSettingsRequest{}, SSORequest{},
-	Preferences{}, Trust{}, TrustBackups{}, TrustAccess{}, TrustStatus{}, Drill{}, Rebuild{}, Export{},
+	Preferences{}, Trust{}, TrustBackups{}, TrustAccess{}, TrustStatus{}, Export{},
 	AccountExport{}, ExportProfile{}, ExportMembership{}, ExportSession{}, ExportPasskey{},
 	ExportToken{}, ExportAuditEvent{}, ExportFeedback{}, LastOwnerOrg{}, PersonRequest{}, PersonRequestAnswer{},
 	// data.go
