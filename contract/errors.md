@@ -765,6 +765,34 @@ Fix: Wait for that copy to finish on the demo's page, or choose another business
 {"error":{"code":"DEMO_COPY_RUNNING","message":"A copy of ledger is already being made in Summit Builders.","fix":"Wait for it to finish on the demo's page, or choose another business.","docs":"https://skill.whisk.run/errors/DEMO_COPY_RUNNING","details":{"copy":"01JC4T2A9Q7N4ZK2X0DMB1VQ8H"}}}
 ```
 
+## APP_MOVE_RUNNING
+
+Status: 409 · Surface: api, dashboard
+
+When: someone asked to move an app to another business while a move of it is not finished: queued,
+running, or failed and waiting to be retried or cancelled. An app moves once at a time;
+`details.move` is the move already open.
+
+Fix: Follow that move on the app's move page; retry it or cancel it there if it failed.
+
+```json
+{"error":{"code":"APP_MOVE_RUNNING","message":"Ledger is already moving.","fix":"Follow that move on the app's move page; retry it or cancel it there if it failed.","docs":"https://skill.whisk.run/errors/APP_MOVE_RUNNING","details":{"move":"01JC4T2A9Q7N4ZK2X0DMB1VQ8H"}}}
+```
+
+## APP_MOVE_FINISHED
+
+Status: 409 · Surface: api, cli, dashboard
+
+When: someone asked to retry or cancel a move that is over: done, so the app is in the other
+business, or cancelled, so it stayed where it was. `details.status` says which.
+
+Fix: Nothing to do: a done move's app is in the other business, and a cancelled one left the app
+where it was. Start a new move if you want one.
+
+```json
+{"error":{"code":"APP_MOVE_FINISHED","message":"This move is done.","fix":"Nothing to do: a done move's app is in Demo, and a cancelled one left the app where it was. Start a new move if you want one.","docs":"https://skill.whisk.run/errors/APP_MOVE_FINISHED","details":{"move":"01JC4T2A9Q7N4ZK2X0DMB1VQ8H","status":"done"}}}
+```
+
 ## HANDOVER_WRONG_EMAIL
 
 Status: 403 · Surface: api, dashboard

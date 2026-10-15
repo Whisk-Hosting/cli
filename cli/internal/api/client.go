@@ -431,6 +431,21 @@ func (c *Client) RenameApp(ctx context.Context, org, app, slug string) (App, err
 	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/rename", apitypes.RenameAppRequest{Slug: slug}, &out)
 }
 
+// AppMove is an app moving to another business (CONTROL-PLANE.md §6.1 "Moving an app").
+type AppMove = apitypes.AppMove
+
+// MoveApp starts moving the app to the business to; only a person, signed in, may.
+func (c *Client) MoveApp(ctx context.Context, org, app, to string) (AppMove, error) {
+	var out AppMove
+	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/move", apitypes.AppMoveRequest{ToOrg: to}, &out)
+}
+
+// GetMove reads the app's newest move, the app named by slug or ID, moved or not.
+func (c *Client) GetMove(ctx context.Context, org, app string) (AppMove, error) {
+	var out AppMove
+	return out, c.Do(ctx, http.MethodGet, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/move", nil, &out)
+}
+
 // DeleteApp deletes an app.
 func (c *Client) DeleteApp(ctx context.Context, org, app string) error {
 	return c.Do(ctx, http.MethodDelete, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), nil, nil)
