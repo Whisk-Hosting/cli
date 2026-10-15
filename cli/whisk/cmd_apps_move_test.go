@@ -26,6 +26,8 @@ func TestRefusedAsAgent(t *testing.T) {
 		{"a person, signed in", api.Error{Code: "FORBIDDEN_ROLE", Details: map[string]any{"token": "user"}}, false},
 		{"an agent identity", api.Error{Code: "AGENT_CATEGORY", Details: map[string]any{"required": "human"}}, true},
 		{"an identity without a category", api.Error{Code: "AGENT_CATEGORY", Details: map[string]any{"required": "change"}}, false},
+		{"an agent moving to a business not Whisk's own", api.Error{Code: "FORBIDDEN_ROLE", Details: map[string]any{"token": "agent", "org": "acme", "action": "app.move"}}, true},
+		{"an identity without destroy", api.Error{Code: "AGENT_CATEGORY", Details: map[string]any{"required": "destroy"}}, false},
 		{"anything else", api.Error{Code: "APP_MOVE_RUNNING"}, false},
 	}
 	for _, c := range cases {
@@ -119,6 +121,6 @@ func TestAppsMove(t *testing.T) {
 	r = runRemote(t, dir, srv.URL, nil, "apps", "move", "ledger", "--to", "demo", "--json")
 	move, _ := r.JSON["move"].(map[string]any)
 	if r.Code != 0 || move["status"] != "done" || move["url"] != "https://ledger.demo.whisk.page" || polls < 2 {
-		t.Fatalf("a person follows the move to its end: %+v", r)
+		t.Fatalf("a person, or an agent between two of Whisk's own businesses, follows the move to its end: %+v", r)
 	}
 }

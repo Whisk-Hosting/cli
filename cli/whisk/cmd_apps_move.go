@@ -19,8 +19,9 @@ import (
 var movePoll = 3 * time.Second
 
 // moveCmd moves an app to another business the person runs (CLI.md §5.2, CONTROL-PLANE.md §6.1
-// "Moving an app"). Only a person, signed in, may start one, so from an agent's login it prints
-// the link where the person does, as whisk apps delete does.
+// "Moving an app"). A person, signed in, may start one; an agent's login may only between two of
+// Whisk's own businesses, and anywhere else it prints the link where the person does, as whisk
+// apps delete does.
 func moveCmd(s *session) *cobra.Command {
 	var to string
 	var noWait bool
@@ -33,9 +34,10 @@ secrets with their values, custom domains and address. The old address sends vis
 new one, and the app in the old business is deleted once the new one is live (restorable for 7
 days). Members and grants stay with the old business.
 
-Only a person, signed in, moves an app: from an agent's login this prints the link where they do
-(NEEDS_HUMAN, exit 2). Signed in as the person, it starts the move and follows it until it is done
-or failed; --no-wait prints the move's page instead.`,
+A person, signed in, moves an app. An agent's login moves one only between two of Whisk's own
+businesses its person runs both of; for any other move it prints the link where the person does
+(NEEDS_HUMAN, exit 2). Otherwise it starts the move and follows it until it is done or failed;
+--no-wait prints the move's page instead.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if to == "" {

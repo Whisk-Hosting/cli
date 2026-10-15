@@ -318,6 +318,11 @@
           "uniqueItems": true,
           "default": []
         },
+        "link_key": {
+          "description": "One of settings that tells apart the copies linked to one app: an app may have one copy for each value of it, unset counting as a value of its own (MANAGED-APPS.md 4). Without it an app has at most one copy of the product.",
+          "type": "string",
+          "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+        },
         "notify": {
           "description": "Codes a copy may tell its business's owners about through the platform's notify route; each is emailed once per occurrence with this subject (MANAGED-APPS.md 6.1).",
           "type": "array",

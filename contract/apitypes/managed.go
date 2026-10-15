@@ -34,14 +34,17 @@ type ManagedVariant struct {
 // ManagedProduct is one product a business may add: what a copy takes and its monthly price in
 // the plan's currency's cents, absent when the plan does not include it (MANAGED-APPS.md §7).
 type ManagedProduct struct {
-	Slug        string           `json:"slug"`
-	Name        string           `json:"name"`
-	Variants    []ManagedVariant `json:"variants"`
-	Settings    []string         `json:"settings"`
-	Links       []string         `json:"links"`
-	MonthCents  *int64           `json:"month_cents,omitempty"`
-	Available   bool             `json:"available"`
-	Unavailable string           `json:"unavailable,omitempty"` // plan | trial | no_release
+	Slug     string           `json:"slug"`
+	Name     string           `json:"name"`
+	Variants []ManagedVariant `json:"variants"`
+	Settings []string         `json:"settings"`
+	Links    []string         `json:"links"`
+	// LinkKey is the setting that tells apart the copies linked to one app, when the product
+	// has one: an app may then have a copy for each value of it (MANAGED-APPS.md §4).
+	LinkKey     string `json:"link_key,omitempty"`
+	MonthCents  *int64 `json:"month_cents,omitempty"`
+	Available   bool   `json:"available"`
+	Unavailable string `json:"unavailable,omitempty"` // plan | trial | no_release
 }
 
 // Managed is GET /orgs/:org/managed: the products and the business's copies.

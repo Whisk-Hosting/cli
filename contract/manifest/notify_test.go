@@ -48,3 +48,33 @@ func TestManagedNotice(t *testing.T) {
 		t.Error("a product with no notices declares none")
 	}
 }
+
+// A product's link key is one of its own settings (MANAGED-APPS.md §4); a copy's value of it is
+// lower-case letters, digits and -.
+func TestManagedLinkKey(t *testing.T) {
+	head := "whisk: 1\nname: erp-link\nmanaged:\n  product: erp-link\n  name: ERP link\n  settings: [MARKET, CURRENCY]\n"
+	cases := []struct {
+		name, key, want string
+	}{
+		{"none", "", ""},
+		{"a product setting", "  link_key: MARKET\n", ""},
+		{"not a setting", "  link_key: REGION\n", "not one of the product's settings"},
+		{"not a name", "  link_key: market\n", "link_key"},
+	}
+	for _, c := range cases {
+		m, err := Parse([]byte(head + c.key))
+		switch {
+		case c.want == "" && err != nil:
+			t.Errorf("%s: %v", c.name, err)
+		case c.want == "" && c.key != "" && m.Managed.LinkKey != "MARKET":
+			t.Errorf("%s: link key %q", c.name, m.Managed.LinkKey)
+		case c.want != "" && (err == nil || !strings.Contains(err.Error(), c.want)):
+			t.Errorf("%s: error %v, want one containing %q", c.name, err, c.want)
+		}
+	}
+	for v, ok := range map[string]bool{"au": true, "nz": true, "north-island": true, "a1": true, "": false, "AU": false, "au,nz": false, "a=b": false, "-au": false, "au-": false, strings.Repeat("a", 33): false} {
+		if LinkKeyValue.MatchString(v) != ok {
+			t.Errorf("LinkKeyValue %q: want %v", v, ok)
+		}
+	}
+}

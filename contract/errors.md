@@ -628,12 +628,16 @@ Fix: Try again later; nothing in the business needs to change.
 Status: 409 · Surface: api
 
 When: a business asked to add a product, or to link a copy, to an app that already has a copy of
-that product linked to it (MANAGED-APPS.md §4). `details.copy` names the copy that has it.
+that product linked to it (MANAGED-APPS.md §4). For a product with a `link_key`, an app may have a
+copy for each value of that setting, so it is a copy with the same value (or, unset, another
+copy with it unset), named in `details.setting` and `details.value`; changing a copy's value to
+one taken answers it too. `details.copy` names the copy that has it.
 
-Fix: Use the copy that is already linked, or delete it first.
+Fix: Use the copy that is already linked, give this copy another value of the link key, or
+delete the other copy first.
 
 ```json
-{"error":{"code":"MANAGED_LINK_TAKEN","message":"shop already has an ERP link, erp-link.","fix":"Use erp-link, or delete it at https://whisk.run/o/acme/apps/erp-link first.","docs":"https://skill.whisk.run/errors/MANAGED_LINK_TAKEN","details":{"product":"erp-link","app":"shop","copy":"erp-link"}}}
+{"error":{"code":"MANAGED_LINK_TAKEN","message":"shop already has the ERP link for MARKET au, erp-link-2.","fix":"Set another MARKET on this copy, use erp-link-2, or delete it at https://whisk.run/o/acme/apps/erp-link-2 first.","docs":"https://skill.whisk.run/errors/MANAGED_LINK_TAKEN","details":{"product":"erp-link","app":"shop","copy":"erp-link-2","setting":"MARKET","value":"au"}}}
 ```
 
 ## MANAGED_SOURCE_IN_USE
@@ -2633,12 +2637,13 @@ Fix: Wait for the running restore to finish: `whisk restore show <id> --wait` fo
 
 Status: 409 · Surface: api, cli
 
-When: `whisk apps restore <id>` named an app that is not deleted, whose 7 days are up and whose
-data was released, or whose slug another app in the business now uses.
+When: `whisk apps restore <id>` named an app that is not deleted, or whose 7 days are up and
+whose data was released. An app whose slug another app of the business now uses is restored, not
+refused: it comes back stopped as `deleted-<its id>`, and `whisk apps rename` gives it a name.
 
-Fix: `whisk apps deleted` lists the apps that can still be restored. For a slug in use, delete or
-rename the other app first. A released app cannot be brought back from here; if it was deleted
-by mistake within the last 30 days, ask with `whisk feedback`.
+Fix: `whisk apps deleted` lists the apps that can still be restored. A released app cannot be
+brought back from here; if it was deleted by mistake within the last 30 days, ask with `whisk
+feedback`.
 
 ```json
 {"error":{"code":"APP_NOT_RESTORABLE","message":"crm is not a deleted app that can still be restored: an app is restorable for 7 days after it is deleted, until its data is released.","fix":"Nothing can bring it back from here. If it was deleted by mistake less than 30 days ago, ask Whisk's support with whisk feedback.","docs":"https://skill.whisk.run/errors/APP_NOT_RESTORABLE","details":{"app":"01J9","status":"deleted"}}}

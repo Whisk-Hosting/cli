@@ -92,7 +92,15 @@ type Managed struct {
 	// Notify are the codes a copy may tell its business's owners about through the platform's
 	// notify route, each emailed once per occurrence (MANAGED-APPS.md §6.1).
 	Notify []Notice `json:"notify"`
+	// LinkKey, when set, is one of Settings that tells apart the copies linked to one app: an
+	// app may have several copies of the product, one for each value of it, unset counting as
+	// a value of its own (MANAGED-APPS.md §4, §5). Without it an app has at most one copy.
+	LinkKey string `json:"link_key,omitempty"`
 }
+
+// LinkKeyValue is the shape of a link key's value on a copy: lower-case letters, digits and -,
+// 1 to 32 of them, so it travels inside WHISK_LINKED_<PRODUCT> as written.
+var LinkKeyValue = regexp.MustCompile(`^[a-z0-9]([a-z0-9-]{0,30}[a-z0-9])?$`)
 
 // Notice is one code a product's copies may tell their business's owners about, and the
 // subject of the email (MANAGED-APPS.md §6.1).
@@ -895,6 +903,9 @@ func checkManaged(m Manifest) Problems {
 		if contains(m.Secrets, n) {
 			add(fmt.Sprintf("/managed/settings/%d", i), n+" is a secret; a setting is a plain value the business sets on its copy")
 		}
+	}
+	if k := m.Managed.LinkKey; k != "" && !contains(m.Managed.Settings, k) {
+		add("/managed/link_key", k+" is not one of the product's settings; the link key is a setting every copy may set")
 	}
 	seen := map[string]bool{}
 	for i, n := range m.Managed.Notify {

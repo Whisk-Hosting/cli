@@ -107,14 +107,17 @@ type Billing struct {
 	Invoices     []Invoice        `json:"invoices"`
 	Payments     bool             `json:"payments"`
 	Canary       bool             `json:"canary,omitempty"`
-	Timeline     Timeline         `json:"timeline"`
-	Trial        Trial            `json:"trial"`
-	PlanEndsAt   *time.Time       `json:"plan_ends_at"`
-	FreeApp      FreeApp          `json:"free_app"`
-	ClientOf     *OrgRef          `json:"client_of,omitempty"`
-	HandedOver   bool             `json:"handed_over,omitempty"`
-	Comp         *BillingComp     `json:"comp,omitempty"`
-	Promoted     BillingPromoted  `json:"promoted"`
+	// Own is set on one of Whisk's own businesses, which is never billed and has the top
+	// plan's features without its counts (CONTROL-PLANE.md §6.15).
+	Own        bool            `json:"own,omitempty"`
+	Timeline   Timeline        `json:"timeline"`
+	Trial      Trial           `json:"trial"`
+	PlanEndsAt *time.Time      `json:"plan_ends_at"`
+	FreeApp    FreeApp         `json:"free_app"`
+	ClientOf   *OrgRef         `json:"client_of,omitempty"`
+	HandedOver bool            `json:"handed_over,omitempty"`
+	Comp       *BillingComp    `json:"comp,omitempty"`
+	Promoted   BillingPromoted `json:"promoted"`
 	// Boosted is the business's boosted apps in force and the monthly price of Boost on each.
 	Boosted BillingPromoted `json:"boosted"`
 }

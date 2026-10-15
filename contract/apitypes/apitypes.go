@@ -46,6 +46,9 @@ type Org struct {
 	// Agency is set on a business with client businesses (CONTROL-PLANE.md §6.15), which has the
 	// all-clients screen.
 	Agency bool `json:"agency,omitempty"`
+	// WhiskOwn is set on one of Whisk's own businesses, which is never billed
+	// (CONTROL-PLANE.md §6.15 "Whisk's own businesses").
+	WhiskOwn bool `json:"whisk_own,omitempty"`
 }
 
 // User is a person.

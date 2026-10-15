@@ -968,9 +968,10 @@ cannot push to, clone or deploy one (`APP_MANAGED`). Add one with `whisk managed
 --link <role>=<app>`, change what it lets you set with `whisk managed set <app> NAME=value`, and
 pause or resume it with `whisk pause` and `whisk resume`. A copy linked to your app can call it,
 and your app finds the copy's id in `WHISK_LINKED_<PRODUCT>` (for the ERP link,
-`WHISK_LINKED_ERP_LINK`) after its next start. When a copy reports something only a person can fix
+`WHISK_LINKED_ERP_LINK`) after its next start; a product whose copies differ by a setting (the ERP
+link's `MARKET`, one per market) may have several on one app, listed there as `id,au=id`. When a copy reports something only a person can fix
 (for the ERP link, signing in to the ERP again), Whisk emails the business's owners once. The
-`managed:` block (`product:`, `name:`, `settings:`, `links:`, `variants:`, `notify:`) only means
+`managed:` block (`product:`, `name:`, `settings:`, `links:`, `link_key:`, `variants:`, `notify:`) only means
 something in Whisk's own source apps; elsewhere it is ignored.
 
 **Keeping data in.** `egress: closed` lets the app reach only its own database and cache, the

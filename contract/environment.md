@@ -43,7 +43,7 @@ version. Read them from the environment at start; never commit values; never ren
 | every name in `env:` | always | the literal value from the manifest |
 | `WHISK_PAUSED` | a managed app a person paused | `true`; the app does no work on a run and answers its routes 503 `APP_PAUSED` until it is resumed |
 | `WHISK_LINKED_<ROLE>` | a managed app with a link | the linked app's id, one per role the product names, e.g. `WHISK_LINKED_SHOP` |
-| `WHISK_LINKED_<PRODUCT>` | an app a managed app is linked to | the copy's id, e.g. `WHISK_LINKED_ERP_LINK`; set from the app's next start or deploy after the link is made |
+| `WHISK_LINKED_<PRODUCT>` | an app a managed app is linked to | the copy's id, e.g. `WHISK_LINKED_ERP_LINK`; set from the app's next start or deploy after the link is made. When the product has a `link_key` and the app has several copies, or one with a value for it, every copy, comma-separated: one without a value as its bare id, first, and each other as `<value>=<id>`, by value (`01J…,au=01J…`) |
 | a managed app's variant `env` and settings | a managed app | the variant's literal values and what the business set |
 
 Start any OpenTelemetry SDK's OTLP/HTTP trace exporter and it reads the `OTEL_*` variables
