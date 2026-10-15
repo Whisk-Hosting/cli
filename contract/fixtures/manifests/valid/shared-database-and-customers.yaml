@@ -1,0 +1,11 @@
+whisk: 1
+name: portal
+database: shared:erp
+customer_identity: app
+storage: true
+kv: true
+email: true
+always_on: true
+calls: [reporting-api]
+routes:
+  public: ["/", "/login-help"]

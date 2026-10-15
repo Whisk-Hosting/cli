@@ -1,0 +1,4 @@
+# expect: MANIFEST_INVALID /accepted_callers/1
+whisk: 1
+name: orders
+accepted_callers: [website, orders]

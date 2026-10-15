@@ -1,0 +1,20 @@
+whisk: 1
+name: whisk-typescript
+
+routes:
+  public: ["/", "/health"]
+
+health:
+  path: /health
+  timeout: 30
+
+database: app
+migrate: "node dist/migrate.js"
+
+env:
+  LOG_LEVEL: info
+
+functions:
+  - name: note-added
+    event: note.added
+    graph: workflows/note-added.graph.yaml

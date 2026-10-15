@@ -1,0 +1,17 @@
+whisk: 1
+name: whisk-python
+
+routes:
+  public: ["/", "/health"]
+
+health:
+  path: /health
+  timeout: 30
+
+database: app
+migrate: "alembic upgrade head"
+
+functions:
+  - name: note-added
+    event: note.added
+    graph: workflows/note-added.graph.yaml

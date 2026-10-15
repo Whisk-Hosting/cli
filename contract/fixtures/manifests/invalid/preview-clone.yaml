@@ -1,0 +1,5 @@
+# expect: MANIFEST_INVALID previews/database
+whisk: 1
+name: app
+previews:
+  database: clone

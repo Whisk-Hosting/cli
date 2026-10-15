@@ -1,0 +1,3 @@
+# expect: CONVENTIONS_VERSION_UNSUPPORTED version 2
+whisk: 2
+name: app

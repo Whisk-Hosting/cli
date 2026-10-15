@@ -1,0 +1,10 @@
+steps:
+  - id: fetch-po
+  - id: over-limit?
+    branches: { yes: request-approval, no: post-po }
+  - id: request-approval
+    kind: approval
+    next: approved?
+  - id: approved?
+    branches: { yes: post-po, no: end }
+  - id: post-po

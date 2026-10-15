@@ -1,0 +1,33 @@
+whisk: 1
+name: erp-link
+routes:
+  public: ["/health"]
+egress: closed
+calls: []
+env:
+  LOG_LEVEL: info
+managed:
+  product: erp-link
+  name: ERP link
+  settings: [LIMIT_PER_SECOND, ALLOWANCE_DAY]
+  links: [shop]
+  variants:
+    unleashed:
+      name: Unleashed
+      env: {CONNECTOR: unleashed}
+    xero:
+      name: Xero
+      env: {CONNECTOR: xero}
+      settings: [XERO_TENANT]
+    odoo:
+      name: Odoo
+      env: {CONNECTOR: odoo}
+      settings: [HOST, DATABASE]
+      connections:
+        erp:
+          url: https://{setting.HOST}/json
+          auth:
+            headers:
+              X-Odoo-Database: "{setting.DATABASE}"
+          operations:
+            - { name: Read records, method: POST, path: /json }

@@ -1,0 +1,12 @@
+steps:
+  - id: request-approval
+    kind: approval
+    label: Ask an owner to approve
+    next: approved?
+  - id: approved?
+    branches: { yes: record-decision, no: notify-rejection }
+  - id: record-decision
+    label: Insert an event row with the decision
+    next: end
+  - id: notify-rejection
+    label: Log that it was not approved

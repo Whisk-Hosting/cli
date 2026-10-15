@@ -1,0 +1,5 @@
+steps:
+  - id: count-notes
+    label: Count the notes written so far
+  - id: record-summary
+    label: Record the count as an event row

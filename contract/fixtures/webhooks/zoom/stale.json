@@ -1,0 +1,18 @@
+{
+  "preset": "zoom",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:10:01Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/zoom",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "x-zm-request-timestamp": "1788782400",
+    "x-zm-signature": "v0=d11c438c4781efab53157c6c3c9175c854ce284994aed51459fb03663eefd50e"
+  },
+  "expect": {
+    "verified": false,
+    "reason": "stale_timestamp"
+  },
+  "note": "Valid signature, verified 601 seconds after the timestamp."
+}

@@ -1,0 +1,3 @@
+go test fuzz v1
+string("/.whisk/media/U")
+string("exp=1800003600&kid=1&sig=xd23VuxGJcQobEYlRX5\rEvb8NzBcGoPzSztikQZxxaDo")

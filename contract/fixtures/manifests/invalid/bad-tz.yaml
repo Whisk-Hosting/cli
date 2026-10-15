@@ -1,0 +1,8 @@
+# expect: MANIFEST_INVALID not a known IANA time zone
+whisk: 1
+name: app
+functions:
+  - name: nightly
+    cron: "0 6 * * *"
+    tz: Mars/Olympus
+    graph: workflows/nightly.graph.yaml

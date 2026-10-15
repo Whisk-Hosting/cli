@@ -1,0 +1,646 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skill.whisk.run/whisk.schema.json",
+  "title": "Whisk manifest, conventions version 1",
+  "description": "whisk.yaml at the root of an app repository. Unknown keys are errors so that typos surface.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["whisk", "name"],
+  "properties": {
+    "whisk": {
+      "description": "Conventions version this repository follows. Changes within a version are additive.",
+      "const": 1
+    },
+    "name": {
+      "description": "App slug. The hostname <name>.<org>.whisk.page derives from it.",
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+      "minLength": 3,
+      "maxLength": 40
+    },
+    "routes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "public": {
+          "description": "Route globs reachable without identity. Everything else requires a signed-in team or customer identity.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "challenge": {
+          "description": "Public routes whose POSTs must carry a solved Altcha challenge.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "csrf_off": {
+          "description": "Routes exempt from the platform CSRF check. Rare; for embeds.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "apps": {
+          "description": "Routes only other apps may call, by their service identity. The edge answers everyone else 401, signed-in people included.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/routeGlob" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "headers": {
+          "description": "Response headers to add or override on every response from this app.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+          "additionalProperties": { "type": "string" },
+          "default": {}
+        }
+      },
+      "default": {}
+    },
+    "admin": {
+      "description": "The app's own admin. The Whisk bar shows the business's team links to it on every page.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "edit": {
+          "description": "Opens the admin's editor at the page being looked at: a path on the app's own address, with {path} where that page's path goes.",
+          "type": "string",
+          "pattern": "^/[^#\\s]*\\{path\\}[^#\\s]*$",
+          "maxLength": 300
+        }
+      }
+    },
+    "mcp": {
+      "description": "The app's own MCP server, which a chat assistant (Claude, ChatGPT) adds as a connector. The platform signs the assistant in; the path is never public.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path"],
+      "properties": {
+        "path": { "$ref": "#/$defs/path" },
+        "read_tools": {
+          "description": "The MCP tools that only read. An agent allowed only to read may call these and no other; every other tool counts as a change.",
+          "type": "array",
+          "maxItems": 200,
+          "uniqueItems": true,
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9_.-]{1,128}$" }
+        }
+      }
+    },
+    "health": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "path": { "$ref": "#/$defs/path", "default": "/health" },
+        "timeout": {
+          "description": "Seconds allowed from container start to the first 200 from the health path.",
+          "type": "integer",
+          "minimum": 5,
+          "maximum": 600,
+          "default": 90
+        }
+      },
+      "default": {}
+    },
+    "database": {
+      "description": "app: one database per app. shared:<name>: a schema inside an org-shared database. none: no database.",
+      "type": "string",
+      "pattern": "^(app|none|shared:[a-z0-9]([a-z0-9-]*[a-z0-9])?)$",
+      "default": "app"
+    },
+    "migrate": {
+      "description": "Command run before traffic switches to a new deploy. A snapshot is taken first.",
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 500
+    },
+    "database_role": {
+      "description": "owner: the app connects as the role that owns its tables. restricted: the app connects as a run login that only reads and writes rows, and only the migrate step connects as the owner, so the app's own queries cannot disable row-level security, drop a policy or change a table. restricted needs a database and a migrate command.",
+      "type": "string",
+      "enum": ["owner", "restricted"],
+      "default": "owner"
+    },
+    "build": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "dockerfile": {
+          "description": "Path to a Dockerfile. Absent: the platform detects the stack with Railpack.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "secrets": {
+          "description": "Secret names available only at build time, as BuildKit secret mounts.",
+          "type": "array",
+          "items": { "$ref": "#/$defs/secretName" },
+          "uniqueItems": true,
+          "default": []
+        }
+      },
+      "default": {}
+    },
+    "secrets": {
+      "description": "Names of secrets the app reads from the environment. Humans set values in the dashboard.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/secretName" },
+      "uniqueItems": true,
+      "default": []
+    },
+    "env": {
+      "description": "Non-secret configuration injected into the environment.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+      "additionalProperties": { "type": "string", "maxLength": 4096 },
+      "default": {}
+    },
+    "queue": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "endpoint": {
+          "description": "Path where the platform delivers function runs using the Inngest protocol.",
+          "$ref": "#/$defs/path",
+          "default": "/.whisk/inngest"
+        }
+      },
+      "default": {}
+    },
+    "functions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/function" },
+      "default": []
+    },
+    "webhooks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/webhook" },
+      "default": []
+    },
+    "inbox": {
+      "description": "Receive email at the app's own address. Each message is stored in the app's storage and delivered to handler the way webhooks are: signed, retried and replayable.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["handler"],
+      "properties": {
+        "handler": {
+          "description": "Route in this app that receives each message as JSON. Reached only by the platform.",
+          "$ref": "#/$defs/path"
+        },
+        "allow_from": {
+          "description": "Senders allowed to reach the inbox: whole addresses, or @domain for every address at that domain. Empty allows everyone.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^([^@\\s]+)?@[^@\\s]+\\.[^@\\s]+$", "maxLength": 254 },
+          "uniqueItems": true,
+          "maxItems": 100,
+          "default": []
+        }
+      }
+    },
+    "static": {
+      "description": "Folders published to object storage at deploy and served with immutable caching.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["dir", "path"],
+        "properties": {
+          "dir": { "description": "Folder, relative to the repository root, whose files are published. No segment may be \"..\".", "type": "string", "minLength": 1, "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/?$" },
+          "path": { "$ref": "#/$defs/path" }
+        }
+      },
+      "default": []
+    },
+    "redirects": {
+      "description": "Old addresses the edge answers with a redirect before the app is reached or woken, on every hostname of the app.",
+      "type": "array",
+      "maxItems": 10000,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["from"],
+        "properties": {
+          "from": { "description": "The old path, such as /about-us; with a query (/product.php?id=12) it matches only requests carrying those values; a :name segment (/blog/:year/:slug) matches any one segment; ending in /* it matches the path and everything below it.", "type": "string", "minLength": 1, "maxLength": 2000 },
+          "to": { "description": "The new path or http(s) address. After a from ending in /*, a to ending in * gets the rest of the path; each :name from has is replaced by the segment it matched. Left out for 410.", "type": "string", "minLength": 1, "maxLength": 2000 },
+          "status": { "description": "301 (permanent, the default), 308 (permanent, keeps the method), 302 or 307 (temporary), or 410 (gone).", "type": "integer", "enum": [301, 302, 307, 308, 410], "default": 301 },
+          "query": { "description": "keep adds the request's query to to; drop leaves it off. Default keep, or drop when from names a query.", "type": "string", "enum": ["keep", "drop"] }
+        }
+      },
+      "default": []
+    },
+    "redirects_file": {
+      "description": "Path, relative to the repository root, of a file with more redirects, one a line: from, to, an optional status and an optional query=keep or query=drop. No segment may be \"..\".",
+      "type": "string",
+      "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+)$",
+      "maxLength": 200
+    },
+    "storage": {
+      "description": "true requests a bucket prefix and injects WHISK_STORAGE_*.",
+      "type": "boolean",
+      "default": false
+    },
+    "kv": {
+      "description": "true gives this app a Valkey of its own as WHISK_KV_URL. Plan-gated.",
+      "type": "boolean",
+      "default": false
+    },
+    "email": {
+      "description": "true allows this app to POST to the email send API.",
+      "type": "boolean",
+      "default": false
+    },
+    "always_on": {
+      "description": "true keeps the app awake. Plan-gated.",
+      "type": "boolean",
+      "default": false
+    },
+    "promoted": {
+      "description": "true when the app runs only as a Promoted app (it needs a Promoted app's memory): its production deploy waits until the app is one.",
+      "type": "boolean",
+      "default": false
+    },
+    "b2b": {
+      "description": "true asks the build for trade ordering, the shop template's private plugin, given only to Promoted apps in force. Needs promoted: true.",
+      "type": "boolean",
+      "default": false
+    },
+    "calls": {
+      "description": "Slugs of apps in the same org this app may call with its service identity. A call needs the other app's consent: it must list this app under accepted_callers.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        "minLength": 3,
+        "maxLength": 40
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "accepted_callers": {
+      "description": "Slugs of apps in the same org whose calls this app accepts. Leave it out and no new caller is accepted; [] accepts none.",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+        "minLength": 3,
+        "maxLength": 40
+      },
+      "uniqueItems": true
+    },
+    "egress": {
+      "description": "open (the default) lets the app reach the internet. closed limits it to its own database and cache, the apps it may call, the connections broker, DNS and the platform's mail relay.",
+      "type": "string",
+      "enum": ["open", "closed"],
+      "default": "open"
+    },
+    "managed": {
+      "description": "Declares a Whisk product this app is the source of. Honoured only for an app Whisk registered as a product's source; ignored elsewhere.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["product", "name"],
+      "properties": {
+        "product": { "type": "string", "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", "minLength": 3, "maxLength": 40 },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "settings": {
+          "description": "Environment names a business may set on its copy.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "links": {
+          "description": "Roles a copy links to one of the business's own apps each.",
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,30}[a-z0-9]$" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "notify": {
+          "description": "Codes a copy may tell its business's owners about through the platform's notify route; each is emailed once per occurrence with this subject (MANAGED-APPS.md 6.1).",
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["code", "subject"],
+            "properties": {
+              "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$" },
+              "subject": { "type": "string", "minLength": 1, "maxLength": 120 }
+            }
+          },
+          "maxItems": 32,
+          "default": []
+        },
+        "variants": {
+          "description": "The forms the product comes in; a copy picks one when it is added.",
+          "type": "object",
+          "propertyNames": { "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$", "maxLength": 40 },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+              "settings": {
+                "description": "Environment names a business may set on a copy of this variant, besides the product's.",
+                "type": "array",
+                "items": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+                "uniqueItems": true,
+                "default": []
+              },
+              "env": {
+                "type": "object",
+                "propertyNames": { "pattern": "^[A-Z][A-Z0-9_]{1,63}$" },
+                "additionalProperties": { "type": "string", "maxLength": 4096 },
+                "default": {}
+              },
+              "connections": {
+                "description": "Merged over the manifest's own connections for a copy of this variant.",
+                "type": "object",
+                "additionalProperties": { "$ref": "#/$defs/connection" }
+              }
+            }
+          },
+          "default": {}
+        }
+      }
+    },
+    "connections": {
+      "description": "Outside systems this app reaches through Whisk's broker without holding their credentials (CONTRACT.md 3.1). A person grants each one.",
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/connection" },
+      "default": {}
+    },
+    "network": {
+      "description": "Where the app is served on Whisk On-Premise: internal (the default there) on the company's network only, public also on the outside address. whisk.run serves every app publicly and refuses internal.",
+      "type": "string",
+      "enum": ["internal", "public"]
+    },
+    "customer_identity": {
+      "description": "Second audience for public-facing apps: none, a pool per app, or a pool shared across the org.",
+      "type": "string",
+      "enum": ["none", "app", "org"],
+      "default": "none"
+    },
+    "previews": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "database": {
+          "description": "Previews start with an empty database; empty is the only value. Seed test data from the app's migrations or a script.",
+          "type": "string",
+          "enum": ["empty"],
+          "default": "empty"
+        },
+        "ttl_days": { "description": "Days a preview lives after its last push, start or visit.", "type": "integer", "minimum": 1, "maximum": 90, "default": 3 }
+      },
+      "default": {}
+    }
+  },
+  "$defs": {
+    "templates": {
+      "type": "object",
+      "additionalProperties": { "type": "string", "maxLength": 2048 }
+    },
+    "connection": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["url", "operations"],
+      "properties": {
+        "url": { "description": "The system's base address: https, no query, no credentials.", "type": "string", "maxLength": 500 },
+        "keypair": {
+          "description": "A key pair Whisk makes for the connection: the private key is kept as this secret, and a person downloads the certificate to upload to the outside system.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["secret"],
+          "properties": { "secret": { "$ref": "#/$defs/secretName" } }
+        },
+        "pin": { "description": "The one certificate key the host may present: sha256/ and the base64 SHA-256 of its public key info.", "type": "string", "pattern": "^sha256/[A-Za-z0-9+/]{43}=$" },
+        "auth": {
+          "description": "The recipe: templates set on every call, and an optional token step.",
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "vendor_app": { "description": "Whisk's own developer app with the system, read as {vendor.client_id} and {vendor.client_secret}; only an app Whisk manages may use one.", "type": "string", "pattern": "^[a-z][a-z0-9-]{1,39}$" },
+            "headers": { "$ref": "#/$defs/templates" },
+            "query": { "$ref": "#/$defs/templates" },
+            "body": {
+              "description": "Values the broker places into each call's JSON body, keyed by JSON pointer; the app sends a placeholder at each.",
+              "type": "object",
+              "maxProperties": 8,
+              "propertyNames": { "pattern": "^/", "maxLength": 200 },
+              "additionalProperties": { "type": "string", "maxLength": 2048 }
+            },
+            "token": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["url"],
+              "properties": {
+                "url": { "type": "string", "maxLength": 500 },
+                "method": { "type": "string", "enum": ["GET", "POST", "get", "post"] },
+                "headers": { "$ref": "#/$defs/templates" },
+                "form": { "$ref": "#/$defs/templates" },
+                "json": { "$ref": "#/$defs/templates" },
+                "field": { "type": "string", "maxLength": 100 },
+                "expires_field": { "type": "string", "maxLength": 100 },
+                "lifetime": { "type": "integer", "minimum": 1, "maximum": 86400 },
+                "cookies": { "description": "Cookies the token answer sets that are kept with the token and sent on every call.", "type": "array", "maxItems": 4, "items": { "type": "string", "pattern": "^[A-Za-z0-9!#$%&'*+.^_|~-]{1,64}$" } },
+                "revoke": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "maxLength": 500 },
+                    "headers": { "$ref": "#/$defs/templates" },
+                    "form": { "$ref": "#/$defs/templates" }
+                  }
+                },
+                "logout": {
+                  "description": "Ends the token's session at its issuer whenever the broker lets go of the token. Headers default to the call's own.",
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": ["url"],
+                  "properties": {
+                    "url": { "type": "string", "maxLength": 500 },
+                    "method": { "type": "string", "enum": ["POST", "GET", "DELETE", "post", "get", "delete"] },
+                    "headers": { "$ref": "#/$defs/templates" }
+                  }
+                }
+              }
+            }
+          },
+          "default": {}
+        },
+        "operations": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["name", "method", "path"],
+            "properties": {
+              "name": { "description": "Plain words; the app's own description of the operation.", "type": "string", "maxLength": 60 },
+              "method": { "type": "string", "enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "*", "get", "head", "post", "put", "patch", "delete"] },
+              "path": { "$ref": "#/$defs/routeGlob" },
+              "body": {
+                "description": "The string the call's JSON body must hold at each JSON pointer, for an API that names the call inside its body (JSON-RPC).",
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 4,
+                "propertyNames": { "pattern": "^/", "maxLength": 200 },
+                "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 200 }
+              }
+            }
+          }
+        }
+      }
+    },
+    "path": {
+      "description": "An absolute URL path without query or fragment.",
+      "type": "string",
+      "pattern": "^/[^?#\\s]*$",
+      "maxLength": 200
+    },
+    "routeGlob": {
+      "description": "An absolute path that may contain * (within one segment) and ** (across segments).",
+      "type": "string",
+      "pattern": "^/[^?#\\s]*$",
+      "maxLength": 200
+    },
+    "secretName": {
+      "description": "Upper snake case, as the environment variable the value arrives in.",
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{1,63}$"
+    },
+    "slug": {
+      "type": "string",
+      "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "function": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "graph"],
+      "oneOf": [
+        { "required": ["cron"], "not": { "required": ["event"] } },
+        { "required": ["event"], "not": { "required": ["cron"] } }
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "cron": {
+          "description": "Five-field cron expression, evaluated in tz (default UTC).",
+          "type": "string",
+          "pattern": "^\\S+\\s+\\S+\\s+\\S+\\s+\\S+\\s+\\S+$"
+        },
+        "tz": {
+          "description": "IANA time zone name for cron, for example Pacific/Auckland.",
+          "type": "string",
+          "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)*$"
+        },
+        "event": {
+          "description": "Event name that triggers this function, for example po.created.",
+          "type": "string",
+          "pattern": "^[a-z0-9]+([._/-][a-z0-9]+)*$",
+          "maxLength": 100
+        },
+        "graph": {
+          "description": "Path, relative to the repository root, of the declared workflow graph. No segment may be \"..\".",
+          "type": "string",
+          "pattern": "^(([^/.][^/]*|\\.[^/.][^/]*|\\.\\.[^/]+|\\.)/)*[^/]*\\.graph\\.ya?ml$",
+          "maxLength": 200
+        },
+        "concurrency": { "type": "integer", "minimum": 1, "maximum": 1000 },
+        "retries": { "type": "integer", "minimum": 0, "maximum": 20, "default": 3 }
+      }
+    },
+    "webhook": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "preset", "handler"],
+      "allOf": [
+        {
+          "if": { "properties": { "preset": { "const": "token" } } },
+          "then": { "not": { "required": ["secret"] } },
+          "else": { "required": ["secret"] }
+        },
+        {
+          "if": { "properties": { "preset": { "const": "hmac" } } },
+          "then": { "required": ["hmac"] },
+          "else": { "not": { "required": ["hmac"] } }
+        }
+      ],
+      "properties": {
+        "name": { "$ref": "#/$defs/slug" },
+        "preset": {
+          "description": "A preset name from webhook-presets.yaml, hmac with inline settings, or token for unsigned providers.",
+          "type": "string",
+          "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"
+        },
+        "secret": {
+          "description": "Name of the secret holding the signing secret. Must also appear in secrets.",
+          "$ref": "#/$defs/secretName"
+        },
+        "handler": {
+          "description": "Route in this app that receives verified deliveries. Reached only by the platform.",
+          "$ref": "#/$defs/path"
+        },
+        "ip_allowlist": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/cidr" },
+          "uniqueItems": true,
+          "default": []
+        },
+        "hmac": { "$ref": "#/$defs/hmacSettings" },
+        "handshake": {
+          "description": "How the provider checks the address before it sends deliveries: it calls with a value in a query parameter and wants it back as text/plain (Business Central: query validationToken).",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["query"],
+          "properties": {
+            "method": { "type": "string", "enum": ["GET", "POST"] },
+            "query": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9_.-]{0,63}$" }
+          }
+        }
+      }
+    },
+    "cidr": {
+      "type": "string",
+      "pattern": "^([0-9]{1,3}\\.){3}[0-9]{1,3}(/[0-9]{1,2})?$|^[0-9a-fA-F:]+(/[0-9]{1,3})?$"
+    },
+    "hmacSettings": {
+      "description": "Inline signature settings for preset hmac. Same fields as a preset in webhook-presets.yaml.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["header", "algorithm", "encoding", "payload"],
+      "properties": {
+        "header": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+        "algorithm": { "type": "string", "enum": ["sha1", "sha256", "sha512"] },
+        "encoding": { "type": "string", "enum": ["hex", "base64"] },
+        "payload": { "type": "string", "minLength": 1 },
+        "timestamp": { "$ref": "#/$defs/headerSource" },
+        "timestamp_format": { "type": "string", "enum": ["unix", "unix_ms", "rfc3339"], "default": "unix" },
+        "id": { "$ref": "#/$defs/headerSource" },
+        "signature_pattern": { "type": "string", "minLength": 1 },
+        "signature_prefix": { "type": "string", "minLength": 1 },
+        "tolerance_seconds": { "type": "integer", "minimum": 1, "maximum": 86400 }
+      }
+    },
+    "headerSource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from"],
+      "properties": {
+        "from": { "type": "string", "enum": ["header", "header_name"] },
+        "name": { "type": "string", "pattern": "^[A-Za-z][A-Za-z0-9-]*$" },
+        "pattern": { "type": "string", "minLength": 1 }
+      },
+      "if": { "properties": { "from": { "const": "header_name" } } },
+      "then": { "required": ["name"] },
+      "else": { "required": ["pattern"] }
+    }
+  }
+}

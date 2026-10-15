@@ -1,0 +1,14 @@
+whisk: 1
+name: erp-link
+routes:
+  public: ["/health"]
+egress: closed
+managed:
+  product: erp-link
+  name: ERP link
+  links: [shop]
+  notify:
+    - code: LINK_ERP_RECONNECT
+      subject: Sign in to the ERP again so orders keep reaching it
+    - code: LINK_PRICES_UNREADABLE
+      subject: The ERP prices by something the link cannot read

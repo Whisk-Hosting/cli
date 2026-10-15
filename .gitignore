@@ -1,0 +1,13 @@
+# Build output only. cli/whisk/ is the package holding every command, so never ignore that
+# folder; "Build from source" writes the binary to dist/.
+/dist/
+/cli/whisk/whisk
+/cli/whisk/whisk.exe
+**/node_modules/
+**/__pycache__/
+**/.venv/
+**/.whisk/dev/
+templates/go/server
+templates/canary/go/server
+.env
+.env.*

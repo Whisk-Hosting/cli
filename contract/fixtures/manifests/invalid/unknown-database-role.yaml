@@ -1,0 +1,5 @@
+# expect: MANIFEST_INVALID database_role
+whisk: 1
+name: app
+database_role: readonly
+migrate: "./server migrate"

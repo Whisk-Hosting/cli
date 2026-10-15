@@ -1,0 +1,6 @@
+# expect: MANIFEST_INVALID challenge routes must also be listed under routes.public
+whisk: 1
+name: app
+routes:
+  public: ["/"]
+  challenge: ["/contact"]

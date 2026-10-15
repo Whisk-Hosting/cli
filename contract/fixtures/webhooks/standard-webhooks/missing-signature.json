@@ -1,0 +1,18 @@
+{
+  "preset": "standard-webhooks",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/standard-webhooks",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "webhook-timestamp": "1788782400",
+    "webhook-id": "msg_2Ab3"
+  },
+  "expect": {
+    "verified": false,
+    "reason": "missing_signature"
+  },
+  "note": "No signature header."
+}

@@ -1,0 +1,3 @@
+# expect: MANIFEST_INVALID /name
+whisk: 1
+name: Job_Tracker

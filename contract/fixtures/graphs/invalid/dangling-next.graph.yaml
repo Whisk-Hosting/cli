@@ -1,0 +1,4 @@
+# expect: nowhere is not a step in this graph
+steps:
+  - id: a
+    next: nowhere

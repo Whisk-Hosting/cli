@@ -1,0 +1,16 @@
+{
+  "preset": "shopify",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/shopify",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Shopify-Hmac-Sha256": "HXOIDMjTuJb4c4T6nn9dOmxXHiNGKc+1Lver8WfO9Ks="
+  },
+  "expect": {
+    "verified": true
+  },
+  "note": "Signed with the fixture secret at now."
+}

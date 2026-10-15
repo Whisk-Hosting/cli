@@ -1,0 +1,4 @@
+# expect: MANIFEST_INVALID /network
+whisk: 1
+name: stock-room
+network: private

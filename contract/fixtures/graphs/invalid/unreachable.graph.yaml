@@ -1,0 +1,5 @@
+# expect: orphan is not reachable from the first step
+steps:
+  - id: a
+    next: end
+  - id: orphan

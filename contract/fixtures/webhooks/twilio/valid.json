@@ -1,0 +1,16 @@
+{
+  "preset": "twilio",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/twilio",
+  "body": "CallSid=CA123&From=%2B6421000000&To=%2B6427000000",
+  "headers": {
+    "Content-Type": "application/x-www-form-urlencoded",
+    "X-Twilio-Signature": "XVp/NvamTodSv5ak2RDSyY7KCKE="
+  },
+  "expect": {
+    "verified": true
+  },
+  "note": "Signed with the fixture secret at now."
+}

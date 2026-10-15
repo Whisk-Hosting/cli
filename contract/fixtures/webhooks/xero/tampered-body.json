@@ -1,0 +1,17 @@
+{
+  "preset": "xero",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/xero",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":12500",
+  "headers": {
+    "Content-Type": "application/json",
+    "x-xero-signature": "HXOIDMjTuJb4c4T6nn9dOmxXHiNGKc+1Lver8WfO9Ks="
+  },
+  "expect": {
+    "verified": false,
+    "reason": "signature_mismatch"
+  },
+  "note": "Body changed after signing."
+}

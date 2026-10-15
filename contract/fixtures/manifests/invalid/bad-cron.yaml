@@ -1,0 +1,7 @@
+# expect: MANIFEST_INVALID minute field
+whisk: 1
+name: app
+functions:
+  - name: nightly
+    cron: "60 6 * * *"
+    graph: workflows/nightly.graph.yaml

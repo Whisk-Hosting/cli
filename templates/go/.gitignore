@@ -1,0 +1,7 @@
+/server
+/server.exe
+/bin/
+.whisk/dev/
+.env
+.env.*
+!.env.example

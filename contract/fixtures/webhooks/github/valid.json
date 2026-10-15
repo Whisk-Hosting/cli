@@ -1,0 +1,16 @@
+{
+  "preset": "github",
+  "secret": "whsec_fixture_secret_0123456789",
+  "now": "2026-09-07T12:00:00Z",
+  "method": "POST",
+  "url": "https://hooks.whisk.run/acme/job-tracker/github",
+  "body": "{\"id\":\"evt_1\",\"type\":\"invoice.paid\",\"amount\":1250}",
+  "headers": {
+    "Content-Type": "application/json",
+    "X-Hub-Signature-256": "sha256=1d73880cc8d3b896f87384fa9e7f5d3a6c571e234629cfb52ef7abf167cef4ab"
+  },
+  "expect": {
+    "verified": true
+  },
+  "note": "Signed with the fixture secret at now."
+}
