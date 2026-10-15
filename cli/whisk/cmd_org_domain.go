@@ -89,11 +89,7 @@ func orgDomainCmd(s *session) *cobra.Command {
 		Short: "Use a domain for every app and print the DNS records it needs",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

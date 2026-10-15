@@ -239,11 +239,7 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, FORBIDDEN_ROLE
 			if err != nil {
 				return err
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

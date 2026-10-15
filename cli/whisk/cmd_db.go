@@ -49,11 +49,7 @@ every call is audited.`,
 				return output.New("INVALID_REQUEST", "There is no SQL to run.", `Pass the SQL as the argument, a file with --file, or - to read it from stdin.`, nil)
 			}
 			req.SQL = sql
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -147,11 +143,7 @@ func dbSchemaCmd(s *session) *cobra.Command {
 		Short: "Print the database's tables, columns, keys and estimated row counts",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -212,11 +204,7 @@ func shellCmd(s *session) *cobra.Command {
 		Short: "Type SQL at a prompt; each statement runs through whisk db query",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

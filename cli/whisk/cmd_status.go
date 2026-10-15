@@ -17,11 +17,7 @@ func statusCmd(s *session) *cobra.Command {
 		Short: "The app's state, current deploy, URL and anything waiting on a human",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

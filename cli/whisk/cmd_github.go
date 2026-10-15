@@ -91,11 +91,7 @@ func printGitHubLink(p output.Printer, w io.Writer, app string, l api.GitHubLink
 // githubCmd is the app's optional copy on GitHub (CLI.md §5.7, CONTROL-PLANE.md §6.26).
 func githubCmd(s *session) *cobra.Command {
 	statusRun := func(cmd *cobra.Command, args []string) error {
-		org, app, err := s.target()
-		if err != nil {
-			return err
-		}
-		client, _, err := s.client()
+		client, org, app, err := s.appClient()
 		if err != nil {
 			return err
 		}
@@ -142,11 +138,7 @@ With no subcommand, whisk github prints the link's status.`,
 		Short: "GitHub accounts Whisk is installed on and the repositories it reaches",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -207,11 +199,7 @@ page where a person does it.`,
 				return output.New("INVALID_REQUEST", fmt.Sprintf("%q is not a GitHub repository.", args[0]),
 					"Pass it as owner/name, for example acme/crm. whisk github repos lists the ones Whisk reaches.", map[string]any{"repo": args[0]})
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -232,11 +220,7 @@ page where a person does it.`,
 		Short: "Compare the app with its GitHub copy now",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -255,11 +239,7 @@ page where a person does it.`,
 		Short: "Stop copying the app to GitHub",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

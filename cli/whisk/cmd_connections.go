@@ -27,11 +27,7 @@ func connectionsCmd(s *session) *cobra.Command {
 		Short: "Each connection: grants by environment, state, what waits, calls today",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -57,11 +53,7 @@ func connectionsCmd(s *session) *cobra.Command {
 		Short: "Whisk's summary of what a grant allows, and how each secret is used",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -145,11 +137,7 @@ business. Resuming is a person's, in the dashboard.`,
 				return err
 			}
 			if all {
-				org, err := s.org()
-				if err != nil {
-					return err
-				}
-				client, _, err := s.client()
+				client, org, err := s.orgClient()
 				if err != nil {
 					return err
 				}
@@ -162,11 +150,7 @@ business. Resuming is a person's, in the dashboard.`,
 				})
 				return nil
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

@@ -216,11 +216,7 @@ func managedLines(a api.App, apps []api.App) []string {
 
 func managedCmd(s *session) *cobra.Command {
 	listRun := func(cmd *cobra.Command, args []string) error {
-		client, _, err := s.client()
-		if err != nil {
-			return err
-		}
-		org, err := s.org()
+		client, org, err := s.orgClient()
 		if err != nil {
 			return err
 		}
@@ -309,11 +305,7 @@ product, or the chosen variant, lists a value. whisk managed list shows each pro
 			if err != nil {
 				return err
 			}
-			client, _, err := s.client()
-			if err != nil {
-				return err
-			}
-			org, err := s.org()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -370,11 +362,7 @@ product, or the chosen variant, lists a value. whisk managed list shows each pro
 				return err
 			}
 			s.appFlag = args[0]
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -418,11 +406,7 @@ is running; a sleeping one reads it at its next start.`,
 			}
 			role := slices.Collect(maps.Keys(links))[0]
 			s.appFlag = args[0]
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -472,11 +456,7 @@ func pausing(s *session, paused bool) *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			s.appFlag = args[0]
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

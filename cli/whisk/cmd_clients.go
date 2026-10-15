@@ -21,11 +21,7 @@ agency's own login: whisk init --org <client> in a new folder, or whisk use <cli
 whisk deploy as usual.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -52,11 +48,7 @@ whisk deploy as usual.`,
 		Short: "Add a client business, billed to the agency; prints the payment page when a card is needed",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -88,11 +80,7 @@ whisk deploy as usual.`,
 		Short: "Make the link the client's contact accepts the business with",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

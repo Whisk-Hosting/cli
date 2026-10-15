@@ -345,3 +345,21 @@ func wrap(err error) error {
 	}
 	return err
 }
+
+// appClient is the app a command acts on, with a client to reach it.
+func (s *session) appClient() (client *api.Client, org, app string, err error) {
+	if org, app, err = s.target(); err != nil {
+		return nil, "", "", err
+	}
+	client, _, err = s.client()
+	return client, org, app, err
+}
+
+// orgClient is the business a command acts on, with a client to reach it.
+func (s *session) orgClient() (client *api.Client, org string, err error) {
+	if org, err = s.org(); err != nil {
+		return nil, "", err
+	}
+	client, _, err = s.client()
+	return client, org, err
+}

@@ -243,11 +243,7 @@ keeps it.`,
 			if from == "" {
 				return output.New("INVALID_REQUEST", "--from names the app that has the value.", "Run whisk secrets list --scope org to see which app has "+args[0]+", then pass --from <app>.", nil)
 			}
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

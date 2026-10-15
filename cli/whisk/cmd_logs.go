@@ -37,11 +37,7 @@ with "lines": [] when the window is empty; with -f it prints one such line objec
 arrives. --raw is for a person: each JSON line as the object the app wrote.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -103,11 +99,7 @@ endpoint, Datadog or an OpenTelemetry collector), with how sending is going. An 
 removes them in the dashboard; it is on the Business plan.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -127,11 +119,7 @@ removes them in the dashboard; it is on the Business plan.`,
 		Short: "Send one destination a test line now",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -346,11 +334,7 @@ to fix it.`,
 			if len(args) == 1 {
 				return explain.RunE(explain, args)
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

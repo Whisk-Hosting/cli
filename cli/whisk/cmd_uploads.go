@@ -19,11 +19,7 @@ func uploadsCmd(s *session) *cobra.Command {
 		Short: "Sign /.whisk/img/<id>?w=… or /.whisk/media/<id> so it opens without a sign-in until it expires",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -52,11 +48,7 @@ func uploadsCmd(s *session) *cobra.Command {
 		Short: "Give the app a new signing key; --now also stops every link already issued",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

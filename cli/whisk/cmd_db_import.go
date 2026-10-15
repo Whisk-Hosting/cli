@@ -42,11 +42,7 @@ failed; whisk restore show <id> reads it later.`,
 				return err
 			}
 			defer f.Close()
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

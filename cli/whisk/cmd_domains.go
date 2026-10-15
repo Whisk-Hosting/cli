@@ -47,11 +47,7 @@ func domainsCmd(s *session) *cobra.Command {
 		Short: "List the app's hostnames and their verification state",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -79,11 +75,7 @@ func domainsCmd(s *session) *cobra.Command {
 		Short: "Attach a custom hostname and print the DNS records it needs",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -101,11 +93,7 @@ func domainsCmd(s *session) *cobra.Command {
 		Short: "Check the DNS records and issue the certificate",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -131,11 +119,7 @@ func domainsCmd(s *session) *cobra.Command {
 		Short: "Detach a custom hostname",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -176,11 +160,7 @@ www.example.com to example.com. --off serves the app on the domain again.`,
 			case !off:
 				to = strings.ToLower(strings.TrimSpace(args[1]))
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -252,11 +232,7 @@ func envsCmd(s *session) *cobra.Command {
 		Short: "List environments with their URLs and expiry",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -288,11 +264,7 @@ func envsCmd(s *session) *cobra.Command {
 			if name == "production" {
 				return output.New("INVALID_REQUEST", "production cannot be deleted.", "Delete the app with whisk apps delete if that is what you mean.", nil)
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -314,11 +286,7 @@ func envsCmd(s *session) *cobra.Command {
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			branch := strings.TrimPrefix(args[0], "preview:")
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

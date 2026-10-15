@@ -28,11 +28,7 @@ answer from outside, so this refuses with DB_URL_PRIVATE and names whisk db quer
 schema, which run on the platform. --private prints the inside address anyway.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -61,11 +57,7 @@ schema, which run on the platform. --private prints the inside address anyway.`,
 		Short: "Record a restore point now, to restore to with whisk restore --at",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -110,11 +102,7 @@ app's restores.`,
 			if err != nil {
 				return output.New("INVALID_REQUEST", fmt.Sprintf("--at %q is not a time or a duration.", atFlag), "Pass an RFC 3339 time like 2026-09-07T14:13:00Z, or a duration ago like 2h or 3d.", nil)
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -150,11 +138,7 @@ app's restores.`,
 		Short: "Show one restore: its status, the database it restored into, and its error",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -181,11 +165,7 @@ app's restores.`,
 		Short: "List the app's restores, newest first",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

@@ -215,11 +215,7 @@ func cronCmd(s *session) *cobra.Command {
   whisk runs show <id>                    then follow the run it prints`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

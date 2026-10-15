@@ -35,11 +35,7 @@ whisk export show <id> signs a new one while the archive is kept and you are sti
 admin. Owners and admins.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -81,11 +77,7 @@ func exportShowCmd(s *session) *cobra.Command {
 		Short: "Show one export and, once it is ready, a fresh download link that works for five minutes",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

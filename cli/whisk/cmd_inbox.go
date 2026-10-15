@@ -40,11 +40,7 @@ handler like a webhook: whisk webhooks events inbox lists them and whisk webhook
 sends one again.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -66,11 +62,7 @@ receives no other mail: its MX points at Whisk's provider, so mail to any addres
 this app. Run whisk inbox domains verify <id> once the record is published.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -87,11 +79,7 @@ this app. Run whisk inbox domains verify <id> once the record is published.`,
 		Short: "Check a receiving domain's records; it stays pending until they are published",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -108,11 +96,7 @@ this app. Run whisk inbox domains verify <id> once the record is published.`,
 		Short: "Stop a receiving domain reaching this app (by id, from whisk inbox)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

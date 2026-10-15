@@ -995,11 +995,7 @@ func deploysCmd(s *session) *cobra.Command {
 		Short: "List recent deploys, newest first",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -1028,11 +1024,7 @@ func deploysCmd(s *session) *cobra.Command {
 		Short: "Show one deploy with its phases",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -1050,11 +1042,7 @@ func deploysCmd(s *session) *cobra.Command {
 		Short: "Cancel a deploy that has not finished",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -1076,11 +1064,7 @@ func deploysCmd(s *session) *cobra.Command {
 error carries. --json gives {"deploy_id", "build_id", "build_log", "app_log"}.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -1147,11 +1131,7 @@ func rollbackCmd(s *session) *cobra.Command {
 		Short: "Make an earlier deploy live again (default: the previous live one)",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

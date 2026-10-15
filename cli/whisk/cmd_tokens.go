@@ -24,11 +24,7 @@ func agentTokenCmd(s *session) *cobra.Command {
 			if strings.TrimSpace(label) == "" {
 				return output.New("INVALID_REQUEST", "An agent token needs a label.", `Pass --label with what it is for, for example --label "github actions".`, nil)
 			}
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -58,11 +54,7 @@ func tokensCmd(s *session) *cobra.Command {
 		Short: "List live tokens: kind, label, scopes, last use, expiry (never their values)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -90,11 +82,7 @@ func tokensCmd(s *session) *cobra.Command {
 		Short: "Revoke a token; every call with it fails from now on",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

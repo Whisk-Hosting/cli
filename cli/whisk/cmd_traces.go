@@ -35,11 +35,7 @@ request's name or path. Traces are kept 7 days.`,
 			if err != nil {
 				return err
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -99,11 +95,7 @@ id or the request's 26 character X-Whisk-Request-Id, as a log line's request_id 
 			if err != nil {
 				return err
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

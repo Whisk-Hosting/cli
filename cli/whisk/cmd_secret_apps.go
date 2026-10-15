@@ -24,11 +24,7 @@ that names it and is not on the list waits for an owner or admin to approve it; 
 without it. This lists the apps and prints where an owner or admin changes the list.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

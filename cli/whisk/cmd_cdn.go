@@ -91,11 +91,7 @@ func printCDN(p output.Printer, w io.Writer, app string, c api.CDN) {
 // cdnCmd is the app's CDN (CLI.md §5.7, CONTROL-PLANE.md §6.29).
 func cdnCmd(s *session) *cobra.Command {
 	statusRun := func(cmd *cobra.Command, args []string) error {
-		org, app, err := s.target()
-		if err != nil {
-			return err
-		}
-		client, _, err := s.client()
+		client, org, app, err := s.appClient()
 		if err != nil {
 			return err
 		}
@@ -108,11 +104,7 @@ func cdnCmd(s *session) *cobra.Command {
 	}
 	set := func(on bool) func(cmd *cobra.Command, args []string) error {
 		return func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

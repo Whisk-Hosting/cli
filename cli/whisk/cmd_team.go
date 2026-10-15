@@ -38,11 +38,7 @@ func membersCmd(s *session) *cobra.Command {
 		Short: "List members and guests, invited ones included",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -69,11 +65,7 @@ func membersCmd(s *session) *cobra.Command {
 		Long:  personOnly("Invite a person; prints the link they redeem."),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -113,11 +105,7 @@ func membersCmd(s *session) *cobra.Command {
 		Long:  personOnly("Remove a person from the org, every app and every group at once."),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, err := s.org()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -274,11 +262,7 @@ func accessCmd(s *session) *cobra.Command {
 		Short: "List the grants",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -309,11 +293,7 @@ func accessCmd(s *session) *cobra.Command {
 		Long:  personOnly("Let a group, a person or everyone open the app."),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -351,11 +331,7 @@ func accessCmd(s *session) *cobra.Command {
 		Long:  personOnly("Stop a group, a person or everyone opening the app."),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -400,11 +376,7 @@ func deployKeysCmd(s *session) *cobra.Command {
 		Short: "Mint a deploy token; its value is shown once",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}

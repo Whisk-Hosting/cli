@@ -259,11 +259,7 @@ func appsCmd(s *session) *cobra.Command {
 		Short: "List the org's apps",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, _, err := s.client()
-			if err != nil {
-				return err
-			}
-			org, err := s.org()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -290,11 +286,7 @@ func appsCmd(s *session) *cobra.Command {
 			if len(args) == 1 {
 				s.appFlag = args[0]
 			}
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -358,11 +350,7 @@ for 7 days with whisk apps restore <id>.`,
 		Short: "List deleted apps that can still be restored",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, _, err := s.client()
-			if err != nil {
-				return err
-			}
-			org, err := s.org()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}
@@ -389,11 +377,7 @@ for 7 days with whisk apps restore <id>.`,
 		Short: "Bring back a deleted app, stopped, until its 7 days are up",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			client, _, err := s.client()
-			if err != nil {
-				return err
-			}
-			org, err := s.org()
+			client, org, err := s.orgClient()
 			if err != nil {
 				return err
 			}

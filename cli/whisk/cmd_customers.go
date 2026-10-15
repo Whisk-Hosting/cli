@@ -30,11 +30,7 @@ func customersCmd(s *session) *cobra.Command {
 		Short: "List the app's customers and whether strangers may register",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
@@ -69,11 +65,7 @@ func customersCmd(s *session) *cobra.Command {
 		Short: "Invite a customer; prints the invite_url, and with --email Whisk emails it to them",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			client, _, err := s.client()
+			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
