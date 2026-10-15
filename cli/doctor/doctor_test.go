@@ -5,14 +5,17 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/cli/internal/stack"
 	"github.com/whisk-run/contract/apitypes"
 	rules "github.com/whisk-run/contract/doctor"
+	"github.com/whisk-run/contract/ownsignin"
 )
 
 // A minimal Hono app that passes every rule, used as the base for the fixtures below.
@@ -141,6 +144,8 @@ fs.writeFileSync("./data/x.json", "{}");
 			"whisk.yaml": passing["whisk.yaml"] + "migrate: \"npm run migrate\"\n",
 		}),
 		"W090": with(passing, map[string]string{"public/login.html": `<form method="post">\n  <input type=password name="pw">\n</form>\n`}),
+		"W106": with(passing, map[string]string{"whisk.yaml": strings.ReplaceAll(passing["whisk.yaml"], `public: ["/", "/health"]`, `public: ["/**"]`),
+			"public/login.html": `<form method="post">\n  <input type=password name="pw">\n</form>\n`}),
 	}
 	for id, files := range cases {
 		t.Run(id, func(t *testing.T) {
@@ -543,6 +548,56 @@ func TestW090Promoted(t *testing.T) {
 	}
 }
 
+// W106 warns that an app whose routes are all public and that asks for a password runs its own
+// sign-in without being a Promoted app, at the line that makes them public, and says why it is
+// quiet otherwise. A website whose every page is public and asks for no password is left alone.
+func TestW106(t *testing.T) {
+	manifest := "whisk: 1\nname: crm\nroutes:\n  public:\n    - /\n    - %s\nhealth:\n  path: /health\n%s"
+	cases := []struct {
+		name, route, extra, pkg string
+		v                       *api.Validation
+		line                    int
+		skipped                 string
+		noLogin                 bool
+	}{
+		{"every route public", "/**", "", "", nil, 6, "", false},
+		{"a public website with no login", "/**", "", "", nil, 0, "", true},
+		{"every route public, bound and not promoted", "/**", "", "", &api.Validation{}, 6, "", false},
+		{"public only together", "/*/**", "", "", nil, 5, "", false},
+		{"some routes public", "/blog/**", "", "", nil, 0, "", false},
+		{"a Promoted app", "/**", "", "", &api.Validation{Promoted: true}, 0, "W106: skipped, the app is a Promoted app, which may keep its own sign-in", false},
+		{"whisk.yaml says promoted", "/**", "promoted: true\n", "", nil, 0, "W106: skipped, whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in", false},
+		{"a Medusa shop", "/**", "", `{"dependencies":{"@medusajs/medusa":"2.21.2"}}`, nil, 0, "W106: skipped, the app is a Medusa shop, which keeps its customers' sign-in", false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			files := map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.route, tc.extra)}
+			if !tc.noLogin {
+				files["templates/login.html"] = `<input type="password" name="pw">`
+			}
+			if tc.pkg != "" {
+				files["package.json"] = tc.pkg
+			}
+			r, err := Load(context.Background(), writeAll(t, files))
+			if err != nil {
+				t.Fatal(err)
+			}
+			o := w106(r, Context{Validation: tc.v})
+			if tc.line == 0 {
+				if len(o.findings) != 0 {
+					t.Errorf("findings = %+v, want none", o.findings)
+				}
+			} else if len(o.findings) != 1 || o.findings[0].File != "whisk.yaml" || o.findings[0].Line != tc.line ||
+				!strings.Contains(o.findings[0].Message, "only a Promoted app") || !strings.Contains(o.findings[0].Fix, "promoted: true") {
+				t.Errorf("findings = %+v, want one at whisk.yaml line %d", o.findings, tc.line)
+			}
+			if got := strings.Join(o.skipped, ";"); got != tc.skipped {
+				t.Errorf("skipped = %q, want %q", got, tc.skipped)
+			}
+		})
+	}
+}
+
 func TestPasswordFields(t *testing.T) {
 	cases := map[string]bool{
 		`<input type="password" name="pw">`:              true,
@@ -641,11 +696,11 @@ promoted: %s
 		{"promoted", "true", files["package.json"], nil},
 		{"medusa", "false", files["package.json"], []string{"W005"}},
 		{"promoted other", "true", other, nil},
-		{"other", "false", other, []string{"W005", "W090", "W099"}},
+		{"other", "false", other, []string{"W005", "W090", "W099", "W106"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			rep := runDoctor(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.promoted), "package.json": tc.pkg}), false)
-			for _, id := range []string{"W005", "W022", "W052", "W090", "W099"} {
+			for _, id := range []string{"W005", "W022", "W052", "W090", "W099", "W106"} {
 				want := false
 				for _, w := range tc.want {
 					want = want || w == id
@@ -666,5 +721,19 @@ func TestW041GlobAndCronStrings(t *testing.T) {
 `})
 	if rep := runDoctor(t, files, false); has(rep, "W041") {
 		t.Errorf("W041 fired on steps between a glob and a cron string: %+v", rep.Findings)
+	}
+}
+
+// The deploy's check reads the same files for a password field as doctor does, so W106 and
+// OWN_SIGNIN_NOT_PROMOTED agree on an app.
+func TestOwnSigninPagesMatchDoctor(t *testing.T) {
+	paths := []string{"src/login.tsx", "app/views.py", "main.go", "templates/a.html", "views/a.erb", "src/a.svelte",
+		"README.md", "static/a.svg", "src/a.test.ts", "tests/test_a.py", "x/a_test.go", "spec/a.js", "fuzz/a.go",
+		"node_modules/a/a.js", "vendor/a.go", "dist/a.html", "build/a.html", ".next/a.js", "venv/a.py", "a.json"}
+	for _, p := range paths {
+		doctor := (stack.LangOf(p) != "" || pageExts[strings.ToLower(path.Ext(p))]) && !stack.IsTest(p) && !stack.IsVendored(p)
+		if got := ownsignin.Page(p); got != doctor {
+			t.Errorf("ownsignin.Page(%q) = %v, doctor reads it: %v", p, got, doctor)
+		}
 	}
 }

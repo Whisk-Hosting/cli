@@ -512,6 +512,26 @@ yourself, since it is charged. The blocked deploy goes live on its own once it i
 {"error":{"code":"PROMOTED_APP_REQUIRED","message":"This app runs only as a Promoted app, and is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop. The deploy goes live on its own once it is one.","docs":"https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED","details":{"dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
 ```
 
+## OWN_SIGNIN_NOT_PROMOTED
+
+Status: - · Surface: deploy (a warning), cli
+
+When: the deploy went live, but every route of the app is public (`routes.public` covers `/**`)
+and its code or pages ask for a password, so it runs its own sign-in, which only a Promoted app
+may do (CONTROL-PLANE.md §6.15 "Promoted apps"). The app is neither a Promoted app in force nor a Medusa shop, and its
+whisk.yaml does not say `promoted: true`. It is a warning on the deploy (`warnings`), not a
+failure: the app serves. `details.dashboard` is the app's page, where an owner or billing
+contact makes it a Promoted app; `details.rule` is doctor's matching rule, W106.
+
+Fix: If the app must keep its own sign-in, set `promoted: true` in whisk.yaml and ask an owner
+or billing contact to make it a Promoted app at the URL; never promote it yourself, since it is
+charged. Otherwise remove the password field and list under `routes.public` only the routes that
+must be public, and the platform signs people in.
+
+```json
+{"error":{"code":"OWN_SIGNIN_NOT_PROMOTED","message":"Every route of crm is public (routes.public covers /**) and it asks for a password, so it runs its own sign-in, which only a Promoted app may do; it still deploys.","fix":"If crm must keep its own sign-in, set promoted: true in whisk.yaml and ask an owner or billing contact to make it a Promoted app at https://whisk.run/o/acme/apps/crm (it is charged, so it is their choice). Otherwise remove the password field and list under routes.public only the routes that must be public, and the platform signs people in.","docs":"https://skill.whisk.run/errors/OWN_SIGNIN_NOT_PROMOTED","details":{"rule":"W106","dashboard":"https://whisk.run/o/acme/apps/crm"}}}
+```
+
 ## B2B_UNAVAILABLE
 
 Status: 409 · Surface: deploy, cli

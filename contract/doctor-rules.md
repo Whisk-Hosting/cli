@@ -714,6 +714,27 @@ and `create extension`). A file is part of the migrations when its path names `m
 `alembic` or a `drizzle/` folder, or it is a `.sql` file. Migrations run when the app starts
 are W102's finding, which says that under this setting they stop the app from starting.
 
+## W106
+
+Level: warning
+Check: every route is public and the app asks for a password, so it runs its own sign-in, and it is neither a Promoted app nor a shop.
+Fix: If the app must keep its own sign-in, set promoted: true in whisk.yaml and ask an owner or billing contact to make it a Promoted app in the dashboard (it is charged, so it is their choice); otherwise remove the password field and list under routes.public only the routes that must be public.
+Safe fix: no
+
+Details: every route is public when `routes.public` matches every path: `"/**"`, or any entries
+that together match every path (`"/**/**"`; `"/"`, `"/*"` and `"/*/**"`). A pattern with a
+literal in a segment (`"/blog/**"`, `"/a*"`) never counts, since it matches only some names.
+The app asks for a password when W090 would find a password field: the same files and patterns.
+The edge then lets every request through and the app's own login decides who gets in, which
+only a Promoted app may do (CONTROL-PLANE.md §6.15, "Promoted apps"). A website whose every page is
+public asks for no password and is not reported. The app is not blocked: it deploys and serves,
+and every deploy of it carries the same warning as `OWN_SIGNIN_NOT_PROMOTED`, until it is a
+Promoted app or stops. Reported at the `routes.public` entry that makes every route public, or
+at the list when only its entries together do. Skipped for a Promoted app, known when the
+directory is bound to an app and `/apps/:app/validate` answers `promoted: true`, or when
+whisk.yaml says `promoted: true`; and for a Medusa shop (`@medusajs/medusa` among package.json's
+dependencies, as in the shop template), whose customers sign in to the shop on any plan.
+
 ## W110
 
 Level: error

@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/whisk-run/cli/internal/stack"
+	"github.com/whisk-run/contract/ownsignin"
 )
 
 // The idioms doctor recognises, as listed in doctor-rules.md. Each table is data; the rules
@@ -360,19 +361,11 @@ func pageFiles(r Repo) []File {
 	return out
 }
 
-// passwordPatterns find a password field the app renders itself: an HTML or JSX input, an
-// input built in script, or a Python form library's password field.
-var passwordPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)\btype\s*[=:]\s*\{?\s*["'` + "`" + `]?password\b`),
-	regexp.MustCompile(`\.type\s*=\s*["'` + "`" + `]password["'` + "`" + `]`),
-	regexp.MustCompile(`\b(?:PasswordField|PasswordInput)\b`),
-}
-
 // passwordFields is the first password field in each file that has one.
 func passwordFields(r Repo) []hit {
 	var out []hit
 	for _, f := range pageFiles(r) {
-		hs := matches(f, passwordPatterns, 0)
+		hs := matches(f, ownsignin.PasswordPatterns, 0)
 		if len(hs) == 0 {
 			continue
 		}

@@ -22,6 +22,7 @@ import (
 	rules "github.com/whisk-run/contract/doctor"
 	"github.com/whisk-run/contract/graph"
 	"github.com/whisk-run/contract/manifest"
+	"github.com/whisk-run/contract/ownsignin"
 	"github.com/whisk-run/contract/routes"
 	"github.com/whisk-run/contract/run"
 )
@@ -117,6 +118,7 @@ var ruleTable = []rule{
 	{"W103", false, w103},
 	{"W104", false, w104},
 	{"W105", true, w105},
+	{"W106", true, w106},
 	{"W110", true, w110},
 	{"W111", true, w111},
 	{"W120", true, w120},
@@ -1043,14 +1045,33 @@ func w090(r Repo, c Context) outcome {
 
 // medusaShop is whether the app is a Medusa shop (the shop template, CONTRACT.md §11): its
 // customers sign in to the shop itself, on any plan.
-func medusaShop(r Repo) bool {
-	var pkg struct {
-		Dependencies map[string]string `json:"dependencies"`
+func medusaShop(r Repo) bool { return ownsignin.MedusaShop(r.Read("package.json")) }
+
+// w106 warns when every route is public and the app asks for a password, so it runs its own
+// sign-in, and it is neither a Promoted app nor a shop (ownsignin.Warn). A warning only: the app
+// deploys either way.
+func w106(r Repo, c Context) outcome {
+	public := r.Manifest.Routes.Public
+	switch {
+	case !ownsignin.Keeps(public), len(passwordFields(r)) == 0:
+		return outcome{}
+	case c.Validation != nil && c.Validation.Promoted:
+		return skip("W106", "the app is a Promoted app, which may keep its own sign-in")
+	case r.Manifest.Promoted:
+		return skip("W106", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
+	case medusaShop(r):
+		return skip("W106", "the app is a Medusa shop, which keeps its customers' sign-in")
 	}
-	src := r.Read("package.json")
-	if src == nil || json.Unmarshal(src, &pkg) != nil {
-		return false
+	return one("W106", manifestFile, yamlLine(r.ManifestNode, catchAllPointer(public)), ownsignin.Message(r.Manifest.Name))
+}
+
+// catchAllPointer is where in whisk.yaml routes.public makes every route public: the first
+// entry that does so alone, or the list when only the entries together do. Pure.
+func catchAllPointer(public []string) string {
+	for i, p := range public {
+		if routes.CoversAll([]string{p}) {
+			return fmt.Sprintf("/routes/public/%d", i)
+		}
 	}
-	_, ok := pkg.Dependencies["@medusajs/medusa"]
-	return ok
+	return "/routes/public"
 }
