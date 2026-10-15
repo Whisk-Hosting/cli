@@ -309,6 +309,9 @@ type SSORequest struct {
 type Preferences struct {
 	Notifications map[string]bool `json:"notifications"`
 	TimeZone      string          `json:"time_zone"`
+	// DetectedTimeZone is the zone the person's browser reports, which the dashboard keeps here
+	// without asking; Whisk's own notes reach them in its morning while TimeZone is UTC.
+	DetectedTimeZone string `json:"detected_time_zone,omitempty"`
 }
 
 // Trust is GET /orgs/:org/trust (DASHBOARD.md §4.16): where the data lives, how it is backed up,
