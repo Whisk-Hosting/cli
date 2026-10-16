@@ -96,6 +96,47 @@ type Connection struct {
 	// Keypair is the key pair Whisk made for the connection, when its recipe asks for one: nil
 	// until a person makes it.
 	Keypair *ConnectionKeypair `json:"keypair,omitempty"`
+	// AI is an AI connection's spend against its cap (CONTRACT.md §3.1 AI models); nil for any
+	// other connection.
+	AI *ConnectionAI `json:"ai,omitempty"`
+}
+
+// AIPeriod is one window of an AI connection's spend cap.
+type AIPeriod string
+
+// The windows, in the order they are shown.
+const (
+	AIDay   AIPeriod = "day"
+	AIWeek  AIPeriod = "week"
+	AIMonth AIPeriod = "month"
+	AITotal AIPeriod = "total"
+)
+
+// ConnectionAI is what an AI connection has spent of its cap (CONTROL-PLANE.md §6.8 AI
+// connections): one entry for each window the cap names, and the deploys whose calls stopped
+// because an answer named none of the cost parts.
+type ConnectionAI struct {
+	Windows    []AIWindow     `json:"windows"`
+	Unreadable []AIUnreadable `json:"unreadable"`
+}
+
+// AIWindow is one window's cap and spend, in US dollars. Cap is production's granted cap, or
+// the declared one before a grant. Stopped is whether calls are refused now; Until is when the
+// window ends, absent for total.
+type AIWindow struct {
+	Period  AIPeriod   `json:"period"`
+	Cap     float64    `json:"cap"`
+	Spent   float64    `json:"spent"`
+	Stopped bool       `json:"stopped"`
+	Until   *time.Time `json:"until,omitempty"`
+}
+
+// AIUnreadable is a deploy whose calls to the connection stopped because an answer to the
+// operation named none of the cost parts.
+type AIUnreadable struct {
+	DeployID  string    `json:"deploy_id"`
+	Operation string    `json:"operation"`
+	At        time.Time `json:"at"`
 }
 
 // ConnectionKeypair is a key pair Whisk made for a connection: the private key is the named

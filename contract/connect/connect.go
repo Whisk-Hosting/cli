@@ -55,6 +55,9 @@ type Connection struct {
 	Keypair    *Keypair    `json:"keypair,omitempty"`
 	Auth       Auth        `json:"auth"`
 	Operations []Operation `json:"operations"`
+	// AI, when set, makes this an AI model's connection: its spend cap and where each answer
+	// says what it cost (CONTRACT.md §3.1 "AI models").
+	AI *AI `json:"ai,omitempty"`
 }
 
 // Auth is the recipe: where credentials go on each call, and an optional token step.
@@ -368,6 +371,7 @@ func Check(c Connection) ([]Problem, []string) {
 		}
 		checkBodyMatch(p+"/body", o, add)
 	}
+	checkAI(c, add)
 	return ps, uniq(secrets)
 }
 
@@ -467,7 +471,7 @@ func Gaps(granted *Connection, wanted Connection) (recipeChanged bool, newOps []
 		return true, wanted.Operations
 	}
 	g := granted.WithDefaults()
-	recipeChanged = g.URL != wanted.URL || !sameAuth(g.Auth, wanted.Auth)
+	recipeChanged = g.URL != wanted.URL || !sameAuth(g.Auth, wanted.Auth) || !sameAI(g.AI, wanted.AI)
 	have := map[string]bool{}
 	for _, o := range g.Operations {
 		have[opKey(o)] = true
@@ -493,7 +497,7 @@ func Effective(granted *Connection, running Connection) *Connection {
 		return nil
 	}
 	g, r := granted.WithDefaults(), running.WithDefaults()
-	if g.URL != r.URL || !sameAuth(g.Auth, r.Auth) {
+	if g.URL != r.URL || !sameAuth(g.Auth, r.Auth) || !sameAI(g.AI, r.AI) {
 		return nil
 	}
 	have := map[string]bool{}
@@ -511,6 +515,14 @@ func Effective(granted *Connection, running Connection) *Connection {
 	}
 	r.Operations = ops
 	return &r
+}
+
+// sameAI reports whether two connections ask for the same spend cap, prices and free
+// operations: part of what a person grants.
+func sameAI(a, b *AI) bool {
+	x, _ := json.Marshal(a)
+	y, _ := json.Marshal(b)
+	return string(x) == string(y)
 }
 
 func sameAuth(a, b Auth) bool {

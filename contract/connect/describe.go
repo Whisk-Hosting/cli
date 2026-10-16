@@ -145,6 +145,8 @@ type Summary struct {
 	SignsBody  bool               `json:"signs_body"`
 	// BodyFields are the JSON pointers in each call's body where the broker places a value.
 	BodyFields []string `json:"body_fields"`
+	// AI is an AI connection's spend cap and prices, which the person grants with it.
+	AI *AISummary `json:"ai,omitempty"`
 }
 
 // SummaryOperation is one operation as enforced, with the app's label beside it.
@@ -163,7 +165,7 @@ var verbs = map[string]string{"GET": "Read", "HEAD": "Read", "POST": "Create", "
 func Describe(c Connection) Summary {
 	c = c.WithDefaults()
 	u, _ := url.Parse(c.URL)
-	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}, BodyFields: sortedKeys(c.Auth.Body), Pin: c.Pin, VendorApp: c.Auth.VendorApp}
+	s := Summary{Secrets: Usage(c), SignsBody: UsesBody(c), Operations: []SummaryOperation{}, BodyFields: sortedKeys(c.Auth.Body), Pin: c.Pin, VendorApp: c.Auth.VendorApp, AI: describeAI(c.AI)}
 	if c.Keypair != nil {
 		s.Keypair = c.Keypair.Secret
 	}

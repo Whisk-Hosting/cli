@@ -487,3 +487,30 @@ func TestDeployBlockedOnAGrant(t *testing.T) {
 		t.Fatalf("blocked on secrets: %+v", r)
 	}
 }
+
+func TestAIRows(t *testing.T) {
+	until := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	a := &apitypes.ConnectionAI{
+		Windows: []apitypes.AIWindow{
+			{Period: apitypes.AIPeriod("day"), Cap: 5, Spent: 1.234, Until: &until},
+			{Period: apitypes.AIPeriod("month"), Cap: 50, Spent: 50.02, Stopped: true, Until: &until},
+			{Period: apitypes.AIPeriod("total"), Cap: 100, Spent: 100, Stopped: true},
+		},
+		Unreadable: []apitypes.AIUnreadable{{DeployID: "dep_1", Operation: "Write replies", At: until}},
+	}
+	rows := aiWindowRows(a)
+	if len(rows) != 3 || rows[0][2] != "1.23" || rows[0][3] != "running" || !strings.HasPrefix(rows[1][3], "stopped until 2026-") || rows[2][3] != "stopped until the cap is raised" {
+		t.Fatalf("windows %v", rows)
+	}
+	parts := aiPartRows([]connect.AIPart{{At: []string{"/usage/input_tokens", "/message/usage/input_tokens"}, USDPerMillion: 3}, {At: []string{"/usage/cost"}, USDEach: 1}})
+	if parts[0][0] != "  /usage/input_tokens or /message/usage/input_tokens" || parts[0][1] != "US$3 per million" || parts[1][1] != "US$1 each" {
+		t.Fatalf("parts %v", parts)
+	}
+	lines := aiUnreadableLines(a)
+	if len(lines) != 1 || !strings.Contains(lines[0], `deploy dep_1: an answer to "Write replies"`) {
+		t.Fatalf("unreadable %v", lines)
+	}
+	if aiWindowRows(nil) == nil || aiUnreadableLines(nil) != nil {
+		t.Fatal("no AI part has no rows")
+	}
+}

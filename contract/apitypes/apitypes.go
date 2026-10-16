@@ -296,8 +296,13 @@ type Secret struct {
 	Consumers  []string   `json:"consumers"` // app IDs
 	// Apps are the apps a business secret is granted to, by ID: the only apps that receive it
 	// (CONTROL-PLANE.md §6.7 Grants). [] for an app's own secret.
-	Apps      []string  `json:"apps"`
-	CreatedAt time.Time `json:"created_at"`
+	Apps []string `json:"apps"`
+	// HeldAt is when Whisk put the secret on hold because its value is a key for an AI model,
+	// and HeldProvider whose (CONTROL-PLANE.md §6.7 Keys for AI models): the app does not
+	// receive it; an AI connection that reads it does.
+	HeldAt       *time.Time `json:"held_at,omitempty"`
+	HeldProvider string     `json:"held_provider,omitempty"`
+	CreatedAt    time.Time  `json:"created_at"`
 }
 
 // SecretVersion is one stored value's metadata.

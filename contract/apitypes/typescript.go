@@ -100,6 +100,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("GrantKind", "GRANT_KINDS", GrantConnection, GrantSecret, GrantAccess))
 	add(enumOf("ConnectionEnvironment", "CONNECTION_ENVIRONMENTS", ConnectionProduction, ConnectionPreviews))
 	add(enumOf("ConnectionState", "CONNECTION_STATES", ConnectionActive, ConnectionPaused, ConnectionRevoked))
+	add(enumOf("AIPeriod", "AI_PERIODS", AIDay, AIWeek, AIMonth, AITotal))
 	add(enumOf("BrokerDrop", "BROKER_DROPS", BrokerDropped, BrokerUnreachable))
 	add(enumOf("ProviderRevocation", "PROVIDER_REVOCATIONS", ProviderRevoked, ProviderFailed, ProviderNotSupported, ProviderNoneHeld, ProviderUnknown))
 	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderBreakglass))
@@ -209,6 +210,7 @@ var wire = []any{
 	// connections.go, with contract/connect's summary
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
 	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
+	named{"ConnectionAISummary", connect.AISummary{}}, named{"ConnectionAIPart", connect.AIPart{}}, ConnectionAI{}, AIWindow{}, AIUnreadable{},
 	GrantConnectionRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
 	// grants.go
 	GrantRef{}, ApproveDeployRequest{}, ApprovedDeploy{}, ConfirmCodeRequest{}, ConfirmCode{}, ConfirmRequest{}, Confirmed{},

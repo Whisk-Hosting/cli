@@ -93,6 +93,16 @@ func connectionsCmd(s *session) *cobra.Command {
 				}
 				fmt.Fprintln(w, "The app may send anything these addresses accept.")
 				fmt.Fprintln(w)
+				if c.Summary.AI != nil {
+					fmt.Fprintln(w, "AI spend cap, in US dollars:")
+					s.printer.Table(w, []string{"  WINDOW", "CAP", "SPENT", "CALLS"}, aiWindowRows(c.AI))
+					fmt.Fprintln(w, "What each answer costs:")
+					s.printer.Table(w, []string{"  NUMBER AT", "PRICE"}, aiPartRows(c.Summary.AI.Parts))
+					for _, line := range aiUnreadableLines(c.AI) {
+						fmt.Fprintf(w, "%s %s\n", s.printer.Warn("Stopped:"), line)
+					}
+					fmt.Fprintln(w)
+				}
 				for _, env := range []apitypes.ConnectionEnvironment{apitypes.ConnectionProduction, apitypes.ConnectionPreviews} {
 					fmt.Fprintf(w, "%s: %s\n", env, grantLine(c, env))
 				}
@@ -480,4 +490,48 @@ func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string
 		Docs:    werrors.DocsBase + "GRANT_NEEDED",
 		Details: map[string]any{"deploy_id": deployID, "grants": listed, "names": names, "unset_secrets": unset, "url": page},
 	}
+}
+
+// aiWindowRows are an AI connection's windows: each cap, what was spent, and whether calls run.
+func aiWindowRows(a *apitypes.ConnectionAI) [][]string {
+	if a == nil {
+		return [][]string{}
+	}
+	rows := make([][]string, 0, len(a.Windows))
+	for _, w := range a.Windows {
+		calls := "running"
+		switch {
+		case w.Stopped && w.Until != nil:
+			calls = "stopped until " + when(w.Until)
+		case w.Stopped:
+			calls = "stopped until the cap is raised"
+		}
+		rows = append(rows, []string{"  " + string(w.Period), fmt.Sprintf("%.2f", w.Cap), fmt.Sprintf("%.2f", w.Spent), calls})
+	}
+	return rows
+}
+
+// aiPartRows are an AI connection's cost parts: where each number is read and its price.
+func aiPartRows(parts []connect.AIPart) [][]string {
+	rows := make([][]string, 0, len(parts))
+	for _, p := range parts {
+		price := fmt.Sprintf("US$%g per million", p.USDPerMillion)
+		if p.USDEach > 0 {
+			price = fmt.Sprintf("US$%g each", p.USDEach)
+		}
+		rows = append(rows, []string{"  " + strings.Join(p.At, " or "), price})
+	}
+	return rows
+}
+
+// aiUnreadableLines say which deploys' calls stopped because an answer named no cost part.
+func aiUnreadableLines(a *apitypes.ConnectionAI) []string {
+	if a == nil {
+		return nil
+	}
+	out := make([]string, 0, len(a.Unreadable))
+	for _, u := range a.Unreadable {
+		out = append(out, fmt.Sprintf("deploy %s: an answer to %q at %s named none of the cost parts. Fix ai.cost in whisk.yaml and deploy again.", u.DeployID, u.Operation, at(u.At)))
+	}
+	return out
 }

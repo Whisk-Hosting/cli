@@ -1033,6 +1033,46 @@ override headers are refused. Redirects come back to you unfollowed, and a crede
 echoes back arrives as `[redacted by Whisk]`. If the app may be misbehaving, `whisk connections pause NAME` stops
 its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).
 
+**AI models: a connection with a spend cap.** Every call to an AI model's API (OpenAI,
+Anthropic, Gemini, OpenRouter, Mistral, Groq, xAI, DeepSeek and the rest) goes through a
+connection with `ai:`. Never put an AI provider's key under `secrets`: setting one there is
+refused (`SECRET_IS_AI_KEY`). Whisk reads what each answer cost from the fields you name, adds it
+up, and stops the connection's calls when the cap is reached, with an email to the business.
+
+```yaml
+connections:
+  openai:
+    url: https://api.openai.com/v1
+    auth: {headers: {Authorization: "Bearer {secret.OPENAI_API_KEY}"}}
+    operations:
+      - {name: Write replies, method: POST, path: /chat/completions}
+    ai:
+      spend_cap: {per_day: 5, per_month: 50}   # the person's numbers, never yours
+      cost:
+        - {at: /usage/prompt_tokens, usd_per_million: 2.50}
+        - {at: /usage/completion_tokens, usd_per_million: 10.00}
+```
+
+The spend cap is required and it is the person's money, so talk it through with them before you
+write it. Say what the app uses the model for, roughly what one use costs at the model's prices,
+how many uses a day you expect, and suggest a cap from that (`per_day`, `per_week`, `per_month`,
+`total`, in US dollars, any mix). Tell them that when a cap is reached the app's calls to the
+model stop until the window ends (or, for `total`, until they raise it), that they get an email
+saying so, and that raising it later is a change to `whisk.yaml` they grant again. Then write the
+numbers they chose. Take each `cost` part's price from the provider's pricing page for the model
+the app uses, and list every place the count appears, streamed and not; CONTRACT.md §3.1 "AI
+models" has the parts for each provider. Ask for usage in streams where the provider needs it
+(OpenAI: `stream_options: {include_usage: true}`). An answer that names no cost part stops that
+deploy's calls (`AI_COST_UNREADABLE`) until a deploy fixes the parts. Over a cap, calls answer
+`429 AI_SPEND_CAP`: show the person a calm message that the AI feature is paused, never an error
+page, and keep the rest of the app working.
+
+A deploy that carries `SECRET_HELD` names an AI key Whisk found under `secrets` and put on hold.
+Move it: declare an AI connection whose recipe reads `{secret.NAME}`, take the name out of
+`secrets`, point the app's client at `$WHISK_CONNECTION_<NAME>_URL` with the service token as
+above, walk the person through the cap, and push. The value stays as it is, so nobody sets
+it again; the person grants the connection and the app's AI features work again.
+
 ## 9. Storage, email, key-value
 
 **Storage** (`storage: true`). Use any S3 client with `WHISK_STORAGE_ENDPOINT`,

@@ -1002,6 +1002,38 @@ own once it is approved.
 {"error":{"code":"GRANT_NEEDED","message":"This deploy waits for an owner or admin to approve the use of the shared secret MAPS_KEY and wider access than the live app has (it may call the app billing; anyone may open /api/** without signing in).","fix":"Ask an owner or admin to approve it at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one tap there, signed in. Do not try to approve it yourself. The deploy starts when it is approved.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"secret","name":"MAPS_KEY","environment":"production","hash":"01J9Y","recipe_changed":false,"new_operations":[],"change":"It reads the business's shared secret MAPS_KEY, which crm is not on the list of apps for."},{"kind":"access","name":"calls:billing","environment":"production","hash":"9f2c…","recipe_changed":false,"new_operations":[],"change":"It may call the app billing."},{"kind":"access","name":"public:/api/**","environment":"production","hash":"9f2c…","recipe_changed":false,"new_operations":[],"change":"Anyone may open /api/** without signing in."}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
+## SECRET_HELD
+
+Status: - · Surface: deploy
+
+When: the deploy's manifest names a secret Whisk put on hold because its value is a key for an
+AI model (CONTROL-PLANE.md §6.7 Keys for AI models). The app starts without it and the deploy
+carries this warning with the names in `details.names` and the providers in
+`details.providers`. Nothing is wrong: AI keys now live in an AI connection with a spend cap.
+
+Fix: Move the key from `secrets` to a connection with `ai:` (CONTRACT.md §3.1 AI models) that
+reads it as `secret.NAME`, talk the spend cap through with the human before you set it, and
+push. The value stays as it is; nobody sets it again.
+
+```json
+{"error":{"code":"SECRET_HELD","message":"crm started without OPENAI_API_KEY: it is an OpenAI key, which Whisk now keeps in an AI connection with a spend cap.","fix":"Move OPENAI_API_KEY from secrets to a connection with ai: that reads secret.OPENAI_API_KEY, agree the spend cap with the human, and push. The value stays as it is.","docs":"https://skill.whisk.run/errors/SECRET_HELD","details":{"names":["OPENAI_API_KEY"],"providers":["OpenAI"]}}}
+```
+
+## SECRET_IS_AI_KEY
+
+Status: 400 · Surface: api
+
+When: the value set on a secret is a key for an AI model, and no AI connection of the app reads
+that secret (CONTROL-PLANE.md §6.7 Keys for AI models). Whisk keeps AI keys only in an AI
+connection, where their spend is capped. `details.provider` names the provider.
+
+Fix: Declare a connection with `ai:` in whisk.yaml that reads the key as `secret.NAME`, agree its
+spend cap with the human, push, and then set the value on the connection's key.
+
+```json
+{"error":{"code":"SECRET_IS_AI_KEY","message":"The value for ANTHROPIC_API_KEY is an Anthropic key, and no AI connection of crm reads ANTHROPIC_API_KEY.","fix":"Declare a connection with ai: in whisk.yaml whose recipe reads secret.ANTHROPIC_API_KEY, agree its spend cap with the human, push, then set the value.","docs":"https://skill.whisk.run/errors/SECRET_IS_AI_KEY","details":{"name":"ANTHROPIC_API_KEY","provider":"Anthropic"}}}
+```
+
 ## SECRET_NOT_GRANTED
 
 Status: - · Surface: deploy
@@ -1190,6 +1222,40 @@ app needs more calls.
 
 ```json
 {"error":{"code":"CONNECTION_LIMIT","message":"erp has made its 60 calls this minute.","fix":"Retry after 17 seconds, or ask an owner or admin to raise the limit.","docs":"https://skill.whisk.run/errors/CONNECTION_LIMIT","details":{"connection":"erp","window":"minute","limit":60,"retry_after":17}}}
+```
+
+## AI_SPEND_CAP
+
+Status: 429 · Surface: container
+
+When: the app has spent its AI connection's spend cap for the window `details.window` names
+(`day`, `week`, `month` or `total`; CONTRACT.md §3.1 AI models). Its calls to the model stop
+until the window ends: `Retry-After` and `details.retry_after` give the seconds, and a `total`
+cap has none. The business's owners, admins and developers were emailed.
+
+Fix: Show the human a plain message that the AI feature is paused until the window ends. Do not
+retry before `retry_after`. If they want a higher cap, change `spend_cap` in whisk.yaml with
+them and push; a person grants it.
+
+```json
+{"error":{"code":"AI_SPEND_CAP","message":"crm has spent its US$50.00 monthly cap on openai.","fix":"Show the human the AI feature is paused until the month ends. To raise the cap, change spend_cap in whisk.yaml with them and push; a person grants it.","docs":"https://skill.whisk.run/errors/AI_SPEND_CAP","details":{"connection":"openai","window":"month","cap":50,"spent":50.02,"retry_after":1209600}}}
+```
+
+## AI_COST_UNREADABLE
+
+Status: 409 · Surface: container
+
+When: a success answer from the AI connection named none of its cost parts, so Whisk could not
+count it against the spend cap (CONTRACT.md §3.1 AI models). The connection's calls from this
+deploy stop; `details.operation` names the call. A stream that never asks the provider for usage
+is the usual cause.
+
+Fix: Make the answer carry its usage (for OpenAI streams, send `stream_options: {include_usage:
+true}`), or add the pointer where it carries it to `ai.cost`, or list a call that costs nothing
+under `ai.free`, then push. The next deploy counts again.
+
+```json
+{"error":{"code":"AI_COST_UNREADABLE","message":"An answer from openai to Write replies named none of its cost parts, so this deploy's calls to it are stopped.","fix":"Make the answer carry its usage (for an OpenAI stream send stream_options: {include_usage: true}), or point ai.cost at it, then push.","docs":"https://skill.whisk.run/errors/AI_COST_UNREADABLE","details":{"connection":"openai","operation":"Write replies"}}}
 ```
 
 ## CONNECTION_SECRET_UNSET
