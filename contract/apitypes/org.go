@@ -488,28 +488,40 @@ const (
 	PersonRequestExpired  PersonRequestStatus = "expired"
 )
 
-// PersonRequest is a change an agent asked a person to approve: an invite, a removal or who can
-// open an app (CONTROL-PLANE.md §4.9). Result is the API's answer to the change once approved
-// (the member, or the app's access); Error its refusal once failed.
+// PersonRequestAskedOf is whose decision a request waits on: the person an agent acts for
+// (CONTROL-PLANE.md §4.9), or the business's owners and admins (§4.10).
+type PersonRequestAskedOf string
+
+// Whom a request is asked of.
+const (
+	AskedOfPerson PersonRequestAskedOf = "person"
+	AskedOfOwners PersonRequestAskedOf = "owners"
+)
+
+// PersonRequest is a change an agent asked a person to approve, or a person asked the owners to
+// approve: an invite, a removal, who can open an app, or deleting or restoring an app
+// (CONTROL-PLANE.md §4.9, §4.10). Result is the API's answer to the change once approved (the
+// member, the app's access, the restored app); Error its refusal once failed.
 type PersonRequest struct {
-	ID        string              `json:"id"`
-	Org       string              `json:"org"`
-	App       string              `json:"app,omitempty"`
-	Action    string              `json:"action"`
-	Summary   []string            `json:"summary"`
-	AskedBy   string              `json:"asked_by"`  // the agent token's label
-	AskedFor  string              `json:"asked_for"` // the email of the person it acts for
-	Status    PersonRequestStatus `json:"status"`
-	DecidedBy string              `json:"decided_by,omitempty"`
-	DecidedAt *time.Time          `json:"decided_at,omitempty"`
-	Result    json.RawMessage     `json:"result,omitempty"`
-	Error     *werrors.Detail     `json:"error,omitempty"`
-	ExpiresAt time.Time           `json:"expires_at"`
-	CreatedAt time.Time           `json:"created_at"`
-	URL       string              `json:"url"`
+	ID        string               `json:"id"`
+	Org       string               `json:"org"`
+	App       string               `json:"app,omitempty"`
+	Action    string               `json:"action"`
+	Summary   []string             `json:"summary"`
+	AskedBy   string               `json:"asked_by"`  // the agent token's label; "" when a person asked signed in
+	AskedFor  string               `json:"asked_for"` // the email of the person who asked, or whom the agent acts for
+	AskedOf   PersonRequestAskedOf `json:"asked_of"`
+	Status    PersonRequestStatus  `json:"status"`
+	DecidedBy string               `json:"decided_by,omitempty"`
+	DecidedAt *time.Time           `json:"decided_at,omitempty"`
+	Result    json.RawMessage      `json:"result,omitempty"`
+	Error     *werrors.Detail      `json:"error,omitempty"`
+	ExpiresAt time.Time            `json:"expires_at"`
+	CreatedAt time.Time            `json:"created_at"`
+	URL       string               `json:"url"`
 }
 
-// PersonRequestAnswer is a call an agent made that became a request: 202 with it.
+// PersonRequestAnswer is a call that became a request: 202 with it.
 type PersonRequestAnswer struct {
 	Request PersonRequest `json:"request"`
 }

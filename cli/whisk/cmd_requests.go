@@ -16,13 +16,24 @@ import (
 
 // Changes an agent asks a person to approve (CLI.md §5.11, CONTROL-PLANE.md §4.9): an invite,
 // a removal or who can open an app, run with an agent token, is kept by the API until a person
-// approves it on its page.
+// approves it on its page. A change the person's own role cannot make is kept for the business's
+// owners instead, who are emailed (§4.10).
 
 // requestPoll is how often a wait reads a request again.
 var requestPoll = 3 * time.Second
 
 // askedPerson is the answer while a person has not decided: the page to show them, exit 2.
 func askedPerson(p api.PersonRequest) *output.Error {
+	if p.AskedOf == apitypes.AskedOfOwners {
+		return &output.Error{
+			Code:    "NEEDS_HUMAN",
+			Message: "The business's owners approve this before it happens: " + strings.Join(p.Summary, "; ") + ".",
+			Fix: fmt.Sprintf("They were emailed a link to approve it, %s, and it waits 7 days. Tell the person it is waiting on them. Run whisk requests show %s to see whether they did.",
+				p.URL, p.ID),
+			Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
+			Details: map[string]any{"url": p.URL, "request_id": p.ID, "summary": p.Summary, "expires_at": p.ExpiresAt, "asked_of": p.AskedOf},
+		}
+	}
 	return &output.Error{
 		Code:    "NEEDS_HUMAN",
 		Message: "A person approves this before it happens: " + strings.Join(p.Summary, "; ") + ".",
@@ -49,6 +60,9 @@ func requestOutcome(p api.PersonRequest) error {
 		why := "was declined"
 		if p.Status == apitypes.PersonRequestExpired {
 			why = "waited 24 hours without an answer"
+			if p.AskedOf == apitypes.AskedOfOwners {
+				why = "waited 7 days without an answer"
+			}
 		}
 		return output.New("REQUEST_CLOSED", "This request "+why+", so nothing changed.",
 			"If the change is still wanted, run the command again for a new request and show the person its link.", map[string]any{"request_id": p.ID, "status": p.Status})
@@ -78,7 +92,7 @@ func (s *session) waitRequest(client *api.Client, org, id string) (api.PersonReq
 // NEEDS_HUMAN with the page, exit 2; on one it says so and waits for the person, answering
 // the approved request, whose result is the change's own answer.
 func (s *session) awaitPerson(client *api.Client, org string, p *api.PersonRequest) (api.PersonRequest, error) {
-	if !s.env.IsTerminal {
+	if !s.env.IsTerminal || p.AskedOf == apitypes.AskedOfOwners {
 		return *p, askedPerson(*p)
 	}
 	s.waiting("A person approves this first: %s. Open %s to approve it. Waiting; if this is interrupted, run whisk requests show %s --wait.",

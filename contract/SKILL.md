@@ -479,7 +479,10 @@ do not change anything yourself: they print a link and exit 2 (`NEEDS_HUMAN`, wi
 `details.request_id`). Show the person the link; they approve exactly that change on it, signed
 in, within 24 hours. `whisk requests show <id> --wait` then waits for their answer and prints the
 result (an invite's link to send, for instance); a declined or expired request is
-`REQUEST_CLOSED`, and nothing changed.
+`REQUEST_CLOSED`, and nothing changed. When the person is a developer, whose role cannot make that change,
+the request goes to the business's owners instead (`details.asked_of` is `owners`): they are
+emailed and have 7 days. Tell the person it is waiting on their owners; do not wait for it. The
+same holds for `whisk apps restore`.
 
 **Public pages.** The edge rejects a cross-site POST to the app (`CSRF_REJECTED`), so forms work
 from the app's own pages with no token. Put a public form that strangers fill in (contact, quote

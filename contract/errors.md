@@ -3061,8 +3061,9 @@ that does not depend on it.
 
 Status: 409 · Surface: api, cli
 
-When: a change an agent asked a person to approve (CONTROL-PLANE.md §4.9) is no longer waiting:
-it was already approved or declined, or its 24 hours ran out. The API answers it to a second
+When: a change an agent asked a person to approve, or a person asked the owners to approve
+(CONTROL-PLANE.md §4.9, §4.10), is no longer waiting: it was already approved or declined, or its
+time ran out (24 hours for a person, 7 days for the owners). The API answers it to a second
 approve or decline; `whisk requests show` answers it for a declined or expired request.
 `details.status` says which.
 

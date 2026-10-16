@@ -460,10 +460,12 @@ func (c *Client) ListDeletedApps(ctx context.Context, org string) ([]DeletedApp,
 	return listAll[DeletedApp](ctx, c, "/orgs/"+pathSeg(org)+"/deleted-apps")
 }
 
-// RestoreDeletedApp brings a deleted app back, stopped, by its id.
-func (c *Client) RestoreDeletedApp(ctx context.Context, org, id string) (App, error) {
+// RestoreDeletedApp brings a deleted app back, stopped, by its id, or answers the request the
+// business's owners approve when the person's role cannot restore apps (CONTROL-PLANE.md §4.10).
+func (c *Client) RestoreDeletedApp(ctx context.Context, org, id string) (App, *PersonRequest, error) {
 	var out App
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/deleted-apps/"+pathSeg(id)+"/restore", nil, &out)
+	asked, err := c.asking(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/deleted-apps/"+pathSeg(id)+"/restore", nil, &out)
+	return out, asked, err
 }
 
 // Validate sends the manifest for the platform's view of it.

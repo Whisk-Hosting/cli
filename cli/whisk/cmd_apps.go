@@ -381,9 +381,12 @@ for 7 days with whisk apps restore <id>.`,
 			if err != nil {
 				return err
 			}
-			a, err := client.RestoreDeletedApp(s.ctx, org, args[0])
+			a, asked, err := client.RestoreDeletedApp(s.ctx, org, args[0])
 			if err != nil {
 				return wrap(err)
+			}
+			if asked != nil {
+				return askedPerson(*asked)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": a, "restored": true}, func(w io.Writer) {
 				fmt.Fprintf(w, "Restored %s/%s. It is stopped: run whisk deploy to start it.\n", org, a.Slug)

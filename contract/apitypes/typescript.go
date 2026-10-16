@@ -125,6 +125,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("PayoutAccount", "PAYOUT_ACCOUNTS", PayoutNone, PayoutPending, PayoutReady))
 	add(enumOf("ApprovalStatus", "APPROVAL_STATUSES", ApprovalPending, ApprovalApproved, ApprovalRejected, ApprovalExpired))
 	add(enumOf("PersonRequestStatus", "PERSON_REQUEST_STATUSES", PersonRequestPending, PersonRequestApproved, PersonRequestDeclined, PersonRequestFailed, PersonRequestExpired))
+	add(enumOf("PersonRequestAskedOf", "PERSON_REQUEST_ASKED_OF", AskedOfPerson, AskedOfOwners))
 	add(enumOf("DemoKind", "DEMO_KINDS", HandoverClient))
 	add(enumOf("DemoCopyStatus", "DEMO_COPY_STATUSES", DemoCopyQueued, DemoCopyRunning, DemoCopyDone, DemoCopyFailed))
 	add(enumOf("DemoCopyStep", "DEMO_COPY_STEPS", DemoStepApp, DemoStepCode, DemoStepSecrets, DemoStepFiles, DemoStepDatabase, DemoStepDone))
