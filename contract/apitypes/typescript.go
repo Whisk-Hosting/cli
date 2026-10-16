@@ -180,7 +180,7 @@ var wire = []any{
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{},
 	// billing.go
 	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, OrgRef{},
-	PlanCheckout{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
+	PlanCheckout{}, PlanQuote{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
 	PayDetails{}, PayStep{}, ClientBusiness{}, Handover{}, Clients{}, ClientAdded{},
 	HandoverMade{}, ClientOverview{}, ClientUsage{}, RebateSettlement{}, Payouts{}, Rebates{},
 	// workflows.go, with contract/graph's step graph

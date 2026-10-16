@@ -149,6 +149,22 @@ type PlanCheckout struct {
 	Plan        string `json:"plan"`
 }
 
+// PlanQuote answers GET /orgs/:org/billing/plan/quote?plan=&interval=: what moving to the plan
+// costs. DueCents is charged today; the next invoice is NextCents on NextAt (null when nothing
+// renews); from then on the plan costs ThenCents each interval. Amounts are in Currency's
+// smallest unit. Sending QuotedAt back as PUT /orgs/:org/billing/plan's quoted_at, within an
+// hour, makes what is charged exactly what was quoted.
+type PlanQuote struct {
+	Plan      string     `json:"plan"`
+	Interval  string     `json:"interval"`
+	Currency  string     `json:"currency"`
+	DueCents  int64      `json:"due_cents"`
+	NextCents int64      `json:"next_cents"`
+	NextAt    *time.Time `json:"next_at"`
+	ThenCents int64      `json:"then_cents"`
+	QuotedAt  time.Time  `json:"quoted_at"`
+}
+
 // PayKind is what one of Whisk's payment pages is for: a subscription, a card for later, or an
 // open invoice.
 type PayKind string
