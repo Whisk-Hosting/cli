@@ -71,8 +71,8 @@ type Manifest struct {
 	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
 	Connections      map[string]connect.Connection `json:"connections"`
 	CustomerIdentity string                        `json:"customer_identity"`
-	// Network is where the app is served: NetworkInternal or NetworkPublic, or empty for the
-	// edition's default (public on whisk.run, internal on Whisk On-Premise).
+	// Network is where the app is served: NetworkPublic, or empty, which is the same: every app
+	// is served publicly behind Whisk sign-in.
 	Network  string   `json:"network,omitempty"`
 	Previews Previews `json:"previews"`
 	// Egress is EgressOpen or EgressClosed (MANAGED-APPS.md §6).
@@ -233,12 +233,8 @@ func (m Manifest) AcceptsCallers() ([]string, bool) {
 // the field existed reads as the owner.
 func (m Manifest) Restricted() bool { return m.DatabaseRole == DatabaseRoleRestricted }
 
-// Network values (ON-PREMISE.md §5): internal serves the app only on the edge's inside address,
-// public on the outside address too.
-const (
-	NetworkInternal = "internal"
-	NetworkPublic   = "public"
-)
+// NetworkPublic is the one network value: the app is served publicly behind Whisk sign-in.
+const NetworkPublic = "public"
 
 type Static struct {
 	Dir  string `json:"dir"`

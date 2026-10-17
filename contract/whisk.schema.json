@@ -379,9 +379,9 @@
       "default": {}
     },
     "network": {
-      "description": "Where the app is served on Whisk On-Premise: internal (the default there) on the company's network only, public also on the outside address. whisk.run serves every app publicly and refuses internal.",
+      "description": "Where the app is served: public, the only value and the same as leaving it out. Every app is served publicly behind Whisk sign-in.",
       "type": "string",
-      "enum": ["internal", "public"]
+      "enum": ["public"]
     },
     "customer_identity": {
       "description": "Second audience for public-facing apps: none, a pool per app, or a pool shared across the org.",

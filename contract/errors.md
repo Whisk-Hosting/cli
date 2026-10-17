@@ -29,7 +29,7 @@ text, and an example. `Surface` names where it comes from: `api`, `edge` (an app
 to the control plane, which lands in the deploy record).
 
 Where a section says the platform's team, it means whoever runs the platform: Whisk on
-whisk.run, and the company's own administrators on a Whisk Private install.
+whisk.run.
 
 ## AUTH_REQUIRED
 
@@ -540,7 +540,7 @@ When: the app's whisk.yaml says `b2b: true` (the shop template's trade ordering,
 and Whisk will not give it to this build: the app is not a Promoted app in force and the deploy
 is a preview (`details.reason` `promotion`; a production deploy waits as
 `PROMOTED_APP_REQUIRED` instead), the build does not use a Dockerfile (`dockerfile`), or this
-Whisk does not carry trade ordering, as Whisk Private does not (`not_carried`).
+Whisk does not carry trade ordering, as a developer's own build does not (`not_carried`).
 
 Fix: For `promotion`, ask an owner or billing contact to make the app a Promoted app at the URL
 in `details.dashboard`, then deploy again. For `dockerfile`, keep the shop template's Dockerfile.
@@ -1707,9 +1707,8 @@ one who is, per app, or per token on the API; or sent more feedback in an hour t
 (`details.scope` is `feedback`); or an app's own service token added or removed more than 30
 custom domains, or asked to verify more than 120, in an hour (`details.scope` is
 `app_domains`); or sent more than ten browser error reports in a minute from
-one network address to `POST /v1/client-errors` (`details.scope` is `client_errors`); or asked
-whisk.run's Whisk Private release routes more than thirty times in a minute from one network
-address (`details.scope` is `onpremise_releases`); or started more than ten device logins (`POST /v1/device/code`)
+one network address to `POST /v1/client-errors` (`details.scope` is `client_errors`); or started
+more than ten device logins (`POST /v1/device/code`)
 or polled more than sixty times (`POST /v1/device/token`) in a minute from one network address;
 or an app registered more than twenty sending domains of its own in an hour (`details.scope` is
 `email_domains`).
@@ -2971,58 +2970,12 @@ been moved.
 {"error":{"code":"NODE_DOWN","message":"The node hosting job-tracker has not been seen for 3 minutes.","fix":"Wait; the platform's team has been paged. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/NODE_DOWN","details":{"node":"node1","last_seen_at":"2026-09-07T10:00:00Z"}}}
 ```
 
-## LICENCE_MISSING
-
-Status: 403 · Surface: api, git, deploy
-
-When: Whisk Private has no licence installed, so a deploy or a push is refused.
-Running apps keep running. The hosted platform never answers it.
-
-Fix: Ask the install's administrators to install a current licence from Whisk. Deploys work
-again as soon as it is installed.
-
-```json
-{"error":{"code":"LICENCE_MISSING","message":"No Whisk licence is installed, so nothing new can deploy.","fix":"Ask the install's administrators to install a current licence from Whisk.","docs":"https://skill.whisk.run/errors/LICENCE_MISSING","details":{}}}
-```
-
-## LICENCE_INVALID
-
-Status: 403 · Surface: api, git, deploy
-
-When: the installed Whisk Private licence cannot be used: its signature does not match its
-terms (the file was changed after Whisk issued it), it was signed with a key this version does
-not know, or its start date is still ahead. Installing such a file is refused with the same
-code. whisk.run answers it too when a licence file sent to the support relay or the release
-downloads does not verify.
-
-Fix: Install the licence file exactly as Whisk sent it, from its first line to its signature. If
-it is unchanged, ask Whisk for a current licence.
-
-```json
-{"error":{"code":"LICENCE_INVALID","message":"The installed Whisk licence cannot be used: The licence signature does not match its terms. The file has been changed since Whisk issued it.","fix":"Ask the install's administrators to install a current licence from Whisk.","docs":"https://skill.whisk.run/errors/LICENCE_INVALID","details":{"problem":"The licence signature does not match its terms. The file has been changed since Whisk issued it."}}}
-```
-
-## LICENCE_EXPIRED
-
-Status: 403 · Surface: api, git, deploy
-
-When: the Whisk Private licence has ended. Running apps keep running and keep their data; new
-deploys and pushes wait for a current licence.
-
-Fix: Ask the install's administrators to renew the licence with Whisk and install the new file.
-Deploys work again at once.
-
-```json
-{"error":{"code":"LICENCE_EXPIRED","message":"The Whisk licence ended on 2027-10-08. Running apps keep running; new deploys wait for a current licence.","fix":"Ask the install's administrators to install a current licence from Whisk.","docs":"https://skill.whisk.run/errors/LICENCE_EXPIRED","details":{"licence":"lic_2026_0001","ended":"2027-10-08"}}}
-```
-
 ## PACKAGE_CHECK_OFF
 
 Status: 409 · Surface: api
 
 When: lockfiles are sent to be checked before a deploy (`whisk doctor`) on a platform that sends
-no lockfile to osv.dev. Whisk Private does not unless its administrators turn it on. Nothing was
-checked or sent.
+no lockfile to osv.dev, because the platform's team turned it off. Nothing was checked or sent.
 
 Fix: Deploy as usual: once the app is live the platform's registry checks the packages in its
 image. The platform's team can turn the lockfile check on with `WHISK_OSV=on`.

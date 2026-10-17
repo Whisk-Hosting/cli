@@ -193,7 +193,7 @@ func checkParsed(t *testing.T, where string, s string, src []byte) {
 		t.Errorf("%s %q: accepted customer_identity %q", where, s, m.CustomerIdentity)
 	}
 	switch m.Network {
-	case "", NetworkInternal, NetworkPublic:
+	case "", NetworkPublic:
 	default:
 		t.Errorf("%s %q: accepted network %q", where, s, m.Network)
 	}

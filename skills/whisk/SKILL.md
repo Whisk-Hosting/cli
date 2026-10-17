@@ -234,7 +234,7 @@ b2b: false                        # the shop template's trade ordering, beside p
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
-network: internal                 # Whisk On-Premise only: internal (default) | public; not on whisk.run
+network: public                   # the only value, the same as leaving it out: apps are public
 previews: { database: empty, ttl_days: 3 }   # previews start empty; days a preview lasts
 ```
 
