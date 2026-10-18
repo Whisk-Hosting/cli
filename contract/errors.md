@@ -469,32 +469,44 @@ a plan with Promoted apps, making the app a Promoted app also includes it.
 
 Status: 409 · Surface: api
 
-When: an owner or billing contact asked to make an app a Promoted app for a business that does
-not pay its own extras, where a Promoted app is charged: a client business its agency pays for
-(`details.reason: client`, with `details.agency` naming the agency), or a business inside its
-free trial (`details.reason: trial`, with `details.trial_ends_at`).
+When: an owner or billing contact asked to make an app a Promoted app for a client business its
+agency pays for (`details.reason: client`, with `details.agency` naming the agency). A Promoted
+app is charged with the month's extras, and a client business does not pay its own.
 
-Fix: For a client business, hand it over and let it choose its own plan first. During the trial,
-end the trial or choose a plan on the billing page, then promote the app.
+Fix: Hand the business over and let it choose its own plan first, then promote the app.
 
 ```json
-{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is inside its free trial, and a Promoted app is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
+{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and a Promoted app is charged with the month's extras.","fix":"Hand the business over and let it choose its own plan first, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
 ```
 
 ## BOOST_UNAVAILABLE
 
 Status: 409 · Surface: api
 
-When: an owner or billing contact asked to give an app Boost for a business that does not pay
-its own extras, where Boost is charged: a client business its agency pays for
-(`details.reason: client`, with `details.agency` naming the agency), or a business inside its
-free trial (`details.reason: trial`, with `details.trial_ends_at`).
+When: an owner or billing contact asked to give an app Boost for a client business its agency
+pays for (`details.reason: client`, with `details.agency` naming the agency). Boost is charged
+with the month's extras, and a client business does not pay its own.
 
-Fix: For a client business, hand it over and let it choose its own plan first. During the trial,
-end the trial or choose a plan on the billing page, then boost the app.
+Fix: Hand the business over and let it choose its own plan first, then boost the app.
 
 ```json
-{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is inside its free trial, and Boost is charged with the month's extras.","fix":"End the trial or choose a plan at https://whisk.run/o/acme/billing, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"trial","trial_ends_at":"2026-11-08T00:00:00Z"}}}
+{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and Boost is charged with the month's extras.","fix":"Hand the business over and let it choose its own plan first, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
+```
+
+## CARD_NEEDED
+
+Status: 402 · Surface: api
+
+When: giving an app Boost or making it a Promoted app during the business's free trial, which is
+charged at once for the rest of the month, found no card to charge (`details.reason: none`), or
+the card was declined or wanted the bank's confirmation (`details.reason: declined`). Nothing was
+charged and the app is unchanged. `details.card_url` is a page to give a card on, which comes
+back to the app.
+
+Fix: Add a card at `details.card_url`, then boost or promote the app again.
+
+```json
+{"error":{"code":"CARD_NEEDED","message":"Acme has no card to charge Boost to.","fix":"Add a card at https://whisk.run/o/acme/billing/pay/pay_x8Hq2, then boost the app.","docs":"https://skill.whisk.run/errors/CARD_NEEDED","details":{"reason":"none","card_url":"https://whisk.run/o/acme/billing/pay/pay_x8Hq2"}}}
 ```
 
 ## PROMOTED_APP_REQUIRED
