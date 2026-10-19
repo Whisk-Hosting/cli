@@ -3,6 +3,7 @@ package whisk
 import (
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/spf13/cobra"
 
@@ -40,6 +41,40 @@ func cdnReasonText(reason string) string {
 	return orDash(reason)
 }
 
+// cdnBareText says how the bare domains held direct by their A records join the CDN: pointed at
+// the app's address, "" when it could not be read, by a record that follows it. "" when there
+// are none. Pure.
+func cdnBareText(hostnames []api.CDNHostname, address string) string {
+	var bare []string
+	for _, h := range hostnames {
+		if !h.ThroughCDN && h.Reason == "bare" {
+			bare = append(bare, h.Hostname)
+		}
+	}
+	if len(bare) == 0 {
+		return ""
+	}
+	target := "the app's address"
+	if address != "" {
+		target = address
+	}
+	return strings.Join(bare, ", ") + " stay direct while A records point them at Whisk. Point each at " + target +
+		" with a CNAME its DNS host flattens, as Cloudflare does, or an ALIAS or ANAME record, and the CDN takes it on; where the DNS host offers neither, make www the main name."
+}
+
+// cdnAddress is the app's own address, read only when a bare domain is direct so the advice can
+// name it; "" when there is none or it cannot be read.
+func cdnAddress(s *session, client *api.Client, org, app string, c api.CDN) string {
+	if cdnBareText(c.Hostnames, "") == "" {
+		return ""
+	}
+	a, err := client.GetApp(s.ctx, org, app)
+	if err != nil {
+		return ""
+	}
+	return a.Hostname
+}
+
 // cdnHostnameText is one hostname's route.
 func cdnHostnameText(h api.CDNHostname) string {
 	if h.ThroughCDN {
@@ -62,7 +97,7 @@ func cdnTrafficText(c api.CDN) string {
 }
 
 // printCDN is the human view of an app's CDN.
-func printCDN(p output.Printer, w io.Writer, app string, c api.CDN) {
+func printCDN(p output.Printer, w io.Writer, app string, c api.CDN, address string) {
 	fmt.Fprintf(w, "CDN for %s: %s\n", app, cdnStatusText(string(c.Status)))
 	if c.Since != nil {
 		fmt.Fprintf(w, "Since: %s\n", when(c.Since))
@@ -85,6 +120,9 @@ func printCDN(p output.Printer, w io.Writer, app string, c api.CDN) {
 		}
 		p.Table(w, []string{"HOSTNAME", "ROUTE"}, rows)
 	}
+	if line := cdnBareText(c.Hostnames, address); line != "" {
+		fmt.Fprintln(w, line)
+	}
 	fmt.Fprintln(w, cdnTrafficText(c))
 }
 
@@ -99,7 +137,8 @@ func cdnCmd(s *session) *cobra.Command {
 		if err != nil {
 			return wrap(err)
 		}
-		s.printer.Result(map[string]any{"org": org, "app": app, "cdn": c}, func(w io.Writer) { printCDN(s.printer, w, app, c) })
+		address := cdnAddress(s, client, org, app, c)
+		s.printer.Result(map[string]any{"org": org, "app": app, "cdn": c}, func(w io.Writer) { printCDN(s.printer, w, app, c, address) })
 		return nil
 	}
 	set := func(on bool) func(cmd *cobra.Command, args []string) error {
@@ -112,13 +151,14 @@ func cdnCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
+			address := cdnAddress(s, client, org, app, c)
 			s.printer.Result(map[string]any{"org": org, "app": app, "cdn": c}, func(w io.Writer) {
 				if on {
 					fmt.Fprintf(w, "Turning the CDN on for %s. Certificates come first, then visitors move over within fifteen minutes; nothing changes in your DNS.\n", app)
 				} else {
 					fmt.Fprintf(w, "Turning the CDN off for %s. Visitors move back to the app directly within fifteen minutes.\n", app)
 				}
-				printCDN(s.printer, w, app, c)
+				printCDN(s.printer, w, app, c, address)
 			})
 			return nil
 		}

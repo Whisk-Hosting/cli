@@ -472,6 +472,7 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 		return gitcmd.Sideband{}, gitcmd.PushUnknown, output.New("PLATFORM_UNAVAILABLE", err.Error()+".", "Check WHISK_API points at the Whisk platform you meant, then retry.", map[string]any{"git_url": gitURL})
 	}
 	args := gitcmd.Networked(cargs, "push", "--porcelain", "whisk", plan.Src+":refs/heads/"+plan.Dst)
+	started := s.now()
 	res, err := s.gitRun(env, args...)
 	if err != nil {
 		return gitcmd.Sideband{}, gitcmd.PushUnknown, err
@@ -509,13 +510,29 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 	case "tls":
 		return sb, outcome, tlsUntrusted(gitHost(gitURL), s.goos(), retried, details)
 	case "network":
-		return sb, outcome, output.New("PLATFORM_UNAVAILABLE", "git push could not reach the platform: "+lastLine(tail), "Retry with backoff. Check WHISK_API if you meant another endpoint.", details)
+		return sb, outcome, pushUnreachable(lastLine(tail), s.now().Sub(started), details)
 	case "auth":
 		return sb, outcome, output.New("AUTH_REQUIRED", "The platform refused the token for git push.", "Run whisk login again and approve the code for this app (or the whole org), then retry.", details)
 	case "rejected":
 		return sb, outcome, &output.Error{Code: "INVALID_REQUEST", Message: "The platform rejected the push: " + orDash(summary) + ".", Fix: "Read the server's lines in details.git, fix the cause, and run whisk deploy again.", Docs: werrors.DocsBase + "INVALID_REQUEST", Details: details, Exit: output.ExitValidation}
 	}
 	return sb, outcome, fmt.Errorf("git push failed (exit %d): %s", res.ExitCode, lastLine(tail))
+}
+
+// slowPush is how long a push runs before a lost connection is put down to the upload's size
+// and the link rather than to the platform being out of reach.
+const slowPush = 2 * time.Minute
+
+// pushUnreachable is PLATFORM_UNAVAILABLE for a push whose connection failed. One that ran for
+// slowPush or longer was a large upload on a slow link, which a dropped connection or a platform
+// release ends part-way, so the fix is about the upload rather than retrying with backoff. Pure.
+func pushUnreachable(line string, took time.Duration, details map[string]any) *output.Error {
+	if took < slowPush {
+		return output.New("PLATFORM_UNAVAILABLE", "git push could not reach the platform: "+line, "Retry with backoff. Check WHISK_API if you meant another endpoint.", details)
+	}
+	details["push_seconds"] = int(took.Seconds())
+	return output.New("PLATFORM_UNAVAILABLE", "git push lost its connection after "+spanWords(took)+" of uploading: "+line,
+		"An upload this long is a large repository on a slow link, and a dropped connection or a platform release ends it part-way. Run whisk deploy again, from a faster connection if you have one, and keep large files such as video out of git (whisk uploads add stores them) so the push is small.", details)
 }
 
 // tlsUntrusted is GIT_TLS_UNTRUSTED: git refused the certificate of the platform's git host.
