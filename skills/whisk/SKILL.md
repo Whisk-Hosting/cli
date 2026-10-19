@@ -577,7 +577,8 @@ write.
 exception: Node's `pg` (node-postgres, also under Prisma's `@prisma/adapter-pg`) reads
 `sslmode=require` as `verify-full` and refuses the platform's certificate with
 `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, so in code using `pg` add `uselibpqcompat=true` to the URL
-(`new URL(process.env.DATABASE_URL)` then `searchParams.set("uselibpqcompat", "true")`). Only `pg`
+(`new URL(process.env.DATABASE_URL)` then `searchParams.set("uselibpqcompat", "true")`) wherever
+the app opens a pool or a client; `whisk doctor` reports one that does not as W107. Only `pg`
 reads that parameter; other drivers refuse it. No
 session-level state: no `SET` outside a transaction, no advisory locks held across statements,
 no `LISTEN`. Prepared statements are fine inside a transaction. Before a migration relies on a
