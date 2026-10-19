@@ -46,7 +46,7 @@ func TestDNSRecords(t *testing.T) {
 func TestApexAdvice(t *testing.T) {
 	byAddress := []map[string]string{{"type": "TXT"}, {"type": "A", "value": "95.217.38.236"}}
 	byCNAME := []map[string]string{{"type": "TXT"}, {"type": "CNAME"}}
-	flatten := "If its DNS host offers an ALIAS or ANAME record, or CNAME flattening, at the domain itself, pointing it at domains.whisk.page that way is better: it follows Whisk if the addresses change."
+	flatten := "If its DNS host offers an ALIAS or ANAME record, or CNAME flattening, at the domain itself, pointing it at crm--acme.whisk.page that way is better: it follows the app's address, through its CDN while that is on."
 	bareWords := "A bare domain such as example.com cannot have a CNAME: point it with A (IPv4) or AAAA (IPv6) records to 95.217.38.236, 2a01:4f9::1 instead."
 	cases := []struct {
 		name    string
@@ -54,9 +54,9 @@ func TestApexAdvice(t *testing.T) {
 		records []map[string]string
 		want    []string
 	}{
-		{"a bare domain", api.Domain{Addresses: []string{"95.217.38.236"}, ApexTarget: "domains.whisk.page"}, byAddress, []string{flatten}},
+		{"a bare domain", api.Domain{Addresses: []string{"95.217.38.236"}, ApexTarget: "crm--acme.whisk.page"}, byAddress, []string{flatten}},
 		{"a bare domain without an apex target", api.Domain{Addresses: []string{"95.217.38.236"}}, byAddress, nil},
-		{"a name with a CNAME", api.Domain{Addresses: []string{"95.217.38.236", "2a01:4f9::1"}, ApexTarget: "domains.whisk.page"}, byCNAME,
+		{"a name with a CNAME", api.Domain{Addresses: []string{"95.217.38.236", "2a01:4f9::1"}, ApexTarget: "crm--acme.whisk.page"}, byCNAME,
 			[]string{bareWords, "Where" + flatten[2:]}},
 		{"a name with a CNAME, no apex target", api.Domain{Addresses: []string{"95.217.38.236", "2a01:4f9::1"}}, byCNAME, []string{bareWords}},
 		{"nothing to say", api.Domain{}, byCNAME, nil},

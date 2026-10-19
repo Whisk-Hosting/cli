@@ -294,11 +294,12 @@ and previews never do.
 
 **Their own domain.** On a paid plan, `whisk domains add jobs.acme.com` prints two DNS records
 for the human to create: a TXT that proves they own the name and a CNAME to the app's address.
-A bare domain (`acme.com`) cannot have a CNAME, so it takes A (and AAAA) records to the
-addresses printed instead. If the human's DNS host offers an ALIAS or ANAME record, or CNAME
-flattening, at the domain itself, pointing it that way at the `apex_target` printed
-(`domains.` and the apps domain) is better, since it follows Whisk if the addresses change;
-never at the app's own address that way. Relay the records with their HOST, the name as a DNS provider's form
+A bare domain (`acme.com`) cannot have a CNAME. If the human's DNS host offers an ALIAS or
+ANAME record, or CNAME flattening (Cloudflare flattens a CNAME at the domain itself), point it
+that way at the `apex_target` printed, the app's address: it then goes through the app's CDN
+while that is on. Otherwise it takes A (and AAAA) records to the addresses printed, which reach
+the app directly and never through the CDN; to have the site on the CDN anyway, make
+`www.acme.com` the main name and redirect the bare domain to it (below). Relay the records with their HOST, the name as a DNS provider's form
 takes it (`@` is the domain itself), changing the name's existing A record rather than adding a
 second one and leaving its MX and other TXT records alone. Then `whisk domains verify jobs.acme.com` once they
 are in place; until then it answers `DOMAIN_UNVERIFIED` naming what is missing. The certificate

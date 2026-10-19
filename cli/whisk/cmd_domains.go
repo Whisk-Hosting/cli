@@ -41,11 +41,11 @@ func printDNS(p output.Printer, w io.Writer, d api.Domain) {
 
 // apexAdvice is what printDNS says under the records about pointing a bare domain, which cannot
 // have a CNAME: with A and AAAA records, or, where the DNS host offers it, an ALIAS, ANAME or
-// flattened CNAME at the domain itself to the domain's apex_target, which follows the platform
-// if its addresses change (CONTROL-PLANE.md §6.11). Pure.
+// flattened CNAME at the domain itself to the domain's apex_target, the app's address, which it
+// then follows, through the app's CDN while that is on (CONTROL-PLANE.md §6.11). Pure.
 func apexAdvice(d api.Domain, records []map[string]string) []string {
 	flatten := func(lead string) string {
-		return lead + " its DNS host offers an ALIAS or ANAME record, or CNAME flattening, at the domain itself, pointing it at " + d.ApexTarget + " that way is better: it follows Whisk if the addresses change."
+		return lead + " its DNS host offers an ALIAS or ANAME record, or CNAME flattening, at the domain itself, pointing it at " + d.ApexTarget + " that way is better: it follows the app's address, through its CDN while that is on."
 	}
 	var out []string
 	switch {
