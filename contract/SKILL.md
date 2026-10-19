@@ -90,6 +90,16 @@ max-age=<seconds>` (`public` for a page anyone may see): the edge answers repeat
 cache, per person and for up to an hour, without waking the app. A response that sets a cookie is
 never cached.
 
+**Live updates.** Server-sent events and WebSockets work on every plan and address, sign-in
+included; prefer server-sent events when only the server talks. Writes reach the visitor at once
+and nothing times a stream out, so send a heartbeat every 30 seconds (`:` on an event stream, a
+ping on a WebSocket) to keep phone networks and proxies from dropping it. An open stream keeps the
+app awake by itself. Streams close on every deploy (close them on SIGTERM) and now and then
+when Whisk updates its servers, so every client reconnects with backoff: give events an
+`id:` and resume from `Last-Event-ID`, and keep what a stream reports in the database or
+key-value store so a reconnect misses nothing. Close a stream after an hour or so: the sign-in
+is checked when it opens, and the reconnect checks it again. CONTRACT.md §2.1 has the rest.
+
 ## 3. Getting an app live
 
 If `whisk` is not on the PATH, install it first; neither script needs root:
@@ -226,6 +236,7 @@ email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
 promoted: false                   # runs only as a Promoted app (§4) · paid
 b2b: false                        # the shop template's trade ordering, beside promoted: true (§4) · paid
+workers: []                       # an existing app's own job processes, beside promoted: true (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
@@ -237,8 +248,8 @@ previews: { database: empty, ttl_days: 3 }   # previews start empty; days a prev
 not hold, such as git-ignored build output like `dist/`, fails the deploy with `MANIFEST_INVALID`
 naming it (`whisk doctor` warns first, `W004`). Serve build output from the app itself, or
 commit the folder. Static files never wake the app and are cached for a year, so give them
-content-hashed names. `always_on` is for apps that must answer at once or hold WebSockets open;
-everything else should sleep. A sleeping app has 60 seconds to answer its health check when a
+content-hashed names. `always_on` is for apps that must answer at once; an open
+WebSocket or event stream keeps an app awake by itself, and everything else should sleep. A sleeping app has 60 seconds to answer its health check when a
 visitor wakes it, whatever `health.timeout` allows a deploy, so an app that needs longer sets
 `always_on` (`W005`). A sleeping app starts again on its next request, so
 start fast: the TypeScript template bundles each entry point into one file with esbuild
@@ -457,21 +468,40 @@ the platform deletes the person, and a later invitation makes a new id.
 
 **Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an
 owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never
-sleeps and has more memory (1 GB guaranteed, up to 4 GB). A Promoted app may keep its own
-sign-in: list every route under `routes.public` (`["/**"]`) and the app's own login decides who
-gets in, and doctor leaves out W090 for it. The edge then limits each address as it would one
-signed-in person (600 requests a minute, 3000 on Business); every request counts, the files the
-app serves itself included, so keep a cold load (a service worker's precache too) well under
-that. Everything else in this skill still applies. Only
-build or keep a login of the app's own on a Promoted app; never ask for promotion to get round
-§4, and never promote an app yourself: it is charged, so it is the owner's choice. An app that
-cannot run any other way says `promoted: true` in whisk.yaml: its production
-deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it, and goes
-live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted app's
-memory without waiting. The shop template (a Medusa shop) runs on any plan with room for it
-and keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
-account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and a
-preview of an app not yet promoted fails with `B2B_UNAVAILABLE`.
+sleeps and has more memory (1 GB guaranteed, up to 4 GB). Never ask for promotion to get round
+anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
+choice. An app that cannot run any other way says `promoted: true` in whisk.yaml: its
+production deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes
+it, and goes live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a
+Promoted app's memory without waiting. Everything else in this skill still applies.
+
+A Promoted app is where an existing product brings what it already has:
+
+- **Its own sign-in.** List every route under `routes.public` (`["/**"]`) and the app's own
+  login decides who gets in; doctor leaves out W090 for it. The edge then limits each address as
+  it would one signed-in person (600 requests a minute, 3000 on Business); every request counts,
+  the files the app serves itself included, so keep a cold load (a service worker's precache
+  too) well under that. Build or keep a login of the app's own only on a Promoted app.
+- **Its own job processes.** `workers` runs up to ten long-running commands beside the web
+  process, in the same container and memory, one copy of each, restarted when it exits:
+  ```yaml
+  workers:
+    - name: jobs                  # WHISK_WORKER=jobs; its log lines start [worker:jobs]
+      command: bundle exec sidekiq
+    - name: queue
+      command: node dist/worker.js
+      database: direct            # DATABASE_URL is a session connection: LISTEN, advisory
+                                  #  locks and SET work; at most 3 open across the workers
+  ```
+  Use it to bring a queue an app already has across unchanged (graphile-worker, pg-boss,
+  Sidekiq, Oban, Celery, Que, GoodJob); Procfile `worker:` lines map onto it, and `release:`
+  onto `migrate`. Size each library's own pool to the three direct connections. Whisk shows a
+  worker's logs, restarts and memory, and does not see inside its jobs: no run history, replay
+  or failure alerts. New background work is written as functions (§7) on every app.
+- **Trade ordering.** The shop template (a Medusa shop) runs on any plan with room for it and
+  keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
+  account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and
+  a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`.
 
 Who may open the app (groups, people, everyone in the business) and who is in the business are
 an owner's or admin's choice. `whisk access show` and `whisk members list` read them. When the
@@ -1032,8 +1062,8 @@ its calls at once. A system that is not HTTP (a database, SFTP) still uses a pla
 
 **AI models: a connection with a spend cap.** Every call to an AI model's API (OpenAI,
 Anthropic, Gemini, OpenRouter, Mistral, Groq, xAI, DeepSeek and the rest) goes through a
-connection with `ai:`. Never put an AI provider's key under `secrets`: setting one there is
-refused (`SECRET_IS_AI_KEY`). Whisk reads what each answer cost from the fields you name, adds it
+connection with `ai:`. Never put an AI provider's key under `secrets`: a key set there is saved
+on hold and never reaches the app (`SECRET_HELD`). Whisk reads what each answer cost from the fields you name, adds it
 up, and stops the connection's calls when the cap is reached, with an email to the business.
 
 ```yaml
@@ -1044,19 +1074,21 @@ connections:
     operations:
       - {name: Write replies, method: POST, path: /chat/completions}
     ai:
-      spend_cap: {per_day: 5, per_month: 50}   # the person's numbers, never yours
+      spend_cap: {per_month: 50}   # optional: the limit your person chose, in US dollars
       cost:
         - {at: /usage/prompt_tokens, usd_per_million: 2.50}
         - {at: /usage/completion_tokens, usd_per_million: 10.00}
 ```
 
-The spend cap is required and it is the person's money, so talk it through with them before you
-write it. Say what the app uses the model for, roughly what one use costs at the model's prices,
-how many uses a day you expect, and suggest a cap from that (`per_day`, `per_week`, `per_month`,
-`total`, in US dollars, any mix). Tell them that when a cap is reached the app's calls to the
-model stop until the window ends (or, for `total`, until they raise it), that they get an email
-saying so, and that raising it later is a change to `whisk.yaml` they grant again. Then write the
-numbers they chose. Take each `cost` part's price from the provider's pricing page for the model
+The spending limit is the person's money, so talk it through with them. Say what the app uses
+the model for, roughly what one use costs at the model's prices, how many uses a day you expect,
+and suggest a limit from that (`per_day`, `per_week`, `per_month`, `total`, in US dollars, any
+mix). Tell them that when it is reached the app's calls to the model stop until the window ends
+(or, for `total`, until it is raised), and that they get an email saying so. Write the numbers
+they chose as `spend_cap`: the person sees them filled in when they allow the connection and can
+change them there. Later, set a new limit they ask for with `whisk connections limit NAME
+--per-month <dollars>`; it is in force from the next call, with no push. The person can also
+change it themselves on the app's page. Take each `cost` part's price from the provider's pricing page for the model
 the app uses, and list every place the count appears, streamed and not; CONTRACT.md §3.1 "AI
 models" has the parts for each provider. Ask for usage in streams where the provider needs it
 (OpenAI: `stream_options: {include_usage: true}`). An answer that names no cost part stops that
@@ -1067,7 +1099,7 @@ page, and keep the rest of the app working.
 A deploy that carries `SECRET_HELD` names an AI key Whisk found under `secrets` and put on hold.
 Move it: declare an AI connection whose recipe reads `{secret.NAME}`, take the name out of
 `secrets`, point the app's client at `$WHISK_CONNECTION_<NAME>_URL` with the service token as
-above, walk the person through the cap, and push. The value stays as it is, so nobody sets
+above, walk the person through the limit, and push. The value stays as it is, so nobody sets
 it again; the person grants the connection and the app's AI features work again.
 
 ## 9. Storage, email, key-value
@@ -1381,7 +1413,8 @@ hour signed in, 5 without a login; past that, combine them.
   a Promoted app that keeps its own sign-in (§4). The platform owns sign-in; doctor warns on a password field (W090), and a public page asking for a password in
   another company's name is held for review.
 - Hold a database connection open across requests with session state; the pool is
-  transactional (doctor warns on `LISTEN`, advisory locks and `SET`, W024).
+  transactional (doctor warns on `LISTEN`, advisory locks and `SET`, W024). A Promoted app's
+  worker with `database: direct` is the one place for them (§4).
 - Make the app slow to start: a sleeping app's visitor waits for it. Bundle a Node app into one
   file in the build (`esbuild src/index.ts --bundle --platform=node --format=esm
   --outfile=dist/index.mjs`) and start that, not `tsx` or a `node_modules` tree; run migrations

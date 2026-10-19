@@ -127,9 +127,10 @@ type Billing struct {
 type BillingPromoted struct {
 	Apps      int   `json:"apps"`
 	UnitCents int64 `json:"unit_cents"`
-	// NowCents is what switching it on for an app charges at once, for the rest of the month, while the
-	// business is inside its free trial; absent otherwise.
-	NowCents int64 `json:"now_cents,omitempty"`
+	// NowCents is what switching it on for an app charges at once, for the days to the business's
+	// next billing day (NowUntil); both absent for a business that is not charged for its extras.
+	NowCents int64      `json:"now_cents,omitempty"`
+	NowUntil *time.Time `json:"now_until,omitempty"`
 }
 
 // BillingComp is a comp as the business reads it: the plan is free, until ends_at or for good.

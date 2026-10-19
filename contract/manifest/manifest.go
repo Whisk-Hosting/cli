@@ -62,8 +62,11 @@ type Manifest struct {
 	Promoted bool `json:"promoted"`
 	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
 	// gives only to Promoted apps in force (CONTRACT.md §11).
-	B2B   bool     `json:"b2b"`
-	Calls []string `json:"calls"`
+	B2B bool `json:"b2b"`
+	// Workers are long-running processes a Promoted app runs beside its web process, in the
+	// same container (CONTRACT.md §3.2).
+	Workers []Worker `json:"workers"`
+	Calls   []string `json:"calls"`
 	// AcceptedCallers names the only apps of the business whose calls this app accepts
 	// (CONTRACT.md §3.1). Nil is the field left out, which is not an empty list: an empty list
 	// accepts no caller. AcceptsCallers reads it.
@@ -184,6 +187,37 @@ type Function struct {
 	Graph       string `json:"graph"`
 	Concurrency int    `json:"concurrency,omitempty"`
 	Retries     int    `json:"retries"`
+}
+
+// Worker is one long-running process of a Promoted app (CONTRACT.md §3.2).
+type Worker struct {
+	Name    string `json:"name"`
+	Command string `json:"command"`
+	// Database is WorkerPooled or WorkerDirect.
+	Database string `json:"database"`
+}
+
+// Worker database connections (CONTRACT.md §3.2).
+const (
+	WorkerPooled = "pooled"
+	WorkerDirect = "direct"
+)
+
+// MaxWorkers is how many workers an app may declare, and WorkerDirectConnections how many
+// direct connections its workers may hold open at once (CONTRACT.md §3.2).
+const (
+	MaxWorkers              = 10
+	WorkerDirectConnections = 3
+)
+
+// DirectWorkers reports whether any worker connects to the database directly. Pure.
+func (m Manifest) DirectWorkers() bool {
+	for _, w := range m.Workers {
+		if w.Database == WorkerDirect {
+			return true
+		}
+	}
+	return false
 }
 
 type Webhook struct {
@@ -628,6 +662,14 @@ func withDefaults(m Manifest) Manifest {
 	if m.Webhooks == nil {
 		m.Webhooks = []Webhook{}
 	}
+	if m.Workers == nil {
+		m.Workers = []Worker{}
+	}
+	for i := range m.Workers {
+		if m.Workers[i].Database == "" {
+			m.Workers[i].Database = WorkerPooled
+		}
+	}
 	for i := range m.Webhooks {
 		m.Webhooks[i].IPAllowlist = orEmpty(m.Webhooks[i].IPAllowlist)
 	}
@@ -698,6 +740,27 @@ func checkMCP(m Manifest) Problems {
 	return nil
 }
 
+// checkWorkers holds workers to Promoted apps, unique names and a database for a direct one
+// (CONTRACT.md §3.2).
+func checkWorkers(m Manifest) Problems {
+	var ps Problems
+	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
+	if len(m.Workers) > 0 && !m.Promoted {
+		add("/workers", "workers come only with Promoted apps; set promoted: true as well, or run the work as functions")
+	}
+	seen := map[string]int{}
+	for i, w := range m.Workers {
+		if j, dup := seen[w.Name]; dup {
+			add(fmt.Sprintf("/workers/%d/name", i), fmt.Sprintf("duplicate worker name %s (also /workers/%d)", w.Name, j))
+		}
+		seen[w.Name] = i
+		if w.Database == WorkerDirect && m.Database == "none" {
+			add(fmt.Sprintf("/workers/%d/database", i), "database: direct needs the app's database; declare database: app or shared:<name>, or use pooled")
+		}
+	}
+	return ps
+}
+
 func checkRules(m Manifest) Problems {
 	var ps Problems
 	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
@@ -729,6 +792,7 @@ func checkRules(m Manifest) Problems {
 	if m.B2B && !m.Promoted {
 		add("/b2b", "trade ordering comes only with Promoted apps; set promoted: true as well")
 	}
+	ps = append(ps, checkWorkers(m)...)
 	ps = append(ps, checkManaged(m)...)
 	for i, n := range m.Build.Secrets {
 		if msg := reservedName(n); msg != "" {

@@ -189,12 +189,14 @@ Safe fix: no
 
 Details: the pooled connection hands each transaction whatever server connection is free, so
 state set on one is gone, or on someone else's, by the next statement. Matched in server code
-other than migrations (a path containing `migrat`, or `alembic/`, which run on the direct
-connection): a string starting with `LISTEN `; `pg_advisory_lock(`, `pg_try_advisory_lock(` and
-their `_shared` forms; and a string starting with `SET` (or `SET SESSION`) for `search_path`,
-`role`, `statement_timeout`, `timezone`, `time zone`, `application_name`, `lock_timeout` or a
-dotted custom setting. `SET LOCAL` and `pg_advisory_xact_lock` are fine and not matched. One
-finding per file, at its first match.
+other than what runs on a connection that keeps it: migrations (a path containing `migrat`, or
+`alembic/`), and, when a Promoted app's worker says `database: direct` (CONTRACT.md §3.2), a path
+containing `worker`, `job` or `queue` or a file that worker's command names (`src/listen.ts`
+for `node dist/listen.js`). Matched: a string starting with `LISTEN `; `pg_advisory_lock(`,
+`pg_try_advisory_lock(` and their `_shared` forms; and a string starting with `SET` (or `SET
+SESSION`) for `search_path`, `role`, `statement_timeout`, `timezone`, `time zone`,
+`application_name`, `lock_timeout` or a dotted custom setting. `SET LOCAL` and
+`pg_advisory_xact_lock` are fine and not matched. One finding per file, at its first match.
 
 ## W030
 

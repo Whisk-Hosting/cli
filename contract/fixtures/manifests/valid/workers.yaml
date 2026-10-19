@@ -1,0 +1,12 @@
+whisk: 1
+name: invoicer
+routes:
+  public: ["/**"]
+promoted: true
+kv: true
+workers:
+  - name: jobs
+    command: "bundle exec sidekiq -C config/sidekiq.yml"
+  - name: listener
+    command: node dist/listen.js
+    database: direct

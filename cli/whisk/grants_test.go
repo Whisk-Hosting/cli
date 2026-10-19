@@ -8,10 +8,11 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	werrors "github.com/whisk-run/contract/errors"
 )
 
-// A deploy that waits on a shared secret or wider access (CLI.md §5.4): the block names each
-// thing in the control plane's words and links the blocked deploy, where one tap approves it.
+// A deploy that waits on a person (CLI.md §5.4): the block names each thing in the control
+// plane's words and links the blocked deploy's Allow step, where the keys are pasted too.
 func TestGrantsNeededBlockApprove(t *testing.T) {
 	grants := []api.GrantNeeded{
 		{Kind: "connection", Name: "erp", Environment: "production", RecipeChanged: true},
@@ -19,19 +20,19 @@ func TestGrantsNeededBlockApprove(t *testing.T) {
 		{Kind: "access", Name: "calls:billing", Hash: "h1", Change: "It may call the app billing."},
 		{Kind: "access", Name: "public:/api/**", Hash: "h1", Change: "Anyone may open /api/** without signing in."},
 	}
-	page := grantsPage("https://whisk.run", "acme", "crm", "d-1", grants)
+	page := allowPage("https://whisk.run", "acme", "crm", "d-1")
 	if page != "https://whisk.run/o/acme/apps/crm/deploys?approve=d-1" {
 		t.Fatalf("page %s", page)
 	}
-	e := grantsNeededBlock("d-1", grants, []string{"SLACK_URL"}, page, "https://whisk.run/o/acme/apps/crm/secrets")
+	e := grantsNeededBlock("d-1", grants, []string{"SLACK_URL"}, page)
 	if e.Code != "GRANT_NEEDED" || output.ExitCode(e) != output.ExitNeedsHuman {
 		t.Fatalf("code %s exit %d", e.Code, output.ExitCode(e))
 	}
-	want := "Deploy d-1 waits for an owner or admin to approve: erp (production) with a new address or recipe; it reads the business's shared secret MAPS_KEY, which crm is not on the list of apps for; it may call the app billing; anyone may open /api/** without signing in."
+	want := "Deploy d-1 waits for an owner or admin to allow: erp (production) with a new address or recipe; it reads the business's shared secret MAPS_KEY, which crm is not on the list of apps for; it may call the app billing; anyone may open /api/** without signing in."
 	if e.Message != want {
 		t.Errorf("message\n%q\nwant\n%q", e.Message, want)
 	}
-	for _, s := range []string{"approve it at " + page, "one tap", "Do not try to approve it yourself", "It also needs values for SLACK_URL"} {
+	for _, s := range []string{"allow it at " + page, "one step", "Do not try to allow it yourself", "They paste SLACK_URL on the same page."} {
 		if !strings.Contains(e.Fix, s) {
 			t.Errorf("fix %q lacks %q", e.Fix, s)
 		}
@@ -44,14 +45,20 @@ func TestGrantsNeededBlockApprove(t *testing.T) {
 	}
 }
 
-func TestGrantsPage(t *testing.T) {
-	conn := api.GrantNeeded{Kind: apitypes.GrantConnection, Name: "erp"}
-	acc := api.GrantNeeded{Kind: apitypes.GrantAccess, Name: "calls:billing"}
-	if got := grantsPage("https://w", "acme", "crm", "d1", []api.GrantNeeded{conn}); got != "https://w/o/acme/apps/crm/connections" {
-		t.Errorf("connections only: %s", got)
+func TestKeysPage(t *testing.T) {
+	allow := "https://w/o/acme/apps/crm/deploys?approve=d1"
+	secrets := "https://w/o/acme/apps/crm/secrets"
+	unset := func(u string) *werrors.Detail {
+		return &werrors.Detail{Code: "SECRET_UNSET", Details: map[string]any{"url": u}}
 	}
-	if got := grantsPage("https://w", "acme", "crm", "d1", []api.GrantNeeded{conn, acc}); got != "https://w/o/acme/apps/crm/deploys?approve=d1" {
-		t.Errorf("mixed: %s", got)
+	if got := keysPage(unset(allow), secrets, []string{"A_KEY"}); got != allow {
+		t.Errorf("production: %s", got)
+	}
+	if got := keysPage(unset(secrets), secrets, []string{"A_KEY"}); got != pasteURL(secrets, []string{"A_KEY"}) {
+		t.Errorf("preview: %s", got)
+	}
+	if got := keysPage(nil, secrets, []string{"A_KEY"}); got != pasteURL(secrets, []string{"A_KEY"}) {
+		t.Errorf("no error: %s", got)
 	}
 }
 

@@ -471,12 +471,12 @@ Status: 409 · Surface: api
 
 When: an owner or billing contact asked to make an app a Promoted app for a client business its
 agency pays for (`details.reason: client`, with `details.agency` naming the agency). A Promoted
-app is charged with the month's extras, and a client business does not pay its own.
+app is charged to the business up front, and a client business does not pay its own.
 
 Fix: Hand the business over and let it choose its own plan first, then promote the app.
 
 ```json
-{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and a Promoted app is charged with the month's extras.","fix":"Hand the business over and let it choose its own plan first, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
+{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and only a business on its own plan can have Promoted apps.","fix":"Hand the business over and let it choose its own plan first, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
 ```
 
 ## BOOST_UNAVAILABLE
@@ -485,20 +485,20 @@ Status: 409 · Surface: api
 
 When: an owner or billing contact asked to give an app Boost for a client business its agency
 pays for (`details.reason: client`, with `details.agency` naming the agency). Boost is charged
-with the month's extras, and a client business does not pay its own.
+to the business up front, and a client business does not pay its own.
 
 Fix: Hand the business over and let it choose its own plan first, then boost the app.
 
 ```json
-{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and Boost is charged with the month's extras.","fix":"Hand the business over and let it choose its own plan first, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
+{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and only a business on its own plan can boost apps.","fix":"Hand the business over and let it choose its own plan first, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
 ```
 
 ## CARD_NEEDED
 
 Status: 402 · Surface: api
 
-When: giving an app Boost or making it a Promoted app during the business's free trial, which is
-charged at once for the rest of the month, found no card to charge (`details.reason: none`), or
+When: giving an app Boost or making it a Promoted app, which is charged at once for the days to
+the business's next billing day, found no card to charge (`details.reason: none`), or
 the card was declined or wanted the bank's confirmation (`details.reason: declined`). Nothing was
 charged and the app is unchanged. `details.card_url` is a page to give a card on, which comes
 back to the app.
@@ -976,13 +976,16 @@ is `true`), because the build cannot run without it.
 When another app of the business already has its own value under a missing name,
 `details.elsewhere` maps that name to those apps' slugs.
 
-Fix: Relay the names and the URL to the human. Nothing else is needed; the platform restarts the
-app when the value arrives. For a name in `details.elsewhere`, first ask the human whether this
+`details.url` is where a person adds the values: for a production deploy its own page, where one
+step adds every value and allows anything else it waits on; for a preview the app's Keys page.
+
+Fix: Relay the names and the URL to the human. Nothing else is needed; the deploy goes on by
+itself once the values are added. For a name in `details.elsewhere`, first ask the human whether this
 app may use the same value as that app; if they agree, run
 `whisk secrets share NAME --from <app>` instead of asking for the value.
 
 ```json
-{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask an owner, admin or developer to set the rest at https://whisk.run/o/acme/secrets. The app restarts automatically when they are set.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/secrets"}}}
+{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask your person to add SLACK_WEBHOOK_URL at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z. The deploy goes on by itself once they are added.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
 ## GRANT_NEEDED
@@ -997,9 +1000,9 @@ app's live production deploy has: a new app under `calls`, a new webhook, a
 route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`
 (CONTROL-PLANE.md §6.5). The deploy is `blocked`; `details.grants` lists one entry per grant
 needed, `{kind, name, environment, hash, recipe_changed, new_operations, change}`, where `change`
-says in plain words what a `secret` or `access` entry would allow, and `details.url` the page
-where an owner or admin approves it: the connections page when only connections wait, else the
-blocked deploy, where one tap approves every kind. Unset secrets the deploy also needs are named
+says in plain words what a `secret` or `access` entry would allow, and `details.url` the blocked
+deploy's page, where an owner or admin allows every kind in one step, with any value the deploy
+needs and an AI connection's spending limit. Unset secrets the deploy also needs are named
 in `details.unset_secrets`. A preview never waits for any of them.
 
 Fix: Relay the message and the URL to the human and say what each entry would allow. Do not try
@@ -1007,7 +1010,7 @@ to grant or approve it yourself: only a person, freshly signed in, can. The depl
 own once it is approved.
 
 ```json
-{"error":{"code":"GRANT_NEEDED","message":"The connection erp needs a person to grant it before this deploy can go live.","fix":"Ask an owner or admin to review and grant erp at https://whisk.run/o/acme/apps/crm/connections. The deploy starts when it is granted.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"connection","name":"erp","environment":"production","recipe_changed":true,"new_operations":[{"name":"Read stock levels","method":"GET","path":"/stock/**"}]}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/connections"}}}
+{"error":{"code":"GRANT_NEEDED","message":"The connection erp needs a person to grant it before this deploy can go live.","fix":"Ask an owner or admin to allow erp at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one step there, signed in. Do not try to allow it yourself. The deploy starts when it is allowed.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"connection","name":"erp","environment":"production","recipe_changed":true,"new_operations":[{"name":"Read stock levels","method":"GET","path":"/stock/**"}]}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
 ```json
@@ -1029,21 +1032,6 @@ push. The value stays as it is; nobody sets it again.
 
 ```json
 {"error":{"code":"SECRET_HELD","message":"crm started without OPENAI_API_KEY: it is an OpenAI key, which Whisk now keeps in an AI connection with a spend cap.","fix":"Move OPENAI_API_KEY from secrets to a connection with ai: that reads secret.OPENAI_API_KEY, agree the spend cap with the human, and push. The value stays as it is.","docs":"https://skill.whisk.run/errors/SECRET_HELD","details":{"names":["OPENAI_API_KEY"],"providers":["OpenAI"]}}}
-```
-
-## SECRET_IS_AI_KEY
-
-Status: 400 · Surface: api
-
-When: the value set on a secret is a key for an AI model, and no AI connection of the app reads
-that secret (CONTROL-PLANE.md §6.7 Keys for AI models). Whisk keeps AI keys only in an AI
-connection, where their spend is capped. `details.provider` names the provider.
-
-Fix: Declare a connection with `ai:` in whisk.yaml that reads the key as `secret.NAME`, agree its
-spend cap with the human, push, and then set the value on the connection's key.
-
-```json
-{"error":{"code":"SECRET_IS_AI_KEY","message":"The value for ANTHROPIC_API_KEY is an Anthropic key, and no AI connection of crm reads ANTHROPIC_API_KEY.","fix":"Declare a connection with ai: in whisk.yaml whose recipe reads secret.ANTHROPIC_API_KEY, agree its spend cap with the human, push, then set the value.","docs":"https://skill.whisk.run/errors/SECRET_IS_AI_KEY","details":{"name":"ANTHROPIC_API_KEY","provider":"Anthropic"}}}
 ```
 
 ## SECRET_NOT_GRANTED
@@ -1246,11 +1234,12 @@ until the window ends: `Retry-After` and `details.retry_after` give the seconds,
 cap has none. The business's owners, admins and developers were emailed.
 
 Fix: Show the human a plain message that the AI feature is paused until the window ends. Do not
-retry before `retry_after`. If they want a higher cap, change `spend_cap` in whisk.yaml with
-them and push; a person grants it.
+retry before `retry_after`. If they want a higher limit, they raise it on the app's page, or you
+run `whisk connections limit NAME --per-month <dollars>` with the amount they choose; calls go
+on at once.
 
 ```json
-{"error":{"code":"AI_SPEND_CAP","message":"crm has spent its US$50.00 monthly cap on openai.","fix":"Show the human the AI feature is paused until the month ends. To raise the cap, change spend_cap in whisk.yaml with them and push; a person grants it.","docs":"https://skill.whisk.run/errors/AI_SPEND_CAP","details":{"connection":"openai","window":"month","cap":50,"spent":50.02,"retry_after":1209600}}}
+{"error":{"code":"AI_SPEND_CAP","message":"crm has spent its US$50.00 monthly cap on openai.","fix":"Show the human the AI feature is paused until the month ends. If they want a higher limit, they raise it on the app's page, or you run whisk connections limit NAME --per-month <dollars> with the amount they choose; calls go on at once.","docs":"https://skill.whisk.run/errors/AI_SPEND_CAP","details":{"connection":"openai","window":"month","cap":50,"spent":50.02,"retry_after":1209600}}}
 ```
 
 ## AI_COST_UNREADABLE
@@ -3352,9 +3341,12 @@ Fix: Check runtime support for PR_SET_CHILD_SUBREAPER; do not start without chil
 
 Status: - · Surface: container
 
-When: the image command is missing, cannot be resolved in PATH, or cannot be executed.
+When: the image command, or a Promoted app's worker command, is missing, cannot be resolved in
+PATH, or cannot be executed. A worker that cannot start is tried again with the backoff of a
+worker that exited; the app keeps running.
 
-Fix: Correct the image command, interpreter, PATH and executable permissions.
+Fix: Correct the image command or the worker's command in whisk.yaml, the interpreter, PATH and
+executable permissions.
 
 ```json
 {"error":{"code":"INIT_EXEC","message":"whisk-init: cannot execute app.","fix":"Check the image command, PATH and executable permissions.","docs":"https://skill.whisk.run/errors/INIT_EXEC","details":{}}}

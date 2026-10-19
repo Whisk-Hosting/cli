@@ -209,11 +209,11 @@ var wire = []any{
 	CdnHostname{}, AppCdn{},
 	// connections.go, with contract/connect's summary
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
-	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
+	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, GrantAI{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
 	named{"ConnectionAISummary", connect.AISummary{}}, named{"ConnectionAIPart", connect.AIPart{}}, ConnectionAI{}, AIWindow{}, AIUnreadable{},
-	GrantConnectionRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
+	named{"SpendCap", connect.SpendCap{}}, GrantConnectionRequest{}, SpendCapRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
 	// grants.go
-	GrantRef{}, ApproveDeployRequest{}, ApprovedDeploy{}, ConfirmCodeRequest{}, ConfirmCode{}, ConfirmRequest{}, Confirmed{},
+	GrantRef{}, KeyValue{}, ApproveDeployRequest{}, ApprovedDeploy{}, ConfirmCodeRequest{}, ConfirmCode{}, ConfirmRequest{}, Confirmed{},
 	GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
 	GitHubBranch{}, GitHubLink{},
 }

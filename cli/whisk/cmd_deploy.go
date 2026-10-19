@@ -862,7 +862,7 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 			grants = s.grantsNeeded(client, org, app, ev.DeployID)
 		}
 		if len(grants) > 0 {
-			return grantsNeededBlock(ev.DeployID, grants, unset, grantsPage(s.dashboard(), org, app, ev.DeployID, grants), secretsURL(s.dashboard(), org, app))
+			return grantsNeededBlock(ev.DeployID, grants, unset, allowPage(s.dashboard(), org, app, ev.DeployID))
 		}
 		if len(unset) == 0 {
 			// Best effort: the deploy is blocked either way, and that is the error to report,
@@ -874,6 +874,10 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 			}
 		}
 		e := needsHumanSecrets(unset, secretsURL(s.dashboard(), org, app))
+		if page := keysPage(ev.Error, secretsURL(s.dashboard(), org, app), unset); page != e.Details["url"] {
+			e.Fix = "Ask an owner or admin to open " + page + " and paste the values there. The deploy goes on by itself once they are added."
+			e.Details["url"] = page
+		}
 		e.Message = fmt.Sprintf("Deploy %s is blocked until %d secret(s) have a value: %s.", ev.DeployID, len(unset), strings.Join(unset, ", "))
 		e.Details["deploy_id"] = ev.DeployID
 		return e

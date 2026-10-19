@@ -50,6 +50,7 @@ type Options struct {
 	AppID string // generated when empty
 
 	DatabaseURL string            // DATABASE_URL for the app; required unless database: none
+	DirectURL   string            // a session connection, DATABASE_URL for a worker with database: direct
 	SecretsFile string            // NAME=value lines for declared secrets: .whisk/dev/secrets.env
 	Secrets     map[string]string // secrets in addition to (and over) the file
 	ExtraEnv    []string          // NAME=value pairs the caller injects, for storage and kv in whisk dev
@@ -279,6 +280,16 @@ func Run(ctx context.Context, o Options, appCmd []string) error {
 		}
 		children = append(children, cmd)
 		s.logf("app started (pid %d): %s", cmd.Process.Pid, strings.Join(appCmd, " "))
+		// A Promoted app's workers run beside it, each with its own name and, with database:
+		// direct, a session connection (CONTRACT.md §3.2).
+		for _, w := range m.Workers {
+			wcmd := command(ctx, w.Command, WorkerEnv(env, w, o.DirectURL), "worker:"+w.Name, o.Log)
+			if err := wcmd.Start(); err != nil {
+				return fmt.Errorf("start worker %s: %v", w.Name, err)
+			}
+			children = append(children, wcmd)
+			s.logf("worker %s started (pid %d): %s", w.Name, wcmd.Process.Pid, w.Command)
+		}
 	} else {
 		s.logf("no app command given; expecting the app on %s with this environment:", s.upstream)
 		for _, kv := range env {
@@ -463,6 +474,16 @@ func reachableOK(u string) bool {
 // command runs a shell line with the given environment added, prefixing its output when a
 // label is given so the app's own log stays clean. It runs for as long as ctx lasts; when ctx
 // ends its process group is asked to stop, and killed 30 seconds later.
+// WorkerEnv is a worker's environment: the app's with WHISK_WORKER naming it and, for one with
+// database: direct, DATABASE_URL set to direct when there is one. Later entries win. Pure.
+func WorkerEnv(env []string, w manifest.Worker, direct string) []string {
+	out := append(append([]string{}, env...), "WHISK_WORKER="+w.Name)
+	if w.Database == manifest.WorkerDirect && direct != "" {
+		out = append(out, "DATABASE_URL="+direct)
+	}
+	return out
+}
+
 func command(ctx context.Context, line string, env []string, label string, log io.Writer) *run.Cmd {
 	shell, flag := "sh", "-c"
 	if os.PathSeparator == '\\' {

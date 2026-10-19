@@ -18,9 +18,10 @@ import (
 )
 
 // The diagnostics the platform's canary drives to prove the container's boundaries
-// (HARNESS.md H18, H22, H37, H42 and H91). Every route is private, answers JSON, and is safe to
-// delete in your own app. They are the same in the three templates, except /diag/pg/guard,
-// which H91 drives on this one alone.
+// (HARNESS.md H18, H22, H37, H42, H91 and H130). Every route is private, answers JSON, and is
+// safe to delete in your own app. They are the same in the three templates, except
+// /diag/pg/guard, which H91 drives on this one alone, and /diag/worker (worker.go), which H130
+// does.
 
 // internalPort is the edge's internal listener, where app-to-app calls arrive
 // (CADDY.md §4.3).

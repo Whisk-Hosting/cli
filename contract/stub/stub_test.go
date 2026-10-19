@@ -439,3 +439,25 @@ func TestStubForeignRead(t *testing.T) {
 		}
 	}
 }
+
+func TestWorkerEnv(t *testing.T) {
+	env := []string{"DATABASE_URL=pooled", "PORT=8080"}
+	cases := []struct {
+		name   string
+		w      manifest.Worker
+		direct string
+		want   string
+	}{
+		{"pooled", manifest.Worker{Name: "jobs", Database: manifest.WorkerPooled}, "direct", "DATABASE_URL=pooled PORT=8080 WHISK_WORKER=jobs"},
+		{"direct", manifest.Worker{Name: "q", Database: manifest.WorkerDirect}, "direct", "DATABASE_URL=pooled PORT=8080 WHISK_WORKER=q DATABASE_URL=direct"},
+		{"direct with no session connection", manifest.Worker{Name: "q", Database: manifest.WorkerDirect}, "", "DATABASE_URL=pooled PORT=8080 WHISK_WORKER=q"},
+	}
+	for _, c := range cases {
+		if got := strings.Join(WorkerEnv(env, c.w, c.direct), " "); got != c.want {
+			t.Errorf("%s: %s, want %s", c.name, got, c.want)
+		}
+	}
+	if env[0] != "DATABASE_URL=pooled" || len(env) != 2 {
+		t.Errorf("the app's environment changed: %v", env)
+	}
+}

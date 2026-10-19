@@ -346,6 +346,7 @@ func RunStub(ctx context.Context, o Options, s Stack, appCmd []string) error {
 		Roles:        o.Identity.Roles,
 		Audience:     o.Identity.Audience,
 		DatabaseURL:  s.Plan.DatabaseURL,
+		DirectURL:    s.Plan.DirectURL,
 		SecretsFile:  filepath.Join(o.AppDir, filepath.FromSlash(Dir), "secrets.env"),
 		InngestURL:   s.Plan.InngestURL,
 		ExtraEnv:     s.Plan.ExtraEnv,

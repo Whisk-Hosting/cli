@@ -57,6 +57,7 @@ func parseFlags() (stub.Options, bool, []string) {
 	flag.StringVar(&o.OrgID, "org-id", "", "org ULID (generated when empty)")
 	flag.StringVar(&o.AppID, "app-id", "", "app ULID (generated when empty)")
 	flag.StringVar(&o.DatabaseURL, "database-url", os.Getenv("DATABASE_URL"), "DATABASE_URL for the app; required unless database: none")
+	flag.StringVar(&o.DirectURL, "direct-url", "", "a session connection, DATABASE_URL for a Promoted app's workers with database: direct")
 	flag.StringVar(&o.SecretsFile, "secrets-file", d.SecretsFile, "NAME=value lines for declared secrets (git-ignored)")
 	flag.StringVar(&o.InngestURL, "inngest", "", "URL of a running Inngest dev server; empty starts one")
 	flag.StringVar(&o.InngestPort, "inngest-port", d.InngestPort, "port for the dev server the stub starts")

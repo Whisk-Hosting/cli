@@ -30,6 +30,12 @@ func (c *Client) PauseConnection(ctx context.Context, org, app, name string, env
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/connections/"+pathSeg(name)+"/pause", body, &out)
 }
 
+// SetSpendCap sets an AI connection's spending limit in environment, as the person chose it.
+func (c *Client) SetSpendCap(ctx context.Context, org, app, name string, in apitypes.SpendCapRequest) (Connection, error) {
+	var out Connection
+	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/connections/"+pathSeg(name)+"/spend-cap", in, &out)
+}
+
 // PauseAllConnections stops every connection of every app in the org.
 func (c *Client) PauseAllConnections(ctx context.Context, org string) (ConnectionsChanged, error) {
 	var out ConnectionsChanged

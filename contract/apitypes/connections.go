@@ -57,6 +57,15 @@ type GrantNeeded struct {
 	RecipeChanged bool                  `json:"recipe_changed"`
 	NewOperations []connect.Operation   `json:"new_operations"`
 	Change        string                `json:"change,omitempty"`
+	// AI is set for a connection to an AI model: the person chooses its spending limit as they
+	// allow it.
+	AI *GrantAI `json:"ai,omitempty"`
+}
+
+// GrantAI is the spending limit an Allow page starts an AI connection's fields at: its grant's,
+// else the one whisk.yaml suggests, else none.
+type GrantAI struct {
+	SpendCap connect.SpendCap `json:"spend_cap"`
 }
 
 // ConnectionGrant is what a person granted a connection in one environment.
@@ -158,6 +167,16 @@ type GrantConnectionRequest struct {
 	Hash           string                `json:"spec_hash"`
 	LimitPerMinute int                   `json:"limit_per_minute,omitempty"`
 	LimitPerDay    int                   `json:"limit_per_day,omitempty"`
+	// SpendCap is the spend cap the person chose for an AI connection, in US dollars; left out,
+	// the one whisk.yaml suggests.
+	SpendCap *connect.SpendCap `json:"spend_cap,omitempty"`
+}
+
+// SpendCapRequest changes the spend cap a person set on an AI connection's grant in one
+// environment.
+type SpendCapRequest struct {
+	Environment ConnectionEnvironment `json:"environment"`
+	SpendCap    connect.SpendCap      `json:"spend_cap"`
 }
 
 // ConnectionStateRequest pauses, resumes or revokes one environment's grant, or every

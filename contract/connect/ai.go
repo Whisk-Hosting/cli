@@ -9,10 +9,11 @@ import (
 	"strings"
 )
 
-// AI makes a connection an AI model's (CONTRACT.md §3.1 "AI models"): the spend cap a person
-// grants with it, where each answer says what it cost, and the operations that cost nothing.
+// AI makes a connection an AI model's (CONTRACT.md §3.1 "AI models"): the spend cap the agent
+// suggests (the person sets the one in force when they allow it), where each answer says what it
+// cost, and the operations that cost nothing.
 type AI struct {
-	SpendCap *SpendCap  `json:"spend_cap"`
+	SpendCap *SpendCap  `json:"spend_cap,omitempty"`
 	Cost     []CostPart `json:"cost"`
 	// Free names operations whose success answers never cost anything (listing models), so an
 	// answer without a cost is not unreadable.
@@ -93,6 +94,39 @@ func USD(micros int64) float64 { return float64(micros) / 1e6 }
 // IsAI reports whether a connection is an AI model's.
 func IsAI(c Connection) bool { return c.AI != nil }
 
+// CapProblem is one thing wrong with a spend cap: At is the window's key ("/per_month"), empty
+// for the cap as a whole.
+type CapProblem struct{ At, Message string }
+
+// CapProblems is what is wrong with a spend cap: none when it names at least one window and each
+// is MinCap to MaxCap US dollars. Pure.
+func CapProblems(s SpendCap) []CapProblem {
+	caps := s.Caps()
+	if len(caps) == 0 {
+		return []CapProblem{{Message: "name per_day, per_week, per_month or total in US dollars"}}
+	}
+	var out []CapProblem
+	for _, p := range Periods {
+		v, ok := caps[p]
+		key := map[string]string{PeriodDay: "per_day", PeriodWeek: "per_week", PeriodMonth: "per_month", PeriodTotal: "total"}[p]
+		if ok && (v < MinCap || v > MaxCap || math.IsNaN(v)) {
+			out = append(out, CapProblem{At: "/" + key, Message: fmt.Sprintf("between %.2f and %.0f US dollars", MinCap, float64(MaxCap))})
+		}
+	}
+	return out
+}
+
+// WithoutCap is the AI block a person allows: everything but the spend cap, which is theirs to
+// set and change without the recipe changing. Pure.
+func (a *AI) WithoutCap() *AI {
+	if a == nil {
+		return nil
+	}
+	out := *a
+	out.SpendCap = nil
+	return &out
+}
+
 // checkAI adds the problems with a connection's ai block, and requires one for a known AI
 // provider's address.
 func checkAI(c Connection, add func(string, string, ...any)) {
@@ -103,15 +137,9 @@ func checkAI(c Connection, add func(string, string, ...any)) {
 		}
 		return
 	}
-	if a.SpendCap == nil || len(a.SpendCap.Caps()) == 0 {
-		add("/ai/spend_cap", "required: name per_day, per_week, per_month or total in US dollars. Ask your person how much this app may spend on the model and walk them through it: what one use costs, how many uses a day you expect, and that calls stop until the window ends when the cap is reached. Never choose it yourself")
-	} else {
-		for _, p := range Periods {
-			v, ok := a.SpendCap.Caps()[p]
-			key := map[string]string{PeriodDay: "per_day", PeriodWeek: "per_week", PeriodMonth: "per_month", PeriodTotal: "total"}[p]
-			if ok && (v < MinCap || v > MaxCap || math.IsNaN(v)) {
-				add("/ai/spend_cap/"+key, "between %.2f and %.0f US dollars", MinCap, float64(MaxCap))
-			}
+	if a.SpendCap != nil {
+		for _, problem := range CapProblems(*a.SpendCap) {
+			add("/ai/spend_cap"+problem.At, "%s", problem.Message)
 		}
 	}
 	if len(a.Cost) == 0 {

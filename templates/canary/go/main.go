@@ -21,6 +21,13 @@ import (
 )
 
 func main() {
+	if len(os.Args) > 1 && os.Args[1] == "worker" {
+		if err := runWorker(); err != nil {
+			logger.Error("worker failed", "err", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if len(os.Args) > 1 && os.Args[1] == "migrate" {
 		if err := migrate(); err != nil {
 			logger.Error("migrate failed", "err", err)
@@ -170,6 +177,8 @@ func run() error {
 	r.Post("/diag/pg/share", diagShare)
 	r.Get("/diag/pg/read", diagRead)
 	r.Post("/diag/pg/guard", diagGuard)
+	r.Post("/diag/worker", diagWorkerNotify(db))
+	r.Get("/diag/worker", diagWorkerSeen(db))
 	r.Post("/diag/enqueue", func(w http.ResponseWriter, req *http.Request) {
 		// Sends one event through WHISK_QUEUE_URL with the app's own service token, so the
 		// platform can prove an app enqueues its own events.

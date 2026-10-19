@@ -12,6 +12,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/whisk-run/cli/internal/stack"
+	"github.com/whisk-run/contract/manifest"
 )
 
 // The rules here find what the skill's "Do not" list warns about and what only fails after a
@@ -155,8 +156,8 @@ var sessionPatterns = []*regexp.Regexp{
 func w024(r Repo, _ Context) outcome {
 	var out outcome
 	for _, f := range serverCode(r) {
-		if migrationFile(f.Path) {
-			continue // migrate runs on a direct connection, where session state is fine
+		if migrationFile(f.Path) || directWorkerFile(r.Manifest, f.Path) {
+			continue // migrate and direct workers run on a direct connection, where session state is fine
 		}
 		if hs := matches(f, sessionPatterns, 0); len(hs) > 0 {
 			out = out.add("W024", f.Path, hs[0].Line, fmt.Sprintf("%s uses session state on the database connection (%s), which the pooled connection does not keep between statements.", f.Path, strings.Trim(strings.TrimSpace(hs[0].Name), "\"'`")))
@@ -169,6 +170,32 @@ func w024(r Repo, _ Context) outcome {
 // runs on the direct connection rather than the pool. Pure.
 func migrationFile(p string) bool {
 	return strings.Contains(strings.ToLower(p), "migrat") || strings.HasPrefix(p, "alembic/") || strings.Contains(p, "/alembic/")
+}
+
+// directWorkerFile reports whether a path is a Promoted app's worker code with a direct
+// connection (CONTRACT.md §3.2): only when a worker says database: direct, a path naming a
+// worker, job or queue, or a file a direct worker's command names (src/listen.ts for
+// "node dist/listen.js"). Pure.
+func directWorkerFile(m manifest.Manifest, p string) bool {
+	if !m.DirectWorkers() {
+		return false
+	}
+	lower := strings.ToLower(p)
+	if strings.Contains(lower, "worker") || strings.Contains(lower, "job") || strings.Contains(lower, "queue") {
+		return true
+	}
+	stem := func(s string) string { b := path.Base(s); return strings.TrimSuffix(b, path.Ext(b)) }
+	for _, w := range m.Workers {
+		if w.Database != manifest.WorkerDirect {
+			continue
+		}
+		for _, word := range strings.Fields(w.Command) {
+			if strings.Contains(word, ".") && strings.ToLower(stem(word)) == stem(lower) {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // functionIDPatterns capture the id a function is registered with, per language's SDK.

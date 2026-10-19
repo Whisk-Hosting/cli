@@ -218,7 +218,7 @@ func TestBlockedDetail(t *testing.T) {
 }
 
 func TestGrantsNeededBlock(t *testing.T) {
-	page, secrets := "https://whisk.run/o/acme/apps/crm/connections", "https://whisk.run/o/acme/apps/crm/secrets"
+	page := "https://whisk.run/o/acme/apps/crm/deploys?approve=d-1"
 	in := []api.GrantNeeded{
 		{Kind: "connection", Name: "erp", Environment: "production", RecipeChanged: true},
 		{Kind: "connection", Name: "crm", Environment: "production", NewOperations: []connect.Operation{{Name: "Read contacts", Method: "GET", Path: "/contacts"}}},
@@ -229,15 +229,15 @@ func TestGrantsNeededBlock(t *testing.T) {
 		wantInFix []string
 		notInFix  []string
 	}{
-		{"grants only", nil, []string{"grant erp, crm at " + page, "Do not try to grant it yourself"}, []string{"also needs"}},
-		{"grants and unset secrets", []string{"ERP_KEY"}, []string{"grant erp, crm at " + page, "It also needs values for ERP_KEY, set at " + secrets + "?set=ERP_KEY."}, nil},
+		{"grants only", nil, []string{"allow it at " + page, "Do not try to allow it yourself"}, []string{"paste"}},
+		{"grants and unset secrets", []string{"ERP_KEY"}, []string{"allow it at " + page, "They paste ERP_KEY on the same page."}, nil},
 	}
 	for _, c := range cases {
-		e := grantsNeededBlock("d-1", in, c.unset, page, secrets)
+		e := grantsNeededBlock("d-1", in, c.unset, page)
 		if e.Code != "GRANT_NEEDED" || output.ExitCode(e) != output.ExitNeedsHuman {
 			t.Errorf("%s: code %s exit %d", c.name, e.Code, output.ExitCode(e))
 		}
-		wantMsg := "Deploy d-1 waits for a person to grant erp (production) with a new address or recipe; crm (production) with new operations GET /contacts (Read contacts)."
+		wantMsg := "Deploy d-1 waits for an owner or admin to allow: erp (production) with a new address or recipe; crm (production) with new operations GET /contacts (Read contacts)."
 		if e.Message != wantMsg {
 			t.Errorf("%s: message %q", c.name, e.Message)
 		}
@@ -456,13 +456,13 @@ func TestConnectionsCommands(t *testing.T) {
 }
 
 // A deploy blocked on a grant answers GRANT_NEEDED naming the connection, what changed and the
-// connections page, exit 2, whether its error or only its record says so (CLI.md §5.4). One
-// blocked on secrets alone keeps the secrets block.
+// deploy's Allow step, where its keys are pasted too, exit 2, whether its error or only its
+// record says so (CLI.md §5.4). One blocked on secrets alone keeps the secrets block.
 func TestDeployBlockedOnAGrant(t *testing.T) {
 	srv, _ := connectionsAPI(t)
 	defer srv.Close()
 	dir := boundDir(t, srv.URL)
-	page := srv.URL + "/o/acme/apps/crm/connections"
+	page := func(id string) string { return srv.URL + "/o/acme/apps/crm/deploys?approve=" + id }
 
 	r := runRemote(t, dir, srv.URL, nil, "rollback", "d-err", "--json")
 	e, _ := r.JSON["error"].(map[string]any)
@@ -470,14 +470,14 @@ func TestDeployBlockedOnAGrant(t *testing.T) {
 		t.Fatalf("blocked by error: %+v", r)
 	}
 	d := e["details"].(map[string]any)
-	if d["url"] != page || d["deploy_id"] != "d-err" || len(d["grants"].([]any)) != 1 || d["unset_secrets"].([]any)[0] != "ERP_KEY" ||
+	if d["url"] != page("d-err") || d["deploy_id"] != "d-err" || len(d["grants"].([]any)) != 1 || d["unset_secrets"].([]any)[0] != "ERP_KEY" ||
 		!strings.Contains(e["message"].(string), "erp (production) with new operations POST /orders (Create sales orders)") ||
-		!strings.Contains(e["fix"].(string), srv.URL+"/o/acme/apps/crm/secrets?set=ERP_KEY") {
+		!strings.Contains(e["fix"].(string), "They paste ERP_KEY on the same page.") {
 		t.Fatalf("blocked by error: %v", e)
 	}
 
 	r = runRemote(t, dir, srv.URL, nil, "rollback", "d-rec")
-	if r.Code != 2 || !strings.Contains(r.Stderr, "GRANT_NEEDED") || !strings.Contains(r.Stderr, "erp (production) with a new address or recipe") || !strings.Contains(r.Stderr, page) {
+	if r.Code != 2 || !strings.Contains(r.Stderr, "GRANT_NEEDED") || !strings.Contains(r.Stderr, "erp (production) with a new address or recipe") || !strings.Contains(r.Stderr, page("d-rec")) {
 		t.Fatalf("blocked by record: %+v", r)
 	}
 
@@ -512,5 +512,36 @@ func TestAIRows(t *testing.T) {
 	}
 	if aiWindowRows(nil) == nil || aiUnreadableLines(nil) != nil {
 		t.Fatal("no AI part has no rows")
+	}
+}
+
+func TestLimitPlan(t *testing.T) {
+	cases := []struct {
+		name string
+		lim  connect.SpendCap
+		env  string
+		want apitypes.ConnectionEnvironment
+		code string
+	}{
+		{"a month in production", connect.SpendCap{PerMonth: 20}, "production", apitypes.ConnectionProduction, ""},
+		{"previews", connect.SpendCap{PerDay: 1}, "previews", apitypes.ConnectionPreviews, ""},
+		{"no window", connect.SpendCap{}, "production", "", "INVALID_REQUEST"},
+		{"too small", connect.SpendCap{PerMonth: 0.001}, "production", "", "INVALID_REQUEST"},
+		{"not an environment", connect.SpendCap{PerMonth: 20}, "staging", "", "INVALID_REQUEST"},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			got, err := limitPlan(c.lim, c.env)
+			code := ""
+			if e, ok := err.(*output.Error); ok {
+				code = e.Code
+			}
+			if got != c.want || code != c.code || (err == nil) != (c.code == "") {
+				t.Fatalf("limitPlan = %q, %v; want %q, %s", got, err, c.want, c.code)
+			}
+		})
+	}
+	if got := limitSentence("openrouter", apitypes.ConnectionProduction, connect.SpendCap{PerDay: 2, PerMonth: 20}); got != "openrouter may now spend US$2.00 a day, US$20.00 a month in production." {
+		t.Errorf("limitSentence = %q", got)
 	}
 }

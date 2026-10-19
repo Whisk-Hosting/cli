@@ -1,0 +1,9 @@
+# expect: MANIFEST_INVALID database: direct needs the app's database
+whisk: 1
+name: invoicer
+promoted: true
+database: none
+workers:
+  - name: listener
+    command: node dist/listen.js
+    database: direct

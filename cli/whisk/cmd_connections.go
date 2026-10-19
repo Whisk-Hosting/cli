@@ -181,7 +181,42 @@ business. Resuming is a person's, in the dashboard.`,
 	pause.Flags().StringVar(&env, "env", "", "production or previews (default: every environment)")
 	pause.Flags().BoolVar(&all, "all", false, "pause every connection of every app in the business")
 
-	connections.AddCommand(list, show, grant, pause)
+	var lim connect.SpendCap
+	var limitEnv string
+	limit := &cobra.Command{
+		Use:   "limit NAME --per-month USD [--per-day USD] [--per-week USD] [--total USD] [--env production|previews]",
+		Short: "Set how much an AI connection may spend, as your person chose",
+		Long: `Sets an AI connection's spending limit in US dollars, in force from the next call: calls
+stopped at the old limit go on at once if the new one is higher. Ask your person how much the app
+may spend first and set what they choose; they can change it themselves on the app's page.
+Without --env it is production's.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			environment, err := limitPlan(lim, limitEnv)
+			if err != nil {
+				return err
+			}
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			out, err := client.SetSpendCap(s.ctx, org, app, args[0], apitypes.SpendCapRequest{Environment: environment, SpendCap: lim})
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "name": args[0], "environment": string(environment), "spend_cap": lim, "ai": out.AI}, func(w io.Writer) {
+				fmt.Fprintln(w, limitSentence(args[0], environment, lim))
+			})
+			return nil
+		},
+	}
+	limit.Flags().Float64Var(&lim.PerDay, "per-day", 0, "US dollars a day (UTC)")
+	limit.Flags().Float64Var(&lim.PerWeek, "per-week", 0, "US dollars a week, from Monday (UTC)")
+	limit.Flags().Float64Var(&lim.PerMonth, "per-month", 0, "US dollars a month (UTC)")
+	limit.Flags().Float64Var(&lim.Total, "total", 0, "US dollars in all")
+	limit.Flags().StringVar(&limitEnv, "env", "production", "production or previews")
+
+	connections.AddCommand(list, show, grant, pause, limit)
 	return connections
 }
 
@@ -366,6 +401,33 @@ func pausePlan(args []string, all bool, env string) (string, apitypes.Connection
 		"Pass --env production or --env previews, or leave it out to pause every environment.", map[string]any{"env": env})
 }
 
+// limitPlan checks limit's flags: at least one window within bounds, and an environment.
+func limitPlan(lim connect.SpendCap, env string) (apitypes.ConnectionEnvironment, error) {
+	if problems := connect.CapProblems(lim); len(problems) > 0 {
+		return "", output.New("INVALID_REQUEST", "A spending limit names at least one of --per-day, --per-week, --per-month or --total, each "+problems[0].Message+".",
+			"Ask your person how much the app may spend, then run whisk connections limit NAME --per-month <dollars>.", nil)
+	}
+	switch e := apitypes.ConnectionEnvironment(env); e {
+	case apitypes.ConnectionProduction, apitypes.ConnectionPreviews:
+		return e, nil
+	}
+	return "", output.New("INVALID_REQUEST", fmt.Sprintf("--env %q is not an environment a connection is allowed in.", env),
+		"Pass --env production or --env previews.", map[string]any{"env": env})
+}
+
+// limitSentence says what a limit is now, window by window.
+func limitSentence(name string, env apitypes.ConnectionEnvironment, lim connect.SpendCap) string {
+	words := map[string]string{connect.PeriodDay: "a day", connect.PeriodWeek: "a week", connect.PeriodMonth: "a month", connect.PeriodTotal: "in all"}
+	caps := lim.Caps()
+	var parts []string
+	for _, p := range connect.Periods {
+		if v, ok := caps[p]; ok {
+			parts = append(parts, fmt.Sprintf("US$%.2f %s", v, words[p]))
+		}
+	}
+	return fmt.Sprintf("%s may now spend %s in %s.", name, strings.Join(parts, ", "), env)
+}
+
 // pauseSentence says what a pause did. name "" is pause --all.
 func pauseSentence(name string, env apitypes.ConnectionEnvironment, changed int) string {
 	grants := "grants"
@@ -400,16 +462,10 @@ func operationList(ops []connect.Operation) string {
 	return strings.Join(parts, ", ")
 }
 
-// grantsPage is where an owner or admin approves what a deploy waits on: the connections page
-// when only connections wait, else the blocked deploy, where one tap approves every kind
-// (CONTROL-PLANE.md §6.5).
-func grantsPage(dash, org, app, deployID string, grants []api.GrantNeeded) string {
-	for _, g := range grants {
-		if g.Kind != apitypes.GrantConnection {
-			return appPage(dash, org, app, "/deploys?approve="+url.QueryEscape(deployID))
-		}
-	}
-	return connectionsURL(dash, org, app)
+// allowPage is where an owner or admin allows what a production deploy waits on, every kind at
+// once with the keys it needs: the blocked deploy's Allow step (CONTROL-PLANE.md §6.5).
+func allowPage(dash, org, app, deployID string) string {
+	return appPage(dash, org, app, "/deploys?approve="+url.QueryEscape(deployID))
 }
 
 // grantChange says what one waiting grant would allow that the last one did not: for a shared
@@ -457,31 +513,24 @@ func blockedDetail(d *werrors.Detail) ([]api.GrantNeeded, []string) {
 	return grants, unset
 }
 
-// grantsNeededBlock is the deploy's answer when it waits on a person's grant (CLI.md §5.4):
-// GRANT_NEEDED naming each thing it waits on, what changed and the page where an owner or admin
-// approves it, exit 2. Unset secrets the deploy also needs are named with the paste form's link.
-func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string, page, secretsPage string) *output.Error {
+// grantsNeededBlock is the deploy's answer when it waits on a person (CLI.md §5.4): GRANT_NEEDED
+// naming each thing it waits on, what changed and the Allow step where an owner or admin allows
+// it and pastes any keys it also needs, exit 2.
+func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string, page string) *output.Error {
 	listed := make([]api.GrantNeeded, len(grants))
 	names := make([]string, len(grants))
 	changes := make([]string, len(grants))
-	connectionsOnly := true
 	for i, g := range grants {
 		if g.NewOperations == nil {
 			g.NewOperations = []connect.Operation{}
 		}
 		listed[i], names[i], changes[i] = g, g.Name, grantChange(g)
-		connectionsOnly = connectionsOnly && g.Kind == apitypes.GrantConnection
 	}
 	unset = nonNilStrings(unset)
-	message := fmt.Sprintf("Deploy %s waits for a person to grant %s.", deployID, strings.Join(changes, "; "))
-	fix := fmt.Sprintf("Ask an owner or admin to review and grant %s at %s, and tell them plainly what each operation lets the app do. Do not try to grant it yourself: only a person, freshly signed in, can. The deploy starts when it is granted.",
-		strings.Join(names, ", "), page)
-	if !connectionsOnly {
-		message = fmt.Sprintf("Deploy %s waits for an owner or admin to approve: %s.", deployID, strings.Join(changes, "; "))
-		fix = fmt.Sprintf("Ask an owner or admin to approve it at %s: it takes one tap there, signed in. Tell them plainly what each item lets the app do. Do not try to approve it yourself: only a person, freshly signed in, can. The deploy starts when it is approved.", page)
-	}
+	message := fmt.Sprintf("Deploy %s waits for an owner or admin to allow: %s.", deployID, strings.Join(changes, "; "))
+	fix := fmt.Sprintf("Ask an owner or admin to allow it at %s: it takes one step there, signed in. Tell them plainly what each item lets the app do. Do not try to allow it yourself: only a person, freshly signed in, can. The deploy starts when it is allowed.", page)
 	if len(unset) > 0 {
-		fix += fmt.Sprintf(" It also needs values for %s, set at %s.", strings.Join(unset, ", "), pasteURL(secretsPage, unset))
+		fix += fmt.Sprintf(" They paste %s on the same page.", strings.Join(unset, ", "))
 	}
 	return &output.Error{
 		Code:    "GRANT_NEEDED",
@@ -490,6 +539,17 @@ func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string
 		Docs:    werrors.DocsBase + "GRANT_NEEDED",
 		Details: map[string]any{"deploy_id": deployID, "grants": listed, "names": names, "unset_secrets": unset, "url": page},
 	}
+}
+
+// keysPage is where a blocked deploy's keys are pasted: the page the control plane named (a
+// production deploy's Allow step), else the app's keys page with its paste form open.
+func keysPage(d *werrors.Detail, secretsPage string, names []string) string {
+	if d != nil && d.Code == "SECRET_UNSET" && d.Details != nil {
+		if u, ok := d.Details["url"].(string); ok && strings.Contains(u, "?approve=") {
+			return u
+		}
+	}
+	return pasteURL(secretsPage, names)
 }
 
 // aiWindowRows are an AI connection's windows: each cap, what was spent, and whether calls run.

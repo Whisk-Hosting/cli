@@ -127,6 +127,10 @@ type AppPromoted struct {
 	Since   time.Time `json:"since"`
 	By      string    `json:"by"`
 	InForce bool      `json:"in_force"`
+	// PaidUntil is the billing day the promotion is paid to, absent while nothing was charged;
+	// EndsAt is when it stops, absent unless it was switched off with a billing month paid.
+	PaidUntil *time.Time `json:"paid_until,omitempty"`
+	EndsAt    *time.Time `json:"ends_at,omitempty"`
 }
 
 // AppBoosted is when an app was given Boost and by whom (a user id), whether it is in force
@@ -137,6 +141,10 @@ type AppBoosted struct {
 	By          string    `json:"by"`
 	InForce     bool      `json:"in_force"`
 	MemoryBytes int64     `json:"memory_bytes"`
+	// PaidUntil is the billing day Boost is paid to, absent while nothing was charged; EndsAt is
+	// when it comes off, absent unless it was taken off with a billing month paid.
+	PaidUntil *time.Time `json:"paid_until,omitempty"`
+	EndsAt    *time.Time `json:"ends_at,omitempty"`
 }
 
 // AppProblem is the latest thing that stopped the app answering: CONTAINER_CRASHED with the

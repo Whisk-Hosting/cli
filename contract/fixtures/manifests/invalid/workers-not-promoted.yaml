@@ -1,0 +1,6 @@
+# expect: MANIFEST_INVALID workers come only with Promoted apps
+whisk: 1
+name: invoicer
+workers:
+  - name: jobs
+    command: node dist/worker.js

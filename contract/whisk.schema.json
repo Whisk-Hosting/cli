@@ -267,6 +267,13 @@
       "type": "boolean",
       "default": false
     },
+    "workers": {
+      "description": "Long-running processes a Promoted app runs beside its web process, in the same container and memory: one copy of each, restarted when it exits. Needs promoted: true.",
+      "type": "array",
+      "items": { "$ref": "#/$defs/worker" },
+      "maxItems": 10,
+      "default": []
+    },
     "calls": {
       "description": "Slugs of apps in the same org this app may call with its service identity. A call needs the other app's consent: it must list this app under accepted_callers.",
       "type": "array",
@@ -564,6 +571,30 @@
       "pattern": "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$",
       "minLength": 1,
       "maxLength": 64
+    },
+    "worker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "command"],
+      "properties": {
+        "name": {
+          "description": "The worker's name, unique in the app; WHISK_WORKER carries it and its log lines start [worker:<name>].",
+          "type": "string",
+          "pattern": "^[a-z]([a-z0-9-]{0,28}[a-z0-9])?$"
+        },
+        "command": {
+          "description": "The worker's command, run like migrate: through sh -c when the image has /bin/sh, otherwise split into words.",
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "database": {
+          "description": "pooled: DATABASE_URL is the app's pooled connection. direct: DATABASE_URL is a session connection, so LISTEN, advisory locks and SET work; the app's workers hold at most 3 such connections at once.",
+          "type": "string",
+          "enum": ["pooled", "direct"],
+          "default": "pooled"
+        }
+      }
     },
     "function": {
       "type": "object",

@@ -447,8 +447,10 @@ func Secrets(c Connection) []string {
 }
 
 // Canonical is the connection as stable JSON: what a person granted is compared byte for byte.
+// An AI connection's spend cap is left out: the person sets it on the grant (CONTRACT.md §3.1).
 func Canonical(c Connection) string {
 	c = c.WithDefaults()
+	c.AI = c.AI.WithoutCap()
 	ops := append([]Operation(nil), c.Operations...)
 	sort.Slice(ops, func(i, j int) bool { return opKey(ops[i]) < opKey(ops[j]) })
 	c.Operations = ops
@@ -491,7 +493,8 @@ func Covers(granted *Connection, wanted Connection) bool {
 }
 
 // Effective is what a running deploy may do: the operations both its manifest and the grant
-// name, provided the address and recipe are the ones granted. It answers nil when nothing is.
+// name, provided the address and recipe are the ones granted, under the grant's spend cap. It
+// answers nil when nothing is.
 func Effective(granted *Connection, running Connection) *Connection {
 	if granted == nil {
 		return nil
@@ -514,14 +517,15 @@ func Effective(granted *Connection, running Connection) *Connection {
 		return nil
 	}
 	r.Operations = ops
+	r.AI = g.AI
 	return &r
 }
 
-// sameAI reports whether two connections ask for the same spend cap, prices and free
-// operations: part of what a person grants.
+// sameAI reports whether two connections ask for the same prices and free operations: part of
+// what a person grants. The spend cap is the grant's own, so it is not compared.
 func sameAI(a, b *AI) bool {
-	x, _ := json.Marshal(a)
-	y, _ := json.Marshal(b)
+	x, _ := json.Marshal(a.WithoutCap())
+	y, _ := json.Marshal(b.WithoutCap())
 	return string(x) == string(y)
 }
 

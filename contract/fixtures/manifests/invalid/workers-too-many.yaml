@@ -1,0 +1,16 @@
+# expect: MANIFEST_INVALID /workers
+whisk: 1
+name: invoicer
+promoted: true
+workers:
+  - {name: a, command: a}
+  - {name: b, command: b}
+  - {name: c, command: c}
+  - {name: d, command: d}
+  - {name: e, command: e}
+  - {name: f, command: f}
+  - {name: g, command: g}
+  - {name: h, command: h}
+  - {name: i, command: i}
+  - {name: j, command: j}
+  - {name: k, command: k}

@@ -36,7 +36,7 @@ func TestCheckAI(t *testing.T) {
 		{"an AI provider without ai", aiConn(nil), []string{"/ai"}},
 		{"Azure OpenAI without ai", func() Connection { c := aiConn(nil); c.URL = "https://acme.openai.azure.com/openai"; return c }(), []string{"/ai"}},
 		{"another API needs no ai", func() Connection { c := aiConn(nil); c.URL = "https://api.example-erp.com/v2"; return c }(), nil},
-		{"no spend cap", aiConn(&AI{Cost: openAIChat().Cost}), []string{"/ai/spend_cap"}},
+		{"no spend cap: the person sets it", aiConn(&AI{Cost: openAIChat().Cost}), nil},
 		{"an empty spend cap", aiConn(&AI{SpendCap: &SpendCap{}, Cost: openAIChat().Cost}), []string{"/ai/spend_cap"}},
 		{"a cap too small", aiConn(&AI{SpendCap: &SpendCap{PerWeek: 0.001}, Cost: openAIChat().Cost}), []string{"/ai/spend_cap/per_week"}},
 		{"a cap too large", aiConn(&AI{SpendCap: &SpendCap{Total: 2000000}, Cost: openAIChat().Cost}), []string{"/ai/spend_cap/total"}},
@@ -63,30 +63,23 @@ func TestCheckAI(t *testing.T) {
 	}
 }
 
-func TestSpendCapWordingTellsTheAgentToAsk(t *testing.T) {
-	ps, _ := Check(aiConn(&AI{Cost: openAIChat().Cost}))
-	if len(ps) == 0 || !strings.Contains(ps[0].Message, "Ask your person") || !strings.Contains(ps[0].Message, "Never choose it yourself") {
-		t.Fatalf("the spend cap's problem must tell the agent to talk it through: %v", ps)
-	}
-}
-
 func TestAIIsPartOfTheGrant(t *testing.T) {
 	granted := aiConn(openAIChat())
 	raised := aiConn(openAIChat())
 	raised.AI.SpendCap.PerMonth = 100
-	if changed, _ := Gaps(&granted, raised); !changed {
-		t.Fatal("a raised cap must wait for a person")
+	if changed, _ := Gaps(&granted, raised); changed {
+		t.Fatal("the agent's suggested cap is not the person's: changing it waits for nobody")
 	}
-	if Effective(&granted, raised) != nil {
-		t.Fatal("a deploy asking for another cap must not run under the old grant")
+	if e := Effective(&granted, raised); e == nil || e.AI.SpendCap.PerMonth != 50 {
+		t.Fatalf("a deploy runs under the cap the person set, whatever whisk.yaml suggests: %+v", e)
 	}
 	cheaper := aiConn(openAIChat())
 	cheaper.AI.Cost[0].USDPerMillion = 0.1
 	if changed, _ := Gaps(&granted, cheaper); !changed {
 		t.Fatal("a changed price must wait for a person")
 	}
-	if Hash(granted) == Hash(raised) {
-		t.Fatal("the cap is part of the version a person grants")
+	if Hash(granted) != Hash(raised) {
+		t.Fatal("the cap is not part of the version a person allows")
 	}
 	if !Covers(&granted, aiConn(openAIChat())) {
 		t.Fatal("the same AI connection is covered")
