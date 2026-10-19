@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -96,7 +95,9 @@ func formParts(fields map[string]string, filename, fileType string) (head, tail 
 		}
 	}
 	h := textproto.MIMEHeader{}
-	h.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{"name": "file", "filename": filename}))
+	// As multipart.CreateFormFile writes it: name first, both quoted. Stores parse it strictly,
+	// so the order and quoting of mime.FormatMediaType are refused.
+	h.Set("Content-Disposition", `form-data; name="file"; filename="`+quoteEscaper.Replace(filename)+`"`)
 	h.Set("Content-Type", fileType)
 	if _, err := w.CreatePart(h); err != nil {
 		return nil, nil, "", err
@@ -109,6 +110,8 @@ func formParts(fields map[string]string, filename, fileType string) (head, tail 
 	tail = append([]byte(nil), buf.Bytes()...)
 	return head, tail, w.FormDataContentType(), nil
 }
+
+var quoteEscaper = strings.NewReplacer("\\", "\\\\", `"`, "\\\"")
 
 // counting reports how much has been read through it.
 type counting struct {

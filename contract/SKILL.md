@@ -1111,7 +1111,9 @@ the conversion runs. To put a public video on another website, use the absolute 
 (`https://<app host>/.whisk/player.js`) with the same element, or an iframe of
 `https://<app host>/.whisk/media/<id>/embed`. `GET /.whisk/media/<id>` (from the page) says the
 status, duration, size and sources; `PATCH /v1/orgs/<org>/apps/<app>/uploads/<id>`
-`{"visibility": "public"}` changes who may watch. Converting is a monthly allowance (minutes of
+`{"visibility": "public"}` changes who may watch. The largest copy Whisk makes is 1080p, so when a site already has a
+1080p encode of a video, upload that rather than a 4K original: it plays the same and goes up
+many times faster. Converting is a monthly allowance (minutes of
 media); past it, new videos play as uploaded until the month turns.
 
 **Images.** Never resize pictures in your app or serve the original of a photo. Authorise the

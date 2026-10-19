@@ -98,3 +98,16 @@ func TestRestoreErrorReadsWrapped(t *testing.T) {
 		}
 	}
 }
+
+// TestFormPartsHeader: the file part's header is written as multipart.CreateFormFile writes it,
+// name first and both quoted, which is the only form RustFS accepts.
+func TestFormPartsHeader(t *testing.T) {
+	head, _, _, err := formParts(map[string]string{"key": "k"}, `walk "through".mp4`, "video/mp4")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := `Content-Disposition: form-data; name="file"; filename="walk \"through\".mp4"`
+	if !strings.Contains(string(head), want) || !strings.Contains(string(head), "Content-Type: video/mp4") {
+		t.Errorf("file part header:\n%s", head)
+	}
+}

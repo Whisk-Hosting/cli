@@ -30,7 +30,7 @@ var (
 )
 
 // partWorkers is how many parts go at once: enough to fill a long, thin line to the store.
-const partWorkers = 3
+const partWorkers = 6
 
 // partsState is an upload in parts this computer started, kept until the store joins it.
 type partsState struct {
