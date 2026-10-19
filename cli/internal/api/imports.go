@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
@@ -40,42 +41,48 @@ func (c *Client) ImportDatabase(ctx context.Context, org, app, id string, swap b
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", map[string]any{"import": id, "swap": swap}, &out)
 }
 
-// uploadWindow bounds one dump's upload: the largest an import takes, over a slow line.
+// uploadWindow bounds one form post: the largest file a form takes (5 GB), over a slow line.
 const uploadWindow = 6 * time.Hour
 
 // UploadDump posts the dump through the form, size bytes read from r, reporting the bytes sent
-// so far to progress. The body is the form's fields and then the file, with its length known
-// up front, since an object store refuses a post of unknown length.
+// so far to progress.
 func (c *Client) UploadDump(ctx context.Context, auth ImportAuthorisation, r io.Reader, size int64, progress func(sent int64)) error {
-	head, tail, contentType, err := formParts(auth.Fields)
+	return c.postForm(ctx, auth.URL, auth.Fields, "dump.pgc", "application/octet-stream", r, size, progress)
+}
+
+// postForm posts a file to an object store's pre-signed form: the form's fields and then the
+// file, size bytes read from r, with its length known up front, since an object store refuses a
+// post of unknown length. The store is sent no token.
+func (c *Client) postForm(ctx context.Context, url string, fields map[string]string, filename, contentType string, r io.Reader, size int64, progress func(sent int64)) error {
+	head, tail, formType, err := formParts(fields, filename, contentType)
 	if err != nil {
 		return err
 	}
 	body := io.MultiReader(bytes.NewReader(head), &counting{r: io.LimitReader(r, size), report: progress}, bytes.NewReader(tail))
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, auth.URL, body)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return err
 	}
 	req.ContentLength = int64(len(head)) + size + int64(len(tail))
-	req.Header.Set("Content-Type", contentType)
+	req.Header.Set("Content-Type", formType)
 	req.Header.Set("User-Agent", c.UserAgent)
 	hc := runhttp.Client(uploadWindow)
 	hc.CheckRedirect = SafeRedirect
 	res, err := hc.Do(req)
 	if err != nil {
-		return fmt.Errorf("uploading the dump: %w", err)
+		return fmt.Errorf("uploading: %w", err)
 	}
 	defer res.Body.Close()
 	if res.StatusCode/100 != 2 {
 		msg, _ := io.ReadAll(io.LimitReader(res.Body, 512))
-		return fmt.Errorf("the store refused the dump: %s %s", res.Status, strings.TrimSpace(string(msg)))
+		return fmt.Errorf("the store refused it: %s %s", res.Status, strings.TrimSpace(string(msg)))
 	}
 	return nil
 }
 
 // formParts is a multipart form's bytes before and after the file: every field, in a stable
 // order, then the file part's header; and the closing boundary. Pure apart from the boundary.
-func formParts(fields map[string]string) (head, tail []byte, contentType string, err error) {
+func formParts(fields map[string]string, filename, fileType string) (head, tail []byte, contentType string, err error) {
 	var buf bytes.Buffer
 	w := multipart.NewWriter(&buf)
 	names := make([]string, 0, len(fields))
@@ -89,8 +96,8 @@ func formParts(fields map[string]string) (head, tail []byte, contentType string,
 		}
 	}
 	h := textproto.MIMEHeader{}
-	h.Set("Content-Disposition", `form-data; name="file"; filename="dump.pgc"`)
-	h.Set("Content-Type", "application/octet-stream")
+	h.Set("Content-Disposition", mime.FormatMediaType("form-data", map[string]string{"name": "file", "filename": filename}))
+	h.Set("Content-Type", fileType)
 	if _, err := w.CreatePart(h); err != nil {
 		return nil, nil, "", err
 	}

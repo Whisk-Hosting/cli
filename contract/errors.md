@@ -2585,6 +2585,32 @@ Fix: Ask for a form with `max_bytes` at or under the limit in `details`, or spli
 {"error":{"code":"UPLOAD_TOO_LARGE","message":"An upload may be at most 5 GB; this form asked for 6.0 GB.","fix":"Ask for a form with max_bytes up to 5368709120, or split the file.","docs":"https://skill.whisk.run/errors/UPLOAD_TOO_LARGE","details":{"max_bytes":6442450944,"limit_bytes":5368709120}}}
 ```
 
+## UPLOAD_NOT_RESUMABLE
+
+Status: 410 · Surface: api, cli
+
+When: an upload in parts was carried on or completed after the store dropped its parts (three
+days after it started), or with an `upload_id` that is not the one its authorisation answered.
+
+Fix: Upload the file again from the start; `whisk uploads add` does this by itself.
+
+```json
+{"error":{"code":"UPLOAD_NOT_RESUMABLE","message":"01JA-hero.mp4 can no longer be carried on: its parts were dropped or it was never started in parts.","fix":"Upload the file again from the start, such as with whisk uploads add.","docs":"https://skill.whisk.run/errors/UPLOAD_NOT_RESUMABLE","details":{"upload":"01JA"}}}
+```
+
+## UPLOAD_PARTS_MISSING
+
+Status: 409 · Surface: api
+
+When: an upload in parts was completed before the store held every part at its size.
+
+Fix: Send the parts in `details.missing`, asking `POST …/uploads/<id>/parts` for fresh URLs,
+then complete it again.
+
+```json
+{"error":{"code":"UPLOAD_PARTS_MISSING","message":"01JA-hero.mp4 has 78 of its 80 parts; parts 41, 79 are not stored yet.","fix":"Send the missing parts, using POST …/uploads/<id>/parts for fresh URLs, then complete it again.","docs":"https://skill.whisk.run/errors/UPLOAD_PARTS_MISSING","details":{"upload":"01JA","missing":[41,79]}}}
+```
+
 ## OBJECT_QUARANTINED
 
 Status: 410 · Surface: api

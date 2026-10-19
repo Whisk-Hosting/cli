@@ -8,10 +8,11 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// uploadsCmd is the app's uploaded files (CLI.md §5.9): signed links to private images and
-// video, and the key they are signed with.
+// uploadsCmd is the app's uploaded files (CLI.md §5.9): adding them from this computer, reading
+// how their scan and conversion went, signed links to private images and video, and the key
+// they are signed with.
 func uploadsCmd(s *session) *cobra.Command {
-	uploads := &cobra.Command{Use: "uploads", Short: "Signed links to an app's private images and video"}
+	uploads := &cobra.Command{Use: "uploads", Short: "Add files to an app's storage, see them, and sign links to private ones"}
 
 	var expires time.Duration
 	link := &cobra.Command{
@@ -69,6 +70,6 @@ func uploadsCmd(s *session) *cobra.Command {
 	}
 	rotate.Flags().BoolVar(&now, "now", false, "stop every link already issued at once")
 
-	uploads.AddCommand(link, rotate)
+	uploads.AddCommand(uploadsAddCmd(s), uploadsListCmd(s), uploadsShowCmd(s), link, rotate)
 	return uploads
 }

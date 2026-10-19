@@ -1092,7 +1092,11 @@ back. Objects are virus-scanned; an infected one moves to `quarantine/` and read
 `OBJECT_QUARANTINED`. One upload may be up to 5 GB (`max_bytes` 5368709120). The business's storage
 allowance counts its files, its databases and its apps' git repositories alike, so images and
 media committed to the repository use the allowance too; put what visitors or staff add in
-storage, not in git.
+storage, not in git. Files you bring yourself, such as the videos and photos of a website you are
+moving to Whisk, go up with `whisk uploads add <file>... [--public] [--wait]`, which prints each
+upload's id and the element that shows it; if it stops part way, run the same command again and
+it carries on; `whisk uploads list` and `whisk uploads show <id>`
+read them back.
 
 **Video and audio.** Never stream video through your app or hand out the 15-minute read link
 for it. Authorise the upload as above with its real `content_type` (`video/mp4`,
