@@ -989,7 +989,7 @@ func TestSecretsCommands(t *testing.T) {
 	if e["code"] != "NEEDS_HUMAN" || e["details"].(map[string]any)["url"] != appURL+"?set=STRIPE_SECRET_KEY" || e["details"].(map[string]any)["name"] != "STRIPE_SECRET_KEY" {
 		t.Fatalf("set error: %v", e)
 	}
-	// Several names get one link that opens the paste form with a line for each.
+	// Several names get one link that opens a field for each.
 	r = runRemote(t, dir, srv.URL, git, "secrets", "set", "STRIPE_SECRET_KEY", "XERO_CLIENT_SECRET", "--json")
 	e = r.JSON["error"].(map[string]any)
 	if r.Code != 2 || e["details"].(map[string]any)["url"] != appURL+"?set=STRIPE_SECRET_KEY,XERO_CLIENT_SECRET" || len(e["details"].(map[string]any)["names"].([]any)) != 2 || !strings.Contains(e["message"].(string), "need values") {

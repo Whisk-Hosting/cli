@@ -542,7 +542,7 @@ func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string
 }
 
 // keysPage is where a blocked deploy's keys are pasted: the page the control plane named (a
-// production deploy's Allow step), else the app's keys page with its paste form open.
+// production deploy's Allow step), else the app's keys page with a field open for each key.
 func keysPage(d *werrors.Detail, secretsPage string, names []string) string {
 	if d != nil && d.Code == "SECRET_UNSET" && d.Details != nil {
 		if u, ok := d.Details["url"].(string); ok && strings.Contains(u, "?approve=") {

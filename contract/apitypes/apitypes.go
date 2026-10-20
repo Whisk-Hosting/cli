@@ -297,8 +297,11 @@ type Secret struct {
 	Managed bool        `json:"managed"`
 	// Previews says whether preview environments receive the secret; a secret reaches a
 	// preview only when a person shares it with previews.
-	Previews   bool       `json:"previews"`
+	Previews bool `json:"previews"`
+	// SetBy is the ID of the person who set the current value, and SetByName how a person
+	// reads them: their name, else their email.
 	SetBy      string     `json:"set_by,omitempty"`
+	SetByName  string     `json:"set_by_name,omitempty"`
 	SetAt      *time.Time `json:"set_at,omitempty"`
 	LastReadAt *time.Time `json:"last_read_at,omitempty"`
 	Consumers  []string   `json:"consumers"` // app IDs
@@ -315,11 +318,14 @@ type Secret struct {
 
 // SecretVersion is one stored value's metadata.
 type SecretVersion struct {
-	Version   int       `json:"version"`
-	Length    int       `json:"length"`
-	CreatedBy string    `json:"created_by"`
-	Note      string    `json:"note,omitempty"`
-	CreatedAt time.Time `json:"created_at"`
+	Version int `json:"version"`
+	Length  int `json:"length"`
+	// CreatedBy is the ID of the person who stored the value, and CreatedByName how a person
+	// reads them: their name, else their email.
+	CreatedBy     string    `json:"created_by"`
+	CreatedByName string    `json:"created_by_name,omitempty"`
+	Note          string    `json:"note,omitempty"`
+	CreatedAt     time.Time `json:"created_at"`
 }
 
 // SecretRead is one delivery.

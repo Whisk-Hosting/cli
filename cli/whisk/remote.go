@@ -65,8 +65,8 @@ func keyURL(page, name string) string {
 	return page + "?key=" + url.QueryEscape(name)
 }
 
-// pasteURL is the secrets page with its paste form open on a line for each name, so a person
-// pastes every value in one go (DASHBOARD.md §4.7).
+// pasteURL is the secrets page with a field open for each name, so a person sets every value
+// and saves once (DASHBOARD.md §4.7).
 func pasteURL(page string, names []string) string {
 	if len(names) == 0 {
 		return page
@@ -79,7 +79,7 @@ func pasteURL(page string, names []string) string {
 }
 
 // needsHumanSecrets is the block printed when declared secrets have no value. Its URL opens
-// the paste form ready for those names.
+// a field for each of those names.
 func needsHumanSecrets(names []string, page string) *output.Error {
 	url := pasteURL(page, names)
 	return &output.Error{
