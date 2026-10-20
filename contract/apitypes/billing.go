@@ -120,6 +120,23 @@ type Billing struct {
 	Promoted   BillingPromoted `json:"promoted"`
 	// Boosted is the business's boosted apps in force and the monthly price of Boost on each.
 	Boosted BillingPromoted `json:"boosted"`
+	// Licences is the monthly licences of the business's copies of priced demos that have not
+	// ended (CONTROL-PLANE.md §6.1 Demos, "A price").
+	Licences []BillingLicence `json:"licences"`
+}
+
+// BillingLicence is one copy's monthly licence on the billing page: the copy's app, the
+// business it came from and the company it was made for, its price a month, where it stands and
+// the day it is paid to or, once cancelled, ends.
+type BillingLicence struct {
+	ID           string      `json:"id"`
+	App          string      `json:"app,omitempty"`
+	AppName      string      `json:"app_name"`
+	From         string      `json:"from"`
+	Company      string      `json:"company"`
+	MonthlyCents int64       `json:"monthly_cents"`
+	Status       DemoLicence `json:"status"`
+	Until        *time.Time  `json:"until,omitempty"`
 }
 
 // BillingPromoted is the business's Promoted (or boosted) apps in force and the monthly price of

@@ -77,29 +77,36 @@ type MintedToken struct {
 
 // Demo is an app made a demo for another company (CONTROL-PLANE.md §6.1 Demos). Domain is the
 // company's email domain; only an email there may take a copy. URL is the demo's link. EndsAt is
-// when it ends and its app is deleted; none runs until stopped.
+// when it ends and its app is deleted; none runs until stopped. OnceCents and MonthlyCents are its
+// price in US cents, 0 for none; PaidCents is what its copies' paid invoices came to.
 type Demo struct {
-	ID      string       `json:"id"`
-	Org     string       `json:"org"`
-	App     string       `json:"app"`
-	AppName string       `json:"app_name"`
-	AppURL  string       `json:"app_url"`
-	Company string       `json:"company"`
-	Domain  string       `json:"domain"`
-	EndsAt  *time.Time   `json:"ends_at,omitempty"`
-	URL     string       `json:"url"`
-	MadeBy  string       `json:"made_by"`
-	MadeAt  time.Time    `json:"made_at"`
-	People  []DemoPerson `json:"people"`
-	Copies  []DemoCopy   `json:"copies"`
+	ID           string       `json:"id"`
+	Org          string       `json:"org"`
+	App          string       `json:"app"`
+	AppName      string       `json:"app_name"`
+	AppURL       string       `json:"app_url"`
+	Company      string       `json:"company"`
+	Domain       string       `json:"domain"`
+	EndsAt       *time.Time   `json:"ends_at,omitempty"`
+	OnceCents    int64        `json:"once_cents"`
+	MonthlyCents int64        `json:"monthly_cents"`
+	PaidCents    int64        `json:"paid_cents"`
+	URL          string       `json:"url"`
+	MadeBy       string       `json:"made_by"`
+	MadeAt       time.Time    `json:"made_at"`
+	People       []DemoPerson `json:"people"`
+	Copies       []DemoCopy   `json:"copies"`
 }
 
 // DemoRequest makes an app a demo or changes one. EndsAt is a day (2026-11-30, through its end in
-// UTC) or RFC 3339; empty is no end.
+// UTC) or RFC 3339; empty is no end. OnceCents and MonthlyCents are the price of a copy in US
+// cents; 0 or none is free.
 type DemoRequest struct {
-	Company string `json:"company"`
-	Domain  string `json:"domain"`
-	EndsAt  string `json:"ends_at,omitempty"`
+	Company      string `json:"company"`
+	Domain       string `json:"domain"`
+	EndsAt       string `json:"ends_at,omitempty"`
+	OnceCents    int64  `json:"once_cents,omitempty"`
+	MonthlyCents int64  `json:"monthly_cents,omitempty"`
 }
 
 // DemoPeopleRequest invites someone to try a demo.
@@ -123,10 +130,25 @@ type DemoPerson struct {
 type DemoCopyStatus string
 
 const (
+	// DemoCopyPaying is a copy of a priced demo waiting on its payment at CheckoutURL;
+	// DemoCopyExpired is one whose checkout ended unpaid, so nothing was made.
+	DemoCopyPaying  DemoCopyStatus = "paying"
+	DemoCopyExpired DemoCopyStatus = "expired"
 	DemoCopyQueued  DemoCopyStatus = "queued"
 	DemoCopyRunning DemoCopyStatus = "running"
 	DemoCopyDone    DemoCopyStatus = "done"
 	DemoCopyFailed  DemoCopyStatus = "failed"
+)
+
+// DemoLicence is where the monthly licence of a copy of a priced demo stands: paid and renewing,
+// a payment failed, cancelled to end with the month paid for, or ended.
+type DemoLicence string
+
+const (
+	LicenceActive  DemoLicence = "active"
+	LicencePastDue DemoLicence = "past_due"
+	LicenceEnding  DemoLicence = "ending"
+	LicenceEnded   DemoLicence = "ended"
 )
 
 // DemoCopyStep is the step a copy is on, or done.
@@ -141,9 +163,13 @@ const (
 	DemoStepDone     DemoCopyStep = "done"
 )
 
-// DemoCopy is one copy of a demo: the business it is in (OrgName, Org its slug), its app once
-// made, and how far it is. SecretsURL is the new app's secrets page with every name still
-// without a value preloaded, while there is one.
+// DemoCopy is one copy of a demo: the business it is in (OrgName, Org its slug; Org is empty for
+// a new business until its payment is confirmed), its app once made, and how far it is.
+// SecretsURL is the new app's secrets page with every name still without a value preloaded,
+// while there is one. A copy of a priced demo carries the price charged (OnceCents,
+// MonthlyCents), what its paid invoices came to (PaidCents), its licence and the day it is paid
+// to or ends (LicenceUntil), and, while it is paying, its checkout's URL for the person who
+// asked for it.
 type DemoCopy struct {
 	ID         string          `json:"id"`
 	Org        string          `json:"org"`
@@ -159,30 +185,42 @@ type DemoCopy struct {
 	SecretsURL string          `json:"secrets_url,omitempty"`
 	CreatedAt  time.Time       `json:"created_at"`
 	DoneAt     *time.Time      `json:"done_at,omitempty"`
+
+	CheckoutURL  string      `json:"checkout_url,omitempty"`
+	OnceCents    int64       `json:"once_cents,omitempty"`
+	MonthlyCents int64       `json:"monthly_cents,omitempty"`
+	PaidCents    int64       `json:"paid_cents,omitempty"`
+	Licence      DemoLicence `json:"licence,omitempty"`
+	LicenceUntil *time.Time  `json:"licence_until,omitempty"`
 }
 
 // DemoOffer is what a demo's link shows the person who opens it, signed in: the app, the business
-// it is in, the company (with a slug for a new business), the businesses the person owns, and
-// whether they may take a copy, with the refusal when not.
+// it is in, the company (with a slug for a new business), the price of a copy in US cents (0 for
+// none), the businesses the person owns, and whether they may take a copy, with the refusal
+// when not.
 type DemoOffer struct {
-	App         string          `json:"app"`
-	AppName     string          `json:"app_name"`
-	AppURL      string          `json:"app_url"`
-	Business    string          `json:"business"`
-	Company     string          `json:"company"`
-	CompanySlug string          `json:"company_slug"`
-	Domain      string          `json:"domain"`
-	MadeBy      string          `json:"made_by"`
-	Email       string          `json:"email"`
-	Owned       []DemoBusiness  `json:"owned"`
-	CanCopy     bool            `json:"can_copy"`
-	Refusal     *werrors.Detail `json:"refusal,omitempty"`
+	App          string          `json:"app"`
+	AppName      string          `json:"app_name"`
+	AppURL       string          `json:"app_url"`
+	Business     string          `json:"business"`
+	Company      string          `json:"company"`
+	CompanySlug  string          `json:"company_slug"`
+	Domain       string          `json:"domain"`
+	MadeBy       string          `json:"made_by"`
+	Email        string          `json:"email"`
+	OnceCents    int64           `json:"once_cents"`
+	MonthlyCents int64           `json:"monthly_cents"`
+	Owned        []DemoBusiness  `json:"owned"`
+	CanCopy      bool            `json:"can_copy"`
+	Refusal      *werrors.Detail `json:"refusal,omitempty"`
 }
 
-// DemoBusiness is one of the businesses a person owns, offered as a copy's home.
+// DemoBusiness is one of the businesses a person owns, offered as a copy's home. Free is set on
+// one of Whisk's own businesses, which takes a copy of a priced demo without paying.
 type DemoBusiness struct {
 	Slug string `json:"slug"`
 	Name string `json:"name"`
+	Free bool   `json:"free,omitempty"`
 }
 
 // DemoCopyRequest asks for a copy: into Org (a business the person owns, by slug) or into a new

@@ -129,7 +129,8 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("PersonRequestStatus", "PERSON_REQUEST_STATUSES", PersonRequestPending, PersonRequestApproved, PersonRequestDeclined, PersonRequestFailed, PersonRequestExpired))
 	add(enumOf("PersonRequestAskedOf", "PERSON_REQUEST_ASKED_OF", AskedOfPerson, AskedOfOwners))
 	add(enumOf("DemoKind", "DEMO_KINDS", HandoverClient))
-	add(enumOf("DemoCopyStatus", "DEMO_COPY_STATUSES", DemoCopyQueued, DemoCopyRunning, DemoCopyDone, DemoCopyFailed))
+	add(enumOf("DemoCopyStatus", "DEMO_COPY_STATUSES", DemoCopyPaying, DemoCopyExpired, DemoCopyQueued, DemoCopyRunning, DemoCopyDone, DemoCopyFailed))
+	add(enumOf("DemoLicence", "DEMO_LICENCES", LicenceActive, LicencePastDue, LicenceEnding, LicenceEnded))
 	add(enumOf("DemoCopyStep", "DEMO_COPY_STEPS", DemoStepApp, DemoStepCode, DemoStepSecrets, DemoStepFiles, DemoStepDatabase, DemoStepDone))
 	add(enumOf("NotificationChannel", "NOTIFICATION_CHANNELS", ChannelEmail, ChannelSlack, ChannelWebhook))
 	add(enumOf("ExportStatus", "EXPORT_STATUSES", ExportQueued, ExportRunning, ExportDone, ExportFailed, ExportExpired))
@@ -182,7 +183,7 @@ var wire = []any{
 	// feedback.go
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{},
 	// billing.go
-	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, OrgRef{},
+	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingLicence{}, OrgRef{},
 	PlanCheckout{}, PlanQuote{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
 	PayDetails{}, PayStep{}, ClientBusiness{}, Handover{}, Clients{}, ClientAdded{},
 	HandoverMade{}, ClientOverview{}, ClientUsage{}, RebateSettlement{}, Payouts{}, Rebates{},

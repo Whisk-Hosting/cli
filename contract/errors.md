@@ -801,6 +801,36 @@ Fix: Wait for that copy to finish on the demo's page, or choose another business
 {"error":{"code":"DEMO_COPY_RUNNING","message":"A copy of ledger is already being made in Summit Builders.","fix":"Wait for it to finish on the demo's page, or choose another business.","docs":"https://skill.whisk.run/errors/DEMO_COPY_RUNNING","details":{"copy":"01JC4T2A9Q7N4ZK2X0DMB1VQ8H"}}}
 ```
 
+## DEMO_PRICE_INVALID
+
+Status: 400 · Surface: api, cli, dashboard
+
+When: a demo was given a price Stripe cannot charge: below zero, above zero but under 50 cents
+(Stripe's smallest charge), or over $999,999.99 one-off or $99,999.99 a month. `details.field`
+names the price (`once_cents` or `monthly_cents`) and `details.cents` what was sent. A price of 0
+or none is free.
+
+Fix: Send the price in whole US cents within those bounds, or 0 for none.
+
+```json
+{"error":{"code":"DEMO_PRICE_INVALID","message":"A one-off price of 25 cents is under Stripe's smallest charge of 50 cents.","fix":"Send once_cents of at least 50, or 0 for no one-off price.","docs":"https://skill.whisk.run/errors/DEMO_PRICE_INVALID","details":{"field":"once_cents","cents":25}}}
+```
+
+## DEMO_NOT_PAID
+
+Status: 409 · Surface: api, dashboard
+
+When: something was asked of a copy of a priced demo that is still waiting on its payment, or
+whose checkout ended unpaid. Nothing is made until Stripe confirms the payment; an ended checkout
+made nothing, no business and no copy. `details.status` is `paying` or `expired`.
+
+Fix: Pay on the checkout page (`details.checkout_url`) while it is open, or take the copy again
+from the demo's link for a new one.
+
+```json
+{"error":{"code":"DEMO_NOT_PAID","message":"The copy of ledger has not been paid for.","fix":"Pay on the checkout page, or take the copy again from the demo's link.","docs":"https://skill.whisk.run/errors/DEMO_NOT_PAID","details":{"status":"expired"}}}
+```
+
 ## APP_MOVE_RUNNING
 
 Status: 409 · Surface: api, dashboard
