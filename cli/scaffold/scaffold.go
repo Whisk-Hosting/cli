@@ -8,11 +8,13 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 
+	"github.com/whisk-run/cli/internal/hostfiles"
 	"github.com/whisk-run/cli/internal/stack"
 )
 
@@ -62,8 +64,10 @@ func ManifestName(slug string) string {
 	return strconv.Quote(slug)
 }
 
-// Manifest returns a commented whisk.yaml for a slug and stack.
-func Manifest(slug string, s stack.Stack) string {
+// Manifest returns a commented whisk.yaml for a slug and stack, carrying across what the app's
+// previous host's files said (hostfiles.Read): its migrate step, health path, Dockerfile, secret
+// names, settings, Redis and workers, with what is left to do by hand as comments at the top.
+func Manifest(slug string, s stack.Stack, h hostfiles.Found) string {
 	var b strings.Builder
 	w := func(lines ...string) {
 		for _, l := range lines {
@@ -71,34 +75,83 @@ func Manifest(slug string, s stack.Stack) string {
 		}
 	}
 	w("# whisk.yaml, conventions version 1. `whisk schema` documents every field;",
-		"# `whisk doctor` checks this file and the code against the conventions.",
-		"whisk: 1",
+		"# `whisk doctor` checks this file and the code against the conventions.")
+	if !h.Empty() {
+		w("#", "# Written from "+strings.Join(h.Files, ", ")+".")
+		if len(h.Notes) > 0 {
+			w("# Still to do by hand:")
+			for _, n := range h.Notes {
+				w(comment("- "+n, "  ")...)
+			}
+		}
+	}
+	health := "/health"
+	if strings.HasPrefix(h.Health, "/") {
+		health = h.Health
+	}
+	public := `["/", "/health"]`
+	if health != "/health" {
+		public = fmt.Sprintf(`["/", %q]`, health)
+	}
+	w("whisk: 1",
 		"name: "+ManifestName(slug),
 		"",
 		"routes:",
 		"  # Anyone can reach these paths; every other path needs a signed-in member of the org.",
 		"  # `*` matches within a path segment, `**` across segments.",
-		`  public: ["/", "/health"]`,
+		"  public: "+public,
 		"",
 		"health:",
-		"  path: /health   # must answer 200 once the app can serve",
+		"  path: "+health+"   # must answer 200 once the app can serve",
 		"  timeout: 90",
 		"",
 		"database: app   # app (its own database), shared:<name>, or none")
 	switch {
+	case h.Migrate != "":
+		w(fmt.Sprintf("migrate: %q   # runs before each deploy with DATABASE_URL set", h.Migrate))
 	case s.Migrate != "":
 		w(fmt.Sprintf("migrate: %q   # runs before each deploy with DATABASE_URL set", s.Migrate))
 	default:
 		w("# migrate: \"<command>\"   # runs before each deploy with DATABASE_URL set, for example", "#   node dist/migrate.js, alembic upgrade head, ./server migrate")
 	}
+	if d := strings.TrimPrefix(h.Dockerfile, "./"); d != "" && d != "Dockerfile" {
+		w("", "build:", fmt.Sprintf("  dockerfile: %q", d))
+	}
+	w("", "# Names of values a human sets in the dashboard; read them from the environment.")
+	if len(h.Secrets) == 0 {
+		w("secrets: []")
+	} else {
+		w("secrets:")
+		for _, n := range h.Secrets {
+			w("  - " + n)
+		}
+	}
+	w("", "# Plain configuration the app reads from the environment.")
+	if len(h.Env) == 0 {
+		w("# env:", "#   LOG_LEVEL: info")
+	} else {
+		w("env:")
+		for _, k := range sortedKeys(h.Env) {
+			w(fmt.Sprintf("  %s: %q", k, h.Env[k]))
+		}
+	}
+	if h.KV {
+		w("", "kv: true   # a Redis-protocol store of the app's own, as WHISK_KV_URL")
+	}
+	if len(h.Workers) > 0 {
+		w("",
+			"# Workers run beside the web process, one copy each, and only in a Promoted app:",
+			"# production waits for an owner to promote it. database: direct gives a worker a",
+			"# session connection, for queues that LISTEN or take advisory locks.",
+			"promoted: true",
+			"workers:")
+		for _, wk := range h.Workers {
+			w("  - name: "+wk.Name,
+				fmt.Sprintf("    command: %q", wk.Command),
+				"    database: "+wk.Database)
+		}
+	}
 	w("",
-		"# Names of values a human sets in the dashboard; read them from the environment.",
-		"secrets: []",
-		"",
-		"# Plain configuration the app reads from the environment.",
-		"# env:",
-		"#   LOG_LEVEL: info",
-		"",
 		"# Scheduled and event-driven functions, each with a declared graph.",
 		"# functions:",
 		"#   - name: nightly-summary",
@@ -115,6 +168,29 @@ func Manifest(slug string, s stack.Stack) string {
 		"#     secret: STRIPE_WEBHOOK_SECRET",
 		"#     handler: /hooks/stripe")
 	return b.String()
+}
+
+// comment wraps text into YAML comment lines of at most 100 characters, continuing with indent.
+func comment(text, indent string) []string {
+	var out []string
+	line := "#"
+	for _, word := range strings.Fields(hostfiles.Clean(text)) {
+		if len(line)+1+len(word) > 100 && line != "#" {
+			out = append(out, line)
+			line = "# " + indent[1:]
+		}
+		line += " " + word
+	}
+	return append(out, line)
+}
+
+func sortedKeys(m map[string]string) []string {
+	out := make([]string, 0, len(m))
+	for k := range m {
+		out = append(out, k)
+	}
+	sort.Strings(out)
+	return out
 }
 
 // GitignoreLines are the entries every app repository needs.

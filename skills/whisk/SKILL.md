@@ -83,6 +83,10 @@ An app on Whisk is a stateless HTTP server in a container.
 9. Start fast. Under five seconds from process start to health 200 is the target, because
    sleeping apps wake on demand.
 
+**Limits.** Every plan's limits are in one table at https://whisk.run/usage: memory, processor,
+storage, database connections, workflow runs, email, requests, domains and outbound traffic.
+Read it before building anything that has to grow, and design inside it.
+
 **Keep it light.** Memory is what an app costs to run, and a small app wakes fast and is never
 killed for running out. Stream large files and query results in chunks (storage reads, CSV and
 spreadsheet parsing, database cursors) instead of loading them whole into memory or `/tmp`.
@@ -202,8 +206,13 @@ Drizzle), `--template py` (FastAPI, SQLAlchemy, Alembic), `--template go` (chi, 
 a plain starter (a notes page, a health route, one event function; a few hundred lines, the Go
 one about 900) that passes doctor with zero warnings, deploys with nothing for a person to set,
 and shows the conventions below working. `whisk init --template` works in a folder holding only
-dot-files and `CLAUDE.md` or `AGENTS.md`. Existing code deploys too: add a `whisk.yaml`, make it
-follow the rules, run doctor.
+dot-files and `CLAUDE.md` or `AGENTS.md`. Existing code deploys too: `whisk init` in its folder
+writes `whisk.yaml` for it, carrying across what its previous host's Procfile, `app.json`,
+`render.yaml`, `railway.json`, `railway.toml` or `fly.toml` says (migrate step, workers, health
+path, Dockerfile, secret names, settings) and listing at the top what is left to do by hand. Keep
+what the app already does for itself (its own sign-in and job queue on a Promoted app, its payment
+provider) and move what Whisk does for it: files to storage, mail to `email: true`, scheduled
+commands to functions, backups to Whisk's. Then make it follow the rules and run doctor.
 
 **Everything `whisk.yaml` takes.** Unknown keys are errors; `whisk schema` prints the JSON schema.
 Settings marked paid are refused with `PLAN_FEATURE` on the free app, except `kv`, which
@@ -1014,8 +1023,13 @@ link's `MARKET`, one per market) may have several on one app, listed there as `i
 `managed:` block (`product:`, `name:`, `settings:`, `links:`, `link_key:`, `variants:`, `notify:`) only means
 something in Whisk's own source apps; elsewhere it is ignored.
 
-**Keeping data in.** `egress: closed` lets the app reach only its own database and cache, the
-apps it calls, its connections and email, never the rest of the internet. Use it for an app
+**Reaching the internet.** By default (`egress: open`) an app calls any public internet address
+itself, on any port but the mail ports (25, 465, 587: send mail with `email: true`), over IPv4.
+Private and internal addresses are unreachable, and an app opens at most 200 new connections a
+second. So an app can deliver its customers' webhooks to the addresses they give it and call
+public APIs directly; for a service a person grants access to, use a connection (below), so the
+app never holds the key. `egress: closed` lets the app reach only its own database and cache,
+the apps it calls, its connections and email, never the rest of the internet: use it for an app
 that holds data it must never send anywhere else.
 
 **Services outside Whisk: connections.** Reach an outside API (an ERP, accounting, CRM, a

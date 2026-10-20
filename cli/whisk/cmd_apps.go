@@ -15,6 +15,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/config"
+	"github.com/whisk-run/cli/internal/hostfiles"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/cli/internal/safefile"
 	"github.com/whisk-run/cli/internal/stack"
@@ -32,7 +33,9 @@ func initCmd(s *session) *cobra.Command {
 		Short: "Write whisk.yaml for this directory (or copy a template into an empty one) and create the app",
 		Long: `Detects the stack (package.json, pyproject.toml, go.mod, Dockerfile), writes a commented
 whisk.yaml, adds .whisk/dev/ and .env* to .gitignore and, when --template is given into an empty
-directory, copies the template. It then creates the app on the platform and binds the directory,
+directory, copies the template. An app moving from another host keeps what its Procfile, app.json,
+render.yaml, railway.json, railway.toml or fly.toml says: migrate step, workers, health path,
+Dockerfile, secret names and settings, with what is left to do listed in whisk.yaml. It then creates the app on the platform and binds the directory,
 unless --no-create. Safe to run again: existing files are kept.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -47,6 +50,7 @@ unless --no-create. Safe to run again: existing files are kept.`,
 				return output.New("INVALID_REQUEST", err.Error(), "Choose 3 to 40 characters of a-z, 0-9 and single hyphens.", nil)
 			}
 			var wrote, kept []string
+			var host hostfiles.Found
 			empty, err := scaffold.IsEmptyDir(dir)
 			if err != nil {
 				return err
@@ -74,8 +78,9 @@ unless --no-create. Safe to run again: existing files are kept.`,
 			}
 			if !hasManifest {
 				files := scaffold.ListFiles(dir)
-				st := stack.Detect(files, func(p string) []byte { b, _ := os.ReadFile(filepath.Join(dir, p)); return b })
-				if err := safefile.Write(dir, "whisk.yaml", []byte(scaffold.Manifest(slug, st)), 0o644); err != nil {
+				read := func(p string) []byte { b, _ := os.ReadFile(filepath.Join(dir, p)); return b }
+				host = hostfiles.Read(files, read)
+				if err := safefile.Write(dir, "whisk.yaml", []byte(scaffold.Manifest(slug, stack.Detect(files, read), host)), 0o644); err != nil {
 					return err
 				}
 				wrote = append(wrote, "whisk.yaml")
@@ -111,6 +116,10 @@ unless --no-create. Safe to run again: existing files are kept.`,
 			}
 
 			result := map[string]any{"name": slug, "wrote": wrote, "kept": kept}
+			if !host.Empty() {
+				result["from"] = host.Files
+				result["todo"] = host.Notes
+			}
 			binding, bound, _ := config.LoadBinding(dir)
 			var app *createdApp
 			if !noCreate && !bound {
@@ -145,6 +154,12 @@ unless --no-create. Safe to run again: existing files are kept.`,
 				}
 				if len(kept) > 0 {
 					fmt.Fprintf(w, "Kept %s.\n", strings.Join(kept, ", "))
+				}
+				if !host.Empty() {
+					fmt.Fprintf(w, "Read %s.\n", strings.Join(host.Files, ", "))
+					for _, n := range host.Notes {
+						fmt.Fprintln(w, "To do: "+n)
+					}
 				}
 				switch {
 				case app != nil:
