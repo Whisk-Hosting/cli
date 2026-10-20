@@ -36,7 +36,7 @@ without it. This lists the apps and prints where an owner or admin changes the l
 			if err != nil {
 				return wrap(err)
 			}
-			url := orgPage(s.dashboard(), org, "/keys")
+			url := keyURL(orgPage(s.dashboard(), org, "/keys"), args[0])
 			sec, ok := businessSecret(all, args[0])
 			if !ok {
 				return output.New("NOT_FOUND", fmt.Sprintf("The business shares no secret named %s.", args[0]),

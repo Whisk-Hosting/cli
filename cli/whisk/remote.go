@@ -59,6 +59,12 @@ func secretsURL(dash, org, app string) string {
 	return appPage(dash, org, app, "/secrets")
 }
 
+// keyURL is a keys page opened on the one key name (DASHBOARD.md §4.7): its row marked, with its
+// value form open when it has none, else a business key's apps.
+func keyURL(page, name string) string {
+	return page + "?key=" + url.QueryEscape(name)
+}
+
 // pasteURL is the secrets page with its paste form open on a line for each name, so a person
 // pastes every value in one go (DASHBOARD.md §4.7).
 func pasteURL(page string, names []string) string {

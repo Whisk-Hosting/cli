@@ -1043,12 +1043,15 @@ list of apps for (CONTROL-PLANE.md §6.7 Grants). The preview never waits: it st
 secret, and the deploy carries this warning with the names in `details.names`. A production
 deploy waits instead, with `GRANT_NEEDED`.
 
+`details.url` opens that one key on the business's Keys page when one secret is named
+(`?key=NAME`), else the Keys page.
+
 Fix: If the app should use it, ask an owner or admin to add the app to the secret's apps on the
 business's Keys page, or to approve the production deploy that waits for it. A preview also
 needs the secret shared with previews.
 
 ```json
-{"error":{"code":"SECRET_NOT_GRANTED","message":"The preview started without the shared secret MAPS_KEY: crm is not on the list of apps the business shares it with.","fix":"If the app should use it, ask an owner or admin to add crm to its apps at https://whisk.run/o/acme/keys, or to approve the production deploy that waits for it. A preview also needs the secret shared with previews.","docs":"https://skill.whisk.run/errors/SECRET_NOT_GRANTED","details":{"names":["MAPS_KEY"],"url":"https://whisk.run/o/acme/keys"}}}
+{"error":{"code":"SECRET_NOT_GRANTED","message":"The preview started without the shared secret MAPS_KEY: crm is not on the list of apps the business shares it with.","fix":"If the app should use it, ask an owner or admin to add crm to its apps at https://whisk.run/o/acme/keys?key=MAPS_KEY, or to approve the production deploy that waits for it. A preview also needs the secret shared with previews.","docs":"https://skill.whisk.run/errors/SECRET_NOT_GRANTED","details":{"names":["MAPS_KEY"],"url":"https://whisk.run/o/acme/keys?key=MAPS_KEY"}}}
 ```
 
 ## CONFIRMATION_NEEDED

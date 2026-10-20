@@ -84,4 +84,7 @@ func TestSecretApps(t *testing.T) {
 	if got := secretAppsSentence("MAPS_KEY", nil); got != "MAPS_KEY reaches no app yet." {
 		t.Errorf("none %q", got)
 	}
+	if got := keyURL("https://whisk.run/o/acme/keys", "MAPS_KEY"); got != "https://whisk.run/o/acme/keys?key=MAPS_KEY" {
+		t.Errorf("key url %q", got)
+	}
 }

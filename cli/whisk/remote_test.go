@@ -1015,7 +1015,7 @@ func TestSecretsCommands(t *testing.T) {
 		t.Fatalf("set --previews=false: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, git, "secrets", "link", "STRIPE_SECRET_KEY", "--json")
-	if r.Code != 0 || r.JSON["url"] != appURL {
+	if r.Code != 0 || r.JSON["url"] != appURL+"?key=STRIPE_SECRET_KEY" {
 		t.Fatalf("link: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, git, "secrets", "list", "--json")

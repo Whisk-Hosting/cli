@@ -160,7 +160,7 @@ branch's code.`,
 			if err != nil {
 				return err
 			}
-			url := secretsURL(s.dashboard(), org, app)
+			url := keyURL(secretsURL(s.dashboard(), org, app), args[0])
 			s.printer.Result(map[string]any{"org": org, "app": app, "name": args[0], "url": url}, func(w io.Writer) {
 				fmt.Fprintf(w, "Set %s at %s\n", args[0], url)
 			})
