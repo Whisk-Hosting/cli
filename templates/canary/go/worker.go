@@ -34,6 +34,7 @@ func runWorker() error {
 		return err
 	}
 	defer conn.Close(context.Background())
+	// doctor: allow W024 the worker runs on a direct connection, which keeps both; H02 deploys the canary without declaring it.
 	for _, stmt := range []string{fmt.Sprintf("select pg_advisory_lock(%d)", workerLock), "listen " + workerChannel} {
 		if _, err := conn.Exec(ctx, stmt); err != nil {
 			return err

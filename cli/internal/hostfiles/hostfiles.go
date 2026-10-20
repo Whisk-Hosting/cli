@@ -213,10 +213,11 @@ func fits(v string, max int) bool {
 }
 
 // Clean makes text safe for a YAML comment or a terminal line: valid UTF-8, with every control
-// character a space.
+// character, line or paragraph separator (each ends a YAML comment) and character YAML refuses
+// in a stream (U+FFFE, U+FFFF) a space.
 func Clean(text string) string {
 	return strings.Map(func(r rune) rune {
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || unicode.In(r, unicode.Zl, unicode.Zp) || r == 0xFFFE || r == 0xFFFF {
 			return ' '
 		}
 		return r

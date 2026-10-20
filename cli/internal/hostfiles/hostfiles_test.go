@@ -265,3 +265,20 @@ func manyWorkers(n int) string {
 	}
 	return b.String()
 }
+
+// Clean leaves nothing a YAML comment line cannot hold, and nothing that would end it early.
+func TestClean(t *testing.T) {
+	cases := map[string]string{
+		"plain words":            "plain words",
+		"a\x00b\nc\td":           "a b c d",
+		"\ufffe\uffff!":          "  !",
+		"bad \xff byte":          "bad ? byte",
+		"\u00e9 \u2028 b: c":     "\u00e9   b: c",
+		"\u0085\u2029x \ufeff y": "  x \ufeff y",
+	}
+	for in, want := range cases {
+		if got := Clean(in); got != want {
+			t.Errorf("Clean(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
