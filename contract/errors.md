@@ -1279,14 +1279,31 @@ Fix: Ask an owner or admin to set it on the app's Keys page (`whisk secrets link
 Status: 502 · Surface: container
 
 When: the connection's token step did not return a token: the endpoint refused, answered
-without the token at the named field, or could not be reached. `details.status` is its status;
-its body is never passed on.
+without the token at the named field, or could not be reached; or renewing a person's sign-in
+failed in a way that is not the system refusing it (a timeout, a 5xx). `details.status` is its
+status; its body is never passed on.
 
 Fix: Check the token step in whisk.yaml against the system's documentation, and ask the human
 whether the keys it sends are right.
 
 ```json
 {"error":{"code":"CONNECTION_TOKEN_FAILED","message":"The token endpoint for erp answered 401.","fix":"Check the token step and ask the human whether ERP_ID and ERP_SECRET are right.","docs":"https://skill.whisk.run/errors/CONNECTION_TOKEN_FAILED","details":{"connection":"erp","status":401}}}
+```
+
+## CONNECTION_SIGN_IN_NEEDED
+
+Status: 409 · Surface: container
+
+When: the connection signs in to the outside system (`auth.sign_in`) and nobody has signed in
+for this environment yet, or the system stopped accepting the sign-in (someone disconnected the
+app at the system, or it went unused too long). Nothing was sent. `details.url` is the app's
+Keys tab, where an owner or admin signs in; `details.state` is `needed` or `lapsed`.
+
+Fix: Ask an owner or admin to open the link and press "Sign in", then retry. The app keeps
+running meanwhile; only calls through this connection wait.
+
+```json
+{"error":{"code":"CONNECTION_SIGN_IN_NEEDED","message":"Nobody has signed in to Xero for the connection xero in production yet.","fix":"Ask an owner or admin to sign in at https://whisk.run/o/acme/apps/payroll/secrets, then retry.","docs":"https://skill.whisk.run/errors/CONNECTION_SIGN_IN_NEEDED","details":{"connection":"xero","environment":"production","state":"needed","url":"https://whisk.run/o/acme/apps/payroll/secrets"}}}
 ```
 
 ## CONNECTION_UPSTREAM

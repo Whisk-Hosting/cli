@@ -431,7 +431,7 @@
         },
         "pin": { "description": "The one certificate key the host may present: sha256/ and the base64 SHA-256 of its public key info.", "type": "string", "pattern": "^sha256/[A-Za-z0-9+/]{43}=$" },
         "auth": {
-          "description": "The recipe: templates set on every call, and an optional token step.",
+          "description": "The recipe: templates set on every call, and an optional token step or sign-in.",
           "type": "object",
           "additionalProperties": false,
           "properties": {
@@ -444,6 +444,23 @@
               "maxProperties": 8,
               "propertyNames": { "pattern": "^/", "maxLength": 200 },
               "additionalProperties": { "type": "string", "maxLength": 2048 }
+            },
+            "sign_in": {
+              "description": "A person signs in to the system (OAuth 2 authorization code with PKCE); Whisk keeps and renews the sign-in and places its access token as {token}. Not with token.",
+              "type": "object",
+              "additionalProperties": false,
+              "required": ["authorize", "token", "client_id"],
+              "properties": {
+                "label": { "description": "The system's name on the button, Sign in to <label>.", "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9 .&'()-]{0,39}$" },
+                "authorize": { "type": "string", "maxLength": 500 },
+                "token": { "type": "string", "maxLength": 500 },
+                "client_id": { "type": "string", "maxLength": 2048 },
+                "client_secret": { "type": "string", "maxLength": 2048 },
+                "client_auth": { "type": "string", "enum": ["basic", "form"] },
+                "scopes": { "type": "array", "maxItems": 50, "items": { "type": "string", "pattern": "^[\\x21\\x23-\\x5B\\x5D-\\x7E]{1,200}$" } },
+                "params": { "type": "object", "maxProperties": 4, "propertyNames": { "pattern": "^[A-Za-z0-9_.-]{1,64}$" }, "additionalProperties": { "type": "string", "minLength": 1, "maxLength": 200 } },
+                "revoke": { "description": "The provider's revocation address (RFC 7009), on the token address's host.", "type": "string", "maxLength": 500 }
+              }
             },
             "token": {
               "type": "object",

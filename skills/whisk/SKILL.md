@@ -1061,7 +1061,7 @@ sign-in can be described: `basic(secret.USER, secret.PASSWORD)`; a signature suc
 `{token}`; a signed JWT, `{jwt('RS256', secret.KEY_PEM, json('iss', secret.EMAIL, 'iat',
 time.unix, 'exp', add(time.unix, 3600)))}`. CONTRACT.md §3.1 lists every reference and function.
 
-A person grants each connection, freshly signed in, on the app's Connections page. The
+A person grants each connection, freshly signed in, on the app's Keys tab. The
 first production deploy, and any deploy that changes the address or recipe or adds an
 operation, waits with `GRANT_NEEDED`: relay its names and link to the human, and say plainly
 what each operation lets the app do. Previews are refused until a person grants previews too.
@@ -1074,7 +1074,15 @@ at each of its pointers; the broker fills in the key. A system with its own cert
 (ask the human for its public key's hash). When the outside system wants a certificate you upload
 (NetSuite), name `keypair: {secret: NAME}` and sign with that secret: never make or ask for a
 private key; the human presses "Make key pair" on the connections page and uploads the
-certificate it offers. Send plain paths with the real method: dot segments, `;` parameters and method
+certificate it offers. When the system wants a person to sign in and allow the app (Xero,
+MYOB, QuickBooks, Google, Microsoft: "OAuth", "Connect to Xero"), name `auth.sign_in` with a `label` (the
+system's name, for its "Sign in to …" button), its `authorize` and `token` addresses, the client ID and secret as `{secret.NAME}` and the scopes
+(include the one that keeps the sign-in, such as `offline_access`), and put `Bearer {token}` in a
+header; tell the human to register an app with the system whose redirect URI is
+`https://auth.whisk.run/connections/callback`, set its ID and secret, and press "Sign in" on
+the connections page once they allow it. Until then calls are `CONNECTION_SIGN_IN_NEEDED`;
+relay its link. Anything else the system wants on each call (Xero's `Xero-Tenant-Id`) the app
+reads through the connection and sends itself. Send plain paths with the real method: dot segments, `;` parameters and method
 override headers are refused. Redirects come back to you unfollowed, and a credential the API
 echoes back arrives as `[redacted by Whisk]`. If the app may be misbehaving, `whisk connections pause NAME` stops
 its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).

@@ -72,7 +72,13 @@ type Auth struct {
 	// sends a placeholder at each pointer and the broker replaces it (PlaceBody).
 	Body  map[string]string `json:"body,omitempty"`
 	Token *TokenStep        `json:"token,omitempty"`
+	// SignIn, in place of Token, is a person's sign-in at the system that Whisk keeps and renews;
+	// its access token is placed as {token} (CONTRACT.md §3.1 "Signing in").
+	SignIn *SignIn `json:"sign_in,omitempty"`
 }
+
+// HasToken reports whether the recipe has a {token} to place: a token step's or a sign-in's.
+func (a Auth) HasToken() bool { return a.Token != nil || a.SignIn != nil }
 
 // TokenStep fetches a short-lived token the recipe then places as {token}. The broker keeps it
 // until it expires (or Lifetime seconds when the answer says nothing) and fetches it again
@@ -191,6 +197,10 @@ func (c Connection) WithDefaults() Connection {
 		}
 		c.Auth.Token = &t
 	}
+	if c.Auth.SignIn != nil {
+		si := c.Auth.SignIn.withDefaults()
+		c.Auth.SignIn = &si
+	}
 	ops := make([]Operation, len(c.Operations))
 	for i, o := range c.Operations {
 		o.Method = strings.ToUpper(o.Method)
@@ -229,7 +239,7 @@ func Check(c Connection) ([]Problem, []string) {
 		}
 		secrets = append(secrets, s...)
 	}
-	call := Context{Request: true, Token: c.Auth.Token != nil}
+	call := Context{Request: true, Token: c.Auth.HasToken()}
 	if c.Auth.Token != nil && len(c.Auth.Headers) == 0 && len(c.Auth.Query) == 0 && len(c.Auth.Body) == 0 {
 		add("/auth", "the token step's token is never placed; use {token} in a header or query value")
 	}
@@ -260,8 +270,9 @@ func Check(c Connection) ([]Problem, []string) {
 				add(p, "inside the placement at %s", other)
 			}
 		}
-		tmpl(p, c.Auth.Body[k], Context{Token: c.Auth.Token != nil})
+		tmpl(p, c.Auth.Body[k], Context{Token: c.Auth.HasToken()})
 	}
+	checkSignIn(c, add, tmpl)
 	if t := c.Auth.Token; t != nil {
 		step := Context{}
 		if msg := checkURL(t.URL); msg != "" {
@@ -647,7 +658,7 @@ type Placed struct {
 // Apply renders a connection's recipe for one call. token is the current token when the
 // connection has a token step.
 func Apply(c Connection, env Env) (Placed, error) {
-	ctx := Context{Request: true, Token: c.Auth.Token != nil}
+	ctx := Context{Request: true, Token: c.Auth.HasToken()}
 	out := Placed{Headers: http.Header{}, Query: url.Values{}}
 	for _, k := range sortedKeys(c.Auth.Headers) {
 		v, err := render(c.Auth.Headers[k], ctx, env)
@@ -696,7 +707,7 @@ func PlaceBody(c Connection, env Env, body []byte) ([]byte, error) {
 		return nil, err
 	}
 	env.Request = nil
-	ctx := Context{Token: c.Auth.Token != nil}
+	ctx := Context{Token: c.Auth.HasToken()}
 	for _, k := range sortedKeys(c.Auth.Body) {
 		v, err := render(c.Auth.Body[k], ctx, env)
 		if err != nil {

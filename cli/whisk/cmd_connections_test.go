@@ -266,8 +266,8 @@ func TestGrantsNeededBlock(t *testing.T) {
 }
 
 func TestGrantBlock(t *testing.T) {
-	e := grantBlock("erp", "acme", "crm", "https://whisk.run/o/acme/apps/crm/connections")
-	if e.Code != "NEEDS_HUMAN" || output.ExitCode(e) != output.ExitNeedsHuman || e.Details["url"] != "https://whisk.run/o/acme/apps/crm/connections" || e.Details["name"] != "erp" {
+	e := grantBlock("erp", "acme", "crm", "https://whisk.run/o/acme/apps/crm/secrets")
+	if e.Code != "NEEDS_HUMAN" || output.ExitCode(e) != output.ExitNeedsHuman || e.Details["url"] != "https://whisk.run/o/acme/apps/crm/secrets" || e.Details["name"] != "erp" {
 		t.Errorf("block: %+v", e)
 	}
 	if !strings.Contains(e.Fix, "whisk connections show erp") {
@@ -367,7 +367,7 @@ func TestConnectionsCommands(t *testing.T) {
 	srv, calls := connectionsAPI(t)
 	defer srv.Close()
 	dir := boundDir(t, srv.URL)
-	page := srv.URL + "/o/acme/apps/crm/connections"
+	page := srv.URL + "/o/acme/apps/crm/secrets"
 
 	r := runRemote(t, dir, srv.URL, nil, "connections", "list", "--json")
 	if r.Code != 0 || len(r.JSON["connections"].([]any)) != 2 || r.JSON["url"] != page {

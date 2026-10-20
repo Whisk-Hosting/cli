@@ -363,7 +363,7 @@ func (p *parser) reference(name string) (node, error) {
 		}
 	case "token":
 		if !p.ctx.Token {
-			return bad("token needs a token step under auth.token, and is not available inside it")
+			return bad("token needs a token step under auth.token or a sign-in under auth.sign_in, and is not available inside either")
 		}
 		if len(parts) != 1 {
 			return bad("takes no field")

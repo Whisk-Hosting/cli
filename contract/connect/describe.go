@@ -52,7 +52,7 @@ func Usage(c Connection) []Use {
 			})
 		}
 	}
-	call := Context{Request: true, Token: c.Auth.Token != nil}
+	call := Context{Request: true, Token: c.Auth.HasToken()}
 	host := hostOf(c.URL)
 	for _, k := range sortedKeys(c.Auth.Headers) {
 		visit(c.Auth.Headers[k], host, call)
@@ -61,7 +61,15 @@ func Usage(c Connection) []Use {
 		visit(c.Auth.Query[k], host, call)
 	}
 	for _, k := range sortedKeys(c.Auth.Body) {
-		visit(c.Auth.Body[k], host, Context{Token: c.Auth.Token != nil})
+		visit(c.Auth.Body[k], host, Context{Token: c.Auth.HasToken()})
+	}
+	if si := c.Auth.SignIn; si != nil {
+		// The client's ID and secret go to the token address (and its revocation, on its host).
+		th := hostOf(si.Token)
+		visit(si.ClientID, th, Context{})
+		if si.ClientSecret != "" {
+			visit(si.ClientSecret, th, Context{})
+		}
 	}
 	if t := c.Auth.Token; t != nil {
 		th := hostOf(t.URL)
@@ -147,6 +155,8 @@ type Summary struct {
 	BodyFields []string `json:"body_fields"`
 	// AI is an AI connection's spend cap and prices, which the person grants with it.
 	AI *AISummary `json:"ai,omitempty"`
+	// SignIn is where a person signs in and what they are asked to allow, when the recipe signs in.
+	SignIn *SignInSummary `json:"sign_in,omitempty"`
 }
 
 // SummaryOperation is one operation as enforced, with the app's label beside it.
@@ -182,6 +192,11 @@ func Describe(c Connection) Summary {
 	if c.Auth.Token != nil {
 		s.TokenHost = hostOf(c.Auth.Token.URL)
 		s.Revokes = c.Auth.Token.Revoke != nil || c.Auth.Token.Logout != nil
+	}
+	if si := c.Auth.SignIn; si != nil {
+		s.TokenHost = hostOf(si.Token)
+		s.Revokes = si.Revoke != ""
+		s.SignIn = describeSignIn(si)
 	}
 	for _, o := range c.Operations {
 		s.Operations = append(s.Operations, SummaryOperation{Method: o.Method, Path: o.Path, Verb: verbs[o.Method], Label: o.Name, Body: o.Body})

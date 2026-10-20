@@ -220,10 +220,10 @@ Without --env it is production's.`,
 	return connections
 }
 
-// connectionsURL is the app's connections page, where a person grants, resumes and revokes
-// (DASHBOARD.md §4.7a).
+// connectionsURL is the app's Keys tab, where a person allows, resumes and turns off each
+// outside system (DASHBOARD.md §4.7).
 func connectionsURL(dash, org, app string) string {
-	return appPage(dash, org, app, "/connections")
+	return appPage(dash, org, app, "/secrets")
 }
 
 func findConnection(all []api.Connection, name string) (api.Connection, bool) {

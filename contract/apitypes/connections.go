@@ -88,6 +88,42 @@ type ConnectionGrant struct {
 	// CallsToday and RefusedToday count calls since midnight UTC.
 	CallsToday   int `json:"calls_today"`
 	RefusedToday int `json:"refused_today"`
+	// SignIn is the person's sign-in at the system for this environment, when the recipe signs
+	// in (CONTROL-PLANE.md §6.8 "Signing in").
+	SignIn *ConnectionSignIn `json:"sign_in,omitempty"`
+}
+
+// SignInState is a grant's sign-in: nobody has signed in under the granted recipe, signed in,
+// or the system stopped accepting the sign-in.
+type SignInState string
+
+// Sign-in states.
+const (
+	SignInNeeded SignInState = "needed"
+	SignInActive SignInState = "active"
+	SignInLapsed SignInState = "lapsed"
+)
+
+// ConnectionSignIn is a grant's sign-in at the outside system. Its tokens never leave Whisk.
+type ConnectionSignIn struct {
+	State SignInState `json:"state"`
+	By    string      `json:"by,omitempty"` // the person's name or email
+	At    *time.Time  `json:"at,omitempty"`
+	// Scopes are the scopes the system says it granted, or those the recipe asked for.
+	Scopes       []string   `json:"scopes"`
+	LapsedAt     *time.Time `json:"lapsed_at,omitempty"`
+	LapsedReason string     `json:"lapsed_reason,omitempty"`
+}
+
+// SignInRequest starts a person's sign-in at a connection's system for one environment
+// (POST /orgs/:org/apps/:app/connections/:name/sign-in).
+type SignInRequest struct {
+	Environment ConnectionEnvironment `json:"environment"`
+}
+
+// SignInStart is where to send the person's browser to sign in.
+type SignInStart struct {
+	URL string `json:"url"`
 }
 
 // Connection is one connection an app's active manifests declare (GET
@@ -108,6 +144,9 @@ type Connection struct {
 	// AI is an AI connection's spend against its cap (CONTRACT.md §3.1 AI models); nil for any
 	// other connection.
 	AI *ConnectionAI `json:"ai,omitempty"`
+	// RedirectURI is the address the business gives the app it registers with the system, when
+	// the recipe signs in with the business's own client rather than Whisk's vendor app.
+	RedirectURI string `json:"redirect_uri,omitempty"`
 }
 
 // AIPeriod is one window of an AI connection's spend cap.

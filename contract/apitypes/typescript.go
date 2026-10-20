@@ -102,6 +102,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("ConnectionState", "CONNECTION_STATES", ConnectionActive, ConnectionPaused, ConnectionRevoked))
 	add(enumOf("AIPeriod", "AI_PERIODS", AIDay, AIWeek, AIMonth, AITotal))
 	add(enumOf("BrokerDrop", "BROKER_DROPS", BrokerDropped, BrokerUnreachable))
+	add(enumOf("SignInState", "SIGN_IN_STATES", SignInNeeded, SignInActive, SignInLapsed))
 	add(enumOf("ProviderRevocation", "PROVIDER_REVOCATIONS", ProviderRevoked, ProviderFailed, ProviderNotSupported, ProviderNoneHeld, ProviderUnknown))
 	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderBreakglass))
 	add(enumOf("SubjectKind", "SUBJECT_KINDS", SubjectUser, SubjectGroup, SubjectEveryone))
@@ -212,6 +213,7 @@ var wire = []any{
 	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, GrantAI{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
 	named{"ConnectionAISummary", connect.AISummary{}}, named{"ConnectionAIPart", connect.AIPart{}}, ConnectionAI{}, AIWindow{}, AIUnreadable{},
 	named{"SpendCap", connect.SpendCap{}}, GrantConnectionRequest{}, SpendCapRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
+	named{"ConnectionSignInSummary", connect.SignInSummary{}}, ConnectionSignIn{}, SignInRequest{}, SignInStart{},
 	// grants.go
 	GrantRef{}, KeyValue{}, ApproveDeployRequest{}, ApprovedDeploy{}, ConfirmCodeRequest{}, ConfirmCode{}, ConfirmRequest{}, Confirmed{},
 	GitHubRepo{}, GitHubInstallation{}, GitHubOverview{},
