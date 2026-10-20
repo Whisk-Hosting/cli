@@ -6,6 +6,8 @@ WORKDIR /app
 COPY pyproject.toml uv.lock ./
 # uv's cache persists between builds, so unchanged dependencies are not downloaded again.
 RUN --mount=type=cache,target=/root/.cache/uv uv sync --frozen --no-dev --no-install-project
+# The app runs from uv's virtualenv, so the base image's pip and the old packages it bundles go.
+RUN pip uninstall --yes --root-user-action=ignore pip && rm -rf /usr/local/lib/python3*/ensurepip
 COPY alembic.ini ./
 COPY alembic ./alembic
 COPY app ./app

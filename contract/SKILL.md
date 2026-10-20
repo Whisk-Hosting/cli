@@ -405,7 +405,7 @@ image), deploy, then `whisk scan --now` to check again. A finding with no `fixed
 leave it. For Go, Whisk also checks whether the app's code calls the vulnerable part: a finding
 with `reach: not_called` is listed apart under "Not called by your code" and is not counted as
 one to fix now; update it when convenient, never ahead of the ones to fix. Every other language
-is `unknown` and counts as called. Most image findings come from the operating system in a full base image: the TypeScript
+is `unknown` and counts as called. Python's slim image ships pip, which bundles its own copies of urllib3, msgpack and setuptools that the scan reports; the Python template uninstalls pip after `uv sync`, since the app runs from uv's virtualenv, and an app with its own Dockerfile does the same. Most image findings come from the operating system in a full base image: the TypeScript
 and Go templates run on a distroless image (`gcr.io/distroless/nodejs24-debian13:nonroot` for Node,
 the Python one on `python:3.14-slim`), which has no shell or package manager, so keep `migrate` a plain command such as `node dist/migrate.js`, not `npm run`
 or shell syntax (`whisk doctor` warns, `W062`). An app that needs a system program (ffmpeg,
