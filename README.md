@@ -8,7 +8,7 @@
 </p>
 
 <p align="center">
-  <strong>Hosting for business apps built by AI coding agents. This is its CLI, contract, starter apps and agent skill.</strong>
+  <strong>Hosting for websites, online shops and apps built by AI coding agents. This is its CLI, contract, starter apps and agent skill.</strong>
 </p>
 
 <p align="center">
@@ -32,7 +32,7 @@
 
 ## What Whisk is
 
-Whisk is a hosting platform for business apps written by AI coding agents such as Claude Code,
+Whisk is a hosting platform for websites, online shops and apps written by AI coding agents such as Claude Code,
 Codex, Cursor and Gemini CLI. The agent installs the `whisk` CLI, describes the app in
 `whisk.yaml` and runs `whisk deploy`. The app goes live at `https://<app>--<org>.whisk.page`
 with sign-in, a Postgres database, backups, scheduled jobs, durable workflows, secrets, webhooks

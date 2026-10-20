@@ -137,7 +137,7 @@ func hasJSONFlag(args []string) bool {
 func newRoot(s *session) *cobra.Command {
 	root := &cobra.Command{
 		Use:           "whisk",
-		Short:         "Deploy business apps to Whisk",
+		Short:         "Deploy websites and apps to Whisk",
 		Long:          "whisk is the command coding agents drive and humans occasionally type. Every command has --json; exit codes carry meaning (0 ok, 1 error, 2 needs a human, 3 validation, 4 auth, 5 unavailable, 6 deploy failed). Whisk already provides sign-in, the database, jobs, secrets, storage, video, email, error tracking and logs: use them instead of adding outside services (https://skill.whisk.run/SKILL.md, §1).",
 		SilenceUsage:  true,
 		SilenceErrors: true,

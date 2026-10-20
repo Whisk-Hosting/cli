@@ -13,7 +13,7 @@ Every file it refers to is published beside it at `https://skill.whisk.run/<file
 
 ## 1. What Whisk is
 
-Whisk hosts business apps written by coding agents. An app is a container that speaks HTTP; the
+Whisk hosts websites, online shops, customer portals and internal tools written by coding agents. An app is a container that speaks HTTP; the
 platform adds login, a Postgres database, a queue with durable workflows, secrets, webhooks,
 storage, email and backups, all by convention rather than by SDK. Tenant apps live at
 `<app>.<org>.whisk.page` on a paid plan, `<app>--<org>.whisk.page` on the free plan; the
