@@ -6,6 +6,9 @@ COPY go.mod go.sum ./
 # compiles in seconds rather than rebuilding every dependency.
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY . .
+# The platform's release canary builds this after every push it makes: a sandbox that cannot
+# resolve names fails here, where no cached layer hides it. An app of your own needs no such line.
+RUN nslookup proxy.golang.org > /dev/null
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/server .
 

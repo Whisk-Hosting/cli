@@ -220,6 +220,7 @@ func run() error {
 	r.Get("/diag/connection", diagConnection)
 	r.Get("/diag/notify", diagNotice)
 	r.Get("/diag/env", diagEnv)
+	r.Get("/diag/marker", markerRoute)
 	r.Post("/diag/domains", diagDomains)
 	r.Get("/diag/kv", kvRoute)
 	r.Get("/diag/sync", syncRoute)
