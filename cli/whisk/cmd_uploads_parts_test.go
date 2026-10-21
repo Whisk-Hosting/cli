@@ -20,7 +20,7 @@ import (
 )
 
 // partsAPI is the control plane and the store for an upload in parts, with parts of 4 bytes:
-// the store keeps what each part URL is sent, fails the parts named in failing (once, or for
+// the store keeps each whole part a part URL is sent, fails the parts named in failing (once, or for
 // good when the count is negative), and joins the parts on complete.
 type partsAPI struct {
 	t         *testing.T
@@ -68,7 +68,13 @@ func newPartsAPI(t *testing.T) *partsAPI {
 			t.Error("the store was sent the token")
 		}
 		n, _ := strconv.Atoi(r.PathValue("n"))
-		b, _ := io.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
+		if err != nil || int64(len(b)) != r.ContentLength {
+			// A part cut off mid-send, as when a run stops on another part, is not stored: the
+			// store keeps only whole parts.
+			http.Error(w, "<Error><Code>IncompleteBody</Code></Error>", 400)
+			return
+		}
 		p.mu.Lock()
 		defer p.mu.Unlock()
 		p.puts = append(p.puts, n)
