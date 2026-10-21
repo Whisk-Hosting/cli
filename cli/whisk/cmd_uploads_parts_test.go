@@ -29,6 +29,7 @@ type partsAPI struct {
 	stored    map[int][]byte
 	failing   map[int]int
 	puts      []int
+	active    int // store requests being handled
 	authorise int
 	listed    int
 	joined    []byte
@@ -67,6 +68,14 @@ func newPartsAPI(t *testing.T) *partsAPI {
 		if r.Header.Get("Authorization") != "" {
 			t.Error("the store was sent the token")
 		}
+		p.mu.Lock()
+		p.active++
+		p.mu.Unlock()
+		defer func() {
+			p.mu.Lock()
+			p.active--
+			p.mu.Unlock()
+		}()
 		n, _ := strconv.Atoi(r.PathValue("n"))
 		b, err := io.ReadAll(r.Body)
 		if err != nil || int64(len(b)) != r.ContentLength {
@@ -106,6 +115,23 @@ func newPartsAPI(t *testing.T) *partsAPI {
 	p.srv = httptest.NewServer(mux)
 	t.Cleanup(p.srv.Close)
 	return p
+}
+
+// settle waits until the store has handled every part a stopped run still had on the wire, so
+// a count taken next is not overtaken by a late part.
+func (p *partsAPI) settle() {
+	last := -1
+	for range 100 {
+		p.mu.Lock()
+		n, active := len(p.puts), p.active
+		p.mu.Unlock()
+		if active == 0 && n == last {
+			return
+		}
+		last = n
+		time.Sleep(20 * time.Millisecond)
+	}
+	p.t.Fatal("the store did not settle")
 }
 
 func (p *partsAPI) count() int { return int((p.size + 3) / 4) }
@@ -172,6 +198,7 @@ func TestUploadsAddCarriesOn(t *testing.T) {
 	if r.Code == 0 || errCode(r) != "PLATFORM_UNAVAILABLE" || !strings.Contains(r.Stdout+r.Stderr, "carries on") {
 		t.Fatalf("a part that would not go: %+v", r)
 	}
+	p.settle()
 	p.mu.Lock()
 	delete(p.failing, 3)
 	before := len(p.puts)

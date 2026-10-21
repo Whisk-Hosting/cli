@@ -141,3 +141,18 @@ func TestFailure(t *testing.T) {
 		t.Errorf("other: %s", k)
 	}
 }
+
+func TestRequestID(t *testing.T) {
+	for _, c := range []struct{ name, trace, want string }{
+		{"none", "", ""},
+		{"no header", "12:00:00 http.c:756 <= Recv header: HTTP/2 503\n", ""},
+		{"last wins", "<= Recv header: X-Whisk-Request-Id: AAA\n<= Recv header: X-Whisk-Request-Id: BBB\r\n", "BBB"},
+		{"any case", "<= Recv header: x-whisk-request-id: 01M5E2\n", "01M5E2"},
+		{"sent, not received", "=> Send header: X-Whisk-Request-Id: CCC\n", ""},
+		{"junk refused", "<= Recv header: X-Whisk-Request-Id: a b;c\n", ""},
+	} {
+		if got := RequestID(c.trace); got != c.want {
+			t.Errorf("%s: RequestID = %q, want %q", c.name, got, c.want)
+		}
+	}
+}

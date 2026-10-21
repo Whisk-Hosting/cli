@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -472,6 +473,11 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 		return gitcmd.Sideband{}, gitcmd.PushUnknown, output.New("PLATFORM_UNAVAILABLE", err.Error()+".", "Check WHISK_API points at the Whisk platform you meant, then retry.", map[string]any{"git_url": gitURL})
 	}
 	args := gitcmd.Networked(cargs, "push", "--porcelain", "whisk", plan.Src+":refs/heads/"+plan.Dst)
+	trace, done := pushTrace()
+	defer done()
+	if trace != "" {
+		env = append(env, gitcmd.TraceEnv(trace)...)
+	}
 	started := s.now()
 	res, err := s.gitRun(env, args...)
 	if err != nil {
@@ -506,17 +512,70 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 	}
 	tail := gitcmd.LastLines(res.Stderr, 10)
 	details := map[string]any{"git": tail, "summary": summary}
+	return sb, outcome, withRequestID(pushFailed(res, outcome, summary, tail, details, gitURL, s.goos(), retried, s.now().Sub(started)), readTrace(trace))
+}
+
+// pushFailed is the error for a failed push that carried no whisk error, classified from
+// git's words. Pure.
+func pushFailed(res gitcmd.Result, outcome gitcmd.PushOutcome, summary string, tail []string, details map[string]any, gitURL, goos string, retried bool, took time.Duration) error {
 	switch gitcmd.Failure(res.Stderr, outcome) {
 	case "tls":
-		return sb, outcome, tlsUntrusted(gitHost(gitURL), s.goos(), retried, details)
+		return tlsUntrusted(gitHost(gitURL), goos, retried, details)
 	case "network":
-		return sb, outcome, pushUnreachable(lastLine(tail), s.now().Sub(started), details)
+		return pushUnreachable(lastLine(tail), took, details)
 	case "auth":
-		return sb, outcome, output.New("AUTH_REQUIRED", "The platform refused the token for git push.", "Run whisk login again and approve the code for this app (or the whole org), then retry.", details)
+		return output.New("AUTH_REQUIRED", "The platform refused the token for git push.", "Run whisk login again and approve the code for this app (or the whole org), then retry.", details)
 	case "rejected":
-		return sb, outcome, &output.Error{Code: "INVALID_REQUEST", Message: "The platform rejected the push: " + orDash(summary) + ".", Fix: "Read the server's lines in details.git, fix the cause, and run whisk deploy again.", Docs: werrors.DocsBase + "INVALID_REQUEST", Details: details, Exit: output.ExitValidation}
+		return &output.Error{Code: "INVALID_REQUEST", Message: "The platform rejected the push: " + orDash(summary) + ".", Fix: "Read the server's lines in details.git, fix the cause, and run whisk deploy again.", Docs: werrors.DocsBase + "INVALID_REQUEST", Details: details, Exit: output.ExitValidation}
 	}
-	return sb, outcome, fmt.Errorf("git push failed (exit %d): %s", res.ExitCode, lastLine(tail))
+	return fmt.Errorf("git push failed (exit %d): %s", res.ExitCode, lastLine(tail))
+}
+
+// withRequestID names the platform's request in a failed push's error, as the message's last
+// sentence and details.request_id, so whoever reports the failure can quote it. Pure apart from
+// adding to e's details.
+func withRequestID(err error, id string) error {
+	if id == "" {
+		return err
+	}
+	var e *output.Error
+	if !errors.As(err, &e) {
+		return fmt.Errorf("%w (request %s)", err, id)
+	}
+	if e.Details == nil {
+		e.Details = map[string]any{}
+	}
+	e.Details["request_id"] = id
+	msg := strings.TrimSpace(e.Message)
+	if !strings.HasSuffix(msg, ".") {
+		msg += "."
+	}
+	e.Message = msg + " Request ID: " + id + "."
+	return e
+}
+
+// pushTrace makes the file git writes a push's HTTP headers to, and the function that removes
+// it. The path is "" when no file could be made, and the push goes ahead without one.
+func pushTrace() (string, func()) {
+	f, err := os.CreateTemp("", "whisk-push-*.trace")
+	if err != nil {
+		return "", func() {}
+	}
+	path := f.Name()
+	f.Close()
+	return path, func() { os.Remove(path) }
+}
+
+// readTrace is the request ID in a push's header trace, or "" when there is none to read.
+func readTrace(path string) string {
+	if path == "" {
+		return ""
+	}
+	b, err := os.ReadFile(path)
+	if err != nil {
+		return ""
+	}
+	return gitcmd.RequestID(string(b))
 }
 
 // slowPush is how long a push runs before a lost connection is put down to the upload's size

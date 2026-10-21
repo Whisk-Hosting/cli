@@ -315,3 +315,30 @@ func LastLines(text string, n int) []string {
 	}
 	return kept
 }
+
+// TraceEnv is the environment that has one git invocation write the headers of each HTTP
+// exchange to path, never a body, with credentials and cookies redacted, so a failure can name
+// the request the platform logged.
+func TraceEnv(path string) []string {
+	return []string{"GIT_TRACE_CURL=" + path, "GIT_TRACE_CURL_NO_DATA=1", "GIT_TRACE_REDACT=1"}
+}
+
+var reRequestID = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
+
+// RequestID is the X-Whisk-Request-Id of the last response a GIT_TRACE_CURL trace received,
+// or "" when none carried one. Pure.
+func RequestID(trace string) string {
+	id := ""
+	for _, line := range strings.Split(trace, "\n") {
+		_, header, ok := strings.Cut(line, "<= Recv header:")
+		if !ok {
+			continue
+		}
+		name, value, ok := strings.Cut(header, ":")
+		value = strings.TrimSpace(value)
+		if ok && strings.EqualFold(strings.TrimSpace(name), "X-Whisk-Request-Id") && reRequestID.MatchString(value) {
+			id = value
+		}
+	}
+	return id
+}

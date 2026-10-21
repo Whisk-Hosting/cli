@@ -30,8 +30,10 @@ type fakeGit struct {
 	push      gitcmd.Result
 	// pushSchannel answers a push made with -c http.sslBackend=schannel when set.
 	pushSchannel *gitcmd.Result
-	calls        [][]string
-	envs         [][]string
+	// pushTrace is what a push writes to the GIT_TRACE_CURL file it is given.
+	pushTrace string
+	calls     [][]string
+	envs      [][]string
 }
 
 func (f *fakeGit) Run(ctx context.Context, dir string, env []string, args ...string) (gitcmd.Result, error) {
@@ -87,6 +89,11 @@ func (f *fakeGit) Run(ctx context.Context, dir string, env []string, args ...str
 		f.remoteURL = sub[3]
 		return ok, nil
 	case len(sub) >= 1 && sub[0] == "push":
+		for _, kv := range env {
+			if path, ok := strings.CutPrefix(kv, "GIT_TRACE_CURL="); ok && f.pushTrace != "" {
+				os.WriteFile(path, []byte(f.pushTrace), 0o600)
+			}
+		}
 		if f.pushSchannel != nil && strings.Contains(strings.Join(args, " "), "http.sslBackend=schannel") {
 			return *f.pushSchannel, nil
 		}
