@@ -273,6 +273,13 @@ time) goes in esbuild's `external` list, and the Dockerfile copies it into the i
 A preview starts with an empty database of its own; seed what testing needs from a migration or
 a script, never from production.
 
+**Settings apply in seconds.** When a push changes only `whisk.yaml` since the live deploy and
+leaves `build`, `env`, the `static` folders and `b2b` as they were, Whisk skips the build and runs
+the live image with the new settings: routes and who can visit, `always_on`, `health`, secrets and
+the rest. It goes live in the time a deploy takes. Commit a settings change on its own to get
+this, and tell the human it applies straight away. A route made public still waits for a person
+to allow it.
+
 **Say what changed.** Every deploy shows the subject line of its commit to the business, on the
 app's Deploys page and in `whisk deploys list`. Write it for the people who use the app, in one
 plain sentence about what they will notice: `whisk deploy -m "Add a CSV export to the jobs

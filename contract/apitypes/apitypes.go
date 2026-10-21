@@ -212,20 +212,24 @@ type Environment struct {
 
 // Build is one image build.
 type Build struct {
-	ID            string          `json:"id"`
-	AppID         string          `json:"app_id"`
-	EnvironmentID string          `json:"environment_id"`
-	CommitSHA     string          `json:"commit_sha"`
-	Branch        string          `json:"branch"`
-	Message       string          `json:"message"` // the commit's subject line; "" when it had none
-	Status        BuildStatus     `json:"status"`
-	Builder       string          `json:"builder"` // dockerfile | railpack
-	ImageDigest   string          `json:"image_digest,omitempty"`
-	StartedAt     *time.Time      `json:"started_at,omitempty"`
-	FinishedAt    *time.Time      `json:"finished_at,omitempty"`
-	Error         *werrors.Detail `json:"error,omitempty"`
-	TriggeredBy   string          `json:"triggered_by"`
-	CreatedAt     time.Time       `json:"created_at"`
+	ID            string      `json:"id"`
+	AppID         string      `json:"app_id"`
+	EnvironmentID string      `json:"environment_id"`
+	CommitSHA     string      `json:"commit_sha"`
+	Branch        string      `json:"branch"`
+	Message       string      `json:"message"` // the commit's subject line; "" when it had none
+	Status        BuildStatus `json:"status"`
+	Builder       string      `json:"builder"` // dockerfile | railpack
+	ImageDigest   string      `json:"image_digest,omitempty"`
+	// ImageFrom is the build whose image this one runs when its commit changed only whisk.yaml's
+	// run-time settings, so nothing was built (CONTRACT.md §3.1 "Settings that apply without a
+	// build"); absent for a build that ran.
+	ImageFrom   string          `json:"image_from,omitempty"`
+	StartedAt   *time.Time      `json:"started_at,omitempty"`
+	FinishedAt  *time.Time      `json:"finished_at,omitempty"`
+	Error       *werrors.Detail `json:"error,omitempty"`
+	TriggeredBy string          `json:"triggered_by"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 // Phase is one recorded deploy transition.
