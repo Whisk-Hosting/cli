@@ -1543,7 +1543,8 @@ node was ready, a node could not prepare the database or cache, apply its networ
 the image, start the container, take a restore point or finish running the migration, or the
 edge could not be updated. `details.fault` is `platform`, `details.cause_code` names the part
 that failed (`NODE_DOWN`, `IMAGE_PULL_FAILED`, `POLICY_APPLY_FAILED`, `DATABASE_FAILED`,
-`BUILD_FAILED` for the builder, `MIGRATE_FAILED` for the node, and so on), `details.step_code`
+`BUILD_FAILED` for the builder, `PACKAGE_CHECK_FAILED` for the check before the build,
+`MIGRATE_FAILED` for the node, and so on), `details.step_code`
 the deploy step when that differs, and `details.cause` the node's own words where it gave
 them. The platform's team is told the cause when it happens. The CLI exits 5, not 6.
 
@@ -2144,6 +2145,24 @@ token that was on that machine.
 
 ```json
 {"error":{"code":"PACKAGE_MALICIOUS","message":"flatmap-stream 0.1.1 in package-lock.json (MAL-2025-20690) is a known malicious package, so Whisk stopped this deploy before building it.","fix":"Remove each package in details.packages from the app's dependencies and its lockfile, along with whatever brought it in, then deploy again. Do not install it anywhere to look at it. If it was ever installed, on a laptop, in CI or in an earlier build, treat every secret that machine or the app could read as exposed: ask the human to set new values for the app's secrets and to rotate any token that was on that machine.","docs":"https://skill.whisk.run/errors/PACKAGE_MALICIOUS","details":{"build_id":"01J9","fault":"app","count":1,"packages":[{"package":"flatmap-stream","ecosystem":"npm","version":"0.1.1","path":"package-lock.json","advisory":"MAL-2025-20690","url":"https://osv.dev/vulnerability/MAL-2025-20690"}]}}}
+```
+
+## PACKAGE_CHECK_FAILED
+
+Status: - · Surface: deploy
+
+When: the check every deploy runs before its build, for known malicious packages in the commit's
+lockfiles, did not finish: the builder or osv.dev did not answer, both tries ran out of time, or
+the report could not be read. Nothing says the lockfiles are safe to install, so the deploy
+stopped before any build step ran, and the previous deploy is still live. A deploy carries it as
+`details.cause_code` of `PLATFORM_DEPLOY_FAILED`, with `details.cause` saying why; the
+platform's team is told.
+
+Fix: Do not change the code. Run `whisk deploy` again; if it stops the same way, wait a few
+minutes and run it again.
+
+```json
+{"error":{"code":"PACKAGE_CHECK_FAILED","message":"The check for malicious packages did not finish (2 tries, the last: it took longer than 2m30s), so nothing was built.","fix":"Run whisk deploy again; if it stops the same way, wait a few minutes and run it again.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_FAILED","details":{"build_id":"01J9","fault":"platform"}}}
 ```
 
 ## PACKAGE_LOOKALIKE
