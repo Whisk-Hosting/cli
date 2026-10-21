@@ -18,7 +18,8 @@ import (
 
 // connectionsCmd is the app's connections: outside systems it reaches through Whisk's broker
 // without holding their credential (CLI.md §5.6, CONTRACT.md §3.1, CONTROL-PLANE.md §6.8). A
-// person grants, resumes and revokes them in the dashboard; the CLI lists, explains and pauses.
+// person grants, resumes and revokes them in the dashboard; the CLI lists, explains, pauses and
+// sets their limits.
 func connectionsCmd(s *session) *cobra.Command {
 	connections := &cobra.Command{Use: "connections", Short: "Outside systems the app reaches through Whisk's broker"}
 
@@ -182,17 +183,28 @@ business. Resuming is a person's, in the dashboard.`,
 	pause.Flags().BoolVar(&all, "all", false, "pause every connection of every app in the business")
 
 	var lim connect.SpendCap
+	var calls apitypes.ConnectionLimitsRequest
 	var limitEnv string
 	limit := &cobra.Command{
-		Use:   "limit NAME --per-month USD [--per-day USD] [--per-week USD] [--total USD] [--env production|previews]",
-		Short: "Set how much an AI connection may spend, as your person chose",
-		Long: `Sets an AI connection's spending limit in US dollars, in force from the next call: calls
-stopped at the old limit go on at once if the new one is higher. Ask your person how much the app
-may spend first and set what they choose; they can change it themselves on the app's page.
+		Use:   "limit NAME [--calls-per-minute N] [--calls-per-day N] [--per-month USD] [--per-day USD] [--per-week USD] [--total USD] [--env production|previews]",
+		Short: "Set how many calls a connection may make, or how much an AI connection may spend",
+		Long: `Sets a connection's limits, in force from the next call with no push: calls refused at
+the old limit go on at once if the new one is higher.
+
+--calls-per-minute and --calls-per-day are how many calls the app may make through the
+connection (600 a minute and 100,000 a day unless someone changed them; at most 1,000 a minute
+and 1,000,000 a day). Raise them to fit the app's work, and keep them below what the outside
+system itself allows. A limit you leave out keeps its value.
+
+--per-day, --per-week, --per-month and --total set an AI connection's spending limit in US
+dollars. Ask your person how much the app may spend first and set what they choose; they can
+change it themselves on the app's page.
+
 Without --env it is production's.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			environment, err := limitPlan(lim, limitEnv)
+			spend := lim != (connect.SpendCap{})
+			environment, err := limitPlan(lim, spend, calls.LimitPerMinute, calls.LimitPerDay, limitEnv)
 			if err != nil {
 				return err
 			}
@@ -200,20 +212,40 @@ Without --env it is production's.`,
 			if err != nil {
 				return err
 			}
-			out, err := client.SetSpendCap(s.ctx, org, app, args[0], apitypes.SpendCapRequest{Environment: environment, SpendCap: lim})
-			if err != nil {
-				return wrap(err)
+			result := map[string]any{"org": org, "app": app, "name": args[0], "environment": string(environment)}
+			var sentences []string
+			if calls.LimitPerMinute != 0 || calls.LimitPerDay != 0 {
+				calls.Environment = environment
+				out, err := client.SetConnectionLimits(s.ctx, org, app, args[0], calls)
+				if err != nil {
+					return wrap(err)
+				}
+				g, _ := grantIn(out, environment)
+				result["limit_per_minute"], result["limit_per_day"] = g.LimitPerMinute, g.LimitPerDay
+				sentences = append(sentences, callsSentence(args[0], environment, g))
 			}
-			s.printer.Result(map[string]any{"org": org, "app": app, "name": args[0], "environment": string(environment), "spend_cap": lim, "ai": out.AI}, func(w io.Writer) {
-				fmt.Fprintln(w, limitSentence(args[0], environment, lim))
+			if spend {
+				out, err := client.SetSpendCap(s.ctx, org, app, args[0], apitypes.SpendCapRequest{Environment: environment, SpendCap: lim})
+				if err != nil {
+					return wrap(err)
+				}
+				result["spend_cap"], result["ai"] = lim, out.AI
+				sentences = append(sentences, limitSentence(args[0], environment, lim))
+			}
+			s.printer.Result(result, func(w io.Writer) {
+				for _, line := range sentences {
+					fmt.Fprintln(w, line)
+				}
 			})
 			return nil
 		},
 	}
-	limit.Flags().Float64Var(&lim.PerDay, "per-day", 0, "US dollars a day (UTC)")
-	limit.Flags().Float64Var(&lim.PerWeek, "per-week", 0, "US dollars a week, from Monday (UTC)")
-	limit.Flags().Float64Var(&lim.PerMonth, "per-month", 0, "US dollars a month (UTC)")
-	limit.Flags().Float64Var(&lim.Total, "total", 0, "US dollars in all")
+	limit.Flags().IntVar(&calls.LimitPerMinute, "calls-per-minute", 0, "calls a minute, 1 to 1,000")
+	limit.Flags().IntVar(&calls.LimitPerDay, "calls-per-day", 0, "calls a day (UTC), 1 to 1,000,000")
+	limit.Flags().Float64Var(&lim.PerDay, "per-day", 0, "AI spending: US dollars a day (UTC)")
+	limit.Flags().Float64Var(&lim.PerWeek, "per-week", 0, "AI spending: US dollars a week, from Monday (UTC)")
+	limit.Flags().Float64Var(&lim.PerMonth, "per-month", 0, "AI spending: US dollars a month (UTC)")
+	limit.Flags().Float64Var(&lim.Total, "total", 0, "AI spending: US dollars in all")
 	limit.Flags().StringVar(&limitEnv, "env", "production", "production or previews")
 
 	connections.AddCommand(list, show, grant, pause, limit)
@@ -401,11 +433,23 @@ func pausePlan(args []string, all bool, env string) (string, apitypes.Connection
 		"Pass --env production or --env previews, or leave it out to pause every environment.", map[string]any{"env": env})
 }
 
-// limitPlan checks limit's flags: at least one window within bounds, and an environment.
-func limitPlan(lim connect.SpendCap, env string) (apitypes.ConnectionEnvironment, error) {
-	if problems := connect.CapProblems(lim); len(problems) > 0 {
-		return "", output.New("INVALID_REQUEST", "A spending limit names at least one of --per-day, --per-week, --per-month or --total, each "+problems[0].Message+".",
-			"Ask your person how much the app may spend, then run whisk connections limit NAME --per-month <dollars>.", nil)
+// limitPlan checks limit's flags: call limits, a spending limit or both, each within bounds,
+// and an environment. spend is whether any spending window was given. Pure.
+func limitPlan(lim connect.SpendCap, spend bool, perMinute, perDay int, env string) (apitypes.ConnectionEnvironment, error) {
+	calls := perMinute != 0 || perDay != 0
+	switch {
+	case !calls && !spend:
+		return "", output.New("INVALID_REQUEST", "Name a new limit: --calls-per-minute or --calls-per-day, or for an AI connection a spending limit.",
+			"Run whisk connections limit NAME --calls-per-minute <calls>, or whisk connections limit NAME --per-month <dollars> with the amount your person chose.", nil)
+	case perMinute < 0 || perDay < 0:
+		return "", output.New("INVALID_REQUEST", "Call limits are whole numbers from 1: up to 1,000 a minute and 1,000,000 a day.",
+			"Pass --calls-per-minute and --calls-per-day within those bounds, or leave one out to keep it.", map[string]any{"calls_per_minute": perMinute, "calls_per_day": perDay})
+	}
+	if spend {
+		if problems := connect.CapProblems(lim); len(problems) > 0 {
+			return "", output.New("INVALID_REQUEST", "A spending limit names at least one of --per-day, --per-week, --per-month or --total, each "+problems[0].Message+".",
+				"Ask your person how much the app may spend, then run whisk connections limit NAME --per-month <dollars>.", nil)
+		}
 	}
 	switch e := apitypes.ConnectionEnvironment(env); e {
 	case apitypes.ConnectionProduction, apitypes.ConnectionPreviews:
@@ -413,6 +457,11 @@ func limitPlan(lim connect.SpendCap, env string) (apitypes.ConnectionEnvironment
 	}
 	return "", output.New("INVALID_REQUEST", fmt.Sprintf("--env %q is not an environment a connection is allowed in.", env),
 		"Pass --env production or --env previews.", map[string]any{"env": env})
+}
+
+// callsSentence says what a grant's call limits are now. Pure.
+func callsSentence(name string, env apitypes.ConnectionEnvironment, g api.ConnectionGrant) string {
+	return fmt.Sprintf("%s may now make up to %s calls a minute and %s a day in %s.", name, thousands(g.LimitPerMinute), thousands(g.LimitPerDay), env)
 }
 
 // limitSentence says what a limit is now, window by window.

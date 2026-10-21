@@ -218,6 +218,14 @@ type SpendCapRequest struct {
 	SpendCap    connect.SpendCap      `json:"spend_cap"`
 }
 
+// ConnectionLimitsRequest changes how many calls a minute and a day a connection's grant in one
+// environment allows. A limit left out keeps its value.
+type ConnectionLimitsRequest struct {
+	Environment    ConnectionEnvironment `json:"environment"`
+	LimitPerMinute int                   `json:"limit_per_minute,omitempty"`
+	LimitPerDay    int                   `json:"limit_per_day,omitempty"`
+}
+
 // ConnectionStateRequest pauses, resumes or revokes one environment's grant, or every
 // environment's when Environment is empty.
 type ConnectionStateRequest struct {

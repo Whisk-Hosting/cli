@@ -1079,8 +1079,11 @@ the connections page once they allow it. Until then calls are `CONNECTION_SIGN_I
 relay its link. Anything else the system wants on each call (Xero's `Xero-Tenant-Id`) the app
 reads through the connection and sends itself. Send plain paths with the real method: dot segments, `;` parameters and method
 override headers are refused. Redirects come back to you unfollowed, and a credential the API
-echoes back arrives as `[redacted by Whisk]`. If the app may be misbehaving, `whisk connections pause NAME` stops
-its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).
+echoes back arrives as `[redacted by Whisk]`. Each connection may make 600 calls a minute and
+100,000 a day unless someone changed that. When the app's work needs more, raise them with
+`whisk connections limit NAME --calls-per-minute <calls>` or `--calls-per-day <calls>`, which
+holds from the next call with no push, and keep them below what the outside system itself
+allows. If the app may be misbehaving, `whisk connections pause NAME` stops its calls at once. A system that is not HTTP (a database, SFTP) still uses a plain secret (§6).
 
 **AI models: a connection with a spend cap.** Every call to an AI model's API (OpenAI,
 Anthropic, Gemini, OpenRouter, Mistral, Groq, xAI, DeepSeek and the rest) goes through a

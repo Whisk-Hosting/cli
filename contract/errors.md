@@ -1250,11 +1250,13 @@ Status: 429 · Surface: container
 When: the call would go over the connection's calls a minute or a day. `Retry-After` and
 `details.retry_after` give the seconds until the window resets.
 
-Fix: Wait and retry after `retry_after` seconds, or ask the human to raise the limit when the
-app needs more calls.
+Fix: Wait and retry after `retry_after` seconds. If the app needs more calls than the limit
+allows, raise it with `whisk connections limit NAME --calls-per-minute <calls>` or
+`--calls-per-day <calls>`, keeping it below what the outside system itself allows; it holds from
+the next call.
 
 ```json
-{"error":{"code":"CONNECTION_LIMIT","message":"erp has made its 60 calls this minute.","fix":"Retry after 17 seconds, or ask an owner or admin to raise the limit.","docs":"https://skill.whisk.run/errors/CONNECTION_LIMIT","details":{"connection":"erp","window":"minute","limit":60,"retry_after":17}}}
+{"error":{"code":"CONNECTION_LIMIT","message":"The connection erp reached its limit of calls a minute.","fix":"Wait and retry after retry_after seconds. If the app needs more calls than the limit allows, raise it with whisk connections limit NAME --calls-per-minute <calls> or --calls-per-day <calls>, keeping it below what the outside system itself allows; it holds from the next call.","docs":"https://skill.whisk.run/errors/CONNECTION_LIMIT","details":{"connection":"erp","window":"minute","retry_after":17}}}
 ```
 
 ## AI_SPEND_CAP

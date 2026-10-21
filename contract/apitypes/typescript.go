@@ -104,7 +104,7 @@ var enums = func() map[reflect.Type]enumSet {
 	add(enumOf("BrokerDrop", "BROKER_DROPS", BrokerDropped, BrokerUnreachable))
 	add(enumOf("SignInState", "SIGN_IN_STATES", SignInNeeded, SignInActive, SignInLapsed))
 	add(enumOf("ProviderRevocation", "PROVIDER_REVOCATIONS", ProviderRevoked, ProviderFailed, ProviderNotSupported, ProviderNoneHeld, ProviderUnknown))
-	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderBreakglass))
+	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderPlatform, ReaderBreakglass))
 	add(enumOf("SubjectKind", "SUBJECT_KINDS", SubjectUser, SubjectGroup, SubjectEveryone))
 	add(enumOf("Audience", "AUDIENCES", AudienceTeam, AudienceCustomer))
 	add(enumOf("DomainKind", "DOMAIN_KINDS", DomainPlatform, DomainCustom, DomainBusiness, DomainFormer))
@@ -213,7 +213,7 @@ var wire = []any{
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
 	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, GrantAI{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},
 	named{"ConnectionAISummary", connect.AISummary{}}, named{"ConnectionAIPart", connect.AIPart{}}, ConnectionAI{}, AIWindow{}, AIUnreadable{},
-	named{"SpendCap", connect.SpendCap{}}, GrantConnectionRequest{}, SpendCapRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
+	named{"SpendCap", connect.SpendCap{}}, GrantConnectionRequest{}, SpendCapRequest{}, ConnectionLimitsRequest{}, ConnectionStateRequest{}, ConnectionsChanged{},
 	named{"ConnectionSignInSummary", connect.SignInSummary{}}, ConnectionSignIn{}, SignInRequest{}, SignInStart{},
 	// grants.go
 	GrantRef{}, KeyValue{}, ApproveDeployRequest{}, ApprovedDeploy{}, ConfirmCodeRequest{}, ConfirmCode{}, ConfirmRequest{}, Confirmed{},

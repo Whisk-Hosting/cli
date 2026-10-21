@@ -8,7 +8,8 @@ import (
 )
 
 // Connections: outside systems an app reaches through Whisk's broker (CONTROL-PLANE.md §6.8).
-// Granting and resuming are a person's, confirmed, in the dashboard; the CLI lists and pauses.
+// Granting and resuming are a person's, confirmed, in the dashboard; the CLI lists, pauses and
+// sets limits.
 type (
 	Connection         = apitypes.Connection
 	ConnectionGrant    = apitypes.ConnectionGrant
@@ -34,6 +35,13 @@ func (c *Client) PauseConnection(ctx context.Context, org, app, name string, env
 func (c *Client) SetSpendCap(ctx context.Context, org, app, name string, in apitypes.SpendCapRequest) (Connection, error) {
 	var out Connection
 	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/connections/"+pathSeg(name)+"/spend-cap", in, &out)
+}
+
+// SetConnectionLimits sets how many calls a minute and a day a connection may make in
+// environment; a limit left at zero keeps its value.
+func (c *Client) SetConnectionLimits(ctx context.Context, org, app, name string, in apitypes.ConnectionLimitsRequest) (Connection, error) {
+	var out Connection
+	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/connections/"+pathSeg(name)+"/limits", in, &out)
 }
 
 // PauseAllConnections stops every connection of every app in the org.

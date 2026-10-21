@@ -93,11 +93,13 @@ const (
 	ScopeApp SecretScope = "app"
 )
 
-// SecretReader is what read a secret's value: a running container or a break-glass read.
+// SecretReader is what read a secret's value: a container (an app, a build or a migration), the
+// platform itself (checking a webhook's signature or a build's image), or a break-glass read.
 type SecretReader string
 
 const (
 	ReaderContainer  SecretReader = "container"
+	ReaderPlatform   SecretReader = "platform"
 	ReaderBreakglass SecretReader = "breakglass"
 )
 

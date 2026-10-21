@@ -336,6 +336,22 @@ func connectionsAPI(t *testing.T) (*httptest.Server, func() []string) {
 		}
 		writeJSON(w, 200, api.ConnectionsChanged{Changed: changed})
 	})
+	mux.HandleFunc("PUT /v1/orgs/acme/apps/crm/connections/{name}/limits", func(w http.ResponseWriter, r *http.Request) {
+		var body apitypes.ConnectionLimitsRequest
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		b, _ := json.Marshal(body)
+		record(r, string(b))
+		out := erp
+		g := out.Grants[0]
+		if body.LimitPerMinute != 0 {
+			g.LimitPerMinute = body.LimitPerMinute
+		}
+		if body.LimitPerDay != 0 {
+			g.LimitPerDay = body.LimitPerDay
+		}
+		out.Grants = []api.ConnectionGrant{g}
+		writeJSON(w, 200, out)
+	})
 	mux.HandleFunc("POST /v1/orgs/acme/connections/pause", func(w http.ResponseWriter, r *http.Request) {
 		record(r, "")
 		writeJSON(w, 200, api.ConnectionsChanged{Changed: 3})
@@ -443,8 +459,24 @@ func TestConnectionsCommands(t *testing.T) {
 			t.Errorf("%v: %+v", args, r)
 		}
 	}
+	r = runRemote(t, dir, srv.URL, nil, "connections", "limit", "erp", "--calls-per-minute", "900", "--json")
+	if r.Code != 0 || r.JSON["limit_per_minute"] != float64(900) || r.JSON["limit_per_day"] != float64(10000) || r.JSON["environment"] != "production" {
+		t.Fatalf("limit --calls-per-minute: %+v", r)
+	}
+	r = runRemote(t, dir, srv.URL, nil, "connections", "limit", "erp", "--calls-per-day", "250000")
+	if r.Code != 0 || !strings.Contains(r.Stdout, "erp may now make up to 60 calls a minute and 250,000 a day in production.") {
+		t.Fatalf("limit --calls-per-day human: %+v", r)
+	}
+	for _, args := range [][]string{{"limit", "erp"}, {"limit", "erp", "--calls-per-minute", "-1"}, {"limit", "erp", "--calls-per-minute", "10", "--env", "staging"}} {
+		r = runRemote(t, dir, srv.URL, nil, append(append([]string{"connections"}, args...), "--json")...)
+		if r.Code != 1 || r.JSON["error"].(map[string]any)["code"] != "INVALID_REQUEST" {
+			t.Errorf("%v: %+v", args, r)
+		}
+	}
 	got := strings.Join(calls(), "\n")
 	for _, want := range []string{
+		`PUT /v1/orgs/acme/apps/crm/connections/erp/limits {"environment":"production","limit_per_minute":900}`,
+		`PUT /v1/orgs/acme/apps/crm/connections/erp/limits {"environment":"production","limit_per_day":250000}`,
 		`POST /v1/orgs/acme/apps/crm/connections/erp/pause {"environment":"production"}`,
 		`POST /v1/orgs/acme/apps/crm/connections/erp/pause {}`,
 		`POST /v1/orgs/acme/connections/pause`,
@@ -517,21 +549,27 @@ func TestAIRows(t *testing.T) {
 
 func TestLimitPlan(t *testing.T) {
 	cases := []struct {
-		name string
-		lim  connect.SpendCap
-		env  string
-		want apitypes.ConnectionEnvironment
-		code string
+		name              string
+		lim               connect.SpendCap
+		perMinute, perDay int
+		env               string
+		want              apitypes.ConnectionEnvironment
+		code              string
 	}{
-		{"a month in production", connect.SpendCap{PerMonth: 20}, "production", apitypes.ConnectionProduction, ""},
-		{"previews", connect.SpendCap{PerDay: 1}, "previews", apitypes.ConnectionPreviews, ""},
-		{"no window", connect.SpendCap{}, "production", "", "INVALID_REQUEST"},
-		{"too small", connect.SpendCap{PerMonth: 0.001}, "production", "", "INVALID_REQUEST"},
-		{"not an environment", connect.SpendCap{PerMonth: 20}, "staging", "", "INVALID_REQUEST"},
+		{"a month in production", connect.SpendCap{PerMonth: 20}, 0, 0, "production", apitypes.ConnectionProduction, ""},
+		{"previews", connect.SpendCap{PerDay: 1}, 0, 0, "previews", apitypes.ConnectionPreviews, ""},
+		{"calls a minute", connect.SpendCap{}, 900, 0, "production", apitypes.ConnectionProduction, ""},
+		{"calls a day", connect.SpendCap{}, 0, 250000, "previews", apitypes.ConnectionPreviews, ""},
+		{"calls and spending together", connect.SpendCap{PerMonth: 20}, 900, 250000, "production", apitypes.ConnectionProduction, ""},
+		{"nothing named", connect.SpendCap{}, 0, 0, "production", "", "INVALID_REQUEST"},
+		{"negative calls", connect.SpendCap{}, -5, 0, "production", "", "INVALID_REQUEST"},
+		{"too small", connect.SpendCap{PerMonth: 0.001}, 0, 0, "production", "", "INVALID_REQUEST"},
+		{"too small beside calls", connect.SpendCap{PerMonth: 0.001}, 900, 0, "production", "", "INVALID_REQUEST"},
+		{"not an environment", connect.SpendCap{}, 900, 0, "staging", "", "INVALID_REQUEST"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			got, err := limitPlan(c.lim, c.env)
+			got, err := limitPlan(c.lim, c.lim != (connect.SpendCap{}), c.perMinute, c.perDay, c.env)
 			code := ""
 			if e, ok := err.(*output.Error); ok {
 				code = e.Code
@@ -540,6 +578,10 @@ func TestLimitPlan(t *testing.T) {
 				t.Fatalf("limitPlan = %q, %v; want %q, %s", got, err, c.want, c.code)
 			}
 		})
+	}
+	g := api.ConnectionGrant{LimitPerMinute: 900, LimitPerDay: 250000}
+	if got := callsSentence("erp", apitypes.ConnectionProduction, g); got != "erp may now make up to 900 calls a minute and 250,000 a day in production." {
+		t.Errorf("callsSentence = %q", got)
 	}
 	if got := limitSentence("openrouter", apitypes.ConnectionProduction, connect.SpendCap{PerDay: 2, PerMonth: 20}); got != "openrouter may now spend US$2.00 a day, US$20.00 a month in production." {
 		t.Errorf("limitSentence = %q", got)
