@@ -286,6 +286,21 @@ Write to support@whisk.run if it is urgent.
 {"error":{"code":"ORG_UNDER_REVIEW","message":"acme is paused while Whisk reviews it.","fix":"Nothing to do: Whisk reviews every held business and releases it if the check was wrong. Write to support@whisk.run if it is urgent.","docs":"https://skill.whisk.run/errors/ORG_UNDER_REVIEW","details":{"org":"acme"}}}
 ```
 
+## ACCOUNT_BANNED
+
+Status: 403 · Surface: api, auth
+
+When: someone signed in, or tried to, as a person Whisk has banned for abusing the platform. A
+ban covers the person's inbox at every spelling of it (a `+tag`, or dots in a Gmail address), and
+it ends every session and token they held.
+
+Fix: Nothing to do in an app or an agent: the account cannot be used. Write to
+support@whisk.run if you think this is a mistake.
+
+```json
+{"error":{"code":"ACCOUNT_BANNED","message":"Whisk has banned this account.","fix":"Write to support@whisk.run if you think this is a mistake.","docs":"https://skill.whisk.run/errors/ACCOUNT_BANNED","details":{}}}
+```
+
 ## ACCOUNT_LAST_OWNER
 
 Status: 409 · Surface: api, cli
