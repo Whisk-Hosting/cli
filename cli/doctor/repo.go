@@ -30,6 +30,8 @@ type File struct {
 	Tracked bool
 	Size    int64
 	Binary  bool
+	// Head is a binary's first bytes, enough to tell what kind of file it is (W130).
+	Head []byte
 	// UTF16 is a file saved as UTF-16 (Windows PowerShell's >); Content holds it as UTF-8.
 	UTF16 bool
 }
@@ -55,6 +57,9 @@ type Repo struct {
 }
 
 const contentCap = 4 << 20
+
+// headSize is how much of a binary file doctor keeps.
+const headSize = 16
 
 // Load reads a directory into a Repo.
 func Load(ctx context.Context, dir string) (Repo, error) {
@@ -89,6 +94,7 @@ func Load(ctx context.Context, dir string) (Repo, error) {
 				content = decoded
 				if isBinary(content) {
 					f.Binary = true
+					f.Head = content[:min(len(content), headSize)]
 				} else {
 					f.Content = content
 				}

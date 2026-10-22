@@ -249,6 +249,7 @@ workers: []                       # an existing app's own job processes, beside 
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
+sign_in: { logo: brand/logo.png, colour: "#0b6e4f" }   # customers' sign-in look (§4) · app pool
 network: public                   # the only value, the same as leaving it out: apps are public
 previews: { database: empty, ttl_days: 3 }   # previews start empty; days a preview lasts
 ```
@@ -481,6 +482,15 @@ the CLI. An owner can remove a customer: they are signed out and can no longer s
 again (or signing up again) within 30 days they come back under the same `X-Whisk-User-Id`, so
 keep their records rather than deleting them when a request stops naming them; after 30 days
 the platform deletes the person, and a later invitation makes a new id.
+
+Customers sign in on Whisk's pages in the app's name, with a password, an emailed code or a
+passkey. Give them a way out: link `/.whisk/account` (their own page, with their password,
+passkeys and Sign out) somewhere a signed-in customer sees it, or `/.whisk/logout?return=/`
+(W132). With `customer_identity: app`, `sign_in` in `whisk.yaml` makes those pages and the sign-in
+emails look like the app: `logo` (a PNG or JPEG in the repository, at most 100 KB), `colour`,
+`background`, `text`, `font` (`whisk`, `system` or `serif`) and `corners` (`square`, `rounded`,
+`pill`). Match the app's own design, keep text and background readable (W131), and leave the
+"Secured by Whisk" band alone: it is not the app's to style.
 
 **Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an
 owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never

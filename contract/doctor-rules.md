@@ -802,3 +802,35 @@ Details: known only when the directory is bound to an app, because the answer co
 production's live deploy). One finding per target, at its line under `calls`, naming the line the
 target needs: `accepted_callers: [website]`. A deploy carries the same as `CALLER_NOT_ACCEPTED`,
 and a call to that app is refused at the edge with that code.
+
+## W130
+
+Level: error
+Check: sign_in.logo names a file that is not in the repository, is not a PNG or JPEG, or is over 100 KB.
+Fix: Point sign_in.logo at a PNG or JPEG of at most 100 KB in the repository, such as brand/logo.png; a logo about 80 pixels tall stays sharp.
+Safe fix: no
+
+Details: the push reads the file at the commit, as it reads `redirects_file`, and keeps it with
+the manifest, so the push refuses the same problems. The type is judged by the file's first
+bytes, never its name. SVG and WebP are refused because several email programs show neither.
+
+## W131
+
+Level: warning
+Check: sign_in's text and background colours are too close to read: their contrast is under 4.5:1.
+Fix: Darken text or lighten background (or the other way round) until the contrast is at least 4.5:1, the WCAG AA level for body text.
+Safe fix: no
+
+Details: an unset colour counts as Whisk's own (`text` #14213d, `background` #faf8f3). The
+button's text needs no setting: the pages pick white or near-black, whichever reads better on
+`colour`. The message gives the ratio.
+
+## W132
+
+Level: warning
+Check: the app has customer sign-in (customer_identity app or org) but nothing in its code links to /.whisk/account or /.whisk/logout, so a customer cannot sign out.
+Fix: Add a link to /.whisk/account (the customer's own page: password, passkeys and Sign out) or to /.whisk/logout?return=/ where a signed-in customer can see it.
+Safe fix: no
+
+Details: matched as text in the app's source files, templates and pages. Whisk draws no menu on
+an app's pages for a customer, so the app's own link is the only way out.

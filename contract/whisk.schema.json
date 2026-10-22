@@ -396,6 +396,19 @@
       "enum": ["none", "app", "org"],
       "default": "none"
     },
+    "sign_in": {
+      "description": "How the customers' sign-in pages and emails look, for an app with customer_identity: app. The Secured by Whisk band is not the app's to style.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "logo": { "description": "A PNG or JPEG in the repository, at most 100 KB.", "type": "string", "minLength": 1, "maxLength": 200 },
+        "colour": { "description": "Buttons, links and the focus ring.", "$ref": "#/$defs/hexColour" },
+        "background": { "description": "The page behind the form.", "$ref": "#/$defs/hexColour" },
+        "text": { "description": "Headings and text.", "$ref": "#/$defs/hexColour" },
+        "font": { "type": "string", "enum": ["whisk", "system", "serif"], "default": "whisk" },
+        "corners": { "type": "string", "enum": ["square", "rounded", "pill"], "default": "rounded" }
+      }
+    },
     "previews": {
       "type": "object",
       "additionalProperties": false,
@@ -565,6 +578,11 @@
           }
         }
       }
+    },
+    "hexColour": {
+      "description": "A colour as #rgb or #rrggbb.",
+      "type": "string",
+      "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$"
     },
     "path": {
       "description": "An absolute URL path without query or fragment.",

@@ -7,6 +7,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"path"
 	"regexp"
 	"sort"
 	"strconv"
@@ -74,6 +75,9 @@ type Manifest struct {
 	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
 	Connections      map[string]connect.Connection `json:"connections"`
 	CustomerIdentity string                        `json:"customer_identity"`
+	// SignIn is how the customers' sign-in looks (CONTROL-PLANE.md §4.6, "An app's own look");
+	// nil when whisk.yaml leaves it out.
+	SignIn *SignIn `json:"sign_in,omitempty"`
 	// Network is where the app is served: NetworkPublic, or empty, which is the same: every app
 	// is served publicly behind Whisk sign-in.
 	Network  string   `json:"network,omitempty"`
@@ -150,6 +154,42 @@ type Routes struct {
 	Challenge []string          `json:"challenge"`
 	CSRFOff   []string          `json:"csrf_off"`
 	Headers   map[string]string `json:"headers"`
+}
+
+// SignIn is how an app's customers' sign-in pages and emails look (CONTRACT.md §3). The push
+// fills LogoSHA256 and LogoType from the file Logo names; whisk.yaml never sets them.
+type SignIn struct {
+	Logo       string `json:"logo,omitempty"`
+	Colour     string `json:"colour,omitempty"`
+	Background string `json:"background,omitempty"`
+	Text       string `json:"text,omitempty"`
+	Font       string `json:"font,omitempty"`
+	Corners    string `json:"corners,omitempty"`
+	LogoSHA256 string `json:"logo_sha256,omitempty"`
+	LogoType   string `json:"logo_type,omitempty"`
+}
+
+// The fonts and corners sign_in offers.
+const (
+	FontWhisk      = "whisk"
+	FontSystem     = "system"
+	FontSerif      = "serif"
+	CornersSquare  = "square"
+	CornersRounded = "rounded"
+	CornersPill    = "pill"
+)
+
+// LogoPath is sign_in.logo as a path in the repository, or "" when it names none or one that
+// would leave it (an absolute path, or one through ..). Pure.
+func (s SignIn) LogoPath() string {
+	if s.Logo == "" || strings.HasPrefix(s.Logo, "/") || strings.Contains(s.Logo, "\\") {
+		return ""
+	}
+	p := path.Clean(s.Logo)
+	if p == "." || p == ".." || strings.HasPrefix(p, "../") {
+		return ""
+	}
+	return p
 }
 
 // Admin is the app's own admin: Path is its home, Edit opens the editor at the page being looked
@@ -695,6 +735,16 @@ func withDefaults(m Manifest) Manifest {
 	if m.CustomerIdentity == "" {
 		m.CustomerIdentity = CustomerIdentityNone
 	}
+	if m.SignIn != nil {
+		in := *m.SignIn
+		if in.Font == "" {
+			in.Font = FontWhisk
+		}
+		if in.Corners == "" {
+			in.Corners = CornersRounded
+		}
+		m.SignIn = &in
+	}
 	if m.Previews.Database == "" {
 		m.Previews.Database = "empty"
 	}
@@ -786,6 +836,14 @@ func checkRules(m Manifest) Problems {
 		}
 		if m.Admin.Edit != "" && (!samePath(m.Admin.Edit) || strings.Count(m.Admin.Edit, "{path}") != 1) {
 			add("/admin/edit", m.Admin.Edit+" must be a path on the app's own address, starting with a single /, with {path} once where the page's path goes")
+		}
+	}
+	if m.SignIn != nil {
+		if m.CustomerIdentity != CustomerIdentityApp {
+			add("/sign_in", "styles the sign-in of an app with customers of its own; set customer_identity: app, or remove sign_in")
+		}
+		if m.SignIn.Logo != "" && m.SignIn.LogoPath() == "" {
+			add("/sign_in/logo", m.SignIn.Logo+" must be a path in the repository, such as brand/logo.png")
 		}
 	}
 	ps = append(ps, checkMCP(m)...)
