@@ -298,6 +298,17 @@ sending events when `WHISK_ENV` starts with `preview:`, and test functions with 
 them all in one step; show it to them. A deleted app keeps its data for 7 days, and `whisk apps
 deleted` then `whisk apps restore <id>` bring it back stopped.
 
+**Several people on one app.** Other people and their agents may be changing the same app while
+you work. Start from the latest code: in a copy made by `whisk clone`, run `git pull --rebase whisk
+main` before you change anything (plain git is signed in there). If someone pushes while you are
+working, `whisk deploy` fetches their commits and rebases yours on top when that goes cleanly,
+then pushes; the `--json` summary has `caught_up` when it did, so run the tests again before you
+tell the human it is done. When it cannot, you get `PUSH_BEHIND` and your copy is left as it was:
+run the `git rebase` or `git merge` its fix names, resolve each file in `details.conflicts` so
+both changes still work, run the tests, and deploy again. For a bigger change, work on a branch
+and show it on a preview, so nobody else's work is in the way until it is merged into `main`.
+Never force-push to Whisk: it deletes the other person's work.
+
 `whisk deploy` ends with the URL, the address of each declared webhook, and any `warnings`: a
 deploy that went live with something wrong, such as `FUNCTIONS_NOT_REGISTERED` (a function name
 in `whisk.yaml` the code does not use), whose fix says what to change. If declared secrets
@@ -1387,6 +1398,7 @@ run itself; `retries` in `whisk.yaml` only describes it for people. `details.fau
 | `RUN_PARKED` | `whisk runs show <id>`, fix the step, deploy, `whisk runs replay <id>` |
 | `PLATFORM_DEPLOY_FAILED` | not the code; run `whisk deploy` again, and wait a few minutes if it repeats |
 | `RATE_LIMITED` | wait `Retry-After` |
+| `PUSH_BEHIND` | someone else pushed first: run the `git rebase` or `git merge` the fix names, resolve `details.conflicts`, test, deploy again; never force-push |
 
 `whisk logs --since 1h --grep <request id>` finds a request. `whisk runs show <id>` shows a
 workflow run step by step. `whisk errors <CODE>` prints the full entry from `errors.md`.
@@ -1442,6 +1454,8 @@ hour signed in, 5 without a login; past that, combine them.
 - Write to disk outside `/tmp`. Use the database or storage.
 - Hard-code hostnames. Use `WHISK_PUBLIC_URL` and relative links.
 - Print secrets, tokens or the environment.
+- Force-push to Whisk. Bring the other person's commits into yours and push again (§3, Several
+  people on one app).
 - Set cookies with a `Domain` attribute or read them in page script by their bare name. In the
   browser every app cookie is `__Host-<name>`, bound to the app's own address; the app's server
   sees `<name>`. Script that sets a cookie the server should read sets `__Host-<name>` with

@@ -65,6 +65,9 @@ type session struct {
 	profile string
 	orgFlag string
 	appFlag string
+
+	// caughtUp is what whisk deploy rebased onto after a push refused as behind, for its summary.
+	caughtUp map[string]any
 }
 
 // Run executes args and returns the exit code. Nothing is written except through env.

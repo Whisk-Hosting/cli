@@ -256,6 +256,15 @@ func ParsePush(stdout string) (outcome PushOutcome, summary string) {
 	return PushUnknown, ""
 }
 
+// Behind reports whether git refused a pushed ref because the remote branch has commits the
+// local one lacks, from the ref's summary in git push --porcelain output: "[rejected] (fetch
+// first)" when the commits are unknown here, "[rejected] (non-fast-forward)" when they are. A
+// refusal by the server's hooks reads "[remote rejected]" and is not this. Pure.
+func Behind(summary string) bool {
+	return strings.HasPrefix(summary, "[rejected]") &&
+		(strings.Contains(summary, "fetch first") || strings.Contains(summary, "non-fast-forward"))
+}
+
 // ParseStatus turns git status --porcelain output into the paths that differ from HEAD.
 func ParseStatus(stdout string) []string {
 	var paths []string

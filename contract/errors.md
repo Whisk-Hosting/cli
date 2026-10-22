@@ -3111,6 +3111,30 @@ send it with the new commit as `base_commit`.
 {"error":{"code":"SOURCE_CHANGED","message":"The app changed since its files were read: the default branch is now at 3f9c2a1b7d0e.","fix":"Read the app's files again, apply your change to them, and deploy with base_commit 3f9c2a1b7d0e.","docs":"https://skill.whisk.run/errors/SOURCE_CHANGED","details":{"commit":"3f9c2a1b7d0e4c55a1b2c3d4e5f60718293a4b5c","base_commit":"9a8b7c6d5e4f3a2b1c0d9e8f7a6b5c4d3e2f1a0b"}}}
 ```
 
+## PUSH_BEHIND
+
+Status: - · Surface: cli
+
+When: `whisk deploy` pushed a branch that someone else has pushed to since this copy last
+pulled, and it could not bring this copy up to date by itself. `whisk deploy` fetches the
+branch and rebases this copy's commits onto it when they rebase cleanly, so this answer means one
+of: the rebase conflicts (`details.conflicts` lists the files, and nothing in the copy changed),
+this copy's commits are already on another remote and rebasing them would fork that history
+(`shared`), the deployed branch is not the one checked out (`not_checked_out`), the branch moved
+again during the catch-up (`raced`), the rebase stopped for another reason (`rebase_failed`), or
+the fetch failed (`fetch_failed`). `details.reason` says which; `details.remote_commit` is the
+branch's commit on Whisk, `details.behind` the commits this copy lacks, `details.ahead` this
+copy's own.
+
+Fix: Bring the other person's commits into this copy (`git rebase whisk/<branch>`, or `git merge
+whisk/<branch>` when the commits are shared), resolve any conflicts so both changes still do what
+they were meant to, run the tests, and run `whisk deploy` again. Never force-push: it deletes the
+other person's work.
+
+```json
+{"error":{"code":"PUSH_BEHIND","message":"Someone else pushed to main on Whisk since this copy last pulled: it is at 3f9c2a1b7d0e, with 2 commit(s) this copy does not have. Rebasing this copy's 1 commit(s) onto them conflicts in src/jobs.ts, so nothing here was changed.","fix":"Run git rebase whisk/main, resolve the conflicts in src/jobs.ts so both changes still do what they were meant to, git add them and run git rebase --continue, run the tests, then run whisk deploy again. Never force-push: it deletes the other person's work.","docs":"https://skill.whisk.run/errors/PUSH_BEHIND","details":{"branch":"main","reason":"conflict","remote_commit":"3f9c2a1b7d0e4c55a1b2c3d4e5f60718293a4b5c","behind":2,"ahead":1,"conflicts":["src/jobs.ts"]}}}
+```
+
 ## INVALID_REQUEST
 
 Status: 400 · Surface: api, hooks

@@ -117,6 +117,19 @@ func runDeploy(s *session, opts deployOptions) error {
 		return err
 	}
 	sb, outcome, err := s.push(secret, plan, a.GitURL)
+	if refused := isBehind(err); refused != nil {
+		// Someone else pushed to the branch meanwhile: catch up, check again, push once more.
+		if sha, err = s.catchUp(secret, a.GitURL, plan, repo.Branch, refused); err != nil {
+			return err
+		}
+		if !opts.Force {
+			if err := s.doctorGate(org, app, client); err != nil {
+				return err
+			}
+		}
+		s.printer.Progress("Pushing %s (%s) to %s/%s as %s.", plan.Src, short(sha), org, app, plan.Environment)
+		sb, outcome, err = s.push(secret, plan, a.GitURL)
+	}
 	if err != nil {
 		return s.pushFailed(client, org, app, plan.Environment, err)
 	}
@@ -137,6 +150,9 @@ func runDeploy(s *session, opts deployOptions) error {
 		note := previewNote(plan.Environment)
 		if note != "" {
 			result["note"] = note
+		}
+		if s.caughtUp != nil {
+			result["caught_up"] = s.caughtUp
 		}
 		s.printer.Result(result, func(w io.Writer) {
 			fmt.Fprintf(w, "Deploy %s queued for %s (%s). Follow it with: whisk deploys info %s\n", d.ID, plan.Environment, short(sha), d.ID)
@@ -511,6 +527,9 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 		return sb, outcome, hookError(sb.Error)
 	}
 	tail := gitcmd.LastLines(res.Stderr, 10)
+	if outcome == gitcmd.PushRejected && gitcmd.Behind(summary) {
+		return sb, outcome, pushBehind(behind{Branch: plan.Dst, Src: plan.Src, Reason: "raced", Git: tail})
+	}
 	details := map[string]any{"git": tail, "summary": summary}
 	return sb, outcome, withRequestID(pushFailed(res, outcome, summary, tail, details, gitURL, s.goos(), retried, s.now().Sub(started)), readTrace(trace))
 }
@@ -858,6 +877,9 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 		}
 		if ev.StartMS != nil {
 			result["start_ms"] = *ev.StartMS
+		}
+		if s.caughtUp != nil {
+			result["caught_up"] = s.caughtUp
 		}
 		label := "Live:"
 		note := previewNote(environment)
