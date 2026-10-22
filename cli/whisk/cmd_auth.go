@@ -8,6 +8,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -119,6 +120,7 @@ new login.`,
 					// An approved answer carries all three; zero values stand in if one is missing.
 					org, user, expires := valueOf(tok.Org), valueOf(tok.User), valueOf(tok.ExpiresAt)
 					cred := config.Credential{Token: tok.Token, API: s.cfg.API, Org: org.Slug, OrgID: org.ID, User: user.Email, Scopes: tok.Scopes, ExpiresAt: expires, PrivateKey: privateKey}
+					previous, hadPrevious, _ := s.store.Get(s.profile)
 					if err := s.store.Set(s.profile, cred); err != nil {
 						return fmt.Errorf("storing the token: %v", err)
 					}
@@ -126,7 +128,14 @@ new login.`,
 					// A login for the whole account comes back with no org: it acts as the person
 					// in the businesses recorded on it, which a current platform names.
 					allOrgs := tok.Org == nil
-					result := map[string]any{"user": user, "all_orgs": allOrgs, "scopes": tok.Scopes, "expires_at": expires, "profile": s.profile, "stored_in": s.store.Where(), "bound": true, "device_name": deviceName()}
+					// One sign-in per computer (CLI.md §2): the login this profile held is signed
+					// out, and a login for the whole account signs out every other one for the
+					// same platform and becomes the computer's profile.
+					if hadPrevious && previous.Token != "" && previous.Token != tok.Token {
+						s.signOut(previous)
+					}
+					signedOut := s.replaceOthers(allOrgs)
+					result := map[string]any{"user": user, "all_orgs": allOrgs, "scopes": tok.Scopes, "expires_at": expires, "profile": s.profile, "stored_in": s.store.Where(), "bound": true, "device_name": deviceName(), "signed_out": signedOut}
 					if !allOrgs {
 						result["org"] = org
 					}
@@ -146,6 +155,9 @@ new login.`,
 							}
 						}
 						fmt.Fprintf(w, "Signed in as %s (%s), profile %s, token stored in %s and bound to this computer.\n", user.Email, what, s.profile, s.store.Where())
+						if len(signedOut) > 0 {
+							fmt.Fprintf(w, "Signed out the other sign-ins on this computer: %s.\n", strings.Join(signedOut, ", "))
+						}
 					})
 					return nil
 				}
@@ -166,6 +178,71 @@ new login.`,
 	c.Flags().StringVar(&resume, "resume", "", "wait for an existing device code's approval and collect its token")
 	c.Flags().StringVar(&agent, "agent", "", `the coding agent's own name, such as "Claude Code" (else WHISK_AGENT)`)
 	return c
+}
+
+// replaceOthers signs out the sign-ins a new one replaces on this computer and answers their
+// profiles: for a login for the whole account, every other profile holding a sign-in for the
+// same platform. That login then becomes the profile commands use when none is named, unless the
+// configured one still holds a sign-in (one for another platform).
+func (s *session) replaceOthers(allOrgs bool) []string {
+	names, err := s.store.List()
+	if err != nil {
+		return []string{}
+	}
+	held := map[string]config.Credential{}
+	for _, name := range names {
+		if c, ok, err := s.store.Get(name); err == nil && ok {
+			held[name] = c
+		}
+	}
+	replaced := replacedBy(allOrgs, s.profile, s.cfg.API, held)
+	for _, name := range replaced {
+		s.signOut(held[name])
+		_ = s.store.Delete(name)
+	}
+	if !allOrgs {
+		return replaced
+	}
+	cfg, err := config.Load(s.cfgDir)
+	if err != nil || cfg.Profile == s.profile {
+		return replaced
+	}
+	if _, ok, err := s.store.Get(cfg.Profile); err == nil && !ok {
+		cfg.Profile = s.profile
+		_ = config.Save(s.cfgDir, cfg)
+	}
+	return replaced
+}
+
+// replacedBy is which stored sign-ins a new one in profile current replaces (pure): for a login
+// for the whole account, every other profile holding a sign-in for the same platform, sorted; a
+// narrower login replaces only its own profile's, which storing it already did.
+func replacedBy(allOrgs bool, current, api string, held map[string]config.Credential) []string {
+	out := []string{}
+	if !allOrgs {
+		return out
+	}
+	for name, c := range held {
+		if name != current && c.Token != "" && sameAPI(c.API, api) {
+			out = append(out, name)
+		}
+	}
+	slices.Sort(out)
+	return out
+}
+
+// signOut revokes a stored sign-in on the platform that issued it, signed with its key, and
+// answers whether the platform revoked it. A token it cannot revoke expires on its own.
+func (s *session) signOut(c config.Credential) bool {
+	api := c.API
+	if api == "" {
+		api = s.cfg.API
+	}
+	client := s.newClient(api, c.Token)
+	if key, err := tokensig.ParsePrivate(c.PrivateKey); err == nil && c.PrivateKey != "" {
+		client.Key = key
+	}
+	return client.RevokeSelf(s.ctx) == nil
 }
 
 // loginContext is what this directory says it is working on, for the approval page's default:
@@ -271,14 +348,9 @@ func logoutCmd(s *session) *cobra.Command {
 				})
 				return nil
 			}
-			revoked := true
-			client := s.newClient(cred.API, cred.Token)
-			if key, err := tokensig.ParsePrivate(cred.PrivateKey); err == nil {
-				client.Key = key
-			}
-			if err := client.RevokeSelf(s.ctx); err != nil {
-				revoked = false
-				s.printer.Progress("The platform could not revoke the token (%v); it is forgotten locally and expires on its own.", err)
+			revoked := s.signOut(cred)
+			if !revoked {
+				s.printer.Progress("The platform could not revoke the token; it is forgotten locally and expires on its own.")
 			}
 			if err := s.store.Delete(s.profile); err != nil {
 				return err
@@ -317,11 +389,15 @@ func whoamiCmd(s *session) *cobra.Command {
 			if me.Identity != nil {
 				out["identity"] = me.Identity
 			}
+			if len(me.NotInLogin) > 0 {
+				out["not_in_login"] = me.NotInLogin
+			}
 			s.printer.Result(out, func(w io.Writer) {
 				fmt.Fprintf(w, "%s (%s)\n", me.User.Email, me.User.Name)
 				for _, o := range me.Orgs {
 					fmt.Fprintf(w, "  org %s (%s, %s plan, %s)\n", o.Slug, o.Role, o.Plan, o.Status)
 				}
+				printNotInLogin(w, me.NotInLogin)
 				if me.Identity != nil {
 					fmt.Fprintf(w, "  agent identity %s, acting for %s: %s\n", me.Identity.Name, me.User.Email, strings.Join(me.Identity.Categories, ", "))
 				}
@@ -353,15 +429,32 @@ func orgsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
-			s.printer.Result(map[string]any{"orgs": me.Orgs}, func(w io.Writer) {
+			out := map[string]any{"orgs": me.Orgs}
+			if len(me.NotInLogin) > 0 {
+				out["not_in_login"] = me.NotInLogin
+			}
+			s.printer.Result(out, func(w io.Writer) {
 				rows := make([][]string, len(me.Orgs))
 				for i, o := range me.Orgs {
 					rows[i] = []string{o.Slug, o.Name, string(o.Role), o.Plan, string(o.Status)}
 				}
 				s.printer.Table(w, []string{"ORG", "NAME", "ROLE", "PLAN", "STATUS"}, rows)
+				printNotInLogin(w, me.NotInLogin)
 			})
 			return nil
 		},
+	}
+}
+
+// printNotInLogin names the businesses the person belongs to that this login does not cover,
+// each with what lets the agent in: the link where the person adds it, or a new login.
+func printNotInLogin(w io.Writer, gaps []api.NotInLogin) {
+	if len(gaps) == 0 {
+		return
+	}
+	fmt.Fprintf(w, "Not in this login:\n")
+	for _, g := range gaps {
+		fmt.Fprintf(w, "  %s (%s): %s\n", g.Slug, g.Name, g.Fix)
 	}
 }
 

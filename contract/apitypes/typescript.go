@@ -172,7 +172,7 @@ var wire = []any{
 	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppManaged{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
 	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
-	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
+	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, NeedsYou{},

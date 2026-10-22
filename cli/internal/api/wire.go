@@ -13,6 +13,7 @@ type (
 	Org                 = apitypes.Org
 	User                = apitypes.User
 	Whoami              = apitypes.Whoami
+	NotInLogin          = apitypes.NotInLogin
 	WhoamiToken         = apitypes.WhoamiToken
 	GitPassword         = apitypes.GitPassword
 	App                 = apitypes.App

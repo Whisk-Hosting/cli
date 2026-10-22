@@ -6,8 +6,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -99,11 +101,18 @@ type Store interface {
 	Get(profile string) (Credential, bool, error)
 	Set(profile string, c Credential) error
 	Delete(profile string) error
+	// List names the profiles holding a credential, sorted, without the logins waiting for
+	// --resume, so a new sign-in can replace the others on this computer (CLI.md §2).
+	List() ([]string, error)
 	// Where says where credentials live, for whoami and for humans.
 	Where() string
 }
 
 const keyringService = "whisk"
+
+// keyringIndex is the keychain entry naming the profiles the keychain holds, which it cannot
+// list itself. The colon keeps it apart from any profile.
+const keyringIndex = ":profiles"
 
 // OpenStore returns the OS keychain when one answers, else the credentials file.
 func OpenStore(dir string) Store {
@@ -117,7 +126,9 @@ type keyringStore struct{}
 
 func (keyringStore) Where() string { return "os keychain" }
 
-func (keyringStore) Get(profile string) (Credential, bool, error) {
+// Get reads a profile and, when the index does not name it yet (a profile stored before the
+// index was kept), adds it, so the next sign-in finds it to replace.
+func (k keyringStore) Get(profile string) (Credential, bool, error) {
 	raw, err := keyring.Get(keyringService, profile)
 	if errors.Is(err, keyring.ErrNotFound) {
 		return Credential{}, false, nil
@@ -129,20 +140,72 @@ func (keyringStore) Get(profile string) (Credential, bool, error) {
 	if err := json.Unmarshal([]byte(raw), &c); err != nil {
 		return Credential{}, false, err
 	}
+	if names, err := k.List(); err == nil && !slices.Contains(names, profile) {
+		_ = k.index(func(names []string) []string { return withProfile(names, profile) })
+	}
 	return c, true, nil
 }
 
-func (keyringStore) Set(profile string, c Credential) error {
+func (k keyringStore) Set(profile string, c Credential) error {
 	raw, _ := json.Marshal(c)
-	return keyring.Set(keyringService, profile, string(raw))
+	if err := keyring.Set(keyringService, profile, string(raw)); err != nil {
+		return err
+	}
+	return k.index(func(names []string) []string { return withProfile(names, profile) })
 }
 
-func (keyringStore) Delete(profile string) error {
+func (k keyringStore) Delete(profile string) error {
 	err := keyring.Delete(keyringService, profile)
-	if errors.Is(err, keyring.ErrNotFound) {
-		return nil
+	if err != nil && !errors.Is(err, keyring.ErrNotFound) {
+		return err
 	}
-	return err
+	return k.index(func(names []string) []string { return withoutProfile(names, profile) })
+}
+
+func (keyringStore) List() ([]string, error) {
+	raw, err := keyring.Get(keyringService, keyringIndex)
+	if errors.Is(err, keyring.ErrNotFound) {
+		return []string{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	var names []string
+	if err := json.Unmarshal([]byte(raw), &names); err != nil {
+		return nil, err
+	}
+	return withoutProfile(names, ""), nil
+}
+
+// index rewrites the keychain's list of profiles with change.
+func (k keyringStore) index(change func([]string) []string) error {
+	names, err := k.List()
+	if err != nil {
+		names = []string{}
+	}
+	raw, _ := json.Marshal(change(names))
+	return keyring.Set(keyringService, keyringIndex, string(raw))
+}
+
+// withProfile adds a profile to a list of profiles (pure): sorted, without repeats, and never a
+// login waiting for --resume.
+func withProfile(names []string, profile string) []string {
+	if strings.HasSuffix(profile, ":pending") {
+		return withoutProfile(names, "")
+	}
+	return withoutProfile(append(slices.Clone(names), profile), "")
+}
+
+// withoutProfile takes a profile off a list of profiles (pure), with the rules of withProfile.
+func withoutProfile(names []string, profile string) []string {
+	out := []string{}
+	for _, n := range names {
+		if n != "" && n != profile && !strings.HasSuffix(n, ":pending") {
+			out = append(out, n)
+		}
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
 }
 
 // MemoryStore keeps credentials in memory only, for a program driving the CLI as a library
@@ -178,6 +241,12 @@ func (s *MemoryStore) Delete(profile string) error {
 	defer s.mu.Unlock()
 	delete(s.m, profile)
 	return nil
+}
+
+func (s *MemoryStore) List() ([]string, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return withoutProfile(slices.Collect(maps.Keys(s.m)), ""), nil
 }
 
 type fileStore struct{ path string }
@@ -231,6 +300,14 @@ func (f fileStore) Set(profile string, c Credential) error {
 	}
 	cf.Profiles[profile] = c
 	return f.write(cf)
+}
+
+func (f fileStore) List() ([]string, error) {
+	cf, err := f.read()
+	if err != nil {
+		return nil, err
+	}
+	return withoutProfile(slices.Collect(maps.Keys(cf.Profiles)), ""), nil
 }
 
 func (f fileStore) Delete(profile string) error {

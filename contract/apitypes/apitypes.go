@@ -431,6 +431,20 @@ type Whoami struct {
 	// Identity is the agent identity calling, when the token is one's credential: what it may
 	// change, read fresh on this request (CONTROL-PLANE.md §4.4).
 	Identity *WhoamiIdentity `json:"identity,omitempty"`
+	// NotInLogin is, for a whisk login, each business its person belongs to that the login does
+	// not cover, so an agent can see the business and hand the person the way in
+	// (CONTROL-PLANE.md §4.4).
+	NotInLogin []NotInLogin `json:"not_in_login,omitempty"`
+}
+
+// NotInLogin is a business the person belongs to that the login in use does not cover: its
+// slug and name, and either the link where the person adds it to this login (url) or, for a
+// login a business cannot be added to, what to do instead (fix).
+type NotInLogin struct {
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	URL  string `json:"url,omitempty"`
+	Fix  string `json:"fix"`
 }
 
 // WhoamiIdentity is the calling agent identity as whoami shows it.

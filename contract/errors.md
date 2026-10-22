@@ -104,10 +104,11 @@ be read; declare the name and let a human set it.
 Status: 403 · Surface: api, git
 
 When: a `whisk login` was used in a business it does not cover, though the person it acts for
-belongs to that business. A login covers the businesses it was approved for: a login for all
-the person's businesses covers the ones they belonged to when they approved it, and never one
-they joined later; a login for one business covers that business. A person can add a business
-to either without a new login. `details.url` is the page where they do it, `details.org` and
+belongs to that business. A login for all the person's businesses covers every business they
+belong to, including ones they join later, except one they took off it; a login for one
+business covers that business and the ones a person added to it. A person can add a business to
+either without a new login, and `whisk whoami` names each business the login does not cover with
+the same link. `details.url` is the page where they do it, `details.org` and
 `details.org_name` name the business, `details.login` is the login's id and `details.device` the
 computer it is bound to. The CLI prints this as `NEEDS_HUMAN` with the link.
 

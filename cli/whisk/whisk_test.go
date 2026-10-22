@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -21,6 +22,16 @@ func (s *memStore) Get(p string) (config.Credential, bool, error) { c, ok := s.m
 func (s *memStore) Set(p string, c config.Credential) error       { s.m[p] = c; return nil }
 func (s *memStore) Delete(p string) error                         { delete(s.m, p); return nil }
 func (s *memStore) Where() string                                 { return "memory" }
+func (s *memStore) List() ([]string, error) {
+	out := []string{}
+	for p := range s.m {
+		if !strings.HasSuffix(p, ":pending") {
+			out = append(out, p)
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
 
 type result struct {
 	Code   int

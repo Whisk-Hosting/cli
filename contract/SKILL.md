@@ -163,13 +163,17 @@ Every command takes `--org <slug>` and `--app <slug>` instead of `.whisk/app.jso
 
 Run `whisk login` in the app's folder, or with `--org` (and `--app`): the approval page then
 starts on that app or business, the narrowest login that fits. The person can choose all their
-businesses instead; that login acts as them in the businesses they belong to when they approve
-it, never one they join later: `whisk orgs` lists them and `--org <slug>` picks one when the
-folder names none. When a login meets a business it does not cover, the command exits 2 with a
-NEEDS_HUMAN block whose link (`details.url`, `details.reason` `BUSINESS_NOT_IN_LOGIN`) is where
-the person, signed in, adds that business to this login with one tap: show them the link, then
-run the command again. Do not run `whisk login` again for it. A person adds a new business
-themselves at `https://whisk.run/new`.
+businesses instead; that login acts as them in every business they belong to, including ones
+they join later: `whisk orgs` lists them and `--org <slug>` picks one when the folder names none.
+A computer has one sign-in: do not pass `--profile` to make another, and do not try other
+profiles to find a business. When the business you need is missing, run `whisk whoami`: under
+"Not in this login" (`not_in_login` with `--json`) it names each of the person's businesses the
+login does not cover, with the link where the person adds it. When a command meets one, it exits
+2 with a NEEDS_HUMAN block whose link (`details.url`, `details.reason` `BUSINESS_NOT_IN_LOGIN`)
+is the same page. Show the person the link, then run the command again. Do not run `whisk login`
+again for it. A business `whoami` does not name is one the person is not in: ask them to join it
+or to have an owner invite them. A person adds a new business themselves at
+`https://whisk.run/new`.
 
 An agency builds for its clients with the login it already has: `whisk clients` lists its client
 businesses, `whisk clients add <name> --contact <email>` adds one, `whisk init --org <client>`
