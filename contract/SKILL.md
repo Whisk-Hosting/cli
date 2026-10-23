@@ -354,7 +354,9 @@ human's existing records (www, mail) keep working.
 **A new address.** The app's platform address is made from its slug. To change it, run `whisk
 apps rename <new-slug>` on the same app: never create a new app and delete the old one. The app
 keeps its data, secrets, history and domains, the old address sends visitors to the new one, and
-the old slug still names the app. Commit the `.whisk/app.json` and `whisk.yaml` it updates.
+the old slug still names the app. Commit the `.whisk/app.json` and `whisk.yaml` it updates. The
+name people see is the app's display name, which starts as its slug: `whisk apps display-name
+"Job Tracker"` sets it and leaves the address as it is.
 
 **Redirects.** When a page is renamed or a site moves to Whisk, keep every old address
 working, or search engines drop the pages. List each old path under `redirects` with the new one (`from`, `to`, `status` 301 by
@@ -498,13 +500,14 @@ again (or signing up again) within 30 days they come back under the same `X-Whis
 keep their records rather than deleting them when a request stops naming them; after 30 days
 the platform deletes the person, and a later invitation makes a new id.
 
-Customers sign in on Whisk's pages in the app's name, with a password, an emailed code or a
-passkey. Give them a way out: link `/.whisk/account` (their own page, with their password,
+Customers sign in on Whisk's pages in the app's display name (set it with `whisk apps
+display-name`, or the pages say its slug), with a password, an emailed code or a passkey. Give them a way out: link `/.whisk/account` (their own page, with their password,
 passkeys and Sign out) somewhere a signed-in customer sees it, or `/.whisk/logout?return=/`
 (W132). With `customer_identity: app`, `sign_in` in `whisk.yaml` makes those pages and the sign-in
 emails look like the app: `logo` (a PNG or JPEG in the repository, at most 100 KB), `colour`,
 `background`, `text`, `font` (`whisk`, `system` or `serif`) and `corners` (`square`, `rounded`,
-`pill`). Match the app's own design, keep text and background readable (W131), and leave the
+`pill`). A logo takes the name's place at the top, so use one that carries the name. Match the
+app's own design, keep text and background readable (W131), and leave the
 "Secured by Whisk" band alone: it is not the app's to style.
 
 **Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an

@@ -424,6 +424,12 @@ func (c *Client) GetApp(ctx context.Context, org, app string) (App, error) {
 	return out, c.Do(ctx, http.MethodGet, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), nil, &out)
 }
 
+// PatchApp sets the name an app is shown by; its slug and address stay (CONTROL-PLANE.md §4.6).
+func (c *Client) PatchApp(ctx context.Context, org, app, name string) (App, error) {
+	var out App
+	return out, c.Do(ctx, http.MethodPatch, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), apitypes.PatchAppRequest{Name: &name}, &out)
+}
+
 // RenameApp gives an app a new slug, and so a new address; the platform keeps the old address
 // sending visitors on (CONTROL-PLANE.md §6.11).
 func (c *Client) RenameApp(ctx context.Context, org, app, slug string) (App, error) {

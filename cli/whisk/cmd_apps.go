@@ -410,7 +410,7 @@ for 7 days with whisk apps restore <id>.`,
 		},
 	}
 	apps.AddCommand(create, list, info, del, deleted, restore)
-	apps.AddCommand(renameCmd(s), moveCmd(s))
+	apps.AddCommand(renameCmd(s), displayNameCmd(s), moveCmd(s))
 	return apps
 }
 
