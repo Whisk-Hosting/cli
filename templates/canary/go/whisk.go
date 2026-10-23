@@ -338,8 +338,8 @@ type PlatformError struct {
 
 func (e *PlatformError) Error() string { return e.Code + ": " + e.Message }
 
-// platformCall sends one request to the app's own routes with the service token, read per call
-// since it rotates, within wait, and decodes the answer into out (nil to ignore it).
+// platformCall sends one request to the app's own routes with the service token, within wait,
+// and decodes the answer into out (nil to ignore it).
 func platformCall(ctx context.Context, wait time.Duration, method, path string, body, out any) error {
 	ctx, cancel := context.WithTimeout(ctx, wait)
 	defer cancel()

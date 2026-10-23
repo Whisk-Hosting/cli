@@ -206,8 +206,8 @@ export class PlatformError extends Error {
   }
 }
 
-// platformCall sends one request to the app's own routes with the service token, read per call
-// since it rotates, within waitMs, and answers the decoded body (undefined for 204).
+// platformCall sends one request to the app's own routes with the service token, within waitMs,
+// and answers the decoded body (undefined for 204).
 const platformCall = async <T>(method: string, path: string, waitMs: number, body?: unknown): Promise<T> => {
   const res = await fetch(platformUrl() + path, {
     method,

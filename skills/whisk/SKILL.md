@@ -1029,7 +1029,7 @@ accepted_callers: [website]       # the orders app accepts calls from website an
 ```
 
 then send ordinary HTTP to `http://<app id>.internal.whisk:8443/<path>` with
-`Authorization: Bearer $WHISK_SERVICE_TOKEN` (read the token per request; it rotates daily). The
+`Authorization: Bearer $WHISK_SERVICE_TOKEN`. The
 call never leaves the platform. The other app receives it with `X-Whisk-Audience: service` and
 `X-Whisk-Service-App` naming the caller's app id, so it can also decide per route. The token
 carries the calls the other apps accepted when the caller's container started: after the

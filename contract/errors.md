@@ -1416,7 +1416,9 @@ When: the image build exited non-zero. The last 200 lines of build output are in
 `details.log` and the CLI prints the last 40.
 
 Fix: Read the log excerpt. Typical causes: a dependency install failed, a compile error, a
-Dockerfile step failed, a build-time secret is missing from `build.secrets`. Fix and redeploy.
+Dockerfile step failed, a build-time secret is missing from `build.secrets`, or a step ran
+`setcap`, which Whisk's builds cannot do (the app listens on `PORT` and needs no added
+capabilities, so remove it). Fix and redeploy.
 
 ```json
 {"error":{"code":"BUILD_FAILED","message":"The build failed at step 5 of 9 (npm ci).","fix":"Read the log excerpt, fix the cause, and run whisk deploy again. The previous deploy is still live.","docs":"https://skill.whisk.run/errors/BUILD_FAILED","details":{"build_id":"01J9","step":"npm ci","exit_code":1,"log":["npm ERR! code E404","npm ERR! 404 Not Found - GET https://registry.npmjs.org/left-padd"]}}}
