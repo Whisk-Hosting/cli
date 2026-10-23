@@ -36,6 +36,12 @@ func (c *Client) CreateDeploy(ctx context.Context, org, app string, req CreateDe
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/deploys", req, &out)
 }
 
+// RestartApp starts the app's live production build again in a new container; the old one
+// stops once the new one is healthy. The deploy it queued is the newest production deploy.
+func (c *Client) RestartApp(ctx context.Context, org, app string) error {
+	return c.Do(ctx, http.MethodPost, appPath(org, app)+"/restart", nil, nil)
+}
+
 // CancelDeploy cancels a deploy that has not finished.
 func (c *Client) CancelDeploy(ctx context.Context, org, app, id string) (Deploy, error) {
 	var out Deploy

@@ -397,7 +397,7 @@ func (m *mcpServer) dispatch(ctx context.Context, method string, params json.Raw
 			"protocolVersion": mcpProtocolVersion,
 			"capabilities":    map[string]any{"resources": map[string]any{"listChanged": false}, "tools": map[string]any{"listChanged": false}},
 			"serverInfo":      map[string]any{"name": "whisk", "version": Version},
-			"instructions":    "Read whisk://contract/SKILL.md first. Every tool runs the whisk CLI with --json and returns its output; exit codes: 0 ok, 1 error (read code and fix), 2 a human must act (show them the URL), 3 validation, 4 not signed in or not allowed (read code: AUTH_REQUIRED means call login, AGENT_CATEGORY or FORBIDDEN_ROLE means ask the human), 5 unavailable, 6 deploy failed. login answers at once with the URL and code for the human (exit 2); once they approve, call login with resume set to the device_code. deploy, rollback and envs_start return once the deploy is queued: follow it with deploys_info. Calls run side by side, and a call made with a progressToken reports what it is doing as it goes. Whenever Whisk gets in your way, call feedback_send: the Whisk team reads every piece.",
+			"instructions":    "Read whisk://contract/SKILL.md first. Every tool runs the whisk CLI with --json and returns its output; exit codes: 0 ok, 1 error (read code and fix), 2 a human must act (show them the URL), 3 validation, 4 not signed in or not allowed (read code: AUTH_REQUIRED means call login, AGENT_CATEGORY or FORBIDDEN_ROLE means ask the human), 5 unavailable, 6 deploy failed. login answers at once with the URL and code for the human (exit 2); once they approve, call login with resume set to the device_code. deploy, rollback, envs_start and apps_restart return once the deploy is queued: follow it with deploys_info. Calls run side by side, and a call made with a progressToken reports what it is doing as it goes. Whenever Whisk gets in your way, call feedback_send: the Whisk team reads every piece.",
 		}, nil
 	case "ping":
 		return map[string]any{}, nil
@@ -515,4 +515,4 @@ func (w *tapWriter) Write(p []byte) (int, error) {
 // mcpNoWait are the tools that would otherwise wait for a deploy to finish, which can take many
 // minutes. Through MCP they return as soon as the deploy is queued, unless the call passes
 // no-wait: false; deploys_info follows it.
-var mcpNoWait = map[string]bool{"deploy": true, "rollback": true, "envs_start": true}
+var mcpNoWait = map[string]bool{"deploy": true, "rollback": true, "envs_start": true, "apps_restart": true}
