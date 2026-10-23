@@ -79,7 +79,7 @@ func TestCDNStatus(t *testing.T) {
 
 	for _, args := range [][]string{{"cdn"}, {"cdn", "status"}} {
 		r := runRemote(t, dir, srv.URL, nil, args...)
-		for _, want := range []string{"CDN for crm: live", "crm.acme.whisk.page", "through the CDN", "acme.com", "direct (a bare domain", "3.0 GB for this app", "12.0 GB of 100.0 GB included"} {
+		for _, want := range []string{"CDN for crm: live", "crm.acme.whisk.page", "ON THE CDN", "acme.com", "no, its DNS points straight at Whisk", "3.0 GB for this app", "12.0 GB of 100.0 GB included"} {
 			if r.Code != 0 || !strings.Contains(r.Stdout, want) {
 				t.Errorf("%v lacks %q (exit %d):\n%s", args, want, r.Code, r.Stdout)
 			}
@@ -136,11 +136,11 @@ func TestCDNRefusals(t *testing.T) {
 
 func TestCDNWords(t *testing.T) {
 	routes := map[api.CDNHostname]string{
-		{Hostname: "a", ThroughCDN: true}:   "through the CDN",
-		{Hostname: "b", Reason: "bare"}:     "direct (a bare domain pointed by A records cannot follow the app's address)",
-		{Hostname: "c", Reason: "business"}: "direct (an address on the business's own domain)",
-		{Hostname: "d", Reason: "preview"}:  "direct (a preview)",
-		{Hostname: "e"}:                     "direct (-)",
+		{Hostname: "a", ThroughCDN: true}:   "yes",
+		{Hostname: "b", Reason: "bare"}:     "no, its DNS points straight at Whisk",
+		{Hostname: "c", Reason: "business"}: "no, an address on the business's own domain",
+		{Hostname: "d", Reason: "preview"}:  "no, a preview",
+		{Hostname: "e"}:                     "no",
 	}
 	for h, want := range routes {
 		if got := cdnHostnameText(h); got != want {
