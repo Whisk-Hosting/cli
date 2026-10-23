@@ -509,7 +509,8 @@ emails look like the app: `logo` (a PNG or JPEG in the repository, at most 100 K
 
 **Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an
 owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never
-sleeps and has more memory (1 GB guaranteed, up to 4 GB). Never ask for promotion to get round
+sleeps, has more memory (1 GB guaranteed, up to 4 GB) and at least two processor cores (the
+plan's, when it gives more), and is served first when its server is busy. Never ask for promotion to get round
 anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
 choice. An app that cannot run any other way says `promoted: true` in whisk.yaml: its
 production deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes
@@ -1168,14 +1169,21 @@ The key reaches only that prefix: always list with the prefix, never the whole b
 no other app's file paths. A preview has its own prefix and key, apart from production's. Use
 path-style addressing (`forcePathStyle: true` in the AWS SDK for JavaScript,
 `addressing_style: "path"` in boto3, `BucketLookupPath` in minio-go): the bucket goes in the
-path, not the hostname. The endpoint is reachable from your app and from browsers alike. For
-browser uploads, `POST /v1/orgs/<org>/apps/<app>/uploads` with the service token and
-`{filename, content_type, max_bytes}` answers `{id, key, url, fields, expires_at}`: post the
-file to `url` as `multipart/form-data` with every entry of `fields` first and the file last.
-The store refuses anything larger than `max_bytes` or of another type, and the bytes never pass
-through your app. `GET /v1/orgs/<org>/apps/<app>/uploads/<id>` gives you a link to read one
-back. Objects are virus-scanned; an infected one moves to `quarantine/` and reading it answers
-`OBJECT_QUARANTINED`. One upload may be up to 5 GB (`max_bytes` 5368709120). The business's storage
+path, not the hostname. The endpoint is reachable from your app and from browsers alike.
+
+**Files people send.** A request to your app carries at most the plan's `body_bytes` (8 MiB on
+Starter and Team, 32 MiB on Business; a Promoted app has its plan's), and a bigger one is
+refused at the edge with 413 `BODY_TOO_LARGE`. So any file a browser sends goes straight to
+storage instead: images, video, documents and attachments on a form alike. `POST
+/v1/orgs/<org>/apps/<app>/uploads` with the service token and `{filename, content_type,
+max_bytes}` answers `{id, key, url, fields, expires_at}`: post the file to `url` as
+`multipart/form-data` with every entry of `fields` first and the file last, then send your app
+the upload's `id` with the rest of the form. The store refuses anything larger than `max_bytes`
+or of another type, and the bytes never pass through your app. One upload may be up to 5 GB
+(`max_bytes` 5368709120). `GET /v1/orgs/<org>/apps/<app>/uploads/<id>` gives you a link to read
+one back. Every upload is virus-scanned: an infected one moves to `quarantine/` and reading it
+answers `OBJECT_QUARANTINED`. What your app writes to storage itself with its key is its own
+and is not scanned, so an app that keeps mail or other files it fetched keeps every one of them. The business's storage
 allowance counts its files, its databases and its apps' git repositories alike, so images and
 media committed to the repository use the allowance too; put what visitors or staff add in
 storage, not in git. Files you bring yourself, such as the videos and photos of a website you are
