@@ -1174,26 +1174,32 @@ error carries. --json gives {"deploy_id", "build_id", "build_log", "app_log"}.`,
 			if err != nil {
 				return wrap(err)
 			}
+			appLog := []string{}
+			if d.Error != nil {
+				appLog = errorLines(d.Error.Details)
+			}
+			if !s.json {
+				// A person reads the log as the builder writes it, so a running build shows its
+				// lines now rather than all at once when it ends.
+				out := &logTail{w: s.printer.Out}
+				if d.BuildID != "" {
+					if err := client.StreamBuildLog(s.ctx, org, app, d.BuildID, out); err != nil && !api.IsCode(err, "NOT_FOUND") {
+						return wrap(err)
+					}
+				}
+				out.finish()
+				if len(appLog) > 0 {
+					fmt.Fprintf(s.printer.Out, "--- the app's last %d line(s) ---\n%s\n", len(appLog), strings.Join(appLog, "\n"))
+				}
+				return nil
+			}
 			buildLog := ""
 			if d.BuildID != "" {
 				if buildLog, err = client.BuildLog(s.ctx, org, app, d.BuildID); err != nil && !api.IsCode(err, "NOT_FOUND") {
 					return wrap(err)
 				}
 			}
-			appLog := []string{}
-			if d.Error != nil {
-				appLog = errorLines(d.Error.Details)
-			}
-			s.printer.Result(map[string]any{"deploy_id": d.ID, "build_id": d.BuildID, "build_log": buildLog, "app_log": appLog}, func(w io.Writer) {
-				if strings.TrimSpace(buildLog) == "" {
-					fmt.Fprintln(w, "No build log is kept for this deploy.")
-				} else {
-					fmt.Fprint(w, strings.TrimRight(buildLog, "\n")+"\n")
-				}
-				if len(appLog) > 0 {
-					fmt.Fprintf(w, "--- the app's last %d line(s) ---\n%s\n", len(appLog), strings.Join(appLog, "\n"))
-				}
-			})
+			s.printer.Result(map[string]any{"deploy_id": d.ID, "build_id": d.BuildID, "build_log": buildLog, "app_log": appLog}, nil)
 			return nil
 		},
 	}
@@ -1283,4 +1289,34 @@ func errorLines(details map[string]any) []string {
 		}
 	}
 	return out
+}
+
+// logTail writes a streamed build log through to w, remembering whether anything but blank space
+// came and whether the last byte ended a line, so finish can close the log as a whole one would.
+type logTail struct {
+	w       io.Writer
+	printed bool
+	open    bool
+}
+
+func (t *logTail) Write(p []byte) (int, error) {
+	if len(p) == 0 {
+		return 0, nil
+	}
+	if !t.printed && strings.TrimSpace(string(p)) == "" {
+		return len(p), nil
+	}
+	t.printed = true
+	t.open = p[len(p)-1] != '\n'
+	return t.w.Write(p)
+}
+
+// finish ends an unfinished last line, or says there is no log when nothing came.
+func (t *logTail) finish() {
+	switch {
+	case !t.printed:
+		fmt.Fprintln(t.w, "No build log is kept for this deploy.")
+	case t.open:
+		fmt.Fprintln(t.w)
+	}
 }

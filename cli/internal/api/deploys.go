@@ -109,3 +109,17 @@ func (c *Client) BuildLog(ctx context.Context, org, app, buildID string) (string
 	}
 	return string(raw), nil
 }
+
+// StreamBuildLog copies a build's log to w as it arrives, following it while the build runs, so a
+// person watching sees each line when the builder writes it. The context bounds the wait.
+func (c *Client) StreamBuildLog(ctx context.Context, org, app, buildID string, w io.Writer) error {
+	resp, err := c.open(ctx, appPath(org, app)+"/builds/"+pathSeg(buildID)+"/log", "text/plain")
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if _, err := io.Copy(w, resp.Body); err != nil {
+		return &Unavailable{Err: err}
+	}
+	return nil
+}
