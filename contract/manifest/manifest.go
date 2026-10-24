@@ -670,6 +670,10 @@ func withDefaults(m Manifest) Manifest {
 			if v.Env == nil {
 				v.Env = map[string]string{}
 			}
+			// No settings of its own reads the same written as [] or left out.
+			if len(v.Settings) == 0 {
+				v.Settings = nil
+			}
 			m.Managed.Variants[k] = v
 		}
 	}

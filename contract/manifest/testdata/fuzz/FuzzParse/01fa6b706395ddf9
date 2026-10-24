@@ -1,0 +1,2 @@
+go test fuzz v1
+[]byte("whisk: 1\nname: 00a\nmanaged:\n  product: 00a\n  name: A\n  #00000000000000000\n  variants:\n   a:\n      name: A\n      settings: []")

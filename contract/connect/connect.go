@@ -558,11 +558,11 @@ func opKey(o Operation) string {
 
 // Match finds the first operation a call is allowed under. path is the call's escaped path
 // below the connection's own path, starting with "/". A path that could mean something else
-// once decoded (dot segments, encoded slashes) matches nothing. doc is the call's decoded JSON
-// body (DecodeBody), or nil: an operation with body conditions matches only a body holding
-// each string.
+// once decoded (dot segments, encoded slashes), or that holds a raw "?" or "#", which an escaped
+// path never does, matches nothing. doc is the call's decoded JSON body (DecodeBody), or nil: an
+// operation with body conditions matches only a body holding each string.
 func Match(ops []Operation, method, path string, doc any) (Operation, bool) {
-	if routes.Ambiguous(path) || strings.Contains(strings.ToLower(path), "%2f") || strings.Contains(strings.ToLower(path), "%5c") {
+	if strings.ContainsAny(path, "?#") || routes.Ambiguous(path) || strings.Contains(strings.ToLower(path), "%2f") || strings.Contains(strings.ToLower(path), "%5c") {
 		return Operation{}, false
 	}
 	for _, o := range ops {
