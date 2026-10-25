@@ -66,6 +66,12 @@ code you write:
   all; keep outputs small and store large data in the database or the storage bucket.
 - **`whisk.yaml`.** `concurrency` and `retries` on a function in the manifest describe it for
   people; the options in code are what the engine runs, so keep them the same.
+- **Triggers come from code.** The engine runs the triggers your serve endpoint answers with; a
+  `functions` entry in `whisk.yaml` names one function once, with either `cron` or `event`, for
+  listings, the graph and `whisk cron run`. A function with a cron and an event trigger lists
+  both in code and declares its cron in the manifest. The manifest's `tz` sets only the next run
+  the listing shows: write the zone in the code's cron (`"TZ=Pacific/Auckland 0 6 * * *"`), or
+  it runs in UTC.
 - **Names you already prefixed.** Code written for Whisk before names were plain uses
   `<WHISK_APP_ID>/po.created` in triggers. It keeps working unchanged. An app gets plain names
   only when none of its triggers and cancellations carries the prefix, so do not mix the two:
