@@ -1105,16 +1105,17 @@ needs the secret shared with previews.
 Status: 403 · Surface: api
 
 When: a person asked for something that needs a confirmed session (CONTROL-PLANE.md §4.2),
-such as granting or resuming a connection, and they were not checked in the last 10 minutes by
-an emailed code, a company sign-in whose provider reported re-checking them (auth_time), or a
-passkey. A password alone does not confirm. `details.sign_in` is the link that confirms the
+such as granting or resuming a connection, and in the last 2 hours they were neither checked by
+an emailed code, a company sign-in whose provider reported re-checking them (auth_time) or a
+passkey, nor made another decision that needed a confirmed session. A password alone does not
+confirm. `details.sign_in` is the link that confirms the
 session the person already has and comes back to the page that asked.
 
 Fix: Confirm at the link with your passkey, an emailed code or your company sign-in, then repeat
-the action within 10 minutes.
+the action within 2 hours.
 
 ```json
-{"error":{"code":"CONFIRMATION_NEEDED","message":"Confirm it's you to do this.","fix":"Confirm at https://auth.whisk.run/session/confirm?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections with your passkey, an emailed code or your company sign-in, then repeat this within 10 minutes. A password does not confirm.","docs":"https://skill.whisk.run/errors/CONFIRMATION_NEEDED","details":{"sign_in":"https://auth.whisk.run/session/confirm?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections"}}}
+{"error":{"code":"CONFIRMATION_NEEDED","message":"Confirm it's you to do this.","fix":"Confirm at https://auth.whisk.run/session/confirm?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections with your passkey, an emailed code or your company sign-in, then repeat this within 2 hours. A password does not confirm.","docs":"https://skill.whisk.run/errors/CONFIRMATION_NEEDED","details":{"sign_in":"https://auth.whisk.run/session/confirm?return=https%3A%2F%2Fwhisk.run%2Fo%2Facme%2Fapps%2Fcrm%2Fconnections"}}}
 ```
 
 ## CONNECTION_CALLER_UNKNOWN
