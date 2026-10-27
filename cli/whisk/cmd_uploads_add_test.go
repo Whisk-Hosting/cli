@@ -98,8 +98,41 @@ func TestUploadsAdd(t *testing.T) {
 	if len(ups) != 1 || got["id"] != "01UP" || got["media"].(map[string]any)["status"] != "ready" {
 		t.Errorf("result %v", r.JSON)
 	}
-	if !strings.Contains(r.Stderr, "upload: 01UP is stored, ready to play") {
-		t.Errorf("--wait did not name the stages: %q", r.Stderr)
+	if strings.Contains(r.Stderr, "upload: 01UP is") {
+		t.Errorf("--json printed the stages: %q", r.Stderr)
+	}
+
+	// Without --json, the person reads that the file was stored without a scan.
+	r = runRemote(t, dir, srv.URL, nil, "uploads", "add", "hero.mp4", "--public", "--wait")
+	if r.Code != 0 || !strings.Contains(r.Stdout, "stored without a virus scan, ready to play") {
+		t.Errorf("the stage = %+v", r)
+	}
+}
+
+// TestUploadsAddOverTheScanLimit: a file over 100 MB is named on stderr before it goes up as one
+// the virus scan does not read.
+func TestUploadsAddOverTheScanLimit(t *testing.T) {
+	uploadPoll = time.Millisecond
+	var authorised map[string]any
+	var stored, storedType string
+	srv := uploadsAPI(t, &authorised, &stored, &storedType, "unscanned")
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+	f, err := os.Create(filepath.Join(dir, "archive.tar"))
+	must(t, err)
+	must(t, f.Truncate(180<<20))
+	must(t, f.Close())
+	files, err := openUploads(dir, []string{"archive.tar"}, "")
+	must(t, err)
+	defer files[0].file.Close()
+	if files[0].size <= scanMaxBytes {
+		t.Fatalf("size %d", files[0].size)
+	}
+	if !strings.Contains(uploadScanNote(files[0]), "archive.tar is 180 MB, over the 100 MB the virus scan reads, so it is stored without a scan") {
+		t.Errorf("note = %q", uploadScanNote(files[0]))
+	}
+	if uploadScanNote(uploadFile{name: "small.jpg", size: scanMaxBytes}) != "" {
+		t.Error("a file at the limit got a note")
 	}
 }
 

@@ -829,7 +829,9 @@ scrubbed from logs. Never ask the human for a value in chat. When a secret is ne
 fill it early. `whisk secrets set NAME1 NAME2 …` never takes a value: it prints one link that
 opens the secrets page with a paste box ready for those names, so the human pastes them all at
 once (a `.env`-style `NAME=value` block works). Relay that link. Org-scoped secrets are
-shared by every app in the org; app-scoped ones shadow them.
+shared by every app in the org; app-scoped ones shadow them. A slot nobody filled, such as one
+whisk.yaml no longer names, you remove with `whisk secrets delete NAME`; one with a value only a
+person deletes.
 
 Previews get a secret only when a person has shared it with previews, so by default a preview
 runs without production's keys and must cope with them missing. If a preview needs one, run
@@ -1197,8 +1199,10 @@ media committed to the repository use the allowance too; put what visitors or st
 storage, not in git. Files you bring yourself, such as the videos and photos of a website you are
 moving to Whisk, go up with `whisk uploads add <file>... [--public] [--wait]`, which prints each
 upload's id and the element that shows it; if it stops part way, run the same command again and
-it carries on; `whisk uploads list` and `whisk uploads show <id>`
-read them back.
+it carries on; `whisk uploads list` and `whisk uploads show <id>` read them back, and
+your person removes one with `whisk uploads delete <id>`. The virus scan reads files up to 100 MB: a larger one
+is stored without a scan, with status `unscanned`, and your app can still use it. If a file must
+be scanned before it is used, split it into pieces under 100 MB before uploading.
 
 **Video and audio.** Never stream video through your app or hand out the 15-minute read link
 for it. Authorise the upload as above with its real `content_type` (`video/mp4`,

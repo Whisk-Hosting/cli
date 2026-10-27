@@ -67,3 +67,17 @@ func TestUploadsLinkAndRotate(t *testing.T) {
 		t.Errorf("rotate-key --now: %+v", r)
 	}
 }
+
+// TestUploadsDelete: uploads delete removes one upload by its id.
+func TestUploadsDelete(t *testing.T) {
+	var got string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		got = r.Method + " " + r.URL.Path
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer srv.Close()
+	r := runRemote(t, boundDir(t, srv.URL), srv.URL, nil, "uploads", "delete", "01UP", "--json")
+	if r.Code != 0 || got != "DELETE /v1/orgs/acme/apps/crm/uploads/01UP" || r.JSON["deleted"] != "01UP" {
+		t.Errorf("uploads delete: %s %+v", got, r)
+	}
+}

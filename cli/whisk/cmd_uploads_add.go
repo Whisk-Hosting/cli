@@ -20,6 +20,10 @@ import (
 // maxUploadBytes is the most one upload form takes (CONTROL-PLANE.md §6.13).
 const maxUploadBytes = 5 << 30
 
+// scanMaxBytes is the largest object the virus scan reads; a larger one is stored without a scan,
+// status unscanned (CONTROL-PLANE.md §6.13 "Scanning").
+const scanMaxBytes = 100 << 20
+
 // uploadPoll is how often --wait asks how an upload's scan and conversion are going.
 var uploadPoll = 5 * time.Second
 
@@ -40,7 +44,12 @@ browser. Each prints its id and the address it shows or plays at. Put a video in
 Uploads are private (people signed in to the app) unless --public (anyone, embeddable, such as a
 product video on a website). The type comes from the file's name and contents; --content-type
 sets it for every file given. --wait follows each until its scan and conversion are done;
-whisk uploads show <id> --wait does it later.`,
+whisk uploads show <id> --wait does it later.
+
+The virus scan reads files up to 100 MB. A larger file is stored without a scan (its status is
+unscanned): the app can still use it, and a file that must be scanned is split into pieces under
+100 MB before it is uploaded. With --json, only the JSON goes to stdout and the progress lines
+are left out.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			files, err := openUploads(s.env.Dir, args, contentType)
@@ -60,14 +69,22 @@ whisk uploads show <id> --wait does it later.`,
 			if public {
 				visibility = "public"
 			}
+			quiet := s.quiet || s.json
+			log := s.env.Stderr
+			if quiet {
+				log = io.Discard
+			}
 			out := make([]api.Upload, 0, len(files))
 			for _, f := range files {
+				if note := uploadScanNote(f); note != "" {
+					fmt.Fprintln(log, note)
+				}
 				u, err := addUpload(s, client, org, app, f, visibility)
 				if err != nil {
 					return err
 				}
 				if wait && !uploadSettled(u) {
-					if u, err = followUpload(s.ctx, client, org, app, u.ID, s.env.Stderr, uploadPoll); err != nil {
+					if u, err = followUpload(s.ctx, client, org, app, u.ID, log, uploadPoll); err != nil {
 						return wrap(err)
 					}
 				}
@@ -153,6 +170,15 @@ func openUploads(dir string, args []string, contentType string) ([]uploadFile, e
 	return files, nil
 }
 
+// uploadScanNote is the line said before a file the virus scan will not read goes up, "" for
+// one it reads. Pure.
+func uploadScanNote(f uploadFile) string {
+	if f.size <= scanMaxBytes {
+		return ""
+	}
+	return fmt.Sprintf("upload: %s is %s, over the 100 MB the virus scan reads, so it is stored without a scan", f.name, sizeMB(f.size))
+}
+
 // addUpload authorises one file, posts it to the store and reads back its record. A file
 // larger than one part goes up in parts, and carries on where an earlier run stopped.
 func addUpload(s *session, client *api.Client, org, app string, f uploadFile, visibility string) (api.Upload, error) {
@@ -221,7 +247,11 @@ func uploadsShowCmd(s *session) *cobra.Command {
 			}
 			u, err := client.GetUpload(s.ctx, org, app, args[0])
 			if err == nil && wait && !uploadSettled(u) {
-				u, err = followUpload(s.ctx, client, org, app, args[0], s.env.Stderr, uploadPoll)
+				log := s.env.Stderr
+				if s.quiet || s.json {
+					log = io.Discard
+				}
+				u, err = followUpload(s.ctx, client, org, app, args[0], log, uploadPoll)
 			}
 			if err != nil {
 				return wrap(err)
@@ -289,7 +319,7 @@ func uploadSettled(u api.Upload) bool {
 func uploadStage(u api.Upload) string {
 	stage := map[string]string{
 		"authorised": "waiting for its scan", "missing": "waiting for the file to arrive",
-		"clean": "scanned", "unscanned": "stored", "infected": "quarantined",
+		"clean": "scanned", "unscanned": "stored without a virus scan", "infected": "quarantined",
 	}[string(u.Status)]
 	if stage == "" {
 		stage = string(u.Status)

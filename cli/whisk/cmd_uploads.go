@@ -70,6 +70,25 @@ func uploadsCmd(s *session) *cobra.Command {
 	}
 	rotate.Flags().BoolVar(&now, "now", false, "stop every link already issued at once")
 
-	uploads.AddCommand(uploadsAddCmd(s), uploadsListCmd(s), uploadsShowCmd(s), link, rotate)
+	remove := &cobra.Command{
+		Use:   "delete <id>",
+		Short: "Remove an upload: the file, its converted copies and its record",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			if err := client.DeleteUpload(s.ctx, org, app, args[0]); err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "deleted": args[0]}, func(w io.Writer) {
+				fmt.Fprintf(w, "Deleted upload %s.\n", args[0])
+			})
+			return nil
+		},
+	}
+
+	uploads.AddCommand(uploadsAddCmd(s), uploadsListCmd(s), uploadsShowCmd(s), remove, link, rotate)
 	return uploads
 }

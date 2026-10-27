@@ -122,6 +122,12 @@ func (c *Client) GetUpload(ctx context.Context, org, app, id string) (Upload, er
 	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/uploads/"+pathSeg(id), nil, &out)
 }
 
+// DeleteUpload removes an upload's object, its converted copies and its record.
+// DELETE /orgs/:org/apps/:app/uploads/:id.
+func (c *Client) DeleteUpload(ctx context.Context, org, app, id string) error {
+	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/uploads/"+pathSeg(id), nil, nil)
+}
+
 // ListUploads lists what the app has authorised, newest first. GET /orgs/:org/apps/:app/uploads.
 func (c *Client) ListUploads(ctx context.Context, org, app string) ([]Upload, error) {
 	return listAll[Upload](ctx, c, appPath(org, app)+"/uploads")
