@@ -176,7 +176,7 @@ var wire = []any{
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, NeedsYou{},
-	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PatchMemberRequest{},
+	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PersonAppsRequest{}, PatchMemberRequest{},
 	GroupRequest{}, GroupMembersRequest{}, CreateAppRequest{}, PatchAppRequest{}, RenameAppRequest{}, ValidateRequest{},
 	AccessRequest{}, CreateDeployRequest{}, DeclareSecretRequest{}, SecretValueRequest{},
 	RollbackSecretRequest{}, SecretPreviewsRequest{}, ShareSecretRequest{}, SharedSecret{}, DomainRequest{}, DeployKeyResponse{}, DeviceApproveRequest{},

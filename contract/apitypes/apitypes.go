@@ -619,6 +619,14 @@ type InviteRequest struct {
 	Name  string     `json:"name,omitempty"`
 	Role  Role       `json:"role"`
 	Kind  MemberKind `json:"kind,omitempty"`
+	// Apps are given to the person in the same change, by app ID or slug; a guest needs one.
+	Apps []string `json:"apps,omitempty"`
+}
+
+// PersonAppsRequest is PUT /orgs/:org/members/:id/apps: the apps whose grants name the person.
+// The answer has the same shape, with the apps by ID.
+type PersonAppsRequest struct {
+	Apps []string `json:"apps"`
 }
 
 // PatchMemberRequest is PATCH /orgs/:org/members/:id.

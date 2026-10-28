@@ -59,8 +59,9 @@ func membersCmd(s *session) *cobra.Command {
 
 	var role, name string
 	var guest bool
+	var apps []string
 	invite := &cobra.Command{
-		Use:   "invite <email> --role developer [--guest]",
+		Use:   "invite <email> --role developer [--guest] [--app <app>]...",
 		Short: "Invite a person; prints the link they redeem (a person approves it)",
 		Long:  personOnly("Invite a person; prints the link they redeem."),
 		Args:  cobra.ExactArgs(1),
@@ -69,9 +70,12 @@ func membersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := api.Invite{Email: strings.TrimSpace(args[0]), Name: name, Role: role}
+			req := api.Invite{Email: strings.TrimSpace(args[0]), Name: name, Role: role, Apps: apps}
 			if guest {
 				req.Kind = "guest"
+				if len(apps) == 0 {
+					return output.New("INVALID_REQUEST", "A guest opens only the apps they are given, so name at least one.", "Add --app <app> for each app they work on.", map[string]any{"email": req.Email})
+				}
 			}
 			m, asked, err := client.InviteMember(s.ctx, org, req)
 			if err != nil {
@@ -97,7 +101,8 @@ func membersCmd(s *session) *cobra.Command {
 	}
 	invite.Flags().StringVar(&role, "role", "member", "owner, admin, developer, billing or member")
 	invite.Flags().StringVar(&name, "name", "", "the person's name")
-	invite.Flags().BoolVar(&guest, "guest", false, "invite as a guest (outside the company)")
+	invite.Flags().BoolVar(&guest, "guest", false, "invite as a guest (outside the company): a developer or member who opens only the apps given with --app")
+	invite.Flags().StringArrayVar(&apps, "app", nil, "an app they may open, by slug; repeat for more (a guest needs one)")
 
 	remove := &cobra.Command{
 		Use:   "remove <email>",

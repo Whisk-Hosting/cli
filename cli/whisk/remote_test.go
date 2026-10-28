@@ -1145,11 +1145,15 @@ func TestMembersAccessDeployKeys(t *testing.T) {
 	dir := boundDir(t, srv.URL)
 	git := &fakeGit{}
 
-	r := runRemote(t, dir, srv.URL, git, "members", "invite", "cara@acme.example", "--role", "developer", "--guest")
+	r := runRemote(t, dir, srv.URL, git, "members", "invite", "eve@acme.example", "--guest", "--json")
+	if r.Code == 0 || !strings.Contains(r.Stdout+r.Stderr, "INVALID_REQUEST") || len(st.invited) != 0 {
+		t.Fatalf("a guest with no app is refused before the API: %+v", r)
+	}
+	r = runRemote(t, dir, srv.URL, git, "members", "invite", "cara@acme.example", "--role", "developer", "--guest", "--app", "crm", "--app", "rota")
 	if r.Code != 0 || !strings.Contains(r.Stdout, "https://whisk.run/invite/tok123") || !strings.Contains(r.Stdout, "(guest)") {
 		t.Fatalf("members invite: %+v", r)
 	}
-	if st.invited[0]["role"] != "developer" || st.invited[0]["kind"] != "guest" {
+	if st.invited[0]["role"] != "developer" || st.invited[0]["kind"] != "guest" || fmt.Sprint(st.invited[0]["apps"]) != "[crm rota]" {
 		t.Fatalf("invite body: %v", st.invited)
 	}
 	r = runRemote(t, dir, srv.URL, git, "members", "invite", "dan@acme.example", "--json")

@@ -167,10 +167,11 @@ type Group = apitypes.Group
 
 // Invite is the body of POST /orgs/:org/members.
 type Invite struct {
-	Email string `json:"email"`
-	Name  string `json:"name,omitempty"`
-	Role  string `json:"role"`
-	Kind  string `json:"kind,omitempty"`
+	Email string   `json:"email"`
+	Name  string   `json:"name,omitempty"`
+	Role  string   `json:"role"`
+	Kind  string   `json:"kind,omitempty"`
+	Apps  []string `json:"apps,omitempty"`
 }
 
 // ListMembers lists the org's members and guests, invited ones included.

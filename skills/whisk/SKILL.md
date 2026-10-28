@@ -554,7 +554,10 @@ A Promoted app is where an existing product brings what it already has:
   a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`.
 
 Who may open the app (groups, people, everyone in the business) and who is in the business are
-an owner's or admin's choice. `whisk access show` and `whisk members list` read them. When the
+an owner's or admin's choice. Everyone in the business means its members. A guest, someone from
+outside such as a contractor, opens only the apps they are given and works on those alone, so
+invite one with `whisk members invite <email> --guest --app <app>`. `whisk access show` and
+`whisk members list` read them. When the
 person asks you to change them, `whisk access grant`/`revoke` and `whisk members invite`/`remove`
 do not change anything yourself: they print a link and exit 2 (`NEEDS_HUMAN`, with
 `details.request_id`). Show the person the link; they approve exactly that change on it, signed
