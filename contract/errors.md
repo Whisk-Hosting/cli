@@ -2650,6 +2650,72 @@ then try again.
 {"error":{"code":"BUCKET_UNREACHABLE","message":"The bucket this business brought did not answer.","fix":"Check that the endpoint is your provider's public https:// S3 address and that it is up, then try again.","docs":"https://skill.whisk.run/errors/BUCKET_UNREACHABLE","details":{}}}
 ```
 
+## STORE_UNREACHABLE
+
+Status: 502 · Surface: api
+
+When: an operator recorded a store (CONTROL-PLANE.md §6.13 "Stores") and the platform could not
+reach it as a store with the key sent: the endpoint did not answer, the key was refused, or the
+root bucket is not there (and was not asked to be made). The store is not recorded. The same when
+a move to a recorded store could not make the business's bucket there.
+
+Fix: Check the endpoint, the key and that the root bucket exists, then send the store again.
+
+```json
+{"error":{"code":"STORE_UNREACHABLE","message":"The store did not answer as a store: the root bucket whisk-files is not there","fix":"Check the endpoint, the key and that the root bucket exists, then send the store again.","docs":"https://skill.whisk.run/errors/STORE_UNREACHABLE","details":{}}}
+```
+
+## STORE_EXISTS
+
+Status: 409 · Surface: api
+
+When: a store is recorded under a name another store already has.
+
+Fix: Name the store differently, or remove the one there first.
+
+```json
+{"error":{"code":"STORE_EXISTS","message":"A store named backblaze is already recorded.","fix":"Name the store differently, or remove the one there first.","docs":"https://skill.whisk.run/errors/STORE_EXISTS","details":{"name":"backblaze"}}}
+```
+
+## STORE_IN_USE
+
+Status: 409 · Surface: api
+
+When: a store is being forgotten while a business's bucket is at it or still moving from it, or
+while it is the default store, where new businesses' files go.
+
+Fix: Make another store the default first, and move each business away, then wait for the moves
+to finish.
+
+```json
+{"error":{"code":"STORE_IN_USE","message":"Buckets are at the store hetzner, or still moving from it.","fix":"Move each business away first and wait for the moves to finish.","docs":"https://skill.whisk.run/errors/STORE_IN_USE","details":{"name":"hetzner"}}}
+```
+
+## STORE_MOVING
+
+Status: 409 · Surface: api
+
+When: a business's files are asked to move while a move of them is still running.
+
+Fix: Wait for the move to finish; where the business's files are says how far it is.
+
+```json
+{"error":{"code":"STORE_MOVING","message":"The business's files are already moving.","fix":"Wait for the move to finish: where the business's files are says how far it is.","docs":"https://skill.whisk.run/errors/STORE_MOVING","details":{"org":"acme"}}}
+```
+
+## STORE_OWN_BUCKET
+
+Status: 409 · Surface: api
+
+When: a business that brought its own bucket is asked to move to one of the platform's stores.
+Its files are at no store of the platform's.
+
+Fix: Nothing to move: the business's files are where it put them.
+
+```json
+{"error":{"code":"STORE_OWN_BUCKET","message":"The business brought its own bucket, which is at no store of the platform's.","fix":"Nothing to move: the business's files are where it put them.","docs":"https://skill.whisk.run/errors/STORE_OWN_BUCKET","details":{}}}
+```
+
 ## UPLOAD_TOO_LARGE
 
 Status: 413 · Surface: api
