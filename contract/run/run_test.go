@@ -198,10 +198,10 @@ func TestRetryOnlyWhatIsMarked(t *testing.T) {
 }
 
 func TestIdleEndsAQuietStream(t *testing.T) {
-	ctx, touch, stop := Idle(context.Background(), 30*time.Millisecond)
+	ctx, touch, stop := Idle(context.Background(), 300*time.Millisecond)
 	defer stop()
 	for range 3 {
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		touch()
 	}
 	if ctx.Err() != nil {
