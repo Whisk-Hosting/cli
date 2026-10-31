@@ -3794,19 +3794,19 @@ Fix: Nothing in the app causes this, and the platform's team has been paged with
 
 Status: - · Surface: deploy
 
-When: a deploy placed on another node than the one its database is on (a drain, or a Promoted
-app moving after its node went down) could not move the database there. It arrives as
+When: a deploy was placed on another node than the one its database is on, because that node was
+down or taken out of service, and its database could not be moved there first. It arrives as
 `PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`; `details` carries `step`
 (`database_move`), `from_node`, `node`, `database`, `cause_code` (`COPY_UNAVAILABLE`,
-`COPY_BEHIND` or `DATABASE_FAILED`), `cause` and `fault: platform`. When the database's node
-answered, its roles were given their login back, so the app runs on where it was. No password is
-ever included.
+`COPY_BEHIND`, `DATABASE_FAILED`, `IMAGE_PULL_FAILED`, `HEALTH_CHECK_FAILED` or another step's
+code), `cause` and `fault: platform`. Nothing of the app changed: its database, its credentials
+and the version that was live stay where they were. No password is ever included.
 
 Fix: Nothing in the app causes this, and the platform's team has been paged with the cause. Run `whisk
 deploy` again later; if it fails the same way, report the deploy id with `details.cause`.
 
 ```json
-{"error":{"code":"DATABASE_MOVE_FAILED","message":"The app's database could not be moved from node1 to node2: node2's copy of node1 did not catch up within 2 minutes.","fix":"Nothing in the app causes this, and the platform's team has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_MOVE_FAILED","details":{"step":"database_move","from_node":"node1","node":"node2","database":"app_01jabc","cause_code":"COPY_BEHIND","cause":"the copy replayed to 0/3A000060, short of 0/3A0001F8","fault":"platform"}}}
+{"error":{"code":"DATABASE_MOVE_FAILED","message":"The app's database could not be moved from node1 to node2, so it stays on node1: node2's copy of node1 did not catch up within 2 minutes.","fix":"Nothing in the app causes this, and the platform's team has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_MOVE_FAILED","details":{"step":"database_move","from_node":"node1","node":"node2","database":"app_01jabc","cause_code":"COPY_BEHIND","cause":"the copy replayed to 0/3A000060, short of 0/3A0001F8","fault":"platform"}}}
 ```
 
 ## COPY_UNAVAILABLE
