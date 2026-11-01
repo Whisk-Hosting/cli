@@ -143,7 +143,7 @@ func (s *stub) sendEvent(name string, data json.RawMessage, dedupe string) (stri
 		evt["id"] = dedupe
 	}
 	body, _ := json.Marshal(evt)
-	resp, err := runhttp.Client(eventTimeout).Post(s.inngestURL.String()+"/e/"+s.eventKey, "application/json", bytes.NewReader(body))
+	resp, err := runhttp.Client(eventTimeout).Post(s.inngestURL.String()+"/e/"+s.eventKey, "application/json", bytes.NewReader(body)) //nolint:noctx // the client's timeout bounds it
 	if err != nil {
 		return "", err
 	}

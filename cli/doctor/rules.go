@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -1013,16 +1014,15 @@ type problem struct{ Path, Message string }
 
 func problems(err error) []problem {
 	var out []problem
-	switch ps := err.(type) {
-	case manifest.Problems:
+	if ps, ok := errors.AsType[manifest.Problems](err); ok {
 		for _, p := range ps {
 			out = append(out, problem{p.Path, p.Message})
 		}
-	case graph.Problems:
+	} else if ps, ok := errors.AsType[graph.Problems](err); ok {
 		for _, p := range ps {
 			out = append(out, problem{p.Path, p.Message})
 		}
-	default:
+	} else {
 		out = append(out, problem{"", err.Error()})
 	}
 	return out

@@ -94,7 +94,7 @@ func TestEdgeIdentity(t *testing.T) {
 	if out["X-Whisk-Request-Id"] == "" || rec.Header().Get("X-Whisk-Request-Id") == "" {
 		t.Fatal("request id missing")
 	}
-	rec, out = get(t, e, "GET", "/whoami", cookie, "")
+	_, out = get(t, e, "GET", "/whoami", cookie, "")
 	if out["X-Whisk-Audience"] != "team" || out["X-Whisk-Email"] != "ana@acme.example" || out["X-Whisk-Roles"] != "owner" || out["X-Whisk-Groups"] != "finance" {
 		t.Fatalf("public signed in: %v", out)
 	}

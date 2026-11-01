@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"errors"
 	"reflect"
 	"strings"
 	"testing"
@@ -67,7 +68,8 @@ func TestRedirectsInvalid(t *testing.T) {
 	}
 	for body, path := range cases {
 		_, err := Parse([]byte("whisk: 1\nname: job-tracker\n" + body))
-		ps, _ := err.(Problems)
+		var ps Problems
+		errors.As(err, &ps)
 		if len(ps) == 0 || ps[0].Path != path {
 			t.Errorf("%q: problems %v, want one at %s", body, err, path)
 		}

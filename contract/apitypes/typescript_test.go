@@ -18,7 +18,7 @@ import (
 // enums and their constants.
 func sources(t *testing.T) []*ast.File {
 	t.Helper()
-	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", func(fi fs.FileInfo) bool {
+	pkgs, err := parser.ParseDir(token.NewFileSet(), ".", func(fi fs.FileInfo) bool { //nolint:staticcheck // the package has no build-tagged files, which is all ParseDir gets wrong
 		return !strings.HasSuffix(fi.Name(), "_test.go") && fi.Name() != "typescript.go"
 	}, 0)
 	if err != nil {

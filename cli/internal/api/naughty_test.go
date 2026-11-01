@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -107,7 +108,7 @@ func TestNaughtyErrors(t *testing.T) {
 		for _, status := range []int{400, 404, 500, 502} {
 			for _, body := range []string{s, `{"error":{"code":` + jsonQuote(s) + `,"message":` + jsonQuote(s) + `}}`} {
 				err := parseError(status, []byte(body))
-				e, ok := err.(*Error)
+				e, ok := errors.AsType[*Error](err)
 				if !ok || e.Code == "" || e.Status != status {
 					t.Errorf("parseError(%d, %q) = %#v", status, body, err)
 					continue

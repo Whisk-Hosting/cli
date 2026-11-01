@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -45,7 +46,8 @@ func TestFixturesInvalid(t *testing.T) {
 			t.Errorf("%s: expected %s containing %q, got no error", filepath.Base(f), code, want)
 			continue
 		}
-		ps, ok := err.(Problems)
+		var ps Problems
+		ok := errors.As(err, &ps)
 		if !ok {
 			t.Errorf("%s: error is not Problems: %v", filepath.Base(f), err)
 			continue
@@ -145,7 +147,8 @@ webhooks:
 
 func TestUnknownKeySuggestion(t *testing.T) {
 	_, err := Parse([]byte("whisk: 1\nname: app\nfunction: []\nroutes:\n  publc: []\n"))
-	ps, ok := err.(Problems)
+	var ps Problems
+	ok := errors.As(err, &ps)
 	if !ok {
 		t.Fatalf("expected Problems, got %v", err)
 	}

@@ -1,6 +1,7 @@
 package whisk
 
 import (
+	stderrors "errors"
 	"fmt"
 	"io"
 	"os"
@@ -250,7 +251,7 @@ func loadManifest(dir string) (manifest.Manifest, error) {
 	}
 	m, err := manifest.Parse(src)
 	if err != nil {
-		ps, _ := err.(manifest.Problems)
+		ps, _ := stderrors.AsType[manifest.Problems](err)
 		problems := make([]map[string]string, 0, len(ps))
 		for _, p := range ps {
 			problems = append(problems, map[string]string{"path": p.Path, "message": p.Message, "code": p.Code})

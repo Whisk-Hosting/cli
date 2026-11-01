@@ -228,7 +228,7 @@ type ApprovalRequest struct {
 // approval pauses the run until a human decides. It sends whisk/approval.requested in a step
 // named name+"/request" and waits in a step named name for whisk/approval.decided with the
 // same approval id. The platform notifies To (an org role, group:<name> or user:<email>).
-func approval(ctx context.Context, runID, name string, req ApprovalRequest) (Decision, error) {
+func approval(ctx context.Context, runID, name string, req ApprovalRequest) (Decision, error) { //nolint:unused // a helper the template gives the apps built from it
 	id := runID + ":" + name
 	if _, err := step.Send(ctx, name+"/request", inngestgo.Event{
 		Name: "whisk/approval.requested",

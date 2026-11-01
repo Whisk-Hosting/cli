@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"os"
 	"strconv"
@@ -56,7 +57,7 @@ func kvRoute(w http.ResponseWriter, req *http.Request) {
 		out["ttl_seconds"] = int(ttl.Seconds())
 	}
 	switch value, err := c.Get(ctx, key).Result(); {
-	case err == redis.Nil:
+	case errors.Is(err, redis.Nil):
 		out["value"] = nil
 	case err != nil:
 		writeJSON(w, 500, map[string]any{"configured": true, "error": err.Error()})

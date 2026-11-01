@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -38,7 +39,8 @@ func TestConnections(t *testing.T) {
 		{strings.Replace(withConnection, "  erp:", "  Erp:", 1), "/connections"},
 	} {
 		_, err := Parse([]byte(c.yaml))
-		ps, _ := err.(Problems)
+		var ps Problems
+		errors.As(err, &ps)
 		hit := false
 		for _, p := range ps {
 			hit = hit || strings.HasPrefix(p.Path, c.path)

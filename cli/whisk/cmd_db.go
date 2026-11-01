@@ -260,7 +260,7 @@ func (s *session) shellRun(client *api.Client, org, app string, req api.QueryReq
 		res, err = client.QueryDatabase(s.ctx, org, app, api.QueryRequest{Confirm: code})
 	}
 	if err != nil {
-		if e, ok := wrap(err).(*output.Error); ok {
+		if e, ok := errors.AsType[*output.Error](wrap(err)); ok {
 			s.printer.Block(s.env.Stderr, e)
 		} else {
 			fmt.Fprintln(s.env.Stderr, err)

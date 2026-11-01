@@ -251,7 +251,7 @@ func waitTCP(ctx context.Context, port int, timeout time.Duration) error {
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		c, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), time.Second)
+		c, err := (&net.Dialer{Timeout: time.Second}).DialContext(ctx, "tcp", fmt.Sprintf("127.0.0.1:%d", port))
 		if err == nil {
 			c.Close()
 			return nil

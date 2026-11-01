@@ -348,7 +348,7 @@ func printCallBody(w io.Writer, a callAnswer) {
 	if isJSONType(a.ContentType) && json.Indent(&out, a.Body, "", "  ") == nil {
 		fmt.Fprintln(w, out.String())
 	} else {
-		w.Write(a.Body)
+		_, _ = w.Write(a.Body)
 		if !bytes.HasSuffix(a.Body, []byte("\n")) {
 			fmt.Fprintln(w)
 		}

@@ -2,6 +2,7 @@ package whisk
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -571,7 +572,7 @@ func TestLimitPlan(t *testing.T) {
 		t.Run(c.name, func(t *testing.T) {
 			got, err := limitPlan(c.lim, c.lim != (connect.SpendCap{}), c.perMinute, c.perDay, c.env)
 			code := ""
-			if e, ok := err.(*output.Error); ok {
+			if e, ok := errors.AsType[*output.Error](err); ok {
 				code = e.Code
 			}
 			if got != c.want || code != c.code || (err == nil) != (c.code == "") {

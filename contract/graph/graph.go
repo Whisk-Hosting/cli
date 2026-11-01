@@ -6,6 +6,7 @@ package graph
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strings"
@@ -95,7 +96,8 @@ func Parse(src []byte) (Graph, error) {
 		return Graph{}, Problems{{Path: "", Message: "the file is empty"}}
 	}
 	if err := compiled.Validate(raw); err != nil {
-		if ve, ok := err.(*jsonschema.ValidationError); ok {
+		var ve *jsonschema.ValidationError
+		if ok := errors.As(err, &ve); ok {
 			return Graph{}, flatten(ve)
 		}
 		return Graph{}, Problems{{Path: "", Message: err.Error()}}

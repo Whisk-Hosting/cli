@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -892,7 +893,7 @@ func TestPlanPush(t *testing.T) {
 	}
 	for _, c := range cases {
 		got, err := planPush(c.env, c.branch, c.current)
-		if e, ok := err.(*output.Error); ok && c.env == "production" && e.Code != "PRODUCTION_NEEDS_MAIN" {
+		if e, ok := errors.AsType[*output.Error](err); ok && c.env == "production" && e.Code != "PRODUCTION_NEEDS_MAIN" {
 			t.Errorf("planPush(%q,%q,%q) code %s, want PRODUCTION_NEEDS_MAIN", c.env, c.branch, c.current, e.Code)
 		}
 		if (err != nil) != c.fails || got != c.want {
@@ -1286,7 +1287,7 @@ func TestPickOrg(t *testing.T) {
 	for _, c := range cases {
 		got, err := pickOrg(c.orgs)
 		code := ""
-		if e, ok := err.(*output.Error); ok {
+		if e, ok := errors.AsType[*output.Error](err); ok {
 			code = e.Code
 		}
 		if got != c.want || code != c.code {

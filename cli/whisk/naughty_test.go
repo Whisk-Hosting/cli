@@ -1,6 +1,7 @@
 package whisk
 
 import (
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -37,7 +38,7 @@ func TestNaughtyPlanPush(t *testing.T) {
 		for _, c := range [][3]string{{"", s, "main"}, {"preview", s, "main"}, {"production", s, "main"}, {"", "", s}, {s, "", "main"}} {
 			plan, err := planPush(c[0], c[1], c[2])
 			if err != nil {
-				if e, ok := err.(*output.Error); !ok || (e.Code != "INVALID_REQUEST" && e.Code != "PRODUCTION_NEEDS_MAIN") {
+				if e, ok := errors.AsType[*output.Error](err); !ok || (e.Code != "INVALID_REQUEST" && e.Code != "PRODUCTION_NEEDS_MAIN") {
 					t.Errorf("planPush(%q) error %v", c, err)
 				}
 				continue

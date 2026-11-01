@@ -1,6 +1,7 @@
 package whisk
 
 import (
+	"errors"
 	"strings"
 	"testing"
 
@@ -37,7 +38,7 @@ func TestRequestOutcomeByWhomItIsAsked(t *testing.T) {
 			}
 			continue
 		}
-		oe, ok := err.(*output.Error)
+		oe, ok := errors.AsType[*output.Error](err)
 		if !ok || oe.Code != c.code || !strings.Contains(oe.Message+" "+oe.Fix, c.says) {
 			t.Errorf("%s: %#v, want %s saying %q", name, err, c.code, c.says)
 		}

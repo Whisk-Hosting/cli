@@ -1,6 +1,7 @@
 package connect
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -102,7 +103,7 @@ func TestPlaceBodyReencodesAMatchedBody(t *testing.T) {
 	if err != nil || string(out) != `{"params":{"n":1.50,"service":"object"}}` {
 		t.Fatalf("got %s %v", out, err)
 	}
-	if _, err := PlaceBody(c, Env{}, []byte(`not json`)); err != ErrBodyNotJSON {
+	if _, err := PlaceBody(c, Env{}, []byte(`not json`)); !errors.Is(err, ErrBodyNotJSON) {
 		t.Fatalf("got %v", err)
 	}
 }

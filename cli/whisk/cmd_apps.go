@@ -193,7 +193,7 @@ func contains(list []string, s string) bool {
 // withInitResult carries what init wrote into the error that stopped it, as details.init, so
 // --json still prints one object and the agent knows the files are there.
 func withInitResult(err error, result map[string]any) error {
-	e, ok := err.(*output.Error)
+	e, ok := errors.AsType[*output.Error](err)
 	if !ok {
 		e = &output.Error{Code: "CLI_ERROR", Message: err.Error(), Fix: "The files are written; fix what the message names and run whisk init again, which keeps them."}
 	}

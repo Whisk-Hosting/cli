@@ -454,7 +454,7 @@ func (s *stub) waitHealthy(ctx context.Context) {
 }
 
 func reachable(u string) bool {
-	resp, err := runhttp.Client(500 * time.Millisecond).Get(u)
+	resp, err := runhttp.Client(500 * time.Millisecond).Get(u) //nolint:noctx // the client's timeout bounds it
 	if err != nil {
 		return false
 	}
@@ -463,7 +463,7 @@ func reachable(u string) bool {
 }
 
 func reachableOK(u string) bool {
-	resp, err := runhttp.Client(2 * time.Second).Get(u)
+	resp, err := runhttp.Client(2 * time.Second).Get(u) //nolint:noctx // the client's timeout bounds it
 	if err != nil {
 		return false
 	}

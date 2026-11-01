@@ -461,10 +461,8 @@ func carries(q, want url.Values) bool {
 // its *, a pattern's segments in place of their :names, the request's query when the rule keeps it, and base before a path target.
 func location(r Rule, h hit, rawQuery, base string) string {
 	to := r.To
-	if strings.Contains(to, "*") {
-		// find leaves no leading slash on rest, so /news/* and a/b make /news/a/b.
-		to = strings.Replace(to, "*", (&url.URL{Path: h.rest}).EscapedPath(), 1)
-	}
+	// find leaves no leading slash on rest, so /news/* and a/b make /news/a/b.
+	to = strings.Replace(to, "*", (&url.URL{Path: h.rest}).EscapedPath(), 1)
 	if len(h.vars) > 0 {
 		to = fill(to, func(n string) (string, bool) {
 			v, ok := h.vars[n]

@@ -345,10 +345,7 @@ func diagGuard(w http.ResponseWriter, req *http.Request) {
 	}
 	attempts := map[string]map[string]any{}
 	for _, a := range guardAttempts {
-		stmt := a.sql
-		if strings.Contains(stmt, "%s") {
-			stmt = strings.Replace(stmt, "%s", pgx.Identifier{owner}.Sanitize(), 1)
-		}
+		stmt := strings.Replace(a.sql, "%s", pgx.Identifier{owner}.Sanitize(), 1)
 		attempts[a.name] = guardAttempt(ctx, conn, stmt)
 	}
 	writeJSON(w, 200, map[string]any{"user": user, "owner": owner, "superuser": super, "bypassrls": bypass, "unscoped": unscoped, "attempts": attempts})

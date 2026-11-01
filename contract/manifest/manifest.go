@@ -6,6 +6,7 @@ package manifest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"path"
 	"regexp"
@@ -427,7 +428,8 @@ func validateSchema(obj map[string]any) Problems {
 	if err == nil {
 		return nil
 	}
-	ve, ok := err.(*jsonschema.ValidationError)
+	var ve *jsonschema.ValidationError
+	ok := errors.As(err, &ve)
 	if !ok {
 		return Problems{{Path: "", Message: err.Error(), Code: "MANIFEST_INVALID"}}
 	}

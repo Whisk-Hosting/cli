@@ -9,6 +9,7 @@ package run
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"runtime/debug"
 	"sync"
@@ -59,7 +60,7 @@ func once(ctx context.Context, name string, timeout time.Duration, fn func(conte
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 	err := Safely(ctx, fn)
-	if err != nil && context.Cause(ctx) != context.Canceled {
+	if err != nil && !errors.Is(context.Cause(ctx), context.Canceled) {
 		Report(name, err)
 	}
 	return err

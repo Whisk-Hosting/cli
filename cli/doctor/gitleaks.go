@@ -55,7 +55,7 @@ func secretFindings(r Repo) ([]secretHit, error) {
 		if !f.Tracked || f.Content == nil || f.Path == ".gitleaks.toml" {
 			continue
 		}
-		for _, finding := range d.Detect(detect.Fragment{Raw: string(f.Content), FilePath: f.Path}) {
+		for _, finding := range d.Detect(detect.Fragment{Raw: string(f.Content), FilePath: f.Path}) { //nolint:staticcheck // gitleaks v8 has no replacement for Fragment yet; v9 brings sources.Fragment
 			out = append(out, secretHit{Rule: finding.RuleID, File: f.Path, Line: finding.StartLine + 1})
 		}
 	}

@@ -39,7 +39,7 @@ func TestParseSettings(t *testing.T) {
 	for _, c := range cases {
 		got, err := parseSettings(c.words, c.removable)
 		if c.code != "" {
-			e, ok := err.(*output.Error)
+			e, ok := errors.AsType[*output.Error](err)
 			if !ok || e.Code != c.code || e.Fix == "" {
 				t.Errorf("%s: err %v, want %s with a fix", c.name, err, c.code)
 			}
@@ -71,7 +71,7 @@ func TestParseLinks(t *testing.T) {
 	for _, c := range cases {
 		got, err := parseLinks(c.words)
 		if !c.ok {
-			if e, isOut := err.(*output.Error); !isOut || e.Code != "INVALID_REQUEST" {
+			if e, isOut := errors.AsType[*output.Error](err); !isOut || e.Code != "INVALID_REQUEST" {
 				t.Errorf("%s: err %v, want INVALID_REQUEST", c.name, err)
 			}
 			continue
@@ -98,7 +98,7 @@ func TestResolveLinks(t *testing.T) {
 	for _, c := range cases {
 		got, err := resolveLinks("acme", c.links, apps)
 		if !c.ok {
-			e, isOut := err.(*output.Error)
+			e, isOut := errors.AsType[*output.Error](err)
 			if !isOut || e.Code != "INVALID_REQUEST" || e.Details["app"] != "nope" {
 				t.Errorf("%s: err %v", c.name, err)
 			}
