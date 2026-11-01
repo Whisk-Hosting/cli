@@ -11,6 +11,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 )
 
 // scanCmd is whisk scan (CLI.md §5, CONTROL-PLANE.md §6.28): the app's packages checked against
@@ -78,6 +79,8 @@ func followScan(ctx context.Context, client *api.Client, org, app, id string, ev
 		switch p.Status {
 		case "done", "failed", "skipped":
 			return p, nil
+		case apitypes.ScanQueued, apitypes.ScanRunning:
+			// Nothing to do for these.
 		}
 		select {
 		case <-ctx.Done():

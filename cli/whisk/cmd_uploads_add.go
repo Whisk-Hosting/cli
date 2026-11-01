@@ -15,6 +15,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 )
 
 // maxUploadBytes is the most one upload form takes (CONTROL-PLANE.md §6.13).
@@ -315,7 +316,11 @@ func uploadSettled(u api.Upload) bool {
 		switch u.Media.Status {
 		case "ready", "failed", "held":
 			return true
+		case apitypes.MediaPending, apitypes.MediaConverting:
+			// Nothing to do for these.
 		}
+	case apitypes.UploadAuthorised, apitypes.UploadMissing:
+		// Nothing to do for these.
 	}
 	return false
 }

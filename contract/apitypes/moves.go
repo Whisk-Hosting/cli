@@ -81,10 +81,8 @@ type AppMoveTargets struct {
 }
 
 // The move's types join the wire types the TypeScript is written from.
-func init() {
-	wire = append(wire, AppMove{}, AppMoveRequest{}, AppMoveTarget{}, AppMoveTargets{})
-	t, e := enumOf("AppMoveStatus", "APP_MOVE_STATUSES", AppMoveQueued, AppMoveRunning, AppMoveDone, AppMoveFailed, AppMoveCancelled)
-	enums[t] = e
-	t, e = enumOf("AppMoveStep", "APP_MOVE_STEPS", MoveStepApp, MoveStepSecrets, MoveStepCode, MoveStepFiles, MoveStepDatabase, MoveStepSwitch, MoveStepDone)
-	enums[t] = e
-}
+var (
+	_ = more.addWire(AppMove{}, AppMoveRequest{}, AppMoveTarget{}, AppMoveTargets{})
+	_ = more.addEnum(enumOf("AppMoveStatus", "APP_MOVE_STATUSES", AppMoveQueued, AppMoveRunning, AppMoveDone, AppMoveFailed, AppMoveCancelled))
+	_ = more.addEnum(enumOf("AppMoveStep", "APP_MOVE_STEPS", MoveStepApp, MoveStepSecrets, MoveStepCode, MoveStepFiles, MoveStepDatabase, MoveStepSwitch, MoveStepDone))
+)

@@ -10,9 +10,12 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"maps"
 	"os"
+	"slices"
 	"sort"
 	"strings"
+	"sync"
 
 	"github.com/whisk-run/cli/internal/safefile"
 	"github.com/whisk-run/cli/scaffold"
@@ -25,17 +28,37 @@ type File struct {
 }
 
 // files holds each template's files by folder name, filled by the generated files' init.
-var files = map[string]map[string]File{}
+var files = &fileSet{byName: map[string]map[string]File{}}
+
+type fileSet struct {
+	mu     sync.Mutex
+	byName map[string]map[string]File
+}
+
+func (s *fileSet) add(name string, set map[string]File) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.byName[name] == nil {
+		s.byName[name] = map[string]File{}
+	}
+	maps.Copy(s.byName[name], set)
+}
+
+func (s *fileSet) get(name string) (map[string]File, bool) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	f, ok := s.byName[name]
+	return f, ok
+}
+
+func (s *fileSet) names() []string {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return slices.Collect(maps.Keys(s.byName))
+}
 
 // add puts part of a template into files.
-func add(name string, set map[string]File) {
-	if files[name] == nil {
-		files[name] = map[string]File{}
-	}
-	for p, f := range set {
-		files[name][p] = f
-	}
-}
+func add(name string, set map[string]File) { files.add(name, set) }
 
 // Names maps the --template flag values to folder names.
 var Names = map[string]string{"ts": "typescript", "typescript": "typescript", "py": "python", "python": "python", "go": "go", "shop": "shop", "site": "site", "website": "site"}
@@ -47,16 +70,12 @@ func Files(name string) (map[string]File, bool) {
 	if !ok {
 		return nil, false
 	}
-	f, ok := files[folder]
-	return f, ok
+	return files.get(folder)
 }
 
 // List returns the template folder names, embedded and downloaded.
 func List() []string {
-	out := make([]string, 0, len(files)+len(Remote))
-	for k := range files {
-		out = append(out, k)
-	}
+	out := files.names()
 	for k := range Remote {
 		out = append(out, k)
 	}

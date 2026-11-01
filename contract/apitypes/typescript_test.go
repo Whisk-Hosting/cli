@@ -59,7 +59,7 @@ func TestEnumsListEveryConstant(t *testing.T) {
 	}
 	for typ, values := range declared {
 		var listed *enumSet
-		for rt, e := range enums {
+		for rt, e := range enumSets() {
 			if rt.PkgPath() == reflect.TypeFor[Role]().PkgPath() && rt.Name() == typ {
 				listed = &e
 			}
@@ -182,7 +182,7 @@ func TestGenericsTakeTheirParameter(t *testing.T) {
 // named strings are TestEnumsListEveryConstant's.
 func TestEveryWireTypeIsWritten(t *testing.T) {
 	written := map[string]bool{}
-	for _, w := range wire {
+	for _, w := range wireTypes() {
 		switch v := w.(type) {
 		case generic:
 			written[v.name] = true

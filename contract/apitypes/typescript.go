@@ -3,9 +3,11 @@ package apitypes
 import (
 	"encoding/json"
 	"fmt"
+	"maps"
 	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/whisk-run/contract/connect"
@@ -17,7 +19,7 @@ import (
 // TypeScript is this package's wire types as TypeScript: every type in this package, the statuses
 // it carries from contract/status and the error body, written from the Go types by reflection so
 // the two cannot disagree.
-func TypeScript() (string, error) { return render(wire, enums, "") }
+func TypeScript() (string, error) { return render(wireTypes(), enumSets(), "") }
 
 // Enum is a named string type and every value it takes, for TypeScriptWith.
 type Enum struct {
@@ -42,17 +44,14 @@ func (e Enum) Values() []string { return append([]string(nil), e.set.values...) 
 // this one, each a zero struct value, with the named strings they add. regen is the command that
 // writes the file again, named in its header. Pure.
 func TypeScriptWith(regen string, types []any, extra []Enum) (string, error) {
-	all := make(map[reflect.Type]enumSet, len(enums)+len(extra))
-	for t, e := range enums {
-		all[t] = e
-	}
+	all := enumSets()
 	for _, e := range extra {
 		if _, dup := all[e.typ]; dup {
 			return "", fmt.Errorf("%s is listed twice", e.typ)
 		}
 		all[e.typ] = e.set
 	}
-	return render(append(slices.Clone(wire), types...), all, regen)
+	return render(append(wireTypes(), types...), all, regen)
 }
 
 // typeParam stands for a generic type's parameter while the generic is rendered.
@@ -79,9 +78,10 @@ func enumOf[T ~string](name, list string, values ...T) (reflect.Type, enumSet) {
 	return reflect.TypeFor[T](), enumSet{name: name, list: list, values: out}
 }
 
-// enums is every named string type the wire types use. A type missing here is an error, so a new
-// one is never written out as a bare string.
-var enums = func() map[reflect.Type]enumSet {
+// baseEnums is the named string types the wire types use, with those other files add
+// (addEnum) making enumSets. A type missing from them is an error, so a new one is never written
+// out as a bare string.
+var baseEnums = func() map[reflect.Type]enumSet {
 	m := map[reflect.Type]enumSet{}
 	add := func(t reflect.Type, e enumSet) { m[t] = e }
 	add(enumOf("DeployStatus", "DEPLOY_STATUSES", status.Deploys()...))
@@ -161,10 +161,10 @@ var enums = func() map[reflect.Type]enumSet {
 	return m
 }()
 
-// wire is every type written out, in order: the generics, then the structs by name. Body and
+// baseWire is the types written out first, in order: the generics, then the structs by name. Body and
 // Detail are contract/errors' error body and its inner object, named ErrorBody and ErrorDetail as
 // the dashboard reads them.
-var wire = []any{
+var baseWire = []any{
 	generic{name: "Page", param: "T", sample: Page[typeParam]{}},
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
@@ -456,4 +456,47 @@ func trimEach(lines []string) []string {
 		out[i] = strings.TrimSpace(l)
 	}
 	return out
+}
+
+// more holds the wire types and enums other files of the package add (more.addWire, addEnum), so a
+// file of new types adds itself without editing the lists above.
+var more = &additions{enums: map[reflect.Type]enumSet{}}
+
+type additions struct {
+	mu    sync.Mutex
+	wire  []any
+	enums map[reflect.Type]enumSet
+}
+
+// addWire adds wire types after those listed above. A file calls it in a package-level
+// declaration, `var _ = more.addWire(…)`.
+func (a *additions) addWire(types ...any) struct{} {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.wire = append(a.wire, types...)
+	return struct{}{}
+}
+
+// addEnum adds a named string type's values, as enumOf gives them.
+func (a *additions) addEnum(t reflect.Type, e enumSet) struct{} {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.enums[t] = e
+	return struct{}{}
+}
+
+// wireTypes is every type written out, in order: those listed above, then those added.
+func wireTypes() []any {
+	more.mu.Lock()
+	defer more.mu.Unlock()
+	return append(slices.Clone(baseWire), more.wire...)
+}
+
+// enumSets is every named string type the wire types use.
+func enumSets() map[reflect.Type]enumSet {
+	more.mu.Lock()
+	defer more.mu.Unlock()
+	all := maps.Clone(baseEnums)
+	maps.Copy(all, more.enums)
+	return all
 }

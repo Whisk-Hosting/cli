@@ -177,6 +177,8 @@ func moveLines(m api.AppMove, page string) []string {
 		return out
 	case apitypes.AppMoveCancelled:
 		return []string{fmt.Sprintf("The move of %s/%s was cancelled; the app stays in %s.", m.From, m.App, m.From)}
+	case apitypes.AppMoveQueued, apitypes.AppMoveRunning, apitypes.AppMoveFailed:
+		// Nothing to do for these.
 	}
 	return []string{fmt.Sprintf("Moving %s/%s to %s (%s, %s). Follow it at %s", m.From, m.App, m.To, m.Status, m.Step, page)}
 }

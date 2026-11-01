@@ -21,7 +21,7 @@ func TestEmbeddedMatchesSource(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		got := files[name]
+		got, _ := files.get(name)
 		for p, f := range want {
 			g, ok := got[p]
 			if !ok {

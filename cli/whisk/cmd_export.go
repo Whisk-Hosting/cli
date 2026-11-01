@@ -157,6 +157,8 @@ func followExport(ctx context.Context, client *api.Client, org, id string, log i
 		switch e.Status {
 		case apitypes.ExportDone, apitypes.ExportFailed, apitypes.ExportExpired:
 			return e, nil
+		case apitypes.ExportQueued, apitypes.ExportRunning:
+			// Nothing to do for these.
 		}
 		select {
 		case <-ctx.Done():

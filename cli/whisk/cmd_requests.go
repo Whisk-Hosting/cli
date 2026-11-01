@@ -66,6 +66,8 @@ func requestOutcome(p api.PersonRequest) error {
 		}
 		return output.New("REQUEST_CLOSED", "This request "+why+", so nothing changed.",
 			"If the change is still wanted, run the command again for a new request and show the person its link.", map[string]any{"request_id": p.ID, "status": p.Status})
+	case apitypes.PersonRequestPending:
+		// Nothing to do for these.
 	}
 	return askedPerson(p)
 }

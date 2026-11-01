@@ -370,6 +370,8 @@ func heavyImport(f File) (hit, bool) {
 				consider(top, m[0])
 			}
 		}
+	case stack.GO:
+		// Nothing to do for these.
 	}
 	return best, offset >= 0
 }

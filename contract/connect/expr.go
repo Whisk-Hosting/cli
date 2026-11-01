@@ -23,6 +23,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -417,7 +418,7 @@ type MissingSecretError struct{ Name string }
 func (e *MissingSecretError) Error() string { return e.Name + " has no value" }
 
 func (p *parser) call(name string) (node, error) {
-	f, ok := functions[name]
+	f, ok := functions()[name]
 	if !ok {
 		return nil, fmt.Errorf("unknown function %s; see CONTRACT.md §3.1 for the list", name)
 	}
@@ -554,7 +555,7 @@ func (c call) eval(env Env) (value, error) {
 			return value{}, err
 		}
 	}
-	v, err := functions[c.fn].run(args)
+	v, err := functions()[c.fn].run(args)
 	if err != nil {
 		return value{}, fmt.Errorf("%s: %w", c.fn, err)
 	}
@@ -578,9 +579,7 @@ func (f function) arity() string {
 }
 
 // Functions are fixed: a recipe composes them and adds none of its own (CONTRACT.md §3.1).
-var functions map[string]function
-
-func init() {
+var functions = sync.OnceValue(func() map[string]function {
 	one := func(fn func([]byte) []byte) function {
 		return function{min: 1, max: 1, run: func(a []value) (value, error) { return value{b: fn(a[0].bytes())}, nil }}
 	}
@@ -600,7 +599,7 @@ func init() {
 	sum := func(h func() hash.Hash) function {
 		return one(func(b []byte) []byte { x := h(); x.Write(b); return x.Sum(nil) })
 	}
-	functions = map[string]function{
+	return map[string]function{
 		"hmac_sha1":   mac(sha1.New),
 		"hmac_sha256": mac(sha256.New),
 		"hmac_sha512": mac(sha512.New),
@@ -668,7 +667,7 @@ func init() {
 		"jwt":  {min: 3, max: 4, check: algorithm(jwtAlgs), run: runJWT},
 		"sign": {min: 3, max: 3, check: algorithm(signAlgs), run: runSign},
 	}
-}
+})
 
 func numbers(args []node) error {
 	for _, a := range args {
