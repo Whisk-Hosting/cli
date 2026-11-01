@@ -228,57 +228,7 @@ func managedLines(a api.App, apps []api.App) []string {
 }
 
 func managedCmd(s *session) *cobra.Command {
-	listRun := func(cmd *cobra.Command, args []string) error {
-		client, org, err := s.orgClient()
-		if err != nil {
-			return err
-		}
-		m, err := client.ListManaged(s.ctx, org)
-		if err != nil {
-			return wrap(err)
-		}
-		if m.Products == nil {
-			m.Products = []api.ManagedProduct{}
-		}
-		if m.Copies == nil {
-			m.Copies = []api.App{}
-		}
-		var apps []api.App
-		if !s.printer.JSON && slices.ContainsFunc(m.Copies, func(a api.App) bool { return a.Managed != nil && len(a.Managed.Links) > 0 }) {
-			// The links name apps by id; the list puts their slugs in a person's table. Without
-			// it the ids are shown, so a failure here does not fail the command.
-			apps, _ = client.ListApps(s.ctx, org)
-		}
-		s.printer.Result(map[string]any{"org": org, "products": m.Products, "copies": m.Copies}, func(w io.Writer) {
-			if len(m.Products) == 0 {
-				fmt.Fprintln(w, "Whisk offers no managed apps to this business yet.")
-			} else {
-				rows := make([][]string, len(m.Products))
-				for i, p := range m.Products {
-					rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), settingsText(p), unavailableText(p)}
-				}
-				s.printer.Table(w, []string{"PRODUCT", "NAME", "PRICE", "VARIANTS", "LINKS", "SETTINGS", "AVAILABLE"}, rows)
-			}
-			fmt.Fprintln(w)
-			if len(m.Copies) == 0 {
-				fmt.Fprintln(w, "No copies yet.")
-			} else {
-				rows := make([][]string, len(m.Copies))
-				for i, a := range m.Copies {
-					product, variant, links := "-", "-", "-"
-					if a.Managed != nil {
-						product, variant, links = a.Managed.Product, orDash(a.Managed.Variant), linksText(a.Managed.Links, apps)
-					}
-					rows[i] = []string{a.Slug, product, variant, releaseText(a.Managed), appStatusText(a), links}
-				}
-				s.printer.Table(w, []string{"APP", "PRODUCT", "VARIANT", "RELEASE", "STATUS", "LINKS"}, rows)
-			}
-			if len(m.Products) > 0 {
-				fmt.Fprintln(w, "Add one with: whisk managed add <product> --link <role>=<app> [--variant v] [--set NAME=value]")
-			}
-		})
-		return nil
-	}
+	listRun := func(*cobra.Command, []string) error { return s.managedList() }
 
 	managed := &cobra.Command{
 		Use:   "managed",
@@ -500,4 +450,61 @@ func managedRefusal(a api.App) error {
 		fmt.Sprintf("%s is the %s, which Whisk runs for the business, so its code cannot be pushed, cloned or deployed.", a.Slug, a.Managed.Name),
 		fmt.Sprintf("Change its settings with whisk managed set %s NAME=value, pause it with whisk pause %s, or delete it.", a.Slug, a.Slug),
 		map[string]any{"app": a.Slug, "product": a.Managed.Product})
+}
+
+// managedList lists the products the business may add and the copies it has.
+func (s *session) managedList() error {
+	client, org, err := s.orgClient()
+	if err != nil {
+		return err
+	}
+	m, err := client.ListManaged(s.ctx, org)
+	if err != nil {
+		return wrap(err)
+	}
+	if m.Products == nil {
+		m.Products = []api.ManagedProduct{}
+	}
+	if m.Copies == nil {
+		m.Copies = []api.App{}
+	}
+	var apps []api.App
+	if !s.printer.JSON && slices.ContainsFunc(m.Copies, func(a api.App) bool { return a.Managed != nil && len(a.Managed.Links) > 0 }) {
+		// The links name apps by id; the list puts their slugs in a person's table. Without
+		// it the ids are shown, so a failure here does not fail the command.
+		apps, _ = client.ListApps(s.ctx, org)
+	}
+	s.printer.Result(map[string]any{"org": org, "products": m.Products, "copies": m.Copies}, func(w io.Writer) { s.managedTables(w, m, apps) })
+	return nil
+}
+
+// managedTables prints the products and the copies for a person. apps names the apps a copy's
+// links name by id; without them the ids are shown.
+func (s *session) managedTables(w io.Writer, m api.Managed, apps []api.App) {
+	if len(m.Products) == 0 {
+		fmt.Fprintln(w, "Whisk offers no managed apps to this business yet.")
+	} else {
+		rows := make([][]string, len(m.Products))
+		for i, p := range m.Products {
+			rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), settingsText(p), unavailableText(p)}
+		}
+		s.printer.Table(w, []string{"PRODUCT", "NAME", "PRICE", "VARIANTS", "LINKS", "SETTINGS", "AVAILABLE"}, rows)
+	}
+	fmt.Fprintln(w)
+	if len(m.Copies) == 0 {
+		fmt.Fprintln(w, "No copies yet.")
+	} else {
+		rows := make([][]string, len(m.Copies))
+		for i, a := range m.Copies {
+			product, variant, links := "-", "-", "-"
+			if a.Managed != nil {
+				product, variant, links = a.Managed.Product, orDash(a.Managed.Variant), linksText(a.Managed.Links, apps)
+			}
+			rows[i] = []string{a.Slug, product, variant, releaseText(a.Managed), appStatusText(a), links}
+		}
+		s.printer.Table(w, []string{"APP", "PRODUCT", "VARIANT", "RELEASE", "STATUS", "LINKS"}, rows)
+	}
+	if len(m.Products) > 0 {
+		fmt.Fprintln(w, "Add one with: whisk managed add <product> --link <role>=<app> [--variant v] [--set NAME=value]")
+	}
 }

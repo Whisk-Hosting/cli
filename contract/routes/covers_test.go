@@ -25,6 +25,7 @@ func TestCoversAll(t *testing.T) {
 		{"every folder but with a literal", []string{"/**/edit"}, false},
 		{"a partial wildcard segment", []string{"/a*/**", "/"}, false},
 		{"the starter's routes", []string{"/", "/health", "/whoami"}, false},
+		{"an empty segment then **", []string{"//**"}, false},
 		{"a triple star segment then **", []string{"/", "/***", "/***/**"}, true},
 	}
 	for _, c := range cases {

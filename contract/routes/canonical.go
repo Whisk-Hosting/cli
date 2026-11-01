@@ -14,14 +14,19 @@ import (
 // checked after percent-decoding, so %2e%2e, %2f and %5c cannot hide one; a path that does not
 // decode is ambiguous too.
 func Ambiguous(escaped string) bool {
-	if i := strings.IndexAny(escaped, "?#"); i >= 0 {
-		escaped = escaped[:i]
-	}
-	decoded, err := url.PathUnescape(escaped)
+	decoded, err := url.PathUnescape(beforeQuery(escaped))
 	if err != nil {
 		return true
 	}
 	return dotSegment(decoded)
+}
+
+// beforeQuery is the path up to its query or fragment, all of it when it has neither. Pure.
+func beforeQuery(path string) string {
+	if i := strings.IndexAny(path, "?#"); i != -1 {
+		return path[:i]
+	}
+	return path
 }
 
 // dotSegment reports whether any segment, split on "/" or "\", is "." or "..".

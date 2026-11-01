@@ -8,6 +8,9 @@ func TestAmbiguous(t *testing.T) {
 		want bool
 	}{
 		{"/", false},
+		{"?/../x", false},
+		{"#/./x", false},
+		{"/a?/../x", false},
 		{"/private", false},
 		{"/public/a/b", false},
 		{"/public/a.b/c..d/...", false},
@@ -46,6 +49,21 @@ func TestAmbiguousCoversDotTraversal(t *testing.T) {
 	for _, p := range []string{"/public/../admin", "/public/%2e%2e/admin", "/public/x/../../admin"} {
 		if Match("/public/**", p) && !Ambiguous(p) {
 			t.Errorf("%q matches /public/** and is not refused", p)
+		}
+	}
+}
+
+func TestBeforeQuery(t *testing.T) {
+	for path, want := range map[string]string{
+		"":         "",
+		"/a":       "/a",
+		"/a?b":     "/a",
+		"/a#b":     "/a",
+		"?b":       "",
+		"/a?b#c?d": "/a",
+	} {
+		if got := beforeQuery(path); got != want {
+			t.Errorf("beforeQuery(%q) = %q, want %q", path, got, want)
 		}
 	}
 }

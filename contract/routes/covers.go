@@ -31,11 +31,12 @@ func CoversAll(patterns []string) bool {
 	return true
 }
 
-// allWildcards reports whether every segment is made of * alone, so it matches a segment of
-// any name (or, as **, any run of them).
+// allWildcards reports whether no segment has anything but *, so each matches a segment of
+// any name (or, as **, any run of them). An empty segment passes too, but it matches no
+// segment of a path, so a pattern holding one adds nothing to what the others cover.
 func allWildcards(segs []string) bool {
 	for _, s := range segs {
-		if s == "" || strings.Trim(s, "*") != "" {
+		if strings.Trim(s, "*") != "" {
 			return false
 		}
 	}

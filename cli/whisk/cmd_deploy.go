@@ -870,103 +870,120 @@ func printEvent(s *session, ev api.DeployEvent) {
 func (s *session) finishDeploy(client *api.Client, org, app string, ev api.DeployEvent, environment string) error {
 	switch ev.Status {
 	case status.DeployLive:
-		unset := nonNilStrings(ev.Unset)
-		result := map[string]any{"deploy_id": ev.DeployID, "status": "live", "url": ev.URL, "unset_secrets": unset}
-		if environment != "" {
-			result["environment"] = environment
-		}
-		if ev.StartMS != nil {
-			result["start_ms"] = *ev.StartMS
-		}
-		if s.caughtUp != nil {
-			result["caught_up"] = s.caughtUp
-		}
-		label := "Live:"
-		note := previewNote(environment)
-		if note != "" {
-			label = "Preview live:"
-			result["note"] = note
-		}
-		var block *output.Error
-		if len(unset) > 0 {
-			block = needsHumanSecrets(unset, secretsURL(s.dashboard(), org, app))
-			result["needs_human"] = block.Body()["error"]
-		}
-		warnings := ev.Warnings
-		if warnings == nil {
-			warnings = []api.Warning{}
-		}
-		result["warnings"] = warnings
-		// The addresses to paste into each webhook's provider, when the app declares any.
-		hooks := s.webhookURLs(client, org, app)
-		if len(hooks) > 0 {
-			result["webhooks"] = hooks
-		}
-		s.printer.Result(result, func(w io.Writer) {
-			fmt.Fprintf(w, "%s %s\n", s.printer.Good(label), ev.URL)
-			if ev.StartMS != nil {
-				fmt.Fprintf(w, "Started in %s\n", output.Seconds(*ev.StartMS))
-			}
-			for _, h := range hooks {
-				fmt.Fprintf(w, "Webhook %s: %s\n", h["name"], h["url"])
-			}
-			for _, wa := range warnings {
-				fmt.Fprintf(w, "%s %s\n  %s\n", s.printer.Warn(wa.Code+":"), wa.Message, wa.Fix)
-			}
-			if note != "" {
-				fmt.Fprintln(w, note)
-			}
-			if block != nil {
-				s.printer.Block(w, block)
-			}
-		})
-		return nil
+		return s.deployLive(client, org, app, ev, environment)
 	case status.DeploySuperseded:
-		result := map[string]any{"deploy_id": ev.DeployID, "status": ev.Status, "note": "A newer deploy of this environment replaced this one. Follow it with whisk deploys."}
-		if environment != "" {
-			result["environment"] = environment
-		}
-		s.printer.Result(result, func(w io.Writer) {
-			fmt.Fprintln(w, "Replaced by a newer deploy.")
-			fmt.Fprintln(w, "Follow it with: whisk deploys")
-		})
-		return nil
+		return s.deploySuperseded(ev, environment)
 	case status.DeployBlocked:
-		if e := s.blockedOnPromotion(client, org, app, ev); e != nil {
-			return e
-		}
-		grants, unset := blockedDetail(ev.Error)
-		if len(ev.Unset) > 0 {
-			unset = ev.Unset
-		}
-		if len(grants) == 0 {
-			grants = s.grantsNeeded(client, org, app, ev.DeployID)
-		}
-		if len(grants) > 0 {
-			return grantsNeededBlock(ev.DeployID, grants, unset, allowPage(s.dashboard(), org, app, ev.DeployID))
-		}
-		if len(unset) == 0 {
-			// Best effort: the deploy is blocked either way, and that is the error to report,
-			// so a failed lookup only leaves the secret names out of it.
-			if a, err := client.GetApp(s.ctx, org, app); err == nil {
-				unset = a.UnsetSecrets
-			} else {
-				s.printer.Progress("Could not list the unset secrets: %v", err)
-			}
-		}
-		e := needsHumanSecrets(unset, secretsURL(s.dashboard(), org, app))
-		if page := keysPage(ev.Error, secretsURL(s.dashboard(), org, app), unset); page != e.Details["url"] {
-			e.Fix = "Ask an owner or admin to open " + page + " and paste the values there. The deploy goes on by itself once they are added."
-			e.Details["url"] = page
-		}
-		e.Message = fmt.Sprintf("Deploy %s is blocked until %d secret(s) have a value: %s.", ev.DeployID, len(unset), strings.Join(unset, ", "))
-		e.Details["deploy_id"] = ev.DeployID
-		return e
+		return s.deployBlocked(client, org, app, ev)
 	case status.DeployFailed, status.DeployRolledBack, status.DeployCancelled,
 		status.DeployQueued, status.DeployBuilding, status.DeploySnapshotting, status.DeployMigrating,
 		status.DeployStarting, status.DeployHealthChecking, status.DeploySwitching, status.DeployDraining:
 	}
 	return s.deployFailure(client, org, app, ev)
+}
+
+// deployLive reports a deploy that went live: its address, how long it took to start, the
+// webhook addresses to paste, its warnings, and the secrets a person still has to set.
+func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployEvent, environment string) error {
+	unset := nonNilStrings(ev.Unset)
+	result := map[string]any{"deploy_id": ev.DeployID, "status": "live", "url": ev.URL, "unset_secrets": unset}
+	if environment != "" {
+		result["environment"] = environment
+	}
+	if ev.StartMS != nil {
+		result["start_ms"] = *ev.StartMS
+	}
+	if s.caughtUp != nil {
+		result["caught_up"] = s.caughtUp
+	}
+	label := "Live:"
+	note := previewNote(environment)
+	if note != "" {
+		label = "Preview live:"
+		result["note"] = note
+	}
+	var block *output.Error
+	if len(unset) > 0 {
+		block = needsHumanSecrets(unset, secretsURL(s.dashboard(), org, app))
+		result["needs_human"] = block.Body()["error"]
+	}
+	warnings := ev.Warnings
+	if warnings == nil {
+		warnings = []api.Warning{}
+	}
+	result["warnings"] = warnings
+	// The addresses to paste into each webhook's provider, when the app declares any.
+	hooks := s.webhookURLs(client, org, app)
+	if len(hooks) > 0 {
+		result["webhooks"] = hooks
+	}
+	s.printer.Result(result, func(w io.Writer) {
+		fmt.Fprintf(w, "%s %s\n", s.printer.Good(label), ev.URL)
+		if ev.StartMS != nil {
+			fmt.Fprintf(w, "Started in %s\n", output.Seconds(*ev.StartMS))
+		}
+		for _, h := range hooks {
+			fmt.Fprintf(w, "Webhook %s: %s\n", h["name"], h["url"])
+		}
+		for _, wa := range warnings {
+			fmt.Fprintf(w, "%s %s\n  %s\n", s.printer.Warn(wa.Code+":"), wa.Message, wa.Fix)
+		}
+		if note != "" {
+			fmt.Fprintln(w, note)
+		}
+		if block != nil {
+			s.printer.Block(w, block)
+		}
+	})
+	return nil
+}
+
+// deploySuperseded reports a deploy a newer one of its environment replaced.
+func (s *session) deploySuperseded(ev api.DeployEvent, environment string) error {
+	result := map[string]any{"deploy_id": ev.DeployID, "status": ev.Status, "note": "A newer deploy of this environment replaced this one. Follow it with whisk deploys."}
+	if environment != "" {
+		result["environment"] = environment
+	}
+	s.printer.Result(result, func(w io.Writer) {
+		fmt.Fprintln(w, "Replaced by a newer deploy.")
+		fmt.Fprintln(w, "Follow it with: whisk deploys")
+	})
+	return nil
+}
+
+// deployBlocked is the error for a deploy waiting on a person: a promotion, grants to approve,
+// or secrets to set.
+func (s *session) deployBlocked(client *api.Client, org, app string, ev api.DeployEvent) error {
+	if e := s.blockedOnPromotion(client, org, app, ev); e != nil {
+		return e
+	}
+	grants, unset := blockedDetail(ev.Error)
+	if len(ev.Unset) > 0 {
+		unset = ev.Unset
+	}
+	if len(grants) == 0 {
+		grants = s.grantsNeeded(client, org, app, ev.DeployID)
+	}
+	if len(grants) > 0 {
+		return grantsNeededBlock(ev.DeployID, grants, unset, allowPage(s.dashboard(), org, app, ev.DeployID))
+	}
+	if len(unset) == 0 {
+		// Best effort: the deploy is blocked either way, and that is the error to report,
+		// so a failed lookup only leaves the secret names out of it.
+		if a, err := client.GetApp(s.ctx, org, app); err == nil {
+			unset = a.UnsetSecrets
+		} else {
+			s.printer.Progress("Could not list the unset secrets: %v", err)
+		}
+	}
+	e := needsHumanSecrets(unset, secretsURL(s.dashboard(), org, app))
+	if page := keysPage(ev.Error, secretsURL(s.dashboard(), org, app), unset); page != e.Details["url"] {
+		e.Fix = "Ask an owner or admin to open " + page + " and paste the values there. The deploy goes on by itself once they are added."
+		e.Details["url"] = page
+	}
+	e.Message = fmt.Sprintf("Deploy %s is blocked until %d secret(s) have a value: %s.", ev.DeployID, len(unset), strings.Join(unset, ", "))
+	e.Details["deploy_id"] = ev.DeployID
+	return e
 }
 
 // blockedOnPromotion is the NEEDS_HUMAN for a production deploy that waits for the app to be

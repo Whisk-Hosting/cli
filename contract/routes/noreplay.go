@@ -46,9 +46,7 @@ func NoReplayRoutes() []string { return append([]string(nil), noReplay...) }
 // NoReplay reports whether a path below /v1, concrete ("/orgs/acme/tokens") or a pattern
 // ("/orgs/{org}/tokens"), is a no-replay route. A query string is ignored. Pure.
 func NoReplay(path string) bool {
-	if i := strings.IndexAny(path, "?#"); i >= 0 {
-		path = path[:i]
-	}
+	path = beforeQuery(path)
 	return slices.ContainsFunc(noReplay, func(p string) bool { return MatchRoute(p, path) })
 }
 

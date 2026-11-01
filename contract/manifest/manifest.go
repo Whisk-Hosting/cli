@@ -819,102 +819,180 @@ func checkWorkers(m Manifest) Problems {
 
 func checkRules(m Manifest) Problems {
 	var ps Problems
-	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
+	for _, rule := range manifestRules {
+		ps = append(ps, rule(m)...)
+	}
+	if len(ps) == 0 {
+		return nil
+	}
+	return dedupe(ps)
+}
 
-	for i, r := range m.Routes.Challenge {
-		if !routes.MatchAny(m.Routes.Public, r) && !contains(m.Routes.Public, r) {
-			add(fmt.Sprintf("/routes/challenge/%d", i), r+" is not a public route; challenge routes must also be listed under routes.public")
+// manifestRules are the checks beyond the schema, in the order their problems are listed. Each
+// is pure and checks one part of the manifest.
+var manifestRules = []func(Manifest) Problems{
+	checkChallengeRoutes, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkB2B,
+	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
+	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects,
+}
+
+// invalid is a MANIFEST_INVALID problem at path.
+func invalid(path, msg string) Problem {
+	return Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}
+}
+
+// problemsAt is a problem for each item why says is wrong, at its path.
+func problemsAt[T any](items []T, path func(int) string, why func(T) string) Problems {
+	var ps Problems
+	for i, it := range items {
+		if msg := why(it); msg != "" {
+			ps = append(ps, invalid(path(i), msg))
 		}
 	}
-	for i, n := range m.Secrets {
-		if msg := reservedName(n); msg != "" {
-			add(fmt.Sprintf("/secrets/%d", i), msg)
-		}
-	}
-	for i, r := range m.Routes.Apps {
+	return ps
+}
+
+func indexed(prefix string) func(int) string {
+	return func(i int) string { return fmt.Sprintf("%s/%d", prefix, i) }
+}
+
+func checkChallengeRoutes(m Manifest) Problems {
+	return problemsAt(m.Routes.Challenge, indexed("/routes/challenge"), func(r string) string {
 		if routes.MatchAny(m.Routes.Public, r) || contains(m.Routes.Public, r) {
-			add(fmt.Sprintf("/routes/apps/%d", i), r+" is also a public route; a route only apps may call cannot be public")
+			return ""
 		}
+		return r + " is not a public route; challenge routes must also be listed under routes.public"
+	})
+}
+
+func checkSecretNames(m Manifest) Problems {
+	return problemsAt(m.Secrets, indexed("/secrets"), reservedName)
+}
+
+func checkAppRoutes(m Manifest) Problems {
+	return problemsAt(m.Routes.Apps, indexed("/routes/apps"), func(r string) string {
+		if routes.MatchAny(m.Routes.Public, r) || contains(m.Routes.Public, r) {
+			return r + " is also a public route; a route only apps may call cannot be public"
+		}
+		return ""
+	})
+}
+
+func checkAdmin(m Manifest) Problems {
+	if m.Admin == nil {
+		return nil
 	}
-	if m.Admin != nil {
-		if !samePath(m.Admin.Path) {
-			add("/admin/path", m.Admin.Path+" must be a path on the app's own address, starting with a single /")
-		}
-		if m.Admin.Edit != "" && (!samePath(m.Admin.Edit) || strings.Count(m.Admin.Edit, "{path}") != 1) {
-			add("/admin/edit", m.Admin.Edit+" must be a path on the app's own address, starting with a single /, with {path} once where the page's path goes")
-		}
+	var ps Problems
+	if !samePath(m.Admin.Path) {
+		ps = append(ps, invalid("/admin/path", m.Admin.Path+" must be a path on the app's own address, starting with a single /"))
 	}
-	if m.SignIn != nil {
-		if m.CustomerIdentity != CustomerIdentityApp {
-			add("/sign_in", "styles the sign-in of an app with customers of its own; set customer_identity: app, or remove sign_in")
-		}
-		if m.SignIn.Logo != "" && m.SignIn.LogoPath() == "" {
-			add("/sign_in/logo", m.SignIn.Logo+" must be a path in the repository, such as brand/logo.png")
-		}
+	if m.Admin.Edit != "" && (!samePath(m.Admin.Edit) || strings.Count(m.Admin.Edit, "{path}") != 1) {
+		ps = append(ps, invalid("/admin/edit", m.Admin.Edit+" must be a path on the app's own address, starting with a single /, with {path} once where the page's path goes"))
 	}
-	ps = append(ps, checkMCP(m)...)
+	return ps
+}
+
+func checkSignIn(m Manifest) Problems {
+	if m.SignIn == nil {
+		return nil
+	}
+	var ps Problems
+	if m.CustomerIdentity != CustomerIdentityApp {
+		ps = append(ps, invalid("/sign_in", "styles the sign-in of an app with customers of its own; set customer_identity: app, or remove sign_in"))
+	}
+	if m.SignIn.Logo != "" && m.SignIn.LogoPath() == "" {
+		ps = append(ps, invalid("/sign_in/logo", m.SignIn.Logo+" must be a path in the repository, such as brand/logo.png"))
+	}
+	return ps
+}
+
+func checkB2B(m Manifest) Problems {
 	if m.B2B && !m.Promoted {
-		add("/b2b", "trade ordering comes only with Promoted apps; set promoted: true as well")
+		return Problems{invalid("/b2b", "trade ordering comes only with Promoted apps; set promoted: true as well")}
 	}
-	ps = append(ps, checkWorkers(m)...)
-	ps = append(ps, checkManaged(m)...)
-	for i, n := range m.Build.Secrets {
-		if msg := reservedName(n); msg != "" {
-			add(fmt.Sprintf("/build/secrets/%d", i), msg)
-		}
-	}
-	for _, k := range sortedKeys(m.Env) {
-		if msg := reservedName(k); msg != "" {
-			add("/env/"+k, msg)
-		}
-	}
+	return nil
+}
+
+func checkBuildSecretNames(m Manifest) Problems {
+	return problemsAt(m.Build.Secrets, indexed("/build/secrets"), reservedName)
+}
+
+func checkEnvNames(m Manifest) Problems {
+	keys := sortedKeys(m.Env)
+	return problemsAt(keys, func(i int) string { return "/env/" + keys[i] }, reservedName)
+}
+
+// duplicates is a problem for each name used before, naming where it was first.
+func duplicates[T any](items []T, name func(T) string, prefix, what string) Problems {
+	var ps Problems
 	seen := map[string]int{}
-	for i, f := range m.Functions {
-		if j, dup := seen[f.Name]; dup {
-			add(fmt.Sprintf("/functions/%d/name", i), fmt.Sprintf("duplicate function name %s (also /functions/%d)", f.Name, j))
+	for i, it := range items {
+		n := name(it)
+		if j, dup := seen[n]; dup {
+			ps = append(ps, invalid(fmt.Sprintf("%s/%d/name", prefix, i), fmt.Sprintf("duplicate %s name %s (also %s/%d)", what, n, prefix, j)))
 		}
-		seen[f.Name] = i
+		seen[n] = i
+	}
+	return ps
+}
+
+func checkFunctions(m Manifest) Problems {
+	ps := duplicates(m.Functions, func(f Function) string { return f.Name }, "/functions", "function")
+	for i, f := range m.Functions {
 		if f.Cron != "" {
 			if err := CheckCron(f.Cron); err != nil {
-				add(fmt.Sprintf("/functions/%d/cron", i), err.Error())
+				ps = append(ps, invalid(fmt.Sprintf("/functions/%d/cron", i), err.Error()))
 			}
 		}
-		if f.TZ != "" {
-			if _, err := time.LoadLocation(f.TZ); err != nil {
-				add(fmt.Sprintf("/functions/%d/tz", i), f.TZ+" is not a known IANA time zone")
-			}
-			if f.Cron == "" {
-				add(fmt.Sprintf("/functions/%d/tz", i), "tz only applies to cron functions")
-			}
+		if f.TZ == "" {
+			continue
+		}
+		if _, err := time.LoadLocation(f.TZ); err != nil {
+			ps = append(ps, invalid(fmt.Sprintf("/functions/%d/tz", i), f.TZ+" is not a known IANA time zone"))
+		}
+		if f.Cron == "" {
+			ps = append(ps, invalid(fmt.Sprintf("/functions/%d/tz", i), "tz only applies to cron functions"))
 		}
 	}
-	if m.Restricted() {
-		if m.Database == "none" {
-			add("/database_role", "database_role: restricted needs a database; remove it or declare database: app or shared:<name>")
-		}
-		if m.Migrate == "" {
-			add("/database_role", "database_role: restricted needs a migrate command: only the migrate step connects as the owner that can create and change tables")
-		}
+	return ps
+}
+
+func checkRestricted(m Manifest) Problems {
+	if !m.Restricted() {
+		return nil
 	}
+	var ps Problems
+	if m.Database == "none" {
+		ps = append(ps, invalid("/database_role", "database_role: restricted needs a database; remove it or declare database: app or shared:<name>"))
+	}
+	if m.Migrate == "" {
+		ps = append(ps, invalid("/database_role", "database_role: restricted needs a migrate command: only the migrate step connects as the owner that can create and change tables"))
+	}
+	return ps
+}
+
+func checkWebhooks(m Manifest) Problems {
 	presets := webhook.Presets()
-	seenHooks := map[string]int{}
+	ps := duplicates(m.Webhooks, func(w Webhook) string { return w.Name }, "/webhooks", "webhook")
 	for i, w := range m.Webhooks {
-		if j, dup := seenHooks[w.Name]; dup {
-			add(fmt.Sprintf("/webhooks/%d/name", i), fmt.Sprintf("duplicate webhook name %s (also /webhooks/%d)", w.Name, j))
-		}
-		seenHooks[w.Name] = i
 		if _, known := presets[w.Preset]; !known {
-			add(fmt.Sprintf("/webhooks/%d/preset", i), w.Preset+" is not a known preset; see webhook-presets.yaml")
+			ps = append(ps, invalid(fmt.Sprintf("/webhooks/%d/preset", i), w.Preset+" is not a known preset; see webhook-presets.yaml"))
 		}
 		if w.Secret != "" && !contains(m.Secrets, w.Secret) {
-			add(fmt.Sprintf("/webhooks/%d/secret", i), w.Secret+" is not listed under secrets")
+			ps = append(ps, invalid(fmt.Sprintf("/webhooks/%d/secret", i), w.Secret+" is not listed under secrets"))
 		}
 		if w.HMAC != nil {
 			if err := w.HMAC.Check(); err != nil {
-				add(fmt.Sprintf("/webhooks/%d/hmac", i), err.Error())
+				ps = append(ps, invalid(fmt.Sprintf("/webhooks/%d/hmac", i), err.Error()))
 			}
 		}
 	}
+	return ps
+}
+
+// checkConnections checks each connection, and that none of its keys is also a secret or build
+// secret: a connection's keys stay with Whisk.
+func checkConnections(m Manifest) Problems {
 	held := map[string]string{}
 	for i, n := range m.Secrets {
 		held[n] = fmt.Sprintf("/secrets/%d", i)
@@ -922,43 +1000,62 @@ func checkRules(m Manifest) Problems {
 	for i, n := range m.Build.Secrets {
 		held[n] = fmt.Sprintf("/build/secrets/%d", i)
 	}
+	var ps Problems
 	for _, name := range sortedConnections(m.Connections) {
-		c := m.Connections[name]
 		base := "/connections/" + name
 		if !connect.Name.MatchString(name) {
-			add(base, name+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30")
+			ps = append(ps, invalid(base, name+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30"))
 		}
-		found, secrets := connect.Check(c)
+		found, secrets := connect.Check(m.Connections[name])
 		for _, p := range found {
-			add(base+p.Path, p.Message)
+			ps = append(ps, invalid(base+p.Path, p.Message))
 		}
 		for _, n := range secrets {
 			if msg := reservedName(n); msg != "" {
-				add(base+"/auth", msg)
+				ps = append(ps, invalid(base+"/auth", msg))
 			}
 			if where, ok := held[n]; ok {
-				add(base+"/auth", fmt.Sprintf("%s is also listed at %s, which would give the app the value; a connection's keys stay with Whisk, so remove it there", n, where))
+				ps = append(ps, invalid(base+"/auth", fmt.Sprintf("%s is also listed at %s, which would give the app the value; a connection's keys stay with Whisk, so remove it there", n, where)))
 			}
 		}
 	}
-	if m.Inbox != nil {
-		if i, clash := seenHooks[InboxSource]; clash {
-			add(fmt.Sprintf("/webhooks/%d/name", i), "the webhook name inbox is the inbox's own while inbox: is declared; rename the source")
-		}
-		if m.Inbox.Handler == m.Queue.Endpoint {
-			add("/inbox/handler", "the inbox handler cannot be the queue endpoint")
-		}
-	}
-	if accepted, _ := m.AcceptsCallers(); contains(accepted, m.Name) {
-		add(fmt.Sprintf("/accepted_callers/%d", index(accepted, m.Name)), m.Name+" is this app; an app always accepts its own calls, so remove it")
-	}
-	for _, p := range redirects.Check(m.Redirects) {
-		add(fmt.Sprintf("/redirects/%d/%s", p.Index, p.Field), p.Message)
-	}
-	if len(ps) == 0 {
+	return ps
+}
+
+func checkInbox(m Manifest) Problems {
+	if m.Inbox == nil {
 		return nil
 	}
-	return dedupe(ps)
+	var ps Problems
+	// The last webhook of that name, as the duplicate check counts them.
+	clash := -1
+	for i, w := range m.Webhooks {
+		if w.Name == InboxSource {
+			clash = i
+		}
+	}
+	if clash >= 0 {
+		ps = append(ps, invalid(fmt.Sprintf("/webhooks/%d/name", clash), "the webhook name inbox is the inbox's own while inbox: is declared; rename the source"))
+	}
+	if m.Inbox.Handler == m.Queue.Endpoint {
+		ps = append(ps, invalid("/inbox/handler", "the inbox handler cannot be the queue endpoint"))
+	}
+	return ps
+}
+
+func checkCallers(m Manifest) Problems {
+	if accepted, _ := m.AcceptsCallers(); contains(accepted, m.Name) {
+		return Problems{invalid(fmt.Sprintf("/accepted_callers/%d", index(accepted, m.Name)), m.Name+" is this app; an app always accepts its own calls, so remove it")}
+	}
+	return nil
+}
+
+func checkRedirects(m Manifest) Problems {
+	var ps Problems
+	for _, p := range redirects.Check(m.Redirects) {
+		ps = append(ps, invalid(fmt.Sprintf("/redirects/%d/%s", p.Index, p.Field), p.Message))
+	}
+	return ps
 }
 
 func sortedConnections(m map[string]connect.Connection) []string {
@@ -1018,82 +1115,109 @@ func checkManaged(m Manifest) Problems {
 	if m.Managed == nil {
 		return nil
 	}
+	ps := checkManagedSettings(m)
+	ps = append(ps, checkManagedNotify(m.Managed.Notify)...)
+	for _, name := range sortedVariants(m.Managed.Variants) {
+		ps = append(ps, checkVariant(m, name, m.Managed.Variants[name])...)
+	}
+	return ps
+}
+
+// checkManagedSettings checks the product's settings, which are plain values the business sets
+// on its copy, and its link key, which is one of them.
+func checkManagedSettings(m Manifest) Problems {
 	var ps Problems
-	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
 	for i, n := range m.Managed.Settings {
+		path := fmt.Sprintf("/managed/settings/%d", i)
 		if msg := reservedName(n); msg != "" {
-			add(fmt.Sprintf("/managed/settings/%d", i), msg)
+			ps = append(ps, invalid(path, msg))
 		}
 		if contains(m.Secrets, n) {
-			add(fmt.Sprintf("/managed/settings/%d", i), n+" is a secret; a setting is a plain value the business sets on its copy")
+			ps = append(ps, invalid(path, n+" is a secret; a setting is a plain value the business sets on its copy"))
 		}
 	}
 	if k := m.Managed.LinkKey; k != "" && !contains(m.Managed.Settings, k) {
-		add("/managed/link_key", k+" is not one of the product's settings; the link key is a setting every copy may set")
+		ps = append(ps, invalid("/managed/link_key", k+" is not one of the product's settings; the link key is a setting every copy may set"))
 	}
+	return ps
+}
+
+// checkManagedNotify checks the notices a copy may send: each code once, with a subject.
+func checkManagedNotify(notify []Notice) Problems {
+	var ps Problems
 	seen := map[string]bool{}
-	for i, n := range m.Managed.Notify {
+	for i, n := range notify {
 		path := fmt.Sprintf("/managed/notify/%d", i)
 		if !NoticeCode.MatchString(n.Code) {
-			add(path+"/code", n.Code+" is not a code: upper-case letters, digits and _, starting with a letter, 3 to 64 of them")
+			ps = append(ps, invalid(path+"/code", n.Code+" is not a code: upper-case letters, digits and _, starting with a letter, 3 to 64 of them"))
 		}
 		if seen[n.Code] {
-			add(path+"/code", n.Code+" is declared twice; a code has one subject")
+			ps = append(ps, invalid(path+"/code", n.Code+" is declared twice; a code has one subject"))
 		}
 		seen[n.Code] = true
 		if msg := noticeSubject(n.Subject); msg != "" {
-			add(path+"/subject", msg)
+			ps = append(ps, invalid(path+"/subject", msg))
 		}
 	}
-	for _, name := range sortedVariants(m.Managed.Variants) {
-		v := m.Managed.Variants[name]
-		for i, n := range v.Settings {
-			path := fmt.Sprintf("/managed/variants/%s/settings/%d", name, i)
-			if msg := reservedName(n); msg != "" {
-				add(path, msg)
-			}
-			if contains(m.Secrets, n) {
-				add(path, n+" is a secret; a setting is a plain value the business sets on its copy")
-			}
-			if contains(m.Managed.Settings, n) {
-				add(path, n+" is already one of the product's settings")
-			}
-			if _, fixed := v.Env[n]; fixed {
-				add(path, n+" is fixed by the variant's env; a setting is set by the business")
-			}
+	return ps
+}
+
+// checkVariant checks one variant of a product: its own settings, its connections and the env it
+// fixes.
+func checkVariant(m Manifest, name string, v Variant) Problems {
+	var ps Problems
+	for i, n := range v.Settings {
+		path := fmt.Sprintf("/managed/variants/%s/settings/%d", name, i)
+		if msg := reservedName(n); msg != "" {
+			ps = append(ps, invalid(path, msg))
 		}
-		for _, cn := range sortedConnections(v.Connections) {
-			base := "/managed/variants/" + name + "/connections/" + cn
-			if !connect.Name.MatchString(cn) {
-				add(base, cn+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30")
-			}
-			c := v.Connections[cn]
-			placeholders := map[string]string{}
-			for _, n := range connect.Settings(c) {
-				if !contains(m.Managed.Settings, n) && !contains(v.Settings, n) {
-					add(base, "{setting."+n+"} names no setting of the product or this variant")
-				}
-				placeholders[n] = connect.SettingPlaceholder
-			}
-			filled, err := connect.FillSettings(c, placeholders)
-			if err != nil {
-				add(base, err.Error())
-				continue
-			}
-			found, _ := connect.Check(filled.WithDefaults())
-			for _, p := range found {
-				add(base+p.Path, p.Message)
-			}
+		if contains(m.Secrets, n) {
+			ps = append(ps, invalid(path, n+" is a secret; a setting is a plain value the business sets on its copy"))
 		}
-		for _, k := range sortedKeys(m.Managed.Variants[name].Env) {
-			path := "/managed/variants/" + name + "/env/" + k
-			if msg := reservedName(k); msg != "" {
-				add(path, msg)
-			}
-			if contains(m.Managed.Settings, k) {
-				add(path, k+" is a setting the business sets; a variant cannot also fix it")
-			}
+		if contains(m.Managed.Settings, n) {
+			ps = append(ps, invalid(path, n+" is already one of the product's settings"))
 		}
+		if _, fixed := v.Env[n]; fixed {
+			ps = append(ps, invalid(path, n+" is fixed by the variant's env; a setting is set by the business"))
+		}
+	}
+	for _, cn := range sortedConnections(v.Connections) {
+		ps = append(ps, checkVariantConnection(m, v, "/managed/variants/"+name+"/connections/"+cn, cn)...)
+	}
+	for _, k := range sortedKeys(v.Env) {
+		path := "/managed/variants/" + name + "/env/" + k
+		if msg := reservedName(k); msg != "" {
+			ps = append(ps, invalid(path, msg))
+		}
+		if contains(m.Managed.Settings, k) {
+			ps = append(ps, invalid(path, k+" is a setting the business sets; a variant cannot also fix it"))
+		}
+	}
+	return ps
+}
+
+// checkVariantConnection checks a variant's connection as it will be once a copy's settings fill
+// its {setting.name} placeholders, each of which must name a setting.
+func checkVariantConnection(m Manifest, v Variant, base, cn string) Problems {
+	var ps Problems
+	if !connect.Name.MatchString(cn) {
+		ps = append(ps, invalid(base, cn+" is not a connection name: lower case letters, digits and _ , starting with a letter, up to 30"))
+	}
+	c := v.Connections[cn]
+	placeholders := map[string]string{}
+	for _, n := range connect.Settings(c) {
+		if !contains(m.Managed.Settings, n) && !contains(v.Settings, n) {
+			ps = append(ps, invalid(base, "{setting."+n+"} names no setting of the product or this variant"))
+		}
+		placeholders[n] = connect.SettingPlaceholder
+	}
+	filled, err := connect.FillSettings(c, placeholders)
+	if err != nil {
+		return append(ps, invalid(base, err.Error()))
+	}
+	found, _ := connect.Check(filled.WithDefaults())
+	for _, p := range found {
+		ps = append(ps, invalid(base+p.Path, p.Message))
 	}
 	return ps
 }

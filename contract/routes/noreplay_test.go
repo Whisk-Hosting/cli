@@ -48,6 +48,8 @@ func TestMatchRoute(t *testing.T) {
 		{"/orgs/{org}/tokens", "/orgs/acme/tokens/t1", false},
 		{"/device/code", "/device/code", true},
 		{"/device/code", "/device/token", false},
+		{"/orgs/{org/tokens", "/orgs/acme/tokens", false},
+		{"/orgs/org}/tokens", "/orgs/acme/tokens", false},
 	} {
 		if got := MatchRoute(c.pattern, c.path); got != c.want {
 			t.Errorf("MatchRoute(%q, %q) = %v, want %v", c.pattern, c.path, got, c.want)
