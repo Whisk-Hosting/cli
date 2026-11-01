@@ -292,6 +292,10 @@ type OrgSettings struct {
 	SSO              SSOSettings `json:"sso"`
 	PasskeysRequired bool        `json:"passkeys_required"`
 	DBAccess         bool        `json:"db_access"`
+	// NotEmailed are the notification kinds Whisk does not email any business just now, whatever
+	// the routing says (CONTROL-PLANE.md §6.14 "Customer email"); they still reach the dashboard,
+	// Slack and the webhook.
+	NotEmailed []string `json:"not_emailed,omitempty"`
 }
 
 // SSOSettings is the org's single sign-on, without its client secret. Verified is true once the
@@ -350,6 +354,9 @@ type Preferences struct {
 	// DetectedTimeZone is the zone the person's browser reports, which the dashboard keeps here
 	// without asking; Whisk's own notes reach them in its morning while TimeZone is UTC.
 	DetectedTimeZone string `json:"detected_time_zone,omitempty"`
+	// NotEmailed are the kinds Whisk does not email anyone just now, whatever this person chose
+	// (CONTROL-PLANE.md §6.14 "Customer email"); read only, ignored on PUT.
+	NotEmailed []string `json:"not_emailed,omitempty"`
 }
 
 // Trust is GET /orgs/:org/trust (DASHBOARD.md §4.16): where the data lives, how it is backed up,
