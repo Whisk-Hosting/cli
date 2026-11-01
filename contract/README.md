@@ -32,6 +32,8 @@ medialink/             signed media links: what a link covers, signing and the c
                        check the platform and the stub share
 platformpage/          the page the edge and the platform answer a browser with when there is
                        no app page to show (waking, access walls, paused, unknown address)
+edgetune/              the edge modules' tunables: keys, defaults and bounds, and the values the
+                       edge applies from its document
 wakewindow/            the edge's wake confirmation and grace spans and the node's subnet
                        quarantine, which must nest
 doctor/                the rule table as data, parsed from doctor-rules.md

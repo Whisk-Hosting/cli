@@ -96,9 +96,40 @@ func Every(ctx context.Context, name string, every, timeout time.Duration, fn fu
 	}
 }
 
+// EveryOf is Every with its interval and timeout read before each wait and each run, so a
+// changed value applies from the next round on. A value of zero or less waits a second.
+func EveryOf(ctx context.Context, name string, every, timeout func() time.Duration, fn func(context.Context) error, opts ...Option) {
+	var o options
+	for _, opt := range opts {
+		opt(&o)
+	}
+	if o.now && ctx.Err() == nil {
+		_ = once(ctx, name, timeout(), fn)
+	}
+	for {
+		wait := every()
+		if wait <= 0 {
+			wait = time.Second
+		}
+		t := time.NewTimer(wait)
+		select {
+		case <-ctx.Done():
+			t.Stop()
+			return
+		case <-t.C:
+			_ = once(ctx, name, timeout(), fn)
+		}
+	}
+}
+
 // EveryInBackground is Every on its own goroutine.
 func EveryInBackground(ctx context.Context, name string, every, timeout time.Duration, fn func(context.Context) error, opts ...Option) {
 	go Every(ctx, name, every, timeout, fn, opts...)
+}
+
+// EveryOfInBackground is EveryOf on its own goroutine.
+func EveryOfInBackground(ctx context.Context, name string, every, timeout func() time.Duration, fn func(context.Context) error, opts ...Option) {
+	go EveryOf(ctx, name, every, timeout, fn, opts...)
 }
 
 // Backoff is the wait before Go starts a failed loop again: 1 s, doubling to a minute.

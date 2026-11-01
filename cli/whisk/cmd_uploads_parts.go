@@ -70,7 +70,7 @@ func writePartsState(path string, st partsState) {
 }
 
 // addInParts uploads one file in parts, carrying on an upload of it this computer started.
-func addInParts(s *session, client *api.Client, org, app string, f uploadFile, visibility string) (api.Upload, error) {
+func addInParts(s *session, client *api.Client, org, app string, f uploadFile, visibility string, log io.Writer) (api.Upload, error) {
 	info, err := f.file.Stat()
 	if err != nil {
 		return api.Upload{}, output.New("INVALID_REQUEST", "Cannot read "+f.path+": "+err.Error()+".", "Pass the path of a file on this computer.", nil)
@@ -90,6 +90,9 @@ func addInParts(s *session, client *api.Client, org, app string, f uploadFile, v
 		switch {
 		case err == nil:
 			id = st.ID
+			if note := uploadScanNote(f, 0); note != "" {
+				fmt.Fprintln(log, note)
+			}
 			say("carrying on %s: %d of %d parts already stored", f.name, storedParts(parts), parts.Count)
 		case errors.As(err, &ae) && (ae.Code == "UPLOAD_NOT_RESUMABLE" || ae.Code == "NOT_FOUND"):
 			_ = os.Remove(statePath)
@@ -106,6 +109,9 @@ func addInParts(s *session, client *api.Client, org, app string, f uploadFile, v
 		if auth.Parts == nil {
 			return api.Upload{}, output.New("PLATFORM_UNAVAILABLE", "The platform answered a form where parts were asked for.",
 				"Update the CLI with whisk update, then run the same whisk uploads add again.", map[string]any{"upload": auth.ID})
+		}
+		if note := uploadScanNote(f, auth.ScanMaxBytes); note != "" {
+			fmt.Fprintln(log, note)
 		}
 		id, parts = auth.ID, *auth.Parts
 		writePartsState(statePath, partsState{ID: id, UploadID: parts.UploadID, Org: org, App: app, File: f.path, Bytes: f.size, Modified: info.ModTime()})

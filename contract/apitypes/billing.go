@@ -33,6 +33,8 @@ type Plan struct {
 	ClientMonthlyUSD int            `json:"client_monthly_usd"`
 	ClientAnnualUSD  int            `json:"client_annual_usd"`
 	ClientIntervals  []Interval     `json:"client_intervals"`
+	// Public is whether the public pricing page shows the plan.
+	Public bool `json:"public"`
 }
 
 // InvoiceStatus is where an invoice stands at Stripe.

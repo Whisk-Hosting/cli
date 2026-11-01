@@ -128,10 +128,10 @@ func TestUploadsAddOverTheScanLimit(t *testing.T) {
 	if files[0].size <= scanMaxBytes {
 		t.Fatalf("size %d", files[0].size)
 	}
-	if !strings.Contains(uploadScanNote(files[0]), "archive.tar is 180 MB, over the 100 MB the virus scan reads, so it is stored without a scan") {
-		t.Errorf("note = %q", uploadScanNote(files[0]))
+	if !strings.Contains(uploadScanNote(files[0], 0), "archive.tar is 180 MB, over the 100 MB the virus scan reads, so it is stored without a scan") {
+		t.Errorf("note = %q", uploadScanNote(files[0], 0))
 	}
-	if uploadScanNote(uploadFile{name: "small.jpg", size: scanMaxBytes}) != "" {
+	if uploadScanNote(uploadFile{name: "small.jpg", size: scanMaxBytes}, 0) != "" || uploadScanNote(uploadFile{name: "big.jpg", size: 60 << 20}, 50<<20) == "" {
 		t.Error("a file at the limit got a note")
 	}
 }

@@ -27,6 +27,9 @@ type UploadAuthorisation struct {
 	Fields    map[string]string `json:"fields"`
 	MaxBytes  int64             `json:"max_bytes"`
 	ExpiresAt time.Time         `json:"expires_at"`
+	// ScanMaxBytes is the largest object the platform's virus scan reads now; 0 from a platform
+	// that does not say.
+	ScanMaxBytes int64 `json:"scan_max_bytes,omitempty"`
 	// Parts is set instead of the form for an upload in parts.
 	Parts *UploadParts `json:"parts,omitempty"`
 }

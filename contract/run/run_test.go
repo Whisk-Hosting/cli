@@ -226,3 +226,27 @@ func TestSpawnReportsACrashOnce(t *testing.T) {
 		t.Fatalf("reported %v", got)
 	}
 }
+
+func TestEveryOfReadsItsIntervalEachRound(t *testing.T) {
+	var interval atomic.Int64
+	interval.Store(int64(2 * time.Millisecond))
+	var runs atomic.Int64
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	go EveryOf(ctx, "test", func() time.Duration { return time.Duration(interval.Load()) }, func() time.Duration { return time.Second },
+		func(context.Context) error { runs.Add(1); return nil })
+	deadline := time.Now().Add(2 * time.Second)
+	for runs.Load() < 3 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if runs.Load() < 3 {
+		t.Fatalf("ran %d times at a 2 ms interval", runs.Load())
+	}
+	interval.Store(int64(time.Hour))
+	time.Sleep(20 * time.Millisecond)
+	settled := runs.Load()
+	time.Sleep(50 * time.Millisecond)
+	if runs.Load() != settled {
+		t.Fatalf("kept running after the interval became an hour: %d then %d", settled, runs.Load())
+	}
+}

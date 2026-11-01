@@ -20,8 +20,9 @@ import (
 // maxUploadBytes is the most one upload form takes (CONTROL-PLANE.md §6.13).
 const maxUploadBytes = 5 << 30
 
-// scanMaxBytes is the largest object the virus scan reads; a larger one is stored without a scan,
-// status unscanned (CONTROL-PLANE.md §6.13 "Scanning").
+// scanMaxBytes is the largest object the virus scan reads when the platform does not say; a
+// larger one is stored without a scan, status unscanned (CONTROL-PLANE.md §6.13 "Scanning"). The
+// platform says in each authorisation (scan_max_bytes).
 const scanMaxBytes = 100 << 20
 
 // uploadPoll is how often --wait asks how an upload's scan and conversion are going.
@@ -76,10 +77,7 @@ are left out.`,
 			}
 			out := make([]api.Upload, 0, len(files))
 			for _, f := range files {
-				if note := uploadScanNote(f); note != "" {
-					fmt.Fprintln(log, note)
-				}
-				u, err := addUpload(s, client, org, app, f, visibility)
+				u, err := addUpload(s, client, org, app, f, visibility, log)
 				if err != nil {
 					return err
 				}
@@ -171,23 +169,30 @@ func openUploads(dir string, args []string, contentType string) ([]uploadFile, e
 }
 
 // uploadScanNote is the line said before a file the virus scan will not read goes up, "" for
-// one it reads. Pure.
-func uploadScanNote(f uploadFile) string {
-	if f.size <= scanMaxBytes {
+// one it reads: limit is what the platform's authorisation says the scan reads, scanMaxBytes
+// when it says nothing. Pure.
+func uploadScanNote(f uploadFile, limit int64) string {
+	if limit <= 0 {
+		limit = scanMaxBytes
+	}
+	if f.size <= limit {
 		return ""
 	}
-	return fmt.Sprintf("upload: %s is %s, over the 100 MB the virus scan reads, so it is stored without a scan", f.name, sizeMB(f.size))
+	return fmt.Sprintf("upload: %s is %s, over the %s the virus scan reads, so it is stored without a scan", f.name, sizeMB(f.size), sizeMB(limit))
 }
 
 // addUpload authorises one file, posts it to the store and reads back its record. A file
 // larger than one part goes up in parts, and carries on where an earlier run stopped.
-func addUpload(s *session, client *api.Client, org, app string, f uploadFile, visibility string) (api.Upload, error) {
+func addUpload(s *session, client *api.Client, org, app string, f uploadFile, visibility string, log io.Writer) (api.Upload, error) {
 	if f.size > partsFrom {
-		return addInParts(s, client, org, app, f, visibility)
+		return addInParts(s, client, org, app, f, visibility, log)
 	}
 	auth, err := client.AuthoriseUpload(s.ctx, org, app, f.name, f.contentType, visibility, f.size, false)
 	if err != nil {
 		return api.Upload{}, wrap(err)
+	}
+	if note := uploadScanNote(f, auth.ScanMaxBytes); note != "" {
+		fmt.Fprintln(log, note)
 	}
 	quiet := s.quiet || s.json
 	if !quiet {
