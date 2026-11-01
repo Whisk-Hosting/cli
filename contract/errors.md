@@ -3848,8 +3848,7 @@ so no base backup was taken and the copy's directory was left as it was. The cop
 with this message until both nodes run the same major version.
 
 Fix: Nothing on the tenant's side; the platform's team is paged once, and brings both nodes to
-the one Postgres major version server setup names (`whisk_postgres_version`); the next attempt
-makes the copy.
+the one Postgres major version every machine runs; the next attempt makes the copy.
 
 ```json
 {"error":{"code":"COPY_VERSION_MISMATCH","message":"COPY_VERSION_MISMATCH: node1 runs Postgres major 17 and this node runs major 18; a copy streams only between the same major version","fix":"Bring both nodes to the same Postgres major version (whisk_postgres_version); the copy is made again on its own.","docs":"https://skill.whisk.run/errors/COPY_VERSION_MISMATCH","details":{"node":"node2","source":"node1","source_major":17,"major":18}}}

@@ -17,7 +17,7 @@ import (
 )
 
 // partBudget is the most source one generated file holds, well under the 2 MiB limit for a
-// committed file (infra/ci/tracked_files.py). A single file larger than this gets a part of its own.
+// committed file (whisk-ci tracked). A single file larger than this gets a part of its own.
 const partBudget = 1 << 20
 
 // entry is one template file as it appears in generated source.
