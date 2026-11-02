@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/whisk-run/cli/internal/stack"
+	"github.com/whisk-run/contract/observe"
 )
 
 // Errors and traces (doctor-rules.md W140 and W141, SKILL.md §3 "Errors and traces"). The
@@ -14,16 +15,16 @@ import (
 
 var (
 	// errorsStarted are the marks of an app that reports its errors (W140).
-	errorsStarted = regexp.MustCompile(`SENTRY_DSN|\b(?:Sentry|sentry_sdk|sentry)\.(?:init|Init)\(`)
+	errorsStarted = regexp.MustCompile(observe.ErrorsPattern)
 	// tracesStarted are the marks of an app that sends traces (W141).
-	tracesStarted = regexp.MustCompile(`OTEL_EXPORTER_OTLP_(?:TRACES_)?ENDPOINT|\bNodeSDK\b|TracerProvider\b|\bregisterOTel\b|opentelemetry-instrument\b|@opentelemetry/auto-instrumentations-node/register`)
+	tracesStarted = regexp.MustCompile(observe.TracesPattern)
 	// staticServers are the images whose last stage only serves files, so the app runs no code
 	// of its own to report from.
 	staticServers = regexp.MustCompile(`^(?:docker\.io/)?(?:library/)?(?:nginx|nginxinc/[^:@]+|caddy|httpd|joseluisq/static-web-server|lipanski/docker-static-website|pierrezemb/gostatic)(?:[:@]|$)`)
 )
 
 func w140(r Repo, _ Context) outcome {
-	return observeRule(r, "W140", errorsStarted, "Nothing in the app starts a Sentry SDK, so its exceptions never reach the Errors page or whisk errors.")
+	return observeRule(r, "W140", errorsStarted, "Nothing in the app starts a Sentry SDK, so only the stacks it prints reach the Errors page, without the request or what the framework catches quietly.")
 }
 
 func w141(r Repo, _ Context) outcome {

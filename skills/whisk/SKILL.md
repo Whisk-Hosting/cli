@@ -221,11 +221,15 @@ commands to functions, backups to Whisk's. Then make it follow the rules and run
 **Errors and traces.** Wire both in before the first deploy, in every app, whatever it is built
 with. They are how you and the human find out what broke and what is slow once real people use
 the app: `whisk errors` and the Errors page list its exceptions, grouped, with the stack;
-`whisk traces` and the Traces page show where each request's time went. The platform sets
+`whisk traces` and the Traces page list every request with the edge's timing, and the app's own
+spans show where inside the app each request's time went: its queries, its calls out. The platform sets
 `SENTRY_DSN` and the `OTEL_*` variables (`environment.md`) in every deployed container, so all
 the app does is start a Sentry SDK and an OpenTelemetry SDK when they are set. `whisk dev` sets
 neither, so nothing is sent while you work. The templates already do this. Until an app does,
 `whisk doctor` warns (`W140`, `W141`) and `whisk deploy` says "Not set up: errors and traces."
+Without an SDK, the stacks the app prints (a Node error and its frames, a Python traceback, a Go
+panic) still reach the Errors page from its logs, but without the request, the user, or the
+exceptions a framework catches and answers 500 for without printing.
 
 Any Node server (Express, Fastify, Hono, Koa, Astro, SvelteKit, React Router, Remix, Nuxt) loads
 one file before the app. Install `@sentry/node @opentelemetry/sdk-node

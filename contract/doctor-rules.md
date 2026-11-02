@@ -839,7 +839,7 @@ an app's pages for a customer, so the app's own link is the only way out.
 ## W140
 
 Level: warning
-Check: nothing in the app starts a Sentry SDK, so its exceptions never reach the Errors page or whisk errors.
+Check: nothing in the app starts a Sentry SDK, so only the stacks it prints reach the Errors page, without the request or what the framework catches quietly.
 Fix: Start a Sentry SDK with SENTRY_DSN when it is set, and report the errors the framework catches, as SKILL.md §3 "Errors and traces" shows for this stack.
 Safe fix: no
 
