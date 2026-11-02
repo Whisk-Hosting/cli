@@ -1,4 +1,4 @@
-// Package templates carries the three starter apps from ../../templates inside the binary so
+// Package templates carries the five starter apps from ../../templates inside the binary so
 // whisk init --template works anywhere, and reads the shop and the website, which whisk init
 // downloads (remote.go). The files_*_gen.go files are produced by `go generate` from the sibling
 // folder, each adding part of a template; the test fails when the two drift.
@@ -61,7 +61,7 @@ func (s *fileSet) names() []string {
 func add(name string, set map[string]File) { files.add(name, set) }
 
 // Names maps the --template flag values to folder names.
-var Names = map[string]string{"ts": "typescript", "typescript": "typescript", "py": "python", "python": "python", "go": "go", "shop": "shop", "site": "site", "website": "site"}
+var Names = map[string]string{"ts": "typescript", "typescript": "typescript", "py": "python", "python": "python", "go": "go", "next": "next", "nextjs": "next", "astro": "astro", "shop": "shop", "site": "site", "website": "site"}
 
 // Files returns an embedded template's files by relative slash path, or false for a name that
 // is unknown or downloaded (Remote).
@@ -90,7 +90,7 @@ func List() []string {
 func Write(dir, name, slug string) ([]string, error) {
 	tf, ok := Files(name)
 	if !ok {
-		return nil, fmt.Errorf("unknown template %q; use ts, py, go, shop or site", name)
+		return nil, fmt.Errorf("unknown template %q; use ts, py, go, next, astro, shop or site", name)
 	}
 	return WriteFiles(dir, tf, slug)
 }

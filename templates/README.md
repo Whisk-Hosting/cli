@@ -2,7 +2,7 @@
 
 Specification: [docs/CONTRACT.md §11](../docs/CONTRACT.md). Read it before writing anything here.
 
-Two sets of apps, one of each per language.
+Two sets of apps: starters for three languages and two TypeScript frameworks, and a canary per language.
 
 **Starters**, what `whisk init --template` writes (embedded in the CLI with `go generate` in
 `cli/templates`). Each is the conventions embodied as working code and as little else: a home
@@ -15,6 +15,8 @@ to set up.
 | `typescript/` | Hono on Node 24, Drizzle, Inngest SDK, pino |
 | `python/` | FastAPI, SQLAlchemy and Alembic, Inngest SDK, structlog |
 | `go/` | net/http with chi, pgx and goose, Inngest Go SDK, slog |
+| `next/` | Next.js on Node 24, the TypeScript starter's Drizzle, Inngest and pino |
+| `astro/` | Astro on Node 24, the TypeScript starter's Drizzle, Inngest and pino |
 
 **Canaries**, in `canary/typescript`, `canary/python` and `canary/go`: the same stacks with every
 platform feature wired in (a secret, a Stripe webhook, a nightly schedule, approvals, the key-value

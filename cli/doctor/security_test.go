@@ -118,7 +118,7 @@ func TestRouteGlob(t *testing.T) {
 // The templates are what agents copy, so none of the security rules may fire on them.
 func TestTemplatesPassSecurityRules(t *testing.T) {
 	root := filepath.Join("..", "..", "templates")
-	dirs := []string{"typescript", "python", "go", "canary/typescript", "canary/python", "canary/go"}
+	dirs := []string{"typescript", "python", "go", "next", "astro", "canary/typescript", "canary/python", "canary/go"}
 	for _, d := range dirs {
 		dir := filepath.Join(root, d)
 		if _, err := os.Stat(filepath.Join(dir, "whisk.yaml")); err != nil {

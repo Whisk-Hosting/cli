@@ -87,11 +87,12 @@ func jsFramework(pkg []byte) (framework, migrate string) {
 		_, b := p.DevDependencies[name]
 		return a || b
 	}
+	// Next.js is the server whenever it is there, even beside a router used inside it.
 	switch {
-	case has("hono"):
-		framework = "hono"
 	case has("next"):
 		framework = "next"
+	case has("hono"):
+		framework = "hono"
 	case has("fastify"):
 		framework = "fastify"
 	case has("express"):

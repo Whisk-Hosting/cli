@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.astro/
+.whisk/dev/
+.env
+.env.*
+!.env.example

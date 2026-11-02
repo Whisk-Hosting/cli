@@ -174,7 +174,7 @@ unless --no-create. Safe to run again: existing files are kept.`,
 			return nil
 		},
 	}
-	c.Flags().StringVar(&template, "template", "", "copy a template into an empty directory: ts, py, go, shop or site (the shop and site are downloaded)")
+	c.Flags().StringVar(&template, "template", "", "copy a template into an empty directory: ts, py, go, next, astro, shop or site (the shop and site are downloaded)")
 	c.Flags().StringVar(&name, "name", "", "app slug (default: the directory name)")
 	c.Flags().BoolVar(&noTemplate, "no-template", false, "never copy a template")
 	c.Flags().BoolVar(&noCreate, "no-create", false, "write files only; do not create the app on the platform")
@@ -438,7 +438,7 @@ func templateFix(err error) string {
 	if strings.Contains(err.Error(), " exists;") {
 		return "Move that file aside (the template writes its own), run whisk init --template again, then merge anything you need back."
 	}
-	return "Use --template ts, py, go, shop or site."
+	return "Use --template ts, py, go, next, astro, shop or site."
 }
 
 // templateFetch bounds one template download: a few megabytes on a slow link.

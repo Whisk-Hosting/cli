@@ -62,7 +62,7 @@ func main() {
 		root = os.Args[1]
 	}
 	out := map[string][]byte{}
-	for _, name := range []string{"typescript", "python", "go"} {
+	for _, name := range []string{"typescript", "python", "go", "next", "astro"} {
 		set, err := source.Read(filepath.Join(root, name))
 		if err != nil {
 			fail(err)

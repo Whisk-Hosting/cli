@@ -1,0 +1,9 @@
+node_modules/
+.next/
+dist/
+next-env.d.ts
+*.tsbuildinfo
+.whisk/dev/
+.env
+.env.*
+!.env.example

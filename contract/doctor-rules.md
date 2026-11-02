@@ -137,7 +137,8 @@ Details: idioms recognised. TypeScript and JavaScript: `process.env.PORT`, `Bun.
 Go: `os.Getenv("PORT")`, `os.LookupEnv("PORT")`. Any language: a helper whose name contains
 `env` called with the name as its first literal argument (`env("PORT")`, `mustEnv("PORT")`), a
 Dockerfile `CMD` or `ENTRYPOINT` that references `$PORT`, or a `package.json` script that does.
-A literal `8080` with none of these is the warning; listening on `127.0.0.1` or `localhost` is
+A Next.js app (`next` in `package.json`) reads it itself, in `next start` and its standalone
+`server.js`. A literal `8080` with none of these is the warning; listening on `127.0.0.1` or `localhost` is
 a second finding on the same rule.
 
 ## W021
@@ -212,7 +213,7 @@ Details: reads recognised: `process.env.NAME`, `process.env["NAME"]`, `Bun.env.N
 the name as its first literal argument (`env("NAME")`, `mustEnv("NAME")`). Test files
 (including fuzz targets under a `fuzz/` folder) and vendored directories are not read. The platform set is every name in `environment.md` plus
 `WHISK_*` (reserved for the platform, so a key newer than the CLI is never reported),
-`INNGEST_*`, `NODE_ENV`, `PYTHONPATH`, `HOME`, `PATH`. Names read with a default
+`INNGEST_*`, `NODE_ENV`, `NEXT_RUNTIME` (Next.js sets it), `PYTHONPATH`, `HOME`, `PATH`. Names read with a default
 value (`?? "x"`, `.get("NAME", "x")`) are still reported, at the same level.
 
 ## W031

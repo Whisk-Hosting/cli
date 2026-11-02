@@ -436,9 +436,9 @@ func TestFixes(t *testing.T) {
 	}
 }
 
-// The three templates pass doctor with zero warnings (CONTRACT.md §11).
+// The templates pass doctor with zero warnings (CONTRACT.md §11).
 func TestTemplatesAreClean(t *testing.T) {
-	for _, name := range []string{"typescript", "python", "go", "shop", "site"} {
+	for _, name := range []string{"typescript", "python", "go", "next", "astro", "shop", "site"} {
 		dir := filepath.Join("..", "..", "templates", name)
 		if _, err := os.Stat(dir); err != nil {
 			t.Skipf("%s not present", dir)

@@ -1,0 +1,51 @@
+{
+  "name": "whisk-astro",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "astro build && node build.mjs",
+    "start": "node dist/server/entry.mjs",
+    "dev": "astro dev",
+    "migrate": "node dist/migrate.js",
+    "migrate:dev": "tsx src/migrate.ts",
+    "generate": "drizzle-kit generate",
+    "typecheck": "astro check",
+    "test": "tsx --test test/*.test.ts"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.9",
+    "@aws-sdk/client-s3": "^3.1142.0",
+    "@opentelemetry/api": "^1.9.1",
+    "@opentelemetry/exporter-trace-otlp-proto": "^0.223.0",
+    "@opentelemetry/instrumentation-undici": "^0.33.0",
+    "@opentelemetry/resources": "^2.11.0",
+    "@opentelemetry/sdk-trace-node": "^2.11.0",
+    "@sentry/node": "^11.6.0",
+    "astro": "^7.4.4",
+    "drizzle-orm": "^0.45.2",
+    "inngest": "^4.20.0",
+    "pino": "^10.3.1",
+    "postgres": "^3.4.9"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.10",
+    "@types/node": "^26.4.1",
+    "drizzle-kit": "^0.31.10",
+    "esbuild": "^0.28.2",
+    "hono": "^4.13.7",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "zod": "^4.6.6",
+    "glob": "^14.0.3",
+    "minimatch": "^11.0.3",
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.12"
+    }
+  }
+}

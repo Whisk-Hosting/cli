@@ -37,7 +37,7 @@ and a test fails when the two drift.
 
 These need no control plane and are the whole of the hard local logic:
 
-- `whisk init [--template ts|py|go]` — detect the stack, write a commented `whisk.yaml`, the
+- `whisk init [--template ts|py|go|next|astro]` — detect the stack, write a commented `whisk.yaml`, the
   `.gitignore` entries and example graphs, and create the app when a token is present.
 - `whisk doctor [--fix]` — every rule in `doctor-rules.md`, by convention search over the tracked
   files. Levels and fix text come from the contract, so the document and the check cannot

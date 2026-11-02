@@ -1,0 +1,24 @@
+whisk: 1
+name: whisk-next
+
+routes:
+  public: ["/", "/health"]
+
+health:
+  path: /health
+  timeout: 30
+
+database: app
+migrate: "node dist/migrate.js"
+
+env:
+  LOG_LEVEL: info
+
+# Function runs arrive at a route handler (src/app/api/inngest/route.ts).
+queue:
+  endpoint: /api/inngest
+
+functions:
+  - name: note-added
+    event: note.added
+    graph: workflows/note-added.graph.yaml

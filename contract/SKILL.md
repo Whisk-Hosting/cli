@@ -128,8 +128,8 @@ whisk login --agent "<your name>"
                          (whisk login --resume <device_code>), which waits for approval.
                          The token works only from this computer: use it through whisk,
                          never copy it elsewhere
-whisk init --template ts|py|go|shop writes whisk.yaml, .whisk/app.json, and the template;
-                         shop is a whole online shop (Medusa) for a business selling
+whisk init --template ts|py|go|next|astro|shop writes whisk.yaml, .whisk/app.json, and
+                         the template; next and astro are Next.js and Astro; shop is a whole online shop (Medusa) for a business selling
                          to the public, and runs only as a Promoted app
 whisk doctor             checks the repository; exit 3 means fix the listed problems
 whisk deploy -m "…"      commits, pushes, builds, migrates, health-checks, switches traffic
@@ -251,18 +251,20 @@ if (process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
   process.once("SIGTERM", () => sdk.shutdown().finally(() => process.exit(0)));
 }
 if (process.env.SENTRY_DSN) {
-  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV, skipOpenTelemetrySetup: true });
+  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
 }
 ```
 
 The SDK reads the endpoint, the token and the app's name from the `OTEL_*` variables itself, and
 the HTTP instrumentation continues the edge's `traceparent`, so each request's trace id is its
 request id. Leave out `@opentelemetry/auto-instrumentations-node`: it loads dozens of
-instrumentations and slows every start. Keep `skipOpenTelemetrySetup` so Sentry reports errors
-and leaves tracing to the SDK above.
+instrumentations and slows every start. Sentry 11 reports errors and leaves tracing to the SDK
+above; leave its `enableOpenTelemetrySetup` off.
 
-Next.js: put the same code in `instrumentation.node.ts` (without the `SIGTERM` line) and add
-`instrumentation.ts` at the project root, or in `src/`:
+Next.js: put the same code in `instrumentation.node.ts` (without the `SIGTERM` line, and without
+the HTTP instrumentation, since Next.js traces each request itself) and add `instrumentation.ts`
+at the project root, or in `src/`. A new app can start from `whisk init --template next` or
+`--template astro`, which have both wired.
 
 ```ts
 export async function register() {

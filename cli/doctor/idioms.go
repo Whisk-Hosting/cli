@@ -205,6 +205,10 @@ func fileRouteExists(r Repo, routePath string) bool {
 
 // portRead reports whether PORT is read from the environment anywhere doctor understands.
 func portRead(r Repo) (bool, string) {
+	// Next.js listens on PORT itself, in next start and in the standalone server.js it builds.
+	if r.Stack.Framework == "next" {
+		return true, "package.json"
+	}
 	for _, f := range r.AllCode() {
 		for _, h := range envReads(f) {
 			if h.Name == "PORT" {

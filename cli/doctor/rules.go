@@ -315,7 +315,7 @@ var rePlatformName = regexp.MustCompile("`([A-Z][A-Z0-9_]+)`")
 // platformSet is every name the platform injects (environment.md) plus the runtime names an
 // app may read without declaring.
 var platformSet = func() map[string]bool {
-	set := map[string]bool{"NODE_ENV": true, "PYTHONPATH": true, "HOME": true, "PATH": true, "WHISK_DEV": true}
+	set := map[string]bool{"NODE_ENV": true, "NEXT_RUNTIME": true, "PYTHONPATH": true, "HOME": true, "PATH": true, "WHISK_DEV": true}
 	for _, m := range rePlatformName.FindAllStringSubmatch(contract.EnvironmentDoc, -1) {
 		set[m[1]] = true
 	}

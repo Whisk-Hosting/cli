@@ -93,7 +93,7 @@ func TestFromArchiveRefuses(t *testing.T) {
 
 func TestListNamesEveryTemplate(t *testing.T) {
 	got := strings.Join(List(), ",")
-	for _, n := range []string{"typescript", "python", "go", "shop", "site"} {
+	for _, n := range []string{"typescript", "python", "go", "next", "astro", "shop", "site"} {
 		if !strings.Contains(got, n) {
 			t.Errorf("List() = %s lacks %s", got, n)
 		}
