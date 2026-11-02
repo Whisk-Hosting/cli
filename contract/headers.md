@@ -20,6 +20,7 @@ platform edge; there is no other path that could set them.
 | `X-Whisk-Agent` | team, when an agent acting for the person sent the request | the agent's name, such as `Claude` |
 | `X-Whisk-Agent-Id` | with `X-Whisk-Agent` | stable ULID of the agent; store it beside a change to say which agent made it |
 | `X-Whisk-Service-App` | service, app-to-app | ULID of the calling app |
+| `X-Whisk-Flags` | a feature flag whisk.yaml declares is on for the person | comma-separated flag names, in alphabetical order; absent when none is (CONTRACT.md §3.3) |
 | `X-Whisk-Request-Id` | always | ULID; echo it in every log line. Also returned on the response so a client can quote it. |
 | `traceparent` | always | W3C trace context, `00-<trace id>-<parent id>-01`. The trace id is the request id's 16 bytes in hex, so an OpenTelemetry SDK that continues it records the request under its request id. Whatever the caller sent is replaced, and `tracestate` removed. |
 

@@ -22,6 +22,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"sort"
 	"strings"
 	"time"
@@ -54,6 +55,7 @@ type Options struct {
 	SecretsFile string            // NAME=value lines for declared secrets: .whisk/dev/secrets.env
 	Secrets     map[string]string // secrets in addition to (and over) the file
 	ExtraEnv    []string          // NAME=value pairs the caller injects, for storage and kv in whisk dev
+	Flags       []string          // feature flags on for everyone here, of those whisk.yaml declares (CONTRACT.md §3.3)
 
 	InngestURL  string // a running Inngest dev server; empty starts one on InngestPort
 	InngestPort string // 8288
@@ -132,6 +134,7 @@ type stub struct {
 	sessionID    string
 	secrets      map[string]string
 	extraEnv     []string
+	flags        []string // the declared flags on, sorted; X-Whisk-Flags and GET …/flags/on answer them
 	urlTokens    map[string]string
 	bodyLimit    int64
 	altcha       altcha
@@ -180,6 +183,7 @@ func build(o Options) (*stub, manifest.Manifest, error) {
 		sessionValue:   randomToken(32),
 		sessionID:      newULID(),
 		extraEnv:       o.ExtraEnv,
+		flags:          onFlags(m, o.Flags),
 		urlTokens:      map[string]string{},
 		bodyLimit:      8 << 20,
 		altcha:         altcha{key: []byte(randomToken(32)), maxNumber: 50000},
@@ -414,6 +418,7 @@ func (s *stub) appEnv(databaseURL string) []string {
 		"WHISK_REGION=eu",
 		"WHISK_PUBLIC_URL=" + s.edgeURL,
 		"WHISK_QUEUE_URL=" + s.apiURL + "/v1/orgs/" + s.orgID + "/apps/" + s.appID + "/events",
+		"WHISK_FLAGS_URL=" + s.apiURL + "/v1/orgs/" + s.orgID + "/apps/" + s.appID + "/flags/on",
 		kv("WHISK_SERVICE_TOKEN", s.serviceToken),
 		"WHISK_INNGEST_URL=" + s.apiURL,
 		kv("WHISK_INNGEST_SIGNING_KEY", s.signingKey),
@@ -581,4 +586,17 @@ func sortedKeys(m map[string]string) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+// onFlags (pure) is the flags asked for that the manifest declares, each once, sorted: what the
+// stub sends in X-Whisk-Flags, as the platform sends only declared flags.
+func onFlags(m manifest.Manifest, asked []string) []string {
+	out := []string{}
+	for _, f := range asked {
+		if _, ok := m.Flags[f]; ok && !slices.Contains(out, f) {
+			out = append(out, f)
+		}
+	}
+	slices.Sort(out)
+	return out
 }

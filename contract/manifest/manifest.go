@@ -8,8 +8,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -74,8 +76,10 @@ type Manifest struct {
 	// accepts no caller. AcceptsCallers reads it.
 	AcceptedCallers *[]string `json:"accepted_callers,omitempty"`
 	// Connections are outside systems reached through the broker (CONTRACT.md §3.1).
-	Connections      map[string]connect.Connection `json:"connections"`
-	CustomerIdentity string                        `json:"customer_identity"`
+	Connections map[string]connect.Connection `json:"connections"`
+	// Flags are the feature flags the app reads from X-Whisk-Flags, by name (CONTRACT.md §3.3).
+	Flags            map[string]Flag `json:"flags"`
+	CustomerIdentity string          `json:"customer_identity"`
 	// SignIn is how the customers' sign-in looks (CONTROL-PLANE.md §4.6, "An app's own look");
 	// nil when whisk.yaml leaves it out.
 	SignIn *SignIn `json:"sign_in,omitempty"`
@@ -88,6 +92,20 @@ type Manifest struct {
 	// Managed declares the product this app is the source of (MANAGED-APPS.md §2); nil for
 	// every other app.
 	Managed *Managed `json:"managed,omitempty"`
+}
+
+// Flag kinds (CONTRACT.md §3.3).
+const (
+	FlagRelease    = "release"
+	FlagKillSwitch = "kill-switch"
+	FlagPermission = "permission"
+)
+
+// Flag is one feature flag an app declares (CONTRACT.md §3.3): what kind it is, and for a
+// release flag the day it should be gone, as YYYY-MM-DD.
+type Flag struct {
+	Kind     string `json:"kind"`
+	RemoveBy string `json:"remove_by,omitempty"`
 }
 
 // Managed is a product's declaration in its source app's manifest (MANAGED-APPS.md §2).
@@ -385,6 +403,7 @@ func Parse(src []byte) (Manifest, error) {
 	if ps := checkVersion(obj); ps != nil {
 		return Manifest{}, ps
 	}
+	obj = withFlagDays(obj)
 	if ps := validateSchema(obj); ps != nil {
 		return Manifest{}, ps
 	}
@@ -612,6 +631,49 @@ func levenshtein(a, b string) int {
 }
 
 // withRawDefaults fills defaults the typed decode cannot distinguish from zero values.
+// withFlagKinds is the flags with release for each that names no kind, never nil.
+func withFlagKinds(in map[string]Flag) map[string]Flag {
+	out := make(map[string]Flag, len(in))
+	for name, f := range in {
+		if f.Kind == "" {
+			f.Kind = FlagRelease
+		}
+		out[name] = f
+	}
+	return out
+}
+
+// withFlagDays writes each flag's remove_by as YAML read it back as text: YAML reads an unquoted
+// 2027-01-31 as a moment, and the schema and the manifest keep the day as YYYY-MM-DD. Pure.
+func withFlagDays(obj map[string]any) map[string]any {
+	flags, _ := obj["flags"].(map[string]any)
+	if len(flags) == 0 {
+		return obj
+	}
+	out := make(map[string]any, len(obj))
+	for k, v := range obj {
+		out[k] = v
+	}
+	fixed := make(map[string]any, len(flags))
+	for name, f := range flags {
+		fm, ok := f.(map[string]any)
+		if !ok {
+			fixed[name] = f
+			continue
+		}
+		c := make(map[string]any, len(fm))
+		for k, v := range fm {
+			c[k] = v
+		}
+		if t, ok := c["remove_by"].(time.Time); ok {
+			c["remove_by"] = t.UTC().Format(time.DateOnly)
+		}
+		fixed[name] = c
+	}
+	out["flags"] = fixed
+	return out
+}
+
 func withRawDefaults(obj map[string]any) map[string]any {
 	fns, _ := obj["functions"].([]any)
 	if len(fns) == 0 {
@@ -682,6 +744,7 @@ func withDefaults(m Manifest) Manifest {
 	if m.Routes.Headers == nil {
 		m.Routes.Headers = map[string]string{}
 	}
+	m.Flags = withFlagKinds(m.Flags)
 	if m.Health.Path == "" {
 		m.Health.Path = "/health"
 	}
@@ -833,7 +896,7 @@ func checkRules(m Manifest) Problems {
 var manifestRules = []func(Manifest) Problems{
 	checkChallengeRoutes, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkB2B,
 	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
-	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects,
+	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects, checkFlags,
 }
 
 // invalid is a MANIFEST_INVALID problem at path.
@@ -1017,6 +1080,27 @@ func checkConnections(m Manifest) Problems {
 			if where, ok := held[n]; ok {
 				ps = append(ps, invalid(base+"/auth", fmt.Sprintf("%s is also listed at %s, which would give the app the value; a connection's keys stay with Whisk, so remove it there", n, where)))
 			}
+		}
+	}
+	return ps
+}
+
+// checkFlags holds each flag's remove_by to a real day, and to release flags: a kill switch or a
+// permission flag is meant to stay (CONTRACT.md §3.3).
+func checkFlags(m Manifest) Problems {
+	var ps Problems
+	for _, name := range slices.Sorted(maps.Keys(m.Flags)) {
+		f := m.Flags[name]
+		if f.RemoveBy == "" {
+			continue
+		}
+		path := "/flags/" + name + "/remove_by"
+		if f.Kind != FlagRelease {
+			ps = append(ps, invalid(path, "only a release flag has a remove_by; a "+f.Kind+" flag stays, so remove remove_by"))
+			continue
+		}
+		if _, err := time.Parse(time.DateOnly, f.RemoveBy); err != nil {
+			ps = append(ps, invalid(path, f.RemoveBy+" is not a day of the calendar; write it as YYYY-MM-DD"))
 		}
 	}
 	return ps

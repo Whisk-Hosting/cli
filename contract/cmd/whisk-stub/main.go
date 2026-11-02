@@ -42,7 +42,7 @@ func fail(err error) {
 func parseFlags() (stub.Options, bool, []string) {
 	d := stub.Defaults
 	var o stub.Options
-	var groups, roles string
+	var groups, roles, flags string
 	var describe bool
 	flag.StringVar(&o.ManifestPath, "manifest", d.ManifestPath, "path to the manifest")
 	flag.StringVar(&o.Listen, "listen", d.Listen, "edge listener: the app hostname")
@@ -52,6 +52,7 @@ func parseFlags() (stub.Options, bool, []string) {
 	flag.StringVar(&o.As, "as", "", "sign in as this email (team identity); absent means nobody can sign in")
 	flag.StringVar(&o.Name, "name", "", "display name for --as")
 	flag.StringVar(&groups, "groups", "", "comma-separated groups for --as")
+	flag.StringVar(&flags, "flags", "", "comma-separated feature flags whisk.yaml declares, on for every request")
 	flag.StringVar(&roles, "roles", "owner", "comma-separated org roles for --as")
 	flag.StringVar(&o.Audience, "audience", d.Audience, "team or customer")
 	flag.StringVar(&o.OrgID, "org-id", "", "org ULID (generated when empty)")
@@ -67,6 +68,7 @@ func parseFlags() (stub.Options, bool, []string) {
 	flag.BoolVar(&describe, "describe", false, "print the environment the app would receive and exit")
 	flag.Parse()
 	o.Groups = stub.SplitList(groups)
+	o.Flags = stub.SplitList(flags)
 	o.Roles = stub.SplitList(roles)
 	return o, describe, flag.Args()
 }

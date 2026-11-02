@@ -16,7 +16,7 @@ import (
 )
 
 func devCmd(s *session) *cobra.Command {
-	var as, name, audience, groups, roles string
+	var as, name, audience, groups, roles, flags string
 	var port int
 	var down, wipe, status bool
 	c := &cobra.Command{
@@ -49,6 +49,7 @@ with the compose plugin.
 			o := dev.Options{AppDir: s.env.Dir, Manifest: m, Port: port, Log: log}
 			o.Identity.As, o.Identity.Name, o.Identity.Audience = as, name, audience
 			o.Identity.Groups, o.Identity.Roles = stub.SplitList(groups), stub.SplitList(roles)
+			o.Flags = stub.SplitList(flags)
 			st, err := dev.Up(s.ctx, o, log)
 			if err != nil {
 				return output.New("DEV_STACK_FAILED", err.Error(), "Check that Docker is running and the ports in .whisk/dev/compose.yaml are free, then run whisk dev again; whisk dev --down resets the stack.", nil)
@@ -84,6 +85,7 @@ with the compose plugin.
 	f.StringVar(&audience, "audience", "team", "team or customer")
 	f.StringVar(&groups, "groups", "", "comma-separated groups for --as")
 	f.StringVar(&roles, "roles", "owner", "comma-separated org roles for --as")
+	f.StringVar(&flags, "flags", "", "comma-separated feature flags whisk.yaml declares, on for every request here")
 	f.IntVar(&port, "port", 3000, "edge port; the api is port+1 and the internal listener port+2")
 	f.BoolVar(&down, "down", false, "stop the local stack")
 	f.BoolVar(&wipe, "wipe", false, "with --down: also delete the database and storage volumes")

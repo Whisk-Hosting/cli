@@ -96,6 +96,9 @@ func (e *edge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		r.Header.Del("Cookie")
 	}
 
+	if len(s.flags) > 0 {
+		r.Header.Set("X-Whisk-Flags", strings.Join(s.flags, ","))
+	}
 	signedIn := e.signedIn(r)
 	public := s.manifest.IsPublic(path)
 	audience := "anonymous"

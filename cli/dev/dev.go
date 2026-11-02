@@ -36,7 +36,9 @@ type Options struct {
 		As, Name, Audience string
 		Groups, Roles      []string
 	}
-	Log io.Writer
+	// Flags are the feature flags on for every request (CONTRACT.md §3.3).
+	Flags []string
+	Log   io.Writer
 }
 
 // Stack is a running local stack.
@@ -350,6 +352,7 @@ func RunStub(ctx context.Context, o Options, s Stack, appCmd []string) error {
 		SecretsFile:  filepath.Join(o.AppDir, filepath.FromSlash(Dir), "secrets.env"),
 		InngestURL:   s.Plan.InngestURL,
 		ExtraEnv:     s.Plan.ExtraEnv,
+		Flags:        o.Flags,
 		Migrate:      true,
 		Log:          o.Log,
 	}

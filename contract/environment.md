@@ -14,6 +14,7 @@ version. Read them from the environment at start; never commit values; never ren
 | `WHISK_ENV` | `production` or `preview:<branch>` |
 | `WHISK_PUBLIC_URL` | `https://<hostname>` for this environment |
 | `WHISK_QUEUE_URL` | `https://api.whisk.run/v1/orgs/<org>/apps/<app>/events`; POST events here |
+| `WHISK_FLAGS_URL` | `https://api.whisk.run/v1/orgs/<org>/apps/<app>/flags/on`; GET `?user=<id>` with `WHISK_SERVICE_TOKEN` for the feature flags on for a person, from a background job (CONTRACT.md §3.3) |
 | `WHISK_SERVICE_TOKEN` | bearer token for `WHISK_QUEUE_URL`, the uploads, customers, email and custom domain endpoints, and app-to-app calls. It stays valid as long as the container's deploy is the live one, so an app that never sleeps keeps it; the next deploy gives the next container a new one. Never write it to a file. |
 | `WHISK_INNGEST_URL` | origin of the workflow API the Inngest SDK talks to (scheme and host, no path); pass it as the SDK's base URL |
 | `WHISK_INNGEST_SIGNING_KEY` | this app's own; verifies function-run requests to `queue.endpoint`, and tells the platform which app the SDK is |

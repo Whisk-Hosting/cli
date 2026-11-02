@@ -64,6 +64,8 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	switch {
 	case p == prefix+"/events" && r.Method == http.MethodPost:
 		a.enqueue(w, r)
+	case p == prefix+"/flags/on" && r.Method == http.MethodGet:
+		a.flagsOn(w, r)
 	case p == prefix+"/uploads/links" && r.Method == http.MethodPost:
 		a.links(w, r)
 	case p == prefix+"/approvals" && r.Method == http.MethodGet:
@@ -105,6 +107,16 @@ type enqueueRequest struct {
 	Name      string          `json:"name"`
 	Data      json.RawMessage `json:"data"`
 	DedupeKey string          `json:"dedupe_key,omitempty"`
+}
+
+// flagsOn is GET …/flags/on?user=<id>: the flags on here, the same for every person
+// (CONTRACT.md §3.3).
+func (a *api) flagsOn(w http.ResponseWriter, r *http.Request) {
+	if !a.bearerOK(r) {
+		writeError(w, r, 401, authRequired("The flags endpoint needs the service token.", "Send Authorization: Bearer $WHISK_SERVICE_TOKEN."))
+		return
+	}
+	writeJSON(w, 200, map[string]any{"flags": a.stub.flags})
 }
 
 func (a *api) enqueue(w http.ResponseWriter, r *http.Request) {

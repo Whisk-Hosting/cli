@@ -422,7 +422,7 @@ directory is not a git repository yet.
 ## W080
 
 Level: warning
-Check: always_on, customer_identity, storage, kv, email or inbox needs a plan the org does not have.
+Check: always_on, customer_identity, storage, kv, email, inbox or flags needs a plan the org does not have.
 Fix: Ask an owner to upgrade, or remove the setting; the deploy will be refused otherwise.
 Safe fix: no
 
@@ -434,7 +434,10 @@ line `whisk: W080 kv: the <plan> plan includes no key-value store, …`; the fix
 `kv` from whisk.yaml or move to Starter or above. `inbox` is not refused either: an app on Free
 or Starter deploys with its inbox declared, every message to it is dropped as `not_on_plan`, and
 the push carries `whisk: W080 inbox: the <plan> plan includes no inbox, …`; the fix is to remove
-`inbox` from whisk.yaml or move to Team or above.
+`inbox` from whisk.yaml or move to Team or above. Nor is `flags`: an app on Free
+deploys with its flags declared, no request carries `X-Whisk-Flags`, so every flag reads as off,
+and the push carries `whisk: W080 flags: the <plan> plan includes no feature flags, …`; the fix
+is to remove `flags` from whisk.yaml or move to Starter or above.
 
 ## W090
 
@@ -865,3 +868,10 @@ Details: matched where W140 looks. Any of these counts: the name
 `TracerProvider` (`NodeTracerProvider`, Python's `TracerProvider(`, Go's
 `NewTracerProvider`), `registerOTel` (`@vercel/otel`), `opentelemetry-instrument` or
 `@opentelemetry/auto-instrumentations-node/register` in a start command. Skipped as W140 is.
+
+## W150
+
+Level: warning
+Check: a release flag in whisk.yaml has no remove_by, or the day it names has passed.
+Fix: Give each release flag a remove_by. Once a flag is on for everyone, delete the code behind its off side and the flag from whisk.yaml; a flag meant to stay is kind: kill-switch or kind: permission.
+Safe fix: no

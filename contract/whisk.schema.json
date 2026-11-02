@@ -385,6 +385,14 @@
       "additionalProperties": { "$ref": "#/$defs/connection" },
       "default": {}
     },
+    "flags": {
+      "description": "Feature flags the app reads from the X-Whisk-Flags header (CONTRACT.md 3.3). Who each is on for is set in the dashboard, with whisk flags set, or through the API. Team plan and up.",
+      "type": "object",
+      "propertyNames": { "pattern": "^[a-z][a-z0-9-]{1,39}$" },
+      "maxProperties": 50,
+      "additionalProperties": { "$ref": "#/$defs/flag" },
+      "default": {}
+    },
     "network": {
       "description": "Where the app is served: public, the only value and the same as leaving it out. Every app is served publicly behind Whisk sign-in.",
       "type": "string",
@@ -428,6 +436,23 @@
     "templates": {
       "type": "object",
       "additionalProperties": { "type": "string", "maxLength": 2048 }
+    },
+    "flag": {
+      "description": "One feature flag. A release flag ships a change and is removed once on for everyone, by remove_by; a kill-switch turns something off when it misbehaves and stays; a permission flag gives a feature to some people and stays.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["release", "kill-switch", "permission"],
+          "default": "release"
+        },
+        "remove_by": {
+          "description": "For a release flag, the day it and the code behind its off side should be gone, as YYYY-MM-DD.",
+          "type": "string",
+          "pattern": "^[0-9]{4}-(0[1-9]|1[0-2])-(0[1-9]|[12][0-9]|3[01])$"
+        }
+      }
     },
     "connection": {
       "type": "object",

@@ -563,6 +563,7 @@ every request, read who it is from headers (full table in `headers.md`):
 | `X-Whisk-Org` | org ULID |
 | `X-Whisk-Groups` | comma-separated group names (team only) |
 | `X-Whisk-Roles` | comma-separated org roles: `owner`, `admin`, `developer`, `billing`, `member`, plus `guest` (team only) |
+| `X-Whisk-Flags` | comma-separated feature flags on for this person, when any is (below) |
 | `X-Whisk-Request-Id` | trace ID; put it in every log line |
 
 Routes are private unless listed under `routes.public` in the manifest. A private route only
@@ -717,6 +718,32 @@ that person may, and records changes as theirs, made by it. Give every tool `ann
 read may call those and no other, and any tool not listed counts as a change. Keep the server
 stateless (answer each request on its own, ignore `Mcp-Session-Id`), because the app can sleep
 and restart between requests.
+
+### Feature flags
+
+To ship a change to a few people first, declare a flag in whisk.yaml and read it from
+`X-Whisk-Flags` (Starter plan and up; CONTRACT.md §3.3):
+
+```yaml
+flags:
+  new-checkout:
+    remove_by: 2027-01-31        # a release flag: gone by this day
+  payments-off: {kind: kill-switch}
+```
+
+```ts
+const flags = new Set((c.req.header("X-Whisk-Flags") ?? "").split(",").filter(Boolean));
+if (flags.has("new-checkout")) return newCheckout(c);
+return checkout(c);
+```
+
+Keep both sides working until the flag is on for everyone. The person decides who sees it, on
+the app's Flags page or with `whisk flags set new-checkout --team` (everyone on the team),
+`--people a@example.com`, `--groups beta`, `--percent 10`, then `whisk flags on new-checkout`
+for everyone and `whisk flags off new-checkout` to go back. None of it needs a deploy. Once a
+release flag is on for everyone, delete its off side and the flag in one change. A background
+job asks `GET $WHISK_FLAGS_URL?user=<id>` with `WHISK_SERVICE_TOKEN` and gets `{"flags": [...]}`. Never keep a flag's
+rollout in code or the database; the platform holds it.
 
 ### Who may see and change what
 
