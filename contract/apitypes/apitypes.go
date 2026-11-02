@@ -438,6 +438,10 @@ type Whoami struct {
 	// not cover, so an agent can see the business and hand the person the way in
 	// (CONTROL-PLANE.md §4.4).
 	NotInLogin []NotInLogin `json:"not_in_login,omitempty"`
+	// Flags are the platform's feature flags that are on for this caller, by key
+	// (CONTROL-PLANE.md §6.37): the dashboard shows what a flag switches on only to those it is on
+	// for. Absent when none is.
+	Flags []string `json:"flags,omitempty"`
 }
 
 // NotInLogin is a business the person belongs to that the login in use does not cover: its
