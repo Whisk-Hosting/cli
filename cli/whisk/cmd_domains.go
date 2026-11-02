@@ -25,6 +25,9 @@ func findDomain(domains []api.Domain, hostname string) (api.Domain, bool) {
 func printDNS(p output.Printer, w io.Writer, d api.Domain) {
 	if d.Verified {
 		fmt.Fprintf(w, "%s is verified; certificate %s.\n", d.Hostname, orDash(d.CertStatus))
+		if d.CertError != "" {
+			fmt.Fprintf(w, "The CDN could not get its certificate and will try again: %s\n", d.CertError)
+		}
 		return
 	}
 	fmt.Fprintf(w, "Create these DNS records for %s, then run whisk domains verify %s:\n", d.Hostname, d.Hostname)
@@ -62,6 +65,15 @@ func apexAdvice(d api.Domain, records []map[string]string) []string {
 	return out
 }
 
+// printCertErrors says, under the list, why the app's CDN could not get each name's certificate.
+func printCertErrors(w io.Writer, all []api.Domain) {
+	for _, d := range all {
+		if d.CertError != "" {
+			fmt.Fprintf(w, "%s: the CDN could not get its certificate and will try again: %s\n", d.Hostname, d.CertError)
+		}
+	}
+}
+
 func domainsCmd(s *session) *cobra.Command {
 	domains := &cobra.Command{Use: "domains", Short: "Custom hostnames of the app"}
 
@@ -88,6 +100,7 @@ func domainsCmd(s *session) *cobra.Command {
 					rows[i] = []string{d.Hostname, string(d.Kind), verified, orDash(d.CertStatus), orDash(string(d.AddedBy)), orDash(d.RedirectTo)}
 				}
 				s.printer.Table(w, []string{"HOSTNAME", "KIND", "DNS", "CERTIFICATE", "ADDED BY", "REDIRECTS TO"}, rows)
+				printCertErrors(w, all)
 			})
 			return nil
 		},

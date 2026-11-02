@@ -387,8 +387,11 @@ type Domain struct {
 	Status DomainStatus `json:"status"`
 	// AddedBy says who added a custom domain: the business's people and their agents (team)
 	// or the app itself with its service token (app), which removes only its own.
-	AddedBy   DomainAddedBy `json:"added_by,omitempty"`
-	CreatedAt time.Time     `json:"created_at"`
+	AddedBy DomainAddedBy `json:"added_by,omitempty"`
+	// CertError is why the app's CDN could not get the name's certificate the last time it tried,
+	// which it tries again; absent once it has one or while nothing failed.
+	CertError string    `json:"cert_error,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 // Token is an agent or deploy token without its value.
