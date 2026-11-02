@@ -177,7 +177,7 @@ var baseWire = []any{
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, NeedsYou{},
 	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PersonAppsRequest{}, PatchMemberRequest{},
-	GroupRequest{}, GroupMembersRequest{}, CreateAppRequest{}, PatchAppRequest{}, RenameAppRequest{}, ValidateRequest{},
+	GroupRequest{}, GroupMembersRequest{}, CreateAppRequest{}, PatchAppRequest{}, AlwaysOnRequest{}, AlwaysOnResult{}, RenameAppRequest{}, ValidateRequest{},
 	AccessRequest{}, CreateDeployRequest{}, DeclareSecretRequest{}, SecretValueRequest{},
 	RollbackSecretRequest{}, SecretPreviewsRequest{}, ShareSecretRequest{}, SharedSecret{}, DomainRequest{}, DeployKeyResponse{}, DeviceApproveRequest{},
 	// feedback.go
