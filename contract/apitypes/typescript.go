@@ -183,7 +183,7 @@ var baseWire = []any{
 	// feedback.go
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{},
 	// billing.go
-	Plan{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingLicence{}, OrgRef{},
+	Plan{}, PricingRow{}, Pricing{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingLicence{}, OrgRef{},
 	PlanCheckout{}, PlanQuote{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
 	PayDetails{}, PayStep{}, ClientBusiness{}, Handover{}, Clients{}, ClientAdded{},
 	HandoverMade{}, ClientOverview{}, ClientUsage{}, RebateSettlement{}, Payouts{}, Rebates{},

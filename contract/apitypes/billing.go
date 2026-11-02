@@ -37,6 +37,20 @@ type Plan struct {
 	Public bool `json:"public"`
 }
 
+// PricingRow is one row of the pricing page's plan table: its label and its words for Starter,
+// Team, Business and Enterprise, in that order.
+type PricingRow struct {
+	Label  string   `json:"label"`
+	Values []string `json:"values"`
+}
+
+// Pricing is GET /v1/pricing: the plans the pricing page shows and the rows of its plan table.
+type Pricing struct {
+	Items      []Plan       `json:"items"`
+	Rows       []PricingRow `json:"rows"`
+	NextCursor string       `json:"next_cursor"`
+}
+
 // InvoiceStatus is where an invoice stands at Stripe.
 type InvoiceStatus string
 
