@@ -9,6 +9,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"regexp"
 	"sort"
 	"strings"
 
@@ -180,14 +181,28 @@ func Check(r Repo, c Context) Report {
 }
 
 // allowedAt reports whether the code at a 1-based line, or the line above it, carries a
-// "doctor: allow <rule>" comment, which keeps a warning the author meant out of the report.
-// Errors cannot be allowed. Pure.
+// "doctor: allow <rule>" comment, which keeps a warning the author meant out of the report. One
+// comment may name several rules ("doctor: allow W140 W141 why"). Errors cannot be allowed. Pure.
 func allowedAt(content []byte, line int, rule string) bool {
 	lines := strings.Split(string(content), "\n")
-	mark := "doctor: allow " + rule
 	for _, n := range []int{line, line - 1} {
-		if n >= 1 && n <= len(lines) && strings.Contains(lines[n-1], mark) {
+		if n >= 1 && n <= len(lines) && allowsRule(lines[n-1], rule) {
 			return true
+		}
+	}
+	return false
+}
+
+// reAllow is a "doctor: allow" comment's rule list.
+var reAllow = regexp.MustCompile(`doctor: allow((?:[ ,]+W\d{3}\b)+)`)
+
+// allowsRule reports whether a line's "doctor: allow" comment names rule. Pure.
+func allowsRule(line, rule string) bool {
+	for _, m := range reAllow.FindAllStringSubmatch(line, -1) {
+		for _, id := range strings.FieldsFunc(m[1], func(r rune) bool { return r == ' ' || r == ',' }) {
+			if id == rule {
+				return true
+			}
 		}
 	}
 	return false

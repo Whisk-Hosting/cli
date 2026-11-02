@@ -50,6 +50,11 @@ const key = process.env.API_KEY;
 export const port = Number(process.env.PORT ?? 8080);
 export default { port, fetch: app.fetch, hostname: "0.0.0.0" };
 `,
+	"src/instrument.ts": `import * as Sentry from "@sentry/node";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+if (process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) new NodeSDK().start();
+if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN });
+`,
 	"src/functions.ts": `export const nightly = inngest.createFunction({ id: "nightly" }, { cron: "0 6 * * *" }, async ({ step }) => {
   const n = await step.run("count", () => 1);
   return step.run("record", () => n);
@@ -377,7 +382,7 @@ func TestPythonAndGoIdioms(t *testing.T) {
 		"whisk.yaml":     "whisk: 1\nname: pyapp\nroutes:\n  public: [\"/health\"]\nsecrets: [TOKEN]\n",
 		"pyproject.toml": "[project]\nname = \"pyapp\"\ndependencies = [\"fastapi\"]\n",
 		"uv.lock":        "version = 1\n",
-		"app/main.py":    "from fastapi import FastAPI\nimport os\napp = FastAPI()\n@app.get(\"/health\")\ndef health():\n    return {\"token\": os.environ.get(\"TOKEN\"), \"port\": os.getenv(\"PORT\")}\n",
+		"app/main.py":    "from fastapi import FastAPI\nimport os\napp = FastAPI()\n@app.get(\"/health\")\ndef health():\n    return {\"token\": os.environ.get(\"TOKEN\"), \"port\": os.getenv(\"PORT\")}\nreporting = os.environ.get(\"SENTRY_DSN\"), os.environ.get(\"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT\")\n",
 		"Dockerfile":     "FROM python:3.13-slim\nRUN useradd app\nUSER app\nCMD [\"sh\",\"-c\",\"uvicorn app.main:app --port ${PORT:-8080}\"]\n",
 	}
 	if rep := runDoctor(t, py, false); len(rep.Findings) != 0 {
@@ -387,7 +392,7 @@ func TestPythonAndGoIdioms(t *testing.T) {
 		"whisk.yaml": "whisk: 1\nname: goapp\nroutes:\n  public: [\"/health\"]\nsecrets: [TOKEN]\n",
 		"go.mod":     "module goapp\n\ngo 1.23\n\nrequire github.com/go-chi/chi/v5 v5.0.0\n",
 		"go.sum":     "x\n",
-		"main.go":    "package main\nimport (\"net/http\"; \"os\")\nfunc main() {\n\tmux := http.NewServeMux()\n\tmux.HandleFunc(\"GET /health\", func(w http.ResponseWriter, r *http.Request) {})\n\t_ = os.Getenv(\"TOKEN\")\n\thttp.ListenAndServe(\"0.0.0.0:\"+os.Getenv(\"PORT\"), mux)\n}\n",
+		"main.go":    "package main\nimport (\"net/http\"; \"os\")\nfunc main() {\n\tmux := http.NewServeMux()\n\tmux.HandleFunc(\"GET /health\", func(w http.ResponseWriter, r *http.Request) {})\n\t_ = os.Getenv(\"TOKEN\")\n\t_, _ = os.Getenv(\"SENTRY_DSN\"), os.Getenv(\"OTEL_EXPORTER_OTLP_TRACES_ENDPOINT\")\n\thttp.ListenAndServe(\"0.0.0.0:\"+os.Getenv(\"PORT\"), mux)\n}\n",
 	}
 	if rep := runDoctor(t, gofiles, false); len(rep.Findings) != 0 {
 		t.Errorf("go fixture: %+v", rep.Findings)

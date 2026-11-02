@@ -177,12 +177,34 @@ func (s *session) doctorGate(org, app string, client *api.Client) error {
 		if rep.Warnings > 0 {
 			s.printer.Progress("Doctor: %d warning(s); whisk doctor lists them.", rep.Warnings)
 		}
+		if line := observeLine(rep.Findings); line != "" {
+			s.printer.Progress("%s", line)
+		}
 		return nil
 	}
 	if !s.json {
 		printReport(s.printer, s.env.Stderr, rep)
 	}
 	return &output.Error{Code: "DOCTOR_FAILED", Message: fmt.Sprintf("%d error(s) must be fixed before deploying.", rep.Errors), Fix: "Fix each finding (whisk doctor shows them; --fix applies the safe ones), or pass --force to push anyway.", Exit: output.ExitValidation, Details: map[string]any{"errors": rep.Errors, "warnings": rep.Warnings, "findings": nonNil(rep.Findings)}}
+}
+
+// observeLine names what the app does not send yet, from doctor's W140 and W141, so a deploy
+// says it outright rather than inside the warning count (SKILL.md §3 "Errors and traces"); ""
+// when it sends both. Pure.
+func observeLine(findings []doctor.Finding) string {
+	var missing []string
+	for _, f := range findings {
+		switch f.Rule {
+		case "W140":
+			missing = append(missing, "errors")
+		case "W141":
+			missing = append(missing, "traces")
+		}
+	}
+	if len(missing) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Not set up: %s. The app does not send them yet; SKILL.md §3 \"Errors and traces\" shows how for this stack.", strings.Join(missing, " and "))
 }
 
 // gitRun runs git in the app directory; a missing binary is a CLI error with a fix.

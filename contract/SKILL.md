@@ -213,6 +213,106 @@ what the app already does for itself (its own sign-in and job queue on a Promote
 provider) and move what Whisk does for it: files to storage, mail to `email: true`, scheduled
 commands to functions, backups to Whisk's. Then make it follow the rules and run doctor.
 
+**Errors and traces.** Wire both in before the first deploy, in every app, whatever it is built
+with. They are how you and the human find out what broke and what is slow once real people use
+the app: `whisk errors` and the Errors page list its exceptions, grouped, with the stack;
+`whisk traces` and the Traces page show where each request's time went. The platform sets
+`SENTRY_DSN` and the `OTEL_*` variables (`environment.md`) in every deployed container, so all
+the app does is start a Sentry SDK and an OpenTelemetry SDK when they are set. `whisk dev` sets
+neither, so nothing is sent while you work. The templates already do this. Until an app does,
+`whisk doctor` warns (`W140`, `W141`) and `whisk deploy` says "Not set up: errors and traces."
+
+Any Node server (Express, Fastify, Hono, Koa, Astro, SvelteKit, React Router, Remix, Nuxt) loads
+one file before the app. Install `@sentry/node @opentelemetry/sdk-node
+@opentelemetry/instrumentation-http @opentelemetry/instrumentation-undici
+@opentelemetry/instrumentation-pg`, write `instrument.mjs`, and start the server with
+`node --import ./instrument.mjs <entry>` in the Dockerfile's `CMD` or the `start` script:
+
+```js
+import * as Sentry from "@sentry/node";
+import { NodeSDK } from "@opentelemetry/sdk-node";
+import { HttpInstrumentation } from "@opentelemetry/instrumentation-http";
+import { UndiciInstrumentation } from "@opentelemetry/instrumentation-undici";
+import { PgInstrumentation } from "@opentelemetry/instrumentation-pg";
+
+if (process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT) {
+  const sdk = new NodeSDK({
+    instrumentations: [
+      new HttpInstrumentation({ ignoreIncomingRequestHook: (req) => req.url === "/health" }),
+      new UndiciInstrumentation(), // fetch
+      new PgInstrumentation(),     // pg, and Drizzle or Kysely over pg
+    ],
+  });
+  sdk.start();
+  process.once("SIGTERM", () => sdk.shutdown().finally(() => process.exit(0)));
+}
+if (process.env.SENTRY_DSN) {
+  Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV, skipOpenTelemetrySetup: true });
+}
+```
+
+The SDK reads the endpoint, the token and the app's name from the `OTEL_*` variables itself, and
+the HTTP instrumentation continues the edge's `traceparent`, so each request's trace id is its
+request id. Leave out `@opentelemetry/auto-instrumentations-node`: it loads dozens of
+instrumentations and slows every start. Keep `skipOpenTelemetrySetup` so Sentry reports errors
+and leaves tracing to the SDK above.
+
+Next.js: put the same code in `instrumentation.node.ts` (without the `SIGTERM` line) and add
+`instrumentation.ts` at the project root, or in `src/`:
+
+```ts
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") await import("./instrumentation.node");
+}
+export async function onRequestError(err: unknown, request: { headers: Record<string, string | string[] | undefined> }) {
+  const Sentry = await import("@sentry/node");
+  Sentry.captureException(err, { tags: { request_id: String(request.headers["x-whisk-request-id"] ?? "") } });
+}
+```
+
+Frameworks catch errors themselves and answer 500, so tell Sentry about them where the framework
+hands them over, tagged with the request's `X-Whisk-Request-Id` as `request_id` so the error
+links to its trace:
+
+| Framework | Where |
+|---|---|
+| Express | `Sentry.setupExpressErrorHandler(app)` after the routes |
+| Fastify | `Sentry.setupFastifyErrorHandler(app)` |
+| Koa | `Sentry.setupKoaErrorHandler(app)` |
+| Hono | `app.onError((err, c) => { Sentry.captureException(err); … })` |
+| SvelteKit | `handleError` in `src/hooks.server.ts` |
+| Astro | a middleware: `try { return await next() } catch (e) { Sentry.captureException(e); throw e }` |
+| React Router, Remix | `export function handleError(error)` in `entry.server` |
+| Nuxt | a Nitro plugin: `nitroApp.hooks.hook("error", (e) => Sentry.captureException(e))` |
+
+Python: add `sentry-sdk`, `opentelemetry-sdk`, `opentelemetry-exporter-otlp-proto-http` and the
+framework's instrumentation (`opentelemetry-instrumentation-fastapi`, `-django` or `-flask`),
+then where the app is made:
+
+```python
+import os, sentry_sdk
+from opentelemetry import trace
+from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import BatchSpanProcessor
+
+if os.environ.get("SENTRY_DSN"):
+    sentry_sdk.init(dsn=os.environ["SENTRY_DSN"], environment=os.environ.get("WHISK_ENV"))
+if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT"):
+    provider = TracerProvider()
+    provider.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
+    trace.set_tracer_provider(provider)
+    FastAPIInstrumentor.instrument_app(app, exclude_spans=["receive", "send"])
+```
+
+Go: `sentry.Init(sentry.ClientOptions{Dsn: os.Getenv("SENTRY_DSN")})` when it is set, and when
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set, `otlptracehttp.New(ctx)` as the exporter of
+`sdktrace.NewTracerProvider(sdktrace.WithBatcher(exp))`, `otel.SetTracerProvider`,
+`otel.SetTextMapPropagator(propagation.TraceContext{})`, and the router wrapped in
+`otelhttp.NewHandler`. The Go template's `whisk.go` (`startTracing`, `traceRequests`,
+`traceQueries`) is the whole of it, database queries included, to copy.
+
 **Everything `whisk.yaml` takes.** Unknown keys are errors; `whisk schema` prints the JSON schema.
 Settings marked paid are refused with `PLAN_FEATURE` on the free app, except `kv`, which
 deploys without a cache and a `W080` line instead (§9). Storage, email and customer identity
@@ -406,17 +506,12 @@ a cookie is never cached.
 **Looking after a live app.** `whisk status` says whether it is running, sleeping or broken,
 which deploy is live and which secrets are unset, and, when it stopped answering, why: the exit
 code and last lines of a crash, or a wake that failed. `whisk rollback` puts the previous deploy back
-(or a named one from `whisk deploys list`). `whisk errors` lists the app's grouped exceptions,
-reported through `SENTRY_DSN`, which every template already wires. It points at Whisk's own error
-store, not sentry.io: initialise any Sentry SDK with it and only the DSN, without Sentry's tracing,
-profiling or session replay, which cost memory and start time and which Whisk already covers.
-**Traces** show where a request's time went, step by step: the platform sets the `OTEL_*`
-variables (`environment.md`), so any OpenTelemetry SDK's OTLP/HTTP trace exporter sends them with
-no configuration, and the edge's `traceparent` makes each request's trace id its request id, so a
-log line's `request_id` opens its trace. The templates already start tracing when
-`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` is set; in another app, start the SDK at that check, continue
-the incoming context, and instrument incoming HTTP, database queries and outgoing calls. Traces
-are kept 7 days, 100,000 spans per app per day. `whisk open <page>` prints the dashboard link for the human (`logs`, `runs`, `secrets`,
+(or a named one from `whisk deploys list`). `whisk errors` lists the app's grouped exceptions and
+`whisk traces` shows where its requests' time went, once the app sends them (§3, "Errors and
+traces"). `SENTRY_DSN` points at Whisk's own error store: initialise the Sentry SDK with only the
+DSN, without Sentry's tracing, profiling or session replay, which cost memory and start time and
+which Whisk already covers. A log line's `request_id` opens its trace. Traces are kept 7 days,
+100,000 spans per app per day. `whisk open <page>` prints the dashboard link for the human (`logs`, `runs`, `secrets`,
 `domains`, `access`, `errors`). `whisk github` shows the app's optional two-way copy on the
 business's GitHub; a person links it in the app's settings.
 

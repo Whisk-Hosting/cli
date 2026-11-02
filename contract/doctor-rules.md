@@ -15,7 +15,8 @@ Output shape, one entry per finding:
 
 A warning reported at a line of code can be kept out of the report on purpose with a comment
 `doctor: allow <rule>` on that line or the line above it, saying why (`// doctor: allow W091 the
-edge test sets a parent-domain cookie on purpose`); doctor lists it under `skipped` instead.
+edge test sets a parent-domain cookie on purpose`); one comment may name several rules
+(`doctor: allow W140 W141 …`). Doctor lists it under `skipped` instead.
 Errors cannot be allowed.
 
 Detection is by convention, not by executing the app: string and pattern search over tracked
@@ -834,3 +835,32 @@ Safe fix: no
 
 Details: matched as text in the app's source files, templates and pages. Whisk draws no menu on
 an app's pages for a customer, so the app's own link is the only way out.
+
+## W140
+
+Level: warning
+Check: nothing in the app starts a Sentry SDK, so its exceptions never reach the Errors page or whisk errors.
+Fix: Start a Sentry SDK with SENTRY_DSN when it is set, and report the errors the framework catches, as SKILL.md §3 "Errors and traces" shows for this stack.
+Safe fix: no
+
+Details: matched in the app's own code (TypeScript, JavaScript, Python, Go; tests, comments and
+vendored folders left out) and in its Dockerfile, Procfile and `package.json`. Any of these
+counts: the name `SENTRY_DSN`, or a call `Sentry.init(`, `sentry_sdk.init(` or `sentry.Init(`.
+Skipped when doctor reads none of the app's languages, and when the Dockerfile's last stage
+serves files with a web server image (`nginx`, `caddy`, `httpd`, `static-web-server`), since
+such an app runs no code of its own. Reported at the start command (the Dockerfile's `CMD` or
+`ENTRYPOINT`, or `package.json`'s `start` script), where a Node app loads its instrument file and
+where a `doctor: allow` comment keeps it out of the report.
+
+## W141
+
+Level: warning
+Check: nothing in the app starts an OpenTelemetry SDK, so its requests never reach the Traces page or whisk traces.
+Fix: Start an OpenTelemetry SDK when OTEL_EXPORTER_OTLP_TRACES_ENDPOINT is set, with HTTP, fetch and database instrumentation, as SKILL.md §3 "Errors and traces" shows for this stack.
+Safe fix: no
+
+Details: matched where W140 looks. Any of these counts: the name
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` or `OTEL_EXPORTER_OTLP_ENDPOINT`, `NodeSDK`, a
+`TracerProvider` (`NodeTracerProvider`, Python's `TracerProvider(`, Go's
+`NewTracerProvider`), `registerOTel` (`@vercel/otel`), `opentelemetry-instrument` or
+`@opentelemetry/auto-instrumentations-node/register` in a start command. Skipped as W140 is.
