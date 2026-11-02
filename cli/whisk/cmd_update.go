@@ -173,7 +173,7 @@ func (s *session) verifySums(base string, sums []byte) (bool, error) {
 	}
 	ok, err := release.Verify(ReleasePublicKey, sums, sig)
 	if err != nil {
-		return false, output.New("UPDATE_FAILED", "The release is not signed by the key this build trusts: "+err.Error(), "Do not install it. If the key was rotated, reinstall with the install script from https://whisk.run/install.sh (install.ps1 on Windows); otherwise report it with whisk feedback --kind bug --code UPDATE_FAILED.", map[string]any{"url": base + "/SHA256SUMS.sig"})
+		return false, output.New("UPDATE_FAILED", "The release is not signed by the key this build trusts: "+err.Error(), "Do not install it. If the key was rotated, reinstall with the install script from https://github.com/Whisk-Hosting/cli/releases/latest/download/install.sh (install.ps1 on Windows); otherwise report it with whisk feedback --kind bug --code UPDATE_FAILED.", map[string]any{"url": base + "/SHA256SUMS.sig"})
 	}
 	return ok, nil
 }

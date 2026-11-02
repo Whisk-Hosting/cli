@@ -123,11 +123,11 @@ environment variables, error codes and doctor rules are in [`contract/`](contrac
 ## Install
 
 ```sh
-curl -fsSL https://whisk.run/install.sh | sh        # Linux, macOS
+curl -fsSL https://github.com/Whisk-Hosting/cli/releases/latest/download/install.sh | sh        # Linux, macOS
 ```
 
 ```powershell
-irm https://whisk.run/install.ps1 | iex             # Windows
+irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | iex             # Windows
 ```
 
 No root needed. Or give your agent this one line:

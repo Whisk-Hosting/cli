@@ -109,9 +109,9 @@ is checked when it opens, and the reconnect checks it again. CONTRACT.md §2.1 h
 If `whisk` is not on the PATH, install it first; neither script needs root:
 
 ```
-curl -fsSL https://whisk.run/install.sh | sh        # linux, macOS
-irm https://whisk.run/install.ps1 | iex             # windows PowerShell
-powershell -NoProfile -Command "irm https://whisk.run/install.ps1 | iex"   # windows Git Bash or cmd
+curl -fsSL https://github.com/Whisk-Hosting/cli/releases/latest/download/install.sh | sh        # linux, macOS
+irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | iex             # windows PowerShell
+powershell -NoProfile -Command "irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | iex"   # windows Git Bash or cmd
 ```
 
 If `whisk` is already installed, run `whisk update` once at the start of a session: this
