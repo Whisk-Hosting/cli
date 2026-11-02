@@ -661,7 +661,8 @@ type RenameAppRequest struct {
 // PatchAppRequest is PATCH /orgs/:org/apps/:app.
 type PatchAppRequest struct {
 	Name *string `json:"name,omitempty"`
-	// AlwaysOn is refused: whisk.yaml decides (CONTROL-PLANE.md §6.5).
+	// AlwaysOn switches the app between sleeping when idle and always on; it stands until
+	// switched again or a deploy's whisk.yaml changes always_on (CONTROL-PLANE.md §6.5).
 	AlwaysOn *bool          `json:"always_on,omitempty"`
 	Settings map[string]any `json:"settings,omitempty"`
 }

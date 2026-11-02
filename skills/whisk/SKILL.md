@@ -267,7 +267,9 @@ previews: { database: empty, ttl_days: 3 }   # previews start empty; days a prev
 not hold, such as git-ignored build output like `dist/`, fails the deploy with `MANIFEST_INVALID`
 naming it (`whisk doctor` warns first, `W004`). Serve build output from the app itself, or
 commit the folder. Static files never wake the app and are cached for a year, so give them
-content-hashed names. `always_on` is for apps that must answer at once; an open
+content-hashed names. `always_on` is for apps that must answer at once. People can also
+switch it on the app's page in the dashboard; whichever changed last decides, so a deploy only
+changes it when you change `always_on` in whisk.yaml. An open
 WebSocket or event stream keeps an app awake by itself, and everything else should sleep. A sleeping app has 60 seconds to answer its health check when a
 visitor wakes it, whatever `health.timeout` allows a deploy, so an app that needs longer sets
 `always_on` (`W005`). A sleeping app starts again on its next request, so
