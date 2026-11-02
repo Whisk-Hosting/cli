@@ -1,0 +1,145 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "whisk",
+  "version": "1.0.3",
+  "description": "The fastest, easiest way to get an AI-built web app, online shop or website live: Postgres, S3-compatible storage, central sign-in, scheduled jobs, secrets, email and backups come built in.",
+  "author": {
+    "name": "Whisk",
+    "email": "support@whisk.run",
+    "url": "https://whisk.run"
+  },
+  "homepage": "https://whisk.run",
+  "license": "MIT",
+  "keywords": [
+    "ai app",
+    "astro",
+    "authentication",
+    "b2b",
+    "background jobs",
+    "crm",
+    "cron",
+    "customer portal",
+    "dashboard",
+    "database",
+    "deploy",
+    "ecommerce",
+    "file storage",
+    "go live",
+    "hacked website",
+    "hosting",
+    "integration",
+    "internal tools",
+    "login",
+    "online store",
+    "postgres",
+    "s3",
+    "web app",
+    "website",
+    "website migration",
+    "website speed",
+    "wordpress"
+  ],
+  "extensions": {
+    "com.openai": {
+      "interface": {
+        "displayName": "Whisk",
+        "shortDescription": "Get AI-built apps live, fast",
+        "longDescription": "Whisk is the fastest and easiest way to get a secure web app or website built with AI live. Describe what you need, and it is online at its own web address in minutes, with HTTPS, sign-in and backups already in place. There are no accounts to open, no servers to run and no keys to paste.\n\nBuild the software your business runs on: a CRM, a customer portal, a job tracker, a quoting tool, or a cheaper alternative to software you pay for per user. Make Whisk the glue between the systems you already use, so orders, invoices and customers flow between them without anyone typing them twice. Run an online shop, including trade ordering where business customers sign in, see their own prices and order on account.\n\nWebsite slow, hacked or out of date? Whisk has first-class support for rebuilding a WordPress, Wix, Squarespace or other website as a fast, secure, world-class Astro site that keeps every page and every page address, so visitors and search engines carry straight on.\n\nEvery app gets the building blocks a real business app needs, ready from its first deploy:\n- A Postgres database for every app, with continuous backups and point-in-time restore\n- S3-compatible file storage for uploads and documents\n- Sign-in handled centrally: people sign in once with email codes, passkeys or their company's single sign-on, and you choose who can open each app\n- Scheduled jobs, background tasks and durable workflows with retries\n- Encrypted secrets in a vault, never kept in code\n- Sending and receiving email\n- Verified, replayable incoming webhooks for connecting other software\n- A key-value store for caching, counters and locks\n- Error tracking, logs and request tracing\n- Video and audio playback\n- Custom domains with automatic HTTPS, and a CDN\n- Bot protection for public forms\n\nWhisk is built on proven open-source software, including Postgres, Caddy, Valkey and Inngest, brought together as building blocks. You never sign up for another service or wire one up yourself.\n\nOnce an app is live, ask again to change it, check that it is working, or answer questions from its data.",
+        "developerName": "Whisk",
+        "category": "Developer Tools",
+        "capabilities": [
+          "Put an AI-built web app or website live at its own address, with HTTPS, in one step",
+          "Build a CRM, customer portal, job tracker or quoting tool for your business",
+          "Build a cheaper alternative to software you pay for per user",
+          "Connect the software you already use, so data flows between them automatically",
+          "Run an online shop, including trade ordering with customer prices and ordering on account",
+          "Rebuild a slow, hacked or out-of-date website as a fast, secure Astro site that keeps every page address",
+          "A Postgres database for every app, with continuous backups and point-in-time restore",
+          "S3-compatible file storage for uploads and documents",
+          "Central sign-in for your team, with control over who can open each app",
+          "Scheduled jobs, background tasks and durable workflows with retries",
+          "Encrypted secrets in a vault, never kept in code",
+          "Send and receive email from an app",
+          "Verified, replayable incoming webhooks",
+          "Key-value store for caching, counters and locks",
+          "Error tracking, logs and request tracing built in",
+          "Custom domains with automatic HTTPS, and a CDN",
+          "Bot protection for public forms",
+          "Check, fix, change or roll back a live app from the chat"
+        ],
+        "websiteURL": "https://whisk.run",
+        "supportURL": "https://whisk.run/contact",
+        "privacyPolicyURL": "https://whisk.run/legal/privacy",
+        "termsOfServiceURL": "https://whisk.run/legal/terms",
+        "defaultPrompt": [
+          "Build me a CRM for my sales team.",
+          "Make my slow WordPress site fast and secure.",
+          "Build a cheaper alternative to software we pay per user for."
+        ],
+        "brandColor": "#e3a92b",
+        "brandColorDark": "#e3a92b",
+        "composerIcon": "./assets/icon.png",
+        "logo": "./assets/logo.png",
+        "logoDark": "./assets/logo-dark.png"
+      },
+      "review": {
+        "test_cases": {
+          "positive": [
+            {
+              "description": "Fix a slow, hacked website by rebuilding it",
+              "prompt": "My WordPress site is slow and got hacked last month. Rebuild it as a fast, secure site: https://old-website.northside-building-supplies.whisk.page",
+              "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
+              "expected_behavior": "Reads the five pages of the sample site and rebuilds it as an Astro site that keeps each page's content and address (/, /about/, /products/timber/, /products/plumbing/ and /contact/). Deploys it as a new app and gives its web address; every page opens without signing in."
+            },
+            {
+              "description": "Connect two systems the business already uses",
+              "prompt": "When an order comes in on my Shopify store, create the invoice in Xero automatically.",
+              "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
+              "expected_behavior": "Builds an app that receives Shopify's order webhook, verifies it, and creates the Xero invoice in a background job that retries on failure. Deploys it, gives the webhook address to enter in Shopify, and says which secrets the app needs (the Shopify webhook secret and the Xero credentials), offering to set them with the person's confirmation or on the Whisk dashboard. None goes in the code."
+            },
+            {
+              "description": "Build a CRM",
+              "prompt": "Build me a CRM for my sales team with contacts, deals and follow-up reminders.",
+              "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
+              "expected_behavior": "Builds a CRM with contacts and deals stored in Postgres, behind Whisk sign-in, and a scheduled job that emails each salesperson their follow-ups due that day. Deploys it and gives its web address."
+            },
+            {
+              "description": "Build a cheaper alternative to per-user software",
+              "prompt": "We pay per user for Zendesk. Build us a cheaper alternative for our support team.",
+              "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
+              "expected_behavior": "Builds a support app where customer emails arrive at the app's own address and become tickets the team can assign, answer and close, behind Whisk sign-in. Deploys it, gives its web address and the email address to forward support mail to."
+            },
+            {
+              "description": "Build an online store for trade customers",
+              "prompt": "Build an online store where my trade customers sign in, see their own prices and order on account.",
+              "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
+              "expected_behavior": "Builds a store where trade customers sign in, see a catalogue with prices set for their company, and place orders charged to their account instead of paying by card. Deploys it and gives its web address."
+            }
+          ],
+          "negative": [
+            {
+              "description": "A native phone app is not something Whisk hosts",
+              "prompt": "Build me a native iPhone app and publish it to the App Store.",
+              "expected_behavior": "Does not deploy anything. Says Whisk hosts web apps and websites, not App Store apps, and offers to build a web app that works well on phones instead."
+            },
+            {
+              "description": "Whisk does not run WordPress itself",
+              "prompt": "Install WordPress with WooCommerce for my online store.",
+              "expected_behavior": "Does not deploy WordPress. Says Whisk does not run WordPress, and offers to build the store on Whisk, including trade ordering, or to move an existing WordPress site to an Astro site."
+            },
+            {
+              "description": "Staff email inboxes are not what Whisk provides",
+              "prompt": "Set up email inboxes for my staff at my company's domain.",
+              "expected_behavior": "Does not call Whisk to create inboxes. Says Whisk sends and receives email for apps but is not a mailbox provider for staff, and suggests using an email provider for that."
+            }
+          ]
+        },
+        "commerce": false,
+        "commerce_description": "Whisk does not sell anything inside ChatGPT. Plans are bought on whisk.run."
+      },
+      "publication": {
+        "release_notes": "Listing and review cases lead with what businesses build on Whisk: CRMs, integrations, cheaper alternatives to per-user software, online and trade stores, and fast, secure websites."
+      }
+    }
+  }
+}
