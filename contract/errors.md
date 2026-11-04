@@ -3851,7 +3851,7 @@ Fix: Nothing on the tenant's side; the platform's team is paged once, and brings
 the one Postgres major version every machine runs; the next attempt makes the copy.
 
 ```json
-{"error":{"code":"COPY_VERSION_MISMATCH","message":"COPY_VERSION_MISMATCH: node1 runs Postgres major 17 and this node runs major 18; a copy streams only between the same major version","fix":"Bring both nodes to the same Postgres major version (whisk_postgres_version); the copy is made again on its own.","docs":"https://skill.whisk.run/errors/COPY_VERSION_MISMATCH","details":{"node":"node2","source":"node1","source_major":17,"major":18}}}
+{"error":{"code":"COPY_VERSION_MISMATCH","message":"COPY_VERSION_MISMATCH: node1 runs Postgres major 17 and this node runs major 18; a copy streams only between the same major version","fix":"Bring both nodes to the same Postgres major version (the one setting, infra/postgres-version); the copy is made again on its own.","docs":"https://skill.whisk.run/errors/COPY_VERSION_MISMATCH","details":{"node":"node2","source":"node1","source_major":17,"major":18}}}
 ```
 
 ## DATABASE_CREDENTIALS_REJECTED
