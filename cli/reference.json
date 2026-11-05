@@ -1,0 +1,1772 @@
+[
+ {
+  "name": "access",
+  "short": "Who can open the app",
+  "commands": [
+   {
+    "usage": "whisk access grant --group \u003cname\u003e | --user \u003cemail\u003e | --everyone [--audience team|customer]",
+    "short": "Let a group, a person or everyone open the app (a person approves it)",
+    "flags": [
+     {
+      "name": "--audience string",
+      "usage": "team or customer"
+     },
+     {
+      "name": "--everyone",
+      "usage": "everyone in the org"
+     },
+     {
+      "name": "--group string",
+      "usage": "a group by name"
+     },
+     {
+      "name": "--user string",
+      "usage": "a member by email"
+     }
+    ]
+   },
+   {
+    "usage": "whisk access revoke --group \u003cname\u003e | --user \u003cemail\u003e | --everyone [--audience team|customer]",
+    "short": "Stop a group, a person or everyone opening the app (a person approves it)",
+    "flags": [
+     {
+      "name": "--audience string",
+      "usage": "team or customer"
+     },
+     {
+      "name": "--everyone",
+      "usage": "everyone in the org"
+     },
+     {
+      "name": "--group string",
+      "usage": "a group by name"
+     },
+     {
+      "name": "--user string",
+      "usage": "a member by email"
+     }
+    ]
+   },
+   {
+    "usage": "whisk access show",
+    "short": "List the grants"
+   }
+  ]
+ },
+ {
+  "name": "account",
+  "short": "Your own account: download your data, or delete it",
+  "commands": [
+   {
+    "usage": "whisk account delete --yes",
+    "short": "Delete your account: you leave every business and your sign-ins and tokens end",
+    "flags": [
+     {
+      "name": "--yes",
+      "usage": "you, the person, have decided"
+     }
+    ]
+   },
+   {
+    "usage": "whisk account export [--out file]",
+    "short": "Save everything Whisk keeps about you as a JSON file",
+    "flags": [
+     {
+      "name": "--out string",
+      "usage": "file to write (default whisk-account-\u003cdate\u003e.json here)"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "agent-token",
+  "short": "Agent tokens for CI or a second agent",
+  "commands": [
+   {
+    "usage": "whisk agent-token create --label \"claude on laptop\" [--scopes deploy,logs:read,secrets:declare]",
+    "short": "Mint an agent token acting for you; its value is shown once",
+    "flags": [
+     {
+      "name": "--label string",
+      "usage": "what the token is for"
+     },
+     {
+      "name": "--scopes stringSlice",
+      "usage": "grant scopes from deploy, logs:read, secrets:declare; all three when omitted"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "approvals",
+  "short": "Decisions the app's workflows are waiting on",
+  "commands": [
+   {
+    "usage": "whisk approvals list",
+    "short": "List approvals, pending by default",
+    "flags": [
+     {
+      "name": "--status string",
+      "usage": "pending, approved, rejected or expired; empty for all"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "apps",
+  "short": "Apps in the org",
+  "commands": [
+   {
+    "usage": "whisk apps create \u003cslug\u003e",
+    "short": "Create an app: its repository and hostname come back"
+   },
+   {
+    "usage": "whisk apps delete \u003capp\u003e [\u003capp\u003e...]",
+    "short": "Ask a person to delete one or more apps, with one link to confirm them all"
+   },
+   {
+    "usage": "whisk apps deleted",
+    "short": "List deleted apps that can still be restored"
+   },
+   {
+    "usage": "whisk apps display-name \u003cname\u003e",
+    "short": "Set the name the app is shown by, on its sign-in pages and emails too; its address stays"
+   },
+   {
+    "usage": "whisk apps info [\u003cslug\u003e]",
+    "short": "Show one app"
+   },
+   {
+    "usage": "whisk apps list",
+    "short": "List the org's apps"
+   },
+   {
+    "usage": "whisk apps move \u003capp\u003e --to \u003cbusiness\u003e",
+    "short": "Move an app, its data, files, keys and address, to another business you run",
+    "flags": [
+     {
+      "name": "--no-wait",
+      "usage": "print the move's page instead of following it"
+     },
+     {
+      "name": "--to string",
+      "usage": "the business the app moves to, by slug"
+     }
+    ]
+   },
+   {
+    "usage": "whisk apps rename \u003cnew-slug\u003e",
+    "short": "Change the app's address by giving it a new slug; the old address sends visitors on"
+   },
+   {
+    "usage": "whisk apps restart [\u003capp\u003e]",
+    "short": "Start the live version again in a new container, without building",
+    "flags": [
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit"
+     }
+    ]
+   },
+   {
+    "usage": "whisk apps restore \u003cid\u003e",
+    "short": "Bring back a deleted app, stopped, until its 7 days are up"
+   }
+  ]
+ },
+ {
+  "name": "billing",
+  "short": "The org's plan, this month's usage against it, and the next invoice",
+  "commands": [
+   {
+    "usage": "whisk billing",
+    "short": "The org's plan, this month's usage against it, and the next invoice"
+   }
+  ]
+ },
+ {
+  "name": "call",
+  "short": "Send a request to the app's own API as the person you act for",
+  "commands": [
+   {
+    "usage": "whisk call \u003cMETHOD\u003e \u003cpath\u003e [--data '\u003cjson\u003e' | --data @file.json | --data -] [--header 'Name: value'] [--env name]",
+    "short": "Send a request to the app's own API as the person you act for",
+    "flags": [
+     {
+      "name": "--data string",
+      "usage": "the body: JSON text, @file to read a file, or - for stdin"
+     },
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     },
+     {
+      "name": "--header stringArray",
+      "usage": "a header to send, \"Name: value\"; repeatable"
+     },
+     {
+      "name": "--timeout duration",
+      "usage": "how long to wait for the answer, a sleeping app's wake included"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "cdn",
+  "short": "Serve the app from near its visitors (Team and Business)",
+  "commands": [
+   {
+    "usage": "whisk cdn",
+    "short": "Serve the app from near its visitors (Team and Business)"
+   },
+   {
+    "usage": "whisk cdn off",
+    "short": "Serve the app from Whisk's servers again"
+   },
+   {
+    "usage": "whisk cdn on",
+    "short": "Serve the app through the CDN"
+   },
+   {
+    "usage": "whisk cdn status",
+    "short": "Whether the CDN is on, each hostname's route, and this month's traffic"
+   }
+  ]
+ },
+ {
+  "name": "clients",
+  "short": "An agency's client businesses: standing, handed over, apps, problems and usage",
+  "commands": [
+   {
+    "usage": "whisk clients",
+    "short": "An agency's client businesses: standing, handed over, apps, problems and usage"
+   },
+   {
+    "usage": "whisk clients add \u003cname\u003e [--contact email] [--slug s] [--yearly]",
+    "short": "Add a client business, billed to the agency; prints the payment page when a card is needed",
+    "flags": [
+     {
+      "name": "--contact string",
+      "usage": "the email of the person it will be handed to"
+     },
+     {
+      "name": "--slug string",
+      "usage": "its address name; made from the name when left out"
+     },
+     {
+      "name": "--yearly",
+      "usage": "bill it yearly"
+     }
+    ]
+   },
+   {
+    "usage": "whisk clients handover \u003cclient\u003e [--contact email]",
+    "short": "Make the link the client's contact accepts the business with",
+    "flags": [
+     {
+      "name": "--contact string",
+      "usage": "who accepts it; the contact set when it was added if left out"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "clone",
+  "short": "Copy an app's code from Whisk into a new directory, ready for git pull and whisk deploy",
+  "commands": [
+   {
+    "usage": "whisk clone \u003corg\u003e/\u003capp\u003e [directory]",
+    "short": "Copy an app's code from Whisk into a new directory, ready for git pull and whisk deploy"
+   }
+  ]
+ },
+ {
+  "name": "connections",
+  "short": "Outside systems the app reaches through Whisk's broker",
+  "commands": [
+   {
+    "usage": "whisk connections grant NAME",
+    "short": "The link where a person grants it; exits 2, always"
+   },
+   {
+    "usage": "whisk connections limit NAME [--calls-per-minute N] [--calls-per-day N] [--per-month USD] [--per-day USD] [--per-week USD] [--total USD] [--env production|previews]",
+    "short": "Set how many calls a connection may make, or how much an AI connection may spend",
+    "flags": [
+     {
+      "name": "--calls-per-day int",
+      "usage": "calls a day (UTC), 1 to 1,000,000"
+     },
+     {
+      "name": "--calls-per-minute int",
+      "usage": "calls a minute, 1 to 1,000"
+     },
+     {
+      "name": "--env string",
+      "usage": "production or previews"
+     },
+     {
+      "name": "--per-day float64",
+      "usage": "AI spending: US dollars a day (UTC)"
+     },
+     {
+      "name": "--per-month float64",
+      "usage": "AI spending: US dollars a month (UTC)"
+     },
+     {
+      "name": "--per-week float64",
+      "usage": "AI spending: US dollars a week, from Monday (UTC)"
+     },
+     {
+      "name": "--total float64",
+      "usage": "AI spending: US dollars in all"
+     }
+    ]
+   },
+   {
+    "usage": "whisk connections list",
+    "short": "Each connection: grants by environment, state, what waits, calls today"
+   },
+   {
+    "usage": "whisk connections pause NAME [--env production|previews] | pause --all",
+    "short": "Stop a connection's calls now, or every connection's in the business with --all",
+    "flags": [
+     {
+      "name": "--all",
+      "usage": "pause every connection of every app in the business"
+     },
+     {
+      "name": "--env string",
+      "usage": "production or previews (default: every environment)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk connections show NAME",
+    "short": "Whisk's summary of what a grant allows, and how each secret is used"
+   }
+  ]
+ },
+ {
+  "name": "cron",
+  "short": "Scheduled functions",
+  "commands": [
+   {
+    "usage": "whisk cron list",
+    "short": "List the app's cron functions as deployed, or from whisk.yaml before a deploy, with their next run times"
+   },
+   {
+    "usage": "whisk cron run \u003cfunction\u003e",
+    "short": "Start one run of a cron function now, as its schedule would; prints the run to follow"
+   }
+  ]
+ },
+ {
+  "name": "customers",
+  "short": "Customers of an app that declares customer_identity",
+  "commands": [
+   {
+    "usage": "whisk customers block \u003cemail\u003e",
+    "short": "Block a customer; they are signed out on their next request"
+   },
+   {
+    "usage": "whisk customers invite \u003cemail\u003e [--name n] [--email]",
+    "short": "Invite a customer; prints the invite_url, and with --email Whisk emails it to them",
+    "flags": [
+     {
+      "name": "--email",
+      "usage": "Whisk emails them the invitation (once a day at most)"
+     },
+     {
+      "name": "--name string",
+      "usage": "the person's name"
+     }
+    ]
+   },
+   {
+    "usage": "whisk customers list",
+    "short": "List the app's customers and whether strangers may register"
+   },
+   {
+    "usage": "whisk customers remove \u003cemail\u003e",
+    "short": "Remove a customer and their access to the app"
+   },
+   {
+    "usage": "whisk customers unblock \u003cemail\u003e",
+    "short": "Let a blocked customer in again"
+   }
+  ]
+ },
+ {
+  "name": "db",
+  "short": "The app's database: SQL, the schema, a restore point",
+  "commands": [
+   {
+    "usage": "whisk db import \u003cdump file\u003e [--swap] [--wait]",
+    "short": "Load a pg_dump of another database into the app's database, beside it or swapped in",
+    "flags": [
+     {
+      "name": "--swap",
+      "usage": "make the loaded database the live one, keeping the previous one for 7 days"
+     },
+     {
+      "name": "--wait",
+      "usage": "follow the load until it is done or failed"
+     }
+    ]
+   },
+   {
+    "usage": "whisk db query [\"\u003csql\u003e\" | --file script.sql | --confirm \u003ccode\u003e] [--env name] [--database name] [--limit 1000]",
+    "short": "Run SQL on the app's database and print the rows",
+    "flags": [
+     {
+      "name": "--confirm string",
+      "usage": "run the SQL a preview held back, by its code"
+     },
+     {
+      "name": "--database string",
+      "usage": "one of the environment's restored copies instead of its database"
+     },
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     },
+     {
+      "name": "--file string",
+      "usage": "read the SQL from this file"
+     },
+     {
+      "name": "--limit int",
+      "usage": "the most rows to print"
+     }
+    ]
+   },
+   {
+    "usage": "whisk db schema [--env name] [--database name]",
+    "short": "Print the database's tables, columns, keys and estimated row counts",
+    "flags": [
+     {
+      "name": "--database string",
+      "usage": "one of the environment's restored copies instead of its database"
+     },
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     }
+    ]
+   },
+   {
+    "usage": "whisk db shell [--env name] [--database name]",
+    "short": "Type SQL at a prompt; each statement runs through whisk db query",
+    "flags": [
+     {
+      "name": "--database string",
+      "usage": "one of the environment's restored copies instead of its database"
+     },
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     }
+    ]
+   },
+   {
+    "usage": "whisk db snapshot [--env name]",
+    "short": "Record a restore point now, to restore to with whisk restore --at",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     }
+    ]
+   },
+   {
+    "usage": "whisk db url [--env production|preview:\u003cbranch\u003e] [--private]",
+    "short": "Print the connection string where it works from here; audited",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     },
+     {
+      "name": "--private",
+      "usage": "print the address inside the platform even though it does not answer from outside"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "deploy",
+  "short": "Push the repository to Whisk and follow the deploy until it is live",
+  "commands": [
+   {
+    "usage": "whisk deploy",
+    "short": "Push the repository to Whisk and follow the deploy until it is live",
+    "flags": [
+     {
+      "name": "--branch string",
+      "usage": "the local branch to push (default: the current one)"
+     },
+     {
+      "name": "--commit",
+      "usage": "commit everything not ignored as \"whisk deploy\" before pushing (default true when the directory is not a repository yet)"
+     },
+     {
+      "name": "--env string",
+      "usage": "production or preview (default: production from main or master, preview from any other branch)"
+     },
+     {
+      "name": "--force",
+      "usage": "skip doctor"
+     },
+     {
+      "name": "--message string",
+      "usage": "one line saying what changed, shown with the deploy; commits uncommitted changes with it (implies --commit)"
+     },
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit once the push is accepted"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "deploy-keys",
+  "short": "Deploy tokens for git push from CI",
+  "commands": [
+   {
+    "usage": "whisk deploy-keys create [--label text]",
+    "short": "Mint a deploy token; its value is shown once",
+    "flags": [
+     {
+      "name": "--label string",
+      "usage": "what the key is for, e.g. \"github actions\""
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "deploys",
+  "short": "Deploys of the app",
+  "commands": [
+   {
+    "usage": "whisk deploys cancel \u003cid\u003e",
+    "short": "Cancel a deploy that has not finished"
+   },
+   {
+    "usage": "whisk deploys info \u003cid\u003e",
+    "short": "Show one deploy with its phases"
+   },
+   {
+    "usage": "whisk deploys list",
+    "short": "List recent deploys, newest first",
+    "flags": [
+     {
+      "name": "--limit int",
+      "usage": "how many to show"
+     }
+    ]
+   },
+   {
+    "usage": "whisk deploys log \u003cid\u003e",
+    "short": "Print a deploy's whole build log, or the app's last lines when it failed to start"
+   }
+  ]
+ },
+ {
+  "name": "dev",
+  "short": "Run the app locally the way the platform would",
+  "commands": [
+   {
+    "usage": "whisk dev [flags] [-- \u003capp command\u003e]",
+    "short": "Run the app locally the way the platform would",
+    "flags": [
+     {
+      "name": "--as string",
+      "usage": "sign in as this email; absent means every request is anonymous"
+     },
+     {
+      "name": "--audience string",
+      "usage": "team or customer"
+     },
+     {
+      "name": "--down",
+      "usage": "stop the local stack"
+     },
+     {
+      "name": "--flags string",
+      "usage": "comma-separated feature flags whisk.yaml declares, on for every request here"
+     },
+     {
+      "name": "--groups string",
+      "usage": "comma-separated groups for --as"
+     },
+     {
+      "name": "--name string",
+      "usage": "display name for --as"
+     },
+     {
+      "name": "--port int",
+      "usage": "edge port; the api is port+1 and the internal listener port+2"
+     },
+     {
+      "name": "--roles string",
+      "usage": "comma-separated org roles for --as"
+     },
+     {
+      "name": "--status",
+      "usage": "start the stack, print its addresses and exit"
+     },
+     {
+      "name": "--wipe",
+      "usage": "with --down: also delete the database and storage volumes"
+     }
+    ]
+   },
+   {
+    "usage": "whisk dev tunnel \u003csource\u003e",
+    "short": "Forward a webhook source's deliveries to the app running here",
+    "flags": [
+     {
+      "name": "--minutes int",
+      "usage": "how long to forward for"
+     },
+     {
+      "name": "--port int",
+      "usage": "the whisk dev edge port; deliveries go to port+1, its webhook ingress"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "doctor",
+  "short": "Check the repository against the conventions before pushing",
+  "commands": [
+   {
+    "usage": "whisk doctor",
+    "short": "Check the repository against the conventions before pushing",
+    "flags": [
+     {
+      "name": "--fix",
+      "usage": "apply the safe fixes"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "domains",
+  "short": "Custom hostnames of the app",
+  "commands": [
+   {
+    "usage": "whisk domains add \u003chostname\u003e",
+    "short": "Attach a custom hostname and print the DNS records it needs"
+   },
+   {
+    "usage": "whisk domains business add \u003cdomain\u003e",
+    "short": "Use a domain for every app and print the DNS records it needs"
+   },
+   {
+    "usage": "whisk domains business remove",
+    "short": "Stop using the domain; the apps keep their Whisk addresses"
+   },
+   {
+    "usage": "whisk domains business show",
+    "short": "Show the business's domain and where each app answers on it"
+   },
+   {
+    "usage": "whisk domains business verify",
+    "short": "Check the DNS records; every app then answers on the domain"
+   },
+   {
+    "usage": "whisk domains list",
+    "short": "List the app's hostnames and their verification state"
+   },
+   {
+    "usage": "whisk domains redirect \u003chostname\u003e [\u003cto\u003e]",
+    "short": "Send every request to a custom domain on to another hostname of the app",
+    "flags": [
+     {
+      "name": "--off",
+      "usage": "serve the app on the domain again"
+     }
+    ]
+   },
+   {
+    "usage": "whisk domains remove \u003chostname\u003e",
+    "short": "Detach a custom hostname"
+   },
+   {
+    "usage": "whisk domains verify \u003chostname\u003e",
+    "short": "Check the DNS records and issue the certificate"
+   }
+  ]
+ },
+ {
+  "name": "email",
+  "short": "The mail the app sends",
+  "commands": [
+   {
+    "usage": "whisk email status \u003cid\u003e",
+    "short": "What became of a message the app sent: sent, delayed, delivered, failed, bounced or complained"
+   }
+  ]
+ },
+ {
+  "name": "envs",
+  "short": "Environments: production and the previews",
+  "commands": [
+   {
+    "usage": "whisk envs delete preview:\u003cbranch\u003e",
+    "short": "Delete a preview environment and its database"
+   },
+   {
+    "usage": "whisk envs list",
+    "short": "List environments with their URLs and expiry"
+   },
+   {
+    "usage": "whisk envs start \u003cbranch\u003e",
+    "short": "Start the preview of a branch already pushed to the app",
+    "flags": [
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit once the preview is queued"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "errors",
+  "short": "Error groups the app reported, or the meaning of one platform error code",
+  "commands": [
+   {
+    "usage": "whisk errors [CODE]",
+    "short": "Error groups the app reported, or the meaning of one platform error code",
+    "flags": [
+     {
+      "name": "--ignore string",
+      "usage": "mark a group ignored by id"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many groups to show"
+     },
+     {
+      "name": "--query string",
+      "usage": "only groups whose error says these words"
+     },
+     {
+      "name": "--resolve string",
+      "usage": "mark a group resolved by id"
+     },
+     {
+      "name": "--since string",
+      "usage": "only groups seen since: 24h, 7d"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "events",
+  "short": "The app's queue",
+  "commands": [
+   {
+    "usage": "whisk events send \u003cname\u003e",
+    "short": "Send an event into the app's queue",
+    "flags": [
+     {
+      "name": "--data string",
+      "usage": "the event's data as JSON, or @file to read it from a file"
+     },
+     {
+      "name": "--data-file string",
+      "usage": "a file holding the event's data as JSON; - reads stdin"
+     },
+     {
+      "name": "--dedupe string",
+      "usage": "a key that suppresses a repeat for 24 hours"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "export",
+  "short": "Export the whole org as one archive: repositories, databases and audit log",
+  "commands": [
+   {
+    "usage": "whisk export",
+    "short": "Export the whole org as one archive: repositories, databases and audit log",
+    "flags": [
+     {
+      "name": "--wait",
+      "usage": "follow the export, or the one already running, and print its link when it is ready"
+     }
+    ]
+   },
+   {
+    "usage": "whisk export show \u003cid\u003e",
+    "short": "Show one export and, once it is ready, a fresh download link that works for five minutes"
+   }
+  ]
+ },
+ {
+  "name": "feedback",
+  "short": "Tell the Whisk team what got in your way; every piece is read",
+  "commands": [
+   {
+    "usage": "whisk feedback \"\u003cwhat happened\u003e\" [--kind bug|difficulty|idea|praise] [--code CODE] [--command \"whisk deploy\"]",
+    "short": "Tell the Whisk team what got in your way; every piece is read",
+    "flags": [
+     {
+      "name": "--code string",
+      "usage": "the error code you met, such as HEALTH_CHECK_FAILED"
+     },
+     {
+      "name": "--command string",
+      "usage": "the command you ran, such as \"whisk deploy\""
+     },
+     {
+      "name": "--kind string",
+      "usage": "bug, difficulty (default), idea or praise"
+     }
+    ]
+   },
+   {
+    "usage": "whisk feedback list [--status open|resolved|all] [--kind bug] [--org slug] [--limit 50] [--cursor id]",
+    "short": "See the feedback you and your org sent, where each stands and what the Whisk team said",
+    "flags": [
+     {
+      "name": "--cursor string",
+      "usage": "the next_cursor of the previous page"
+     },
+     {
+      "name": "--kind string",
+      "usage": "bug, difficulty, idea or praise"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many, up to 200 (default 50)"
+     },
+     {
+      "name": "--status string",
+      "usage": "open, resolved or all (default all)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk feedback send \"\u003cwhat happened\u003e\" [--kind bug|difficulty|idea|praise] [--code CODE] [--command \"whisk deploy\"]",
+    "short": "Tell the Whisk team what got in your way; every piece is read",
+    "flags": [
+     {
+      "name": "--code string",
+      "usage": "the error code you met, such as HEALTH_CHECK_FAILED"
+     },
+     {
+      "name": "--command string",
+      "usage": "the command you ran, such as \"whisk deploy\""
+     },
+     {
+      "name": "--kind string",
+      "usage": "bug, difficulty (default), idea or praise"
+     }
+    ]
+   },
+   {
+    "usage": "whisk feedback show \u003cid\u003e",
+    "short": "See one piece of feedback you sent: where it stands and what the Whisk team said"
+   }
+  ]
+ },
+ {
+  "name": "flags",
+  "short": "The app's feature flags and who each is on for",
+  "commands": [
+   {
+    "usage": "whisk flags",
+    "short": "The app's feature flags and who each is on for"
+   },
+   {
+    "usage": "whisk flags list",
+    "short": "List the app's flags and who each is on for"
+   },
+   {
+    "usage": "whisk flags off \u003cname\u003e",
+    "short": "Turn a flag off for everyone, previews included"
+   },
+   {
+    "usage": "whisk flags on \u003cname\u003e",
+    "short": "Turn a flag on for everyone"
+   },
+   {
+    "usage": "whisk flags set \u003cname\u003e",
+    "short": "Choose who a flag is on for; options left out keep what was set",
+    "flags": [
+     {
+      "name": "--groups stringSlice",
+      "usage": "the business's group names, comma separated"
+     },
+     {
+      "name": "--people stringSlice",
+      "usage": "emails, comma separated"
+     },
+     {
+      "name": "--percent int",
+      "usage": "a share of everyone else signed in, 0 to 100"
+     },
+     {
+      "name": "--previews",
+      "usage": "on in every preview (--previews=false to stop)"
+     },
+     {
+      "name": "--team",
+      "usage": "everyone on the business's team (--team=false to stop)"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "functions",
+  "short": "Workflow functions the app declares",
+  "commands": [
+   {
+    "usage": "whisk functions graph \u003cname\u003e",
+    "short": "Show a function's declared steps beside the ones its runs took"
+   },
+   {
+    "usage": "whisk functions list",
+    "short": "List the app's functions with their triggers and drift"
+   }
+  ]
+ },
+ {
+  "name": "github",
+  "short": "The app's optional two-way copy on GitHub",
+  "commands": [
+   {
+    "usage": "whisk github",
+    "short": "The app's optional two-way copy on GitHub"
+   },
+   {
+    "usage": "whisk github install",
+    "short": "Print the page where a person installs Whisk on their GitHub account",
+    "flags": [
+     {
+      "name": "--no-browser",
+      "usage": "print the URL only"
+     }
+    ]
+   },
+   {
+    "usage": "whisk github link \u003cowner/name\u003e",
+    "short": "Link the app to a GitHub repository (a person, signed in)"
+   },
+   {
+    "usage": "whisk github repos",
+    "short": "GitHub accounts Whisk is installed on and the repositories it reaches"
+   },
+   {
+    "usage": "whisk github status",
+    "short": "The link, whether it works, and each branch's state"
+   },
+   {
+    "usage": "whisk github sync",
+    "short": "Compare the app with its GitHub copy now"
+   },
+   {
+    "usage": "whisk github unlink",
+    "short": "Stop copying the app to GitHub"
+   }
+  ]
+ },
+ {
+  "name": "inbox",
+  "short": "The app's email address and the messages it received",
+  "commands": [
+   {
+    "usage": "whisk inbox",
+    "short": "The app's email address and the messages it received"
+   },
+   {
+    "usage": "whisk inbox domains add \u003cdomain\u003e",
+    "short": "Receive mail at a domain of the business's own, such as results.yourbusiness.com"
+   },
+   {
+    "usage": "whisk inbox domains remove \u003cid\u003e",
+    "short": "Stop a receiving domain reaching this app (by id, from whisk inbox)"
+   },
+   {
+    "usage": "whisk inbox domains verify \u003cid\u003e",
+    "short": "Check a receiving domain's records; it stays pending until they are published"
+   },
+   {
+    "usage": "whisk inbox send [message.eml]",
+    "short": "Send a test message to the app running under whisk dev",
+    "flags": [
+     {
+      "name": "--attach string",
+      "usage": "a file to attach to a composed message"
+     },
+     {
+      "name": "--from string",
+      "usage": "From of a composed message"
+     },
+     {
+      "name": "--port int",
+      "usage": "the edge port whisk dev was started with; the stub's api is port+1"
+     },
+     {
+      "name": "--subject string",
+      "usage": "Subject of a composed message"
+     },
+     {
+      "name": "--text string",
+      "usage": "plain text body of a composed message"
+     },
+     {
+      "name": "--to string",
+      "usage": "To of a composed message; the app's local address by default"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "init",
+  "short": "Write whisk.yaml for this directory (or copy a template into an empty one) and create the app",
+  "commands": [
+   {
+    "usage": "whisk init",
+    "short": "Write whisk.yaml for this directory (or copy a template into an empty one) and create the app",
+    "flags": [
+     {
+      "name": "--name string",
+      "usage": "app slug (default: the directory name)"
+     },
+     {
+      "name": "--no-create",
+      "usage": "write files only; do not create the app on the platform"
+     },
+     {
+      "name": "--no-template",
+      "usage": "never copy a template"
+     },
+     {
+      "name": "--template string",
+      "usage": "copy a template into an empty directory: ts, py, go, next, astro, shop or site (the shop and site are downloaded)"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "login",
+  "short": "Sign in with a device code; the human approves in the browser",
+  "commands": [
+   {
+    "usage": "whisk login",
+    "short": "Sign in with a device code; the human approves in the browser",
+    "flags": [
+     {
+      "name": "--agent string",
+      "usage": "the coding agent's own name, such as \"Claude Code\" (else WHISK_AGENT)"
+     },
+     {
+      "name": "--no-wait",
+      "usage": "print the URL and code, exit 2, do not poll (the default off a terminal)"
+     },
+     {
+      "name": "--resume string",
+      "usage": "wait for an existing device code's approval and collect its token"
+     },
+     {
+      "name": "--wait",
+      "usage": "wait for the approval even when not at a terminal"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "logout",
+  "short": "Revoke this profile's token and forget it",
+  "commands": [
+   {
+    "usage": "whisk logout",
+    "short": "Revoke this profile's token and forget it"
+   }
+  ]
+ },
+ {
+  "name": "logs",
+  "short": "What the app printed",
+  "commands": [
+   {
+    "usage": "whisk logs",
+    "short": "What the app printed",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "one environment: production or preview:\u003cbranch\u003e"
+     },
+     {
+      "name": "--follow",
+      "usage": "keep the stream open and print lines as they arrive"
+     },
+     {
+      "name": "--grep string",
+      "usage": "free text, or field=value for a field of a JSON line"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many lines to read when not following"
+     },
+     {
+      "name": "--raw",
+      "usage": "print each JSON line as the object the app wrote (for a person piping into jq; --json gives every line with its time and stream)"
+     },
+     {
+      "name": "--since string",
+      "usage": "how far back to read: 30m, 6h, 7d, or an RFC 3339 time"
+     }
+    ]
+   },
+   {
+    "usage": "whisk logs forwarding",
+    "short": "Where the org's logs are also sent, and how sending is going"
+   },
+   {
+    "usage": "whisk logs forwarding test \u003cid\u003e",
+    "short": "Send one destination a test line now"
+   }
+  ]
+ },
+ {
+  "name": "managed",
+  "short": "Apps Whisk runs for the business: add, set up, list",
+  "commands": [
+   {
+    "usage": "whisk managed",
+    "short": "Apps Whisk runs for the business: add, set up, list"
+   },
+   {
+    "usage": "whisk managed add \u003cproduct\u003e --link \u003crole\u003e=\u003capp\u003e [--variant v] [--set NAME=value]",
+    "short": "Add a copy of a product, linked to the business's own apps",
+    "flags": [
+     {
+      "name": "--link stringArray",
+      "usage": "role=app: link one of the business's apps, by slug or id, under a role the product lists"
+     },
+     {
+      "name": "--set stringArray",
+      "usage": "NAME=value: a setting the product or the chosen variant lists"
+     },
+     {
+      "name": "--variant string",
+      "usage": "the form the product comes in, when it has several"
+     }
+    ]
+   },
+   {
+    "usage": "whisk managed link \u003ccopy\u003e \u003crole\u003e=\u003capp\u003e",
+    "short": "Link a copy to one of the business's apps under a role; both restart to read it"
+   },
+   {
+    "usage": "whisk managed list",
+    "short": "The products the business may add, with their price, and the copies it has"
+   },
+   {
+    "usage": "whisk managed set \u003capp\u003e NAME=value...",
+    "short": "Change a copy's settings (NAME= removes one); it restarts on its release"
+   }
+  ]
+ },
+ {
+  "name": "mcp",
+  "short": "Serve the contract as MCP resources and every command as an MCP tool, over stdio",
+  "commands": [
+   {
+    "usage": "whisk mcp [--list]",
+    "short": "Serve the contract as MCP resources and every command as an MCP tool, over stdio",
+    "flags": [
+     {
+      "name": "--list",
+      "usage": "print the tools and resources instead of serving"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "members",
+  "short": "People in the org",
+  "commands": [
+   {
+    "usage": "whisk members invite \u003cemail\u003e --role developer [--guest] [--app \u003capp\u003e]...",
+    "short": "Invite a person; prints the link they redeem (a person approves it)",
+    "flags": [
+     {
+      "name": "--app stringArray",
+      "usage": "an app they may open, by slug; repeat for more (a guest needs one)"
+     },
+     {
+      "name": "--guest",
+      "usage": "invite as a guest (outside the company): a developer or member who opens only the apps given with --app"
+     },
+     {
+      "name": "--name string",
+      "usage": "the person's name"
+     },
+     {
+      "name": "--role string",
+      "usage": "owner, admin, developer, billing or member"
+     }
+    ]
+   },
+   {
+    "usage": "whisk members list",
+    "short": "List members and guests, invited ones included"
+   },
+   {
+    "usage": "whisk members remove \u003cemail\u003e",
+    "short": "Remove a person from the org, every app and every group at once (a person approves it)"
+   }
+  ]
+ },
+ {
+  "name": "open",
+  "short": "Print the dashboard page or the app's URL and open it in a browser when one exists",
+  "commands": [
+   {
+    "usage": "whisk open [dashboard|app|deploys|logs|runs|secrets|domains|access|errors]",
+    "short": "Print the dashboard page or the app's URL and open it in a browser when one exists",
+    "flags": [
+     {
+      "name": "--no-browser",
+      "usage": "print the URL only"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "orgs",
+  "short": "List the orgs the token can see",
+  "commands": [
+   {
+    "usage": "whisk orgs",
+    "short": "List the orgs the token can see"
+   }
+  ]
+ },
+ {
+  "name": "pause",
+  "short": "Pause a managed app: it sleeps and does no work until resumed",
+  "commands": [
+   {
+    "usage": "whisk pause \u003capp\u003e",
+    "short": "Pause a managed app: it sleeps and does no work until resumed"
+   }
+  ]
+ },
+ {
+  "name": "redirects",
+  "short": "Old addresses the edge redirects (whisk.yaml redirects and redirects_file)",
+  "commands": [
+   {
+    "usage": "whisk redirects check",
+    "short": "Check the redirects as the push will, and list chains"
+   },
+   {
+    "usage": "whisk redirects list",
+    "short": "List the redirects live in production, and the domains that redirect"
+   },
+   {
+    "usage": "whisk redirects test \u003cpath or URL\u003e",
+    "short": "Show what the edge answers a request for an old address",
+    "flags": [
+     {
+      "name": "--method string",
+      "usage": "the request's method: a 301 or 302 answers anything but GET and HEAD with 308 or 307"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "requests",
+  "short": "Changes waiting for a person to approve them",
+  "commands": [
+   {
+    "usage": "whisk requests show \u003cid\u003e [--wait]",
+    "short": "Where a change you asked a person to approve stands",
+    "flags": [
+     {
+      "name": "--wait",
+      "usage": "wait until a person approves or declines it"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "restore",
+  "short": "Restore the database to a point in time, beside the live one or swapped in",
+  "commands": [
+   {
+    "usage": "whisk restore --at \u003cRFC 3339 time\u003e [--swap] [--env name] [--wait]",
+    "short": "Restore the database to a point in time, beside the live one or swapped in",
+    "flags": [
+     {
+      "name": "--at string",
+      "usage": "the moment to restore to: RFC 3339, or a duration ago (2h, 3d)"
+     },
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     },
+     {
+      "name": "--swap",
+      "usage": "make the restored database the live one"
+     },
+     {
+      "name": "--wait",
+      "usage": "follow the restore until it is done or failed"
+     }
+    ]
+   },
+   {
+    "usage": "whisk restore list",
+    "short": "List the app's restores, newest first"
+   },
+   {
+    "usage": "whisk restore show \u003cid\u003e [--wait]",
+    "short": "Show one restore: its status, the database it restored into, and its error",
+    "flags": [
+     {
+      "name": "--wait",
+      "usage": "follow the restore until it is done or failed"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "resume",
+  "short": "Resume a paused managed app",
+  "commands": [
+   {
+    "usage": "whisk resume \u003capp\u003e",
+    "short": "Resume a paused managed app"
+   }
+  ]
+ },
+ {
+  "name": "rollback",
+  "short": "Make an earlier deploy live again (default: the previous live one)",
+  "commands": [
+   {
+    "usage": "whisk rollback [\u003cdeploy-id\u003e]",
+    "short": "Make an earlier deploy live again (default: the previous live one)",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "environment to roll back (default production)"
+     },
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "runs",
+  "short": "Runs of the app's functions",
+  "commands": [
+   {
+    "usage": "whisk runs cancel \u003cid\u003e",
+    "short": "Stop a running or parked run"
+   },
+   {
+    "usage": "whisk runs list [\u003cfunction\u003e] [--status failed|running|parked] [--since 1h] [--event id]",
+    "short": "List the app's runs, newest first: all, one function's, or the runs one event started",
+    "flags": [
+     {
+      "name": "--event string",
+      "usage": "only the runs this event started"
+     },
+     {
+      "name": "--function string",
+      "usage": "only runs of this function"
+     },
+     {
+      "name": "--since string",
+      "usage": "only runs started in the last duration (30m, 6h, 7d) or since an RFC 3339 time"
+     },
+     {
+      "name": "--status string",
+      "usage": "only runs in this status: running, failed, parked, completed, cancelled"
+     }
+    ]
+   },
+   {
+    "usage": "whisk runs replay \u003cid\u003e",
+    "short": "Run a failed or parked run again; prints the new run"
+   },
+   {
+    "usage": "whisk runs show \u003cid\u003e",
+    "short": "Show one run: its steps, timing and output"
+   }
+  ]
+ },
+ {
+  "name": "scan",
+  "short": "Known vulnerabilities in the live app's packages and the versions that fix them (Business plan)",
+  "commands": [
+   {
+    "usage": "whisk scan",
+    "short": "Known vulnerabilities in the live app's packages and the versions that fix them (Business plan)",
+    "flags": [
+     {
+      "name": "--now",
+      "usage": "check the live build again now and wait for the result"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "schema",
+  "short": "Print the whisk.yaml JSON schema (or the graph schema with --graph)",
+  "commands": [
+   {
+    "usage": "whisk schema",
+    "short": "Print the whisk.yaml JSON schema (or the graph schema with --graph)",
+    "flags": [
+     {
+      "name": "--graph",
+      "usage": "print graph.schema.json instead"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "secrets",
+  "short": "Secret names, versions and reads; never values",
+  "commands": [
+   {
+    "usage": "whisk secrets apps NAME",
+    "short": "The apps a business secret reaches; an owner or admin adds or removes them in the dashboard"
+   },
+   {
+    "usage": "whisk secrets declare NAME",
+    "short": "Create the slot for a secret; a human sets its value in the dashboard"
+   },
+   {
+    "usage": "whisk secrets delete NAME",
+    "short": "Delete a secret and every version of it"
+   },
+   {
+    "usage": "whisk secrets link NAME",
+    "short": "Print the dashboard URL where a human sets the value"
+   },
+   {
+    "usage": "whisk secrets list",
+    "short": "List secrets: name, scope, whether set, version, shared with previews, consumers, last read"
+   },
+   {
+    "usage": "whisk secrets reads NAME [--since 7d]",
+    "short": "When and by which container the value was delivered",
+    "flags": [
+     {
+      "name": "--since string",
+      "usage": "how far back: a duration (6h, 7d) or an RFC 3339 time"
+     }
+    ]
+   },
+   {
+    "usage": "whisk secrets rollback NAME --to N",
+    "short": "Make an earlier version current; consumers restart",
+    "flags": [
+     {
+      "name": "--to int",
+      "usage": "version to make current"
+     }
+    ]
+   },
+   {
+    "usage": "whisk secrets set NAME [NAME...] [--previews | --previews=false]",
+    "short": "Where a human sets the values: prints one link for all of them and exits 2",
+    "flags": [
+     {
+      "name": "--previews",
+      "usage": "ask a person to share the secrets with previews (--previews=false to stop sharing)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk secrets share NAME --from \u003capp\u003e",
+    "short": "Make the value another app already has under NAME the business's",
+    "flags": [
+     {
+      "name": "--from string",
+      "usage": "the app that already has the value"
+     }
+    ]
+   },
+   {
+    "usage": "whisk secrets versions NAME",
+    "short": "List the stored versions of a secret (lengths and authors, never values)"
+   }
+  ]
+ },
+ {
+  "name": "skill",
+  "short": "Print the skill document an agent reads first",
+  "commands": [
+   {
+    "usage": "whisk skill",
+    "short": "Print the skill document an agent reads first"
+   }
+  ]
+ },
+ {
+  "name": "status",
+  "short": "The app's state, current deploy, URL and anything waiting on a human",
+  "commands": [
+   {
+    "usage": "whisk status",
+    "short": "The app's state, current deploy, URL and anything waiting on a human"
+   }
+  ]
+ },
+ {
+  "name": "tokens",
+  "short": "The org's agent and deploy tokens",
+  "commands": [
+   {
+    "usage": "whisk tokens list",
+    "short": "List live tokens: kind, label, scopes, last use, expiry (never their values)"
+   },
+   {
+    "usage": "whisk tokens revoke \u003cid\u003e",
+    "short": "Revoke a token; every call with it fails from now on"
+   }
+  ]
+ },
+ {
+  "name": "traces",
+  "short": "Where the app's time went, request by request",
+  "commands": [
+   {
+    "usage": "whisk traces",
+    "short": "Where the app's time went, request by request",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "one environment: production or preview:\u003cbranch\u003e"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many traces to show, at most 200"
+     },
+     {
+      "name": "--min string",
+      "usage": "only traces at least this long: 500ms, 2s"
+     },
+     {
+      "name": "--q string",
+      "usage": "text the request's name or path contains"
+     },
+     {
+      "name": "--since string",
+      "usage": "how far back to read: 30m, 6h, 7d, or an RFC 3339 time"
+     },
+     {
+      "name": "--slowest",
+      "usage": "the slowest traces first, instead of the most recent"
+     },
+     {
+      "name": "--until string",
+      "usage": "the end of the window: a duration ago or an RFC 3339 time"
+     }
+    ]
+   },
+   {
+    "usage": "whisk traces show \u003ctrace-id-or-request-id\u003e",
+    "short": "One trace as a waterfall of its spans"
+   }
+  ]
+ },
+ {
+  "name": "update",
+  "short": "Self-update from the platform, with checksum and signature verification",
+  "commands": [
+   {
+    "usage": "whisk update [--check] [--force]",
+    "short": "Self-update from the platform, with checksum and signature verification",
+    "flags": [
+     {
+      "name": "--check",
+      "usage": "report whether an update exists without installing it"
+     },
+     {
+      "name": "--force",
+      "usage": "reinstall even when the versions match, or go back to an older release"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "uploads",
+  "short": "Add files to an app's storage, see them, and sign links to private ones",
+  "commands": [
+   {
+    "usage": "whisk uploads add \u003cfile\u003e... [--public] [--content-type \u003ctype\u003e] [--wait]",
+    "short": "Upload files from this computer to the app's storage, up to 5 GB each",
+    "flags": [
+     {
+      "name": "--content-type string",
+      "usage": "the type of every file given, such as video/mp4 (default: from each file's name and contents)"
+     },
+     {
+      "name": "--public",
+      "usage": "anyone may see or play it, and other websites may embed it"
+     },
+     {
+      "name": "--wait",
+      "usage": "follow each upload until its scan and conversion are done"
+     }
+    ]
+   },
+   {
+    "usage": "whisk uploads delete \u003cid\u003e",
+    "short": "Remove an upload: the file, its converted copies and its record"
+   },
+   {
+    "usage": "whisk uploads link \u003cpath\u003e... [--expires 1h]",
+    "short": "Sign /.whisk/img/\u003cid\u003e?w=… or /.whisk/media/\u003cid\u003e so it opens without a sign-in until it expires",
+    "flags": [
+     {
+      "name": "--expires duration",
+      "usage": "how long the links work, 1m to 12h (default 1h)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk uploads list",
+    "short": "The app's uploads, newest first: scan, conversion and where each shows or plays"
+   },
+   {
+    "usage": "whisk uploads rotate-key [--now]",
+    "short": "Give the app a new signing key; --now also stops every link already issued",
+    "flags": [
+     {
+      "name": "--now",
+      "usage": "stop every link already issued at once"
+     }
+    ]
+   },
+   {
+    "usage": "whisk uploads show \u003cid\u003e [--wait]",
+    "short": "One upload: its scan, its conversion and where it shows or plays",
+    "flags": [
+     {
+      "name": "--wait",
+      "usage": "follow the upload until its scan and conversion are done"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "use",
+  "short": "Bind the current directory to an app (.whisk/app.json)",
+  "commands": [
+   {
+    "usage": "whisk use \u003corg\u003e/\u003capp\u003e",
+    "short": "Bind the current directory to an app (.whisk/app.json)"
+   }
+  ]
+ },
+ {
+  "name": "version",
+  "short": "Print the CLI, API and conventions versions",
+  "commands": [
+   {
+    "usage": "whisk version",
+    "short": "Print the CLI, API and conventions versions"
+   }
+  ]
+ },
+ {
+  "name": "webhooks",
+  "short": "Webhook sources the app receives",
+  "commands": [
+   {
+    "usage": "whisk webhooks add \u003cname\u003e",
+    "short": "Write a webhook source into whisk.yaml",
+    "flags": [
+     {
+      "name": "--handler string",
+      "usage": "route in this app that receives clean events; /hooks/\u003cname\u003e by default"
+     },
+     {
+      "name": "--preset string",
+      "usage": "how deliveries are verified: stripe, github, hmac, token…"
+     },
+     {
+      "name": "--secret string",
+      "usage": "name of the signing secret (not needed for the token preset)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk webhooks events \u003csource\u003e",
+    "short": "What a source received, newest first",
+    "flags": [
+     {
+      "name": "--limit int",
+      "usage": "how many deliveries to show"
+     }
+    ]
+   },
+   {
+    "usage": "whisk webhooks list",
+    "short": "List the app's sources with the URL to paste into each provider"
+   },
+   {
+    "usage": "whisk webhooks presets",
+    "short": "List the signature presets the platform verifies"
+   },
+   {
+    "usage": "whisk webhooks replay \u003csource\u003e \u003cevent-id\u003e",
+    "short": "Send a stored delivery to the app again"
+   }
+  ]
+ },
+ {
+  "name": "whoami",
+  "short": "Show the user, orgs, scopes and expiry of the token in use",
+  "commands": [
+   {
+    "usage": "whisk whoami",
+    "short": "Show the user, orgs, scopes and expiry of the token in use"
+   }
+  ]
+ }
+]
