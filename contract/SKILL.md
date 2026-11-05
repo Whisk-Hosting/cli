@@ -987,7 +987,18 @@ Returns `{"id": "..."}`. Events with the same `dedupe_key` within 24 hours are d
 **Functions** are declared in the manifest with a trigger and a graph, and implemented with the
 Inngest SDK for the language (the templates wire it). The platform delivers runs to
 `queue.endpoint` (default `/.whisk/inngest`) with the service identity; the SDK verifies each
-request with `WHISK_INNGEST_SIGNING_KEY`.
+request with `WHISK_INNGEST_SIGNING_KEY`. Use the SDK the templates use (`inngest` 4 for
+TypeScript and JavaScript, `inngest` 0.5 or later for Python, `inngestgo` for Go) and give its
+client all three settings, as the template does:
+
+```js
+new Inngest({ id: "my-app", eventKey: process.env.WHISK_INNGEST_EVENT_KEY,
+  signingKey: process.env.WHISK_INNGEST_SIGNING_KEY, baseUrl: process.env.WHISK_INNGEST_URL })
+```
+
+When they are wrong the deploy still goes live, with the warning `FUNCTIONS_NOT_REGISTERED`, and
+no function runs: read the deploy's warnings (`whisk status`, or `get_deploy`) after every deploy
+that changes functions, and fix that one before saying a schedule works.
 
 ```yaml
 functions:
