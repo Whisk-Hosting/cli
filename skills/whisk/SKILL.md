@@ -1453,7 +1453,10 @@ against the limit; check it after a job's first real run. There is no persistent
 anywhere, and everything in storage is backed up.
 
 **Email** (`email: true`). `POST /v1/orgs/<org>/apps/<app>/email/send` with the service token
-and `{to, subject, html, text, from}`; `to` is one address or a list. Leave `from` out and the
+and `{to, subject, html, text, from}`; `to` is one address or a list. Addresses are plain ASCII:
+a name before one may hold any letters (`Zoë <zoe@example.com>`), but an address with accents is
+refused with `INVALID_REQUEST`, since mail servers refuse it (a domain with accents goes in its
+`xn--` form). Leave `from` out and the
 mail goes from the business's own address on Whisk's domain, `<app>.<org>@whisk.page`, under the
 app's name, with no setup; `from: "Training <training@whisk.page>"` sends as
 `training.<org>@whisk.page` instead. To send from the
