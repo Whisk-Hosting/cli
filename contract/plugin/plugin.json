@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "whisk",
-  "version": "1.0.4",
+  "version": "1.0.6",
   "description": "The fastest, easiest way to get an AI-built web app, online shop or website live: Postgres, S3-compatible storage, central sign-in, scheduled jobs, secrets, email and backups come built in.",
   "author": {
     "name": "Whisk",
@@ -44,17 +44,17 @@
       "interface": {
         "displayName": "Whisk",
         "shortDescription": "Get AI-built apps live, fast",
-        "longDescription": "Whisk is the fastest and easiest way to get a secure web app or website built with AI live. Describe what you need, and it is online at its own web address in minutes, with HTTPS, sign-in and backups already in place. There are no accounts to open, no servers to run and no keys to paste.\n\nBuild the software your business runs on: a CRM, a customer portal, a job tracker, a quoting tool, or a cheaper alternative to software you pay for per user. Make Whisk the glue between the systems you already use, so orders, invoices and customers flow between them without anyone typing them twice. Run an online shop, including trade ordering where business customers sign in, see their own prices and order on account.\n\nWebsite slow, hacked or out of date? Whisk has first-class support for rebuilding a WordPress, Wix, Squarespace or other website as a fast, secure, world-class Astro site that keeps every page and every page address, so visitors and search engines carry straight on.\n\nEvery app gets the building blocks a real business app needs, ready from its first deploy:\n- A Postgres database for every app, with continuous backups and point-in-time restore\n- S3-compatible file storage for uploads and documents\n- Sign-in handled centrally: people sign in once with email codes, passkeys or their company's single sign-on, and you choose who can open each app\n- Scheduled jobs, background tasks and durable workflows with retries\n- Encrypted secrets in a vault, never kept in code\n- Sending and receiving email\n- Verified, replayable incoming webhooks for connecting other software\n- A key-value store for caching, counters and locks\n- Error tracking, logs and request tracing\n- Video and audio playback\n- Custom domains with automatic HTTPS, and a CDN\n- Bot protection for public forms\n\nWhisk is built on proven open-source software, including Postgres, Caddy, Valkey and Inngest, brought together as building blocks. You never sign up for another service or wire one up yourself.\n\nOnce an app is live, ask again to change it, check that it is working, or answer questions from its data.",
+        "longDescription": "Whisk gets a secure web app or website built with AI live, quickly and simply. Describe what you need, and it goes online at its own web address with HTTPS, sign-in and backups already in place. Sign in to Whisk once; there are no servers to run and no other services to sign up for.\n\nBuild the software your business runs on: a CRM, a customer portal, a job tracker, a quoting tool, or your own version of a tool your team outgrew. Make Whisk the glue between the systems you already use, so orders, invoices and customers flow between them automatically. Run an online shop, including trade ordering where business customers sign in, see their own prices and order on account.\n\nWebsite slow, hacked or out of date? Whisk has first-class support for rebuilding a WordPress, Wix, Squarespace or other website as a fast, secure, world-class Astro site that keeps every page and every page address, so visitors and search engines carry straight on.\n\nApps get the building blocks a real business app needs, some depending on the account:\n- A Postgres database for every app, with backups and point-in-time restore\n- S3-compatible file storage for uploads and documents\n- Sign-in handled centrally: people sign in once with email codes, passkeys or their company's single sign-on, and you choose who can open each app\n- Scheduled jobs, background tasks and durable workflows with retries\n- Encrypted secrets in a vault, never kept in code\n- Sending and receiving email\n- Verified, replayable incoming webhooks for connecting other software\n- A key-value store for caching, counters and locks\n- Error tracking, logs and request tracing\n- Video and audio playback\n- Automatic HTTPS, custom domains and a CDN\n- Bot protection for public forms\n\nWhisk is built on proven open-source software, including Postgres, Caddy, Valkey and Inngest, brought together as building blocks, so you don't sign up for another service or wire one up yourself.\n\nOnce an app is live, ask again to change it, check that it is working, or answer questions from its data.",
         "developerName": "Whisk",
         "category": "Developer Tools",
         "capabilities": [
           "Put an AI-built web app or website live at its own address, with HTTPS, in one step",
           "Build a CRM, customer portal, job tracker or quoting tool for your business",
-          "Build a cheaper alternative to software you pay for per user",
+          "Build your own version of a tool your team outgrew",
           "Connect the software you already use, so data flows between them automatically",
           "Run an online shop, including trade ordering with customer prices and ordering on account",
           "Rebuild a slow, hacked or out-of-date website as a fast, secure Astro site that keeps every page address",
-          "A Postgres database for every app, with continuous backups and point-in-time restore",
+          "A Postgres database for every app, with backups and point-in-time restore",
           "S3-compatible file storage for uploads and documents",
           "Central sign-in for your team, with control over who can open each app",
           "Scheduled jobs, background tasks and durable workflows with retries",
@@ -63,7 +63,7 @@
           "Verified, replayable incoming webhooks",
           "Key-value store for caching, counters and locks",
           "Error tracking, logs and request tracing built in",
-          "Custom domains with automatic HTTPS, and a CDN",
+          "Automatic HTTPS, custom domains and a CDN",
           "Bot protection for public forms",
           "Check, fix, change or roll back a live app from the chat"
         ],
@@ -74,7 +74,7 @@
         "defaultPrompt": [
           "Build me a CRM for my sales team.",
           "Make my slow WordPress site fast and secure.",
-          "Build a cheaper alternative to software we pay per user for."
+          "Build our own version of a tool our team outgrew."
         ],
         "brandColor": "#e3a92b",
         "brandColorDark": "#e3a92b",
@@ -104,7 +104,7 @@
               "expected_behavior": "Builds a CRM with contacts and deals stored in Postgres, behind Whisk sign-in, and a scheduled job that emails each salesperson their follow-ups due that day. Deploys it and gives its web address."
             },
             {
-              "description": "Build a cheaper alternative to per-user software",
+              "description": "Replace a per-user tool with the team's own app",
               "prompt": "We pay per user for Zendesk. Build us a cheaper alternative on Whisk for our support team.",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Builds a support app where customer emails arrive at the app's own address and become tickets the team can assign, answer and close, behind Whisk sign-in. Deploys it, gives its web address and the email address to forward support mail to."
@@ -135,10 +135,10 @@
           ]
         },
         "commerce": false,
-        "commerce_description": "Whisk does not sell anything inside ChatGPT. Plans are bought on whisk.run."
+        "commerce_description": "Whisk does not sell anything inside ChatGPT."
       },
       "publication": {
-        "release_notes": "Listing and review cases lead with what businesses build on Whisk: CRMs, integrations, cheaper alternatives to per-user software, online and trade stores, and fast, secure websites."
+        "release_notes": "Listing and review cases lead with what businesses build on Whisk: CRMs, integrations, your own versions of off-the-shelf tools, online and trade stores, and fast, secure websites."
       }
     }
   }
