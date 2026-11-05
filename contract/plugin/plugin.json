@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "whisk",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "The fastest, easiest way to get an AI-built web app, online shop or website live: Postgres, S3-compatible storage, central sign-in, scheduled jobs, secrets, email and backups come built in.",
   "author": {
     "name": "Whisk",
@@ -87,31 +87,31 @@
           "positive": [
             {
               "description": "Fix a slow, hacked website by rebuilding it",
-              "prompt": "My WordPress site is slow and got hacked last month. Rebuild it as a fast, secure site: https://old-website.northside-building-supplies.whisk.page",
+              "prompt": "My WordPress site is slow and got hacked last month. Rebuild it on Whisk as a fast, secure site: https://old-website.northside-building-supplies.whisk.page",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Reads the five pages of the sample site and rebuilds it as an Astro site that keeps each page's content and address (/, /about/, /products/timber/, /products/plumbing/ and /contact/). Deploys it as a new app and gives its web address; every page opens without signing in."
             },
             {
               "description": "Connect two systems the business already uses",
-              "prompt": "When an order comes in on my Shopify store, create the invoice in Xero automatically.",
+              "prompt": "Use Whisk so that when an order comes in on my Shopify store, the invoice is created in Xero automatically.",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Builds an app that receives Shopify's order webhook, verifies it, and creates the Xero invoice in a background job that retries on failure. Deploys it, gives the webhook address to enter in Shopify, and says which secrets the app needs (the Shopify webhook secret and the Xero credentials), offering to set them with the person's confirmation or on the Whisk dashboard. None goes in the code."
             },
             {
               "description": "Build a CRM",
-              "prompt": "Build me a CRM for my sales team with contacts, deals and follow-up reminders.",
+              "prompt": "Build me a CRM on Whisk for my sales team with contacts, deals and follow-up reminders.",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Builds a CRM with contacts and deals stored in Postgres, behind Whisk sign-in, and a scheduled job that emails each salesperson their follow-ups due that day. Deploys it and gives its web address."
             },
             {
               "description": "Build a cheaper alternative to per-user software",
-              "prompt": "We pay per user for Zendesk. Build us a cheaper alternative for our support team.",
+              "prompt": "We pay per user for Zendesk. Build us a cheaper alternative on Whisk for our support team.",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Builds a support app where customer emails arrive at the app's own address and become tickets the team can assign, answer and close, behind Whisk sign-in. Deploys it, gives its web address and the email address to forward support mail to."
             },
             {
               "description": "Build an online store for trade customers",
-              "prompt": "Build an online store where my trade customers sign in, see their own prices and order on account.",
+              "prompt": "Build an online store on Whisk where my trade customers sign in, see their own prices and order on account.",
               "tools_triggered": "whisk_build_guide, deploy_app, get_deploy",
               "expected_behavior": "Builds a store where trade customers sign in, see a catalogue with prices set for their company, and place orders charged to their account instead of paying by card. Deploys it and gives its web address."
             }
