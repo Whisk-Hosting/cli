@@ -115,9 +115,13 @@ type App struct {
 	// (MANAGED-APPS.md §10).
 	Managed *AppManaged `json:"managed,omitempty"`
 	// PausedAt is when a person paused the app, absent while it is not paused (MANAGED-APPS.md §4).
-	PausedAt  *time.Time `json:"paused_at,omitempty"`
-	CreatedAt time.Time  `json:"created_at"`
-	UpdatedAt time.Time  `json:"updated_at"`
+	PausedAt *time.Time `json:"paused_at,omitempty"`
+	// Warnings, on the answer to creating an app, say what its first production deploy would be
+	// refused for (FREE_APP_TAKEN, PLAN_LIMIT_APPS), so an agent learns it before building
+	// anything; previews still deploy. Absent when it can publish.
+	Warnings  []Warning `json:"warnings,omitempty"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // AppPromoted is when an app was made a Promoted app and by whom (a user id), and whether it is

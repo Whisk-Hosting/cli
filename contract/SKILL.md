@@ -114,6 +114,9 @@ irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | 
 powershell -NoProfile -Command "irm https://github.com/Whisk-Hosting/cli/releases/latest/download/install.ps1 | iex"   # windows Git Bash or cmd
 ```
 
+Each command runs in a fresh shell for most agents, so an `export PATH` does not last: when the
+script says its folder is not on your PATH, run `whisk` by the full path it prints.
+
 If `whisk` is already installed, run `whisk update` once at the start of a session: this
 document describes the CLI the platform serves, and an older one lacks commands it names. Later,
 any `--json` output that carries `cli_update`, or an `UNKNOWN_COMMAND` error, means the same:

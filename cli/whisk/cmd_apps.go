@@ -164,6 +164,7 @@ unless --no-create. Safe to run again: existing files are kept.`,
 				switch {
 				case app != nil:
 					fmt.Fprintf(w, "Created app %s/%s: https://%s\n", app.OrgSlug, app.Slug, app.Hostname)
+					printPublishWarnings(w, app.Warnings)
 				case bound:
 					fmt.Fprintf(w, "Bound to %s/%s.\n", binding.Org, binding.App)
 				default:
@@ -248,6 +249,14 @@ func createApp(s *session, slug string) (createdApp, error) {
 	return createdApp{App: app, OrgSlug: org}, nil
 }
 
+// printPublishWarnings says, under a new app, what its first production deploy would be refused
+// for (FREE_APP_TAKEN, PLAN_LIMIT_APPS), so nobody builds it before finding out.
+func printPublishWarnings(w io.Writer, warnings []api.Warning) {
+	for _, x := range warnings {
+		fmt.Fprintf(w, "%s: %s\n  %s\n", x.Code, x.Message, x.Fix)
+	}
+}
+
 func appsCmd(s *session) *cobra.Command {
 	apps := &cobra.Command{Use: "apps", Short: "Apps in the org"}
 	create := &cobra.Command{
@@ -264,6 +273,7 @@ func appsCmd(s *session) *cobra.Command {
 			}
 			s.printer.Result(map[string]any{"app": created.App, "org": created.OrgSlug}, func(w io.Writer) {
 				fmt.Fprintf(w, "Created %s/%s: https://%s\nBind a directory with: whisk use %s/%s\n", created.OrgSlug, created.Slug, created.Hostname, created.OrgSlug, created.Slug)
+				printPublishWarnings(w, created.Warnings)
 			})
 			return nil
 		},

@@ -37,5 +37,10 @@ got=$( (sha256sum "$tmp" 2>/dev/null || shasum -a 256 "$tmp") | cut -d' ' -f1)
 [ "$got" = "$want" ] || { echo "whisk: checksum mismatch for $name" >&2; exit 1; }
 install -m 0755 "$tmp" "$dir/whisk"
 echo "whisk $version installed to $dir/whisk"
-case ":$PATH:" in *":$dir:"*) ;; *) echo "add $dir to your PATH, for example: export PATH=\"$dir:\$PATH\"";; esac
-echo "next: whisk login"
+# A shell that has not got the folder on its PATH runs whisk by its full path, so the next step
+# names it in full rather than failing with "command not found".
+case ":$PATH:" in
+  *":$dir:"*) echo "next: whisk login" ;;
+  *) echo "$dir is not on your PATH: run $dir/whisk, or add it, for example: export PATH=\"$dir:\$PATH\""
+     echo "next: $dir/whisk login" ;;
+esac
