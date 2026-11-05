@@ -6,6 +6,27 @@ Every file it refers to is published beside it at `https://skill.whisk.run/<file
 `webhook-presets.yaml`, `errors.md`, `doctor-rules.md`. Working starter apps come with the CLI
 (`whisk init --template`).
 
+## Quick start
+
+The person wants something live they can open, so get them an address first and build after.
+Do these in order, before writing any of their app:
+
+1. Install the CLI if `whisk` is not on the PATH:
+   `curl -fsSL https://github.com/Whisk-Hosting/cli/releases/latest/download/install.sh | sh`
+   (Windows in §3). If it says its folder is not on your PATH, run `whisk` by the full path it
+   prints.
+2. `whisk login --agent "<your name>"`. Show the person the link and code at once, while they
+   are still watching, then run the `whisk login --resume` command it prints.
+3. In an empty folder named for the app (the name becomes its address):
+   `whisk init --template ts` (or `py`, `go`, `next`, `astro`). If it prints `FREE_APP_TAKEN`
+   or `PLAN_LIMIT_APPS`, tell the person before going further.
+4. `whisk deploy -m "Starter"`, about a minute, and give the person the address it prints.
+5. Build what they asked for on top of the starter, deploying each piece as it works. Read §2
+   before writing code, and the sections below as the app needs them: sign-in §4, data §5,
+   secrets §6, jobs §7, webhooks §8, files and email §9, failures §11.
+
+With existing code, skip the template and run `whisk init` in its folder (§3).
+
 ## 1. What Whisk is
 
 Whisk hosts websites, online shops, customer portals and internal tools written by coding agents. An app is a container that speaks HTTP; the
