@@ -34,10 +34,16 @@ import (
 
 // Manifest is a parsed, validated whisk.yaml with every default applied.
 type Manifest struct {
-	Whisk  int    `json:"whisk"`
-	Name   string `json:"name"`
-	Routes Routes `json:"routes"`
-	Health Health `json:"health"`
+	Whisk int    `json:"whisk"`
+	Name  string `json:"name"`
+	// Title, Description and Category are how the business's home lists the app (CONTRACT.md
+	// §3.4): what people call it, one sentence on what they do in it, and
+	// the group it sits in. Each is "" when whisk.yaml leaves it out.
+	Title       string `json:"title,omitempty"`
+	Description string `json:"description,omitempty"`
+	Category    string `json:"category,omitempty"`
+	Routes      Routes `json:"routes"`
+	Health      Health `json:"health"`
 	// Admin is where the app's own admin is, which the Whisk bar links for the business's team
 	// (CONTRACT.md §3.1, CADDY.md §5.7); nil when the app has none.
 	Admin *Admin `json:"admin,omitempty"`
@@ -714,6 +720,7 @@ func decode(obj map[string]any) (Manifest, error) {
 }
 
 func withDefaults(m Manifest) Manifest {
+	m.Title, m.Description, m.Category = strings.TrimSpace(m.Title), strings.TrimSpace(m.Description), strings.TrimSpace(m.Category)
 	m.Routes.Public = orEmpty(m.Routes.Public)
 	m.Routes.Challenge = orEmpty(m.Routes.Challenge)
 	m.Routes.CSRFOff = orEmpty(m.Routes.CSRFOff)

@@ -875,3 +875,26 @@ Level: warning
 Check: a release flag in whisk.yaml has no remove_by, or the day it names has passed.
 Fix: Give each release flag a remove_by. Once a flag is on for everyone, delete the code behind its off side and the flag from whisk.yaml; a flag meant to stay is kind: kill-switch or kind: permission.
 Safe fix: no
+
+## W160
+
+Level: warning
+Check: whisk.yaml has no title, description or category, which the business's home lists the app by.
+Fix: Set title, description and category in whisk.yaml: what people call the app in two to four plain words, one sentence of at most 120 characters on what they do in it, and one of the business's categories that doctor names.
+Safe fix: no
+
+Details: known only when the directory is bound to an app, because the categories come from
+`/apps/:app/validate` (`listing.categories`), in the order an owner put the home in. The message
+names what is missing and, when the category is, the business's categories. See the skill's
+"Describe the app".
+
+## W161
+
+Level: warning
+Check: an owner changed the app's title, description or category on the business's home, and whisk.yaml says something else.
+Fix: Set the field in whisk.yaml to what the owner chose, which doctor names, so the repository says what people see.
+Safe fix: no
+
+Details: known only when the directory is bound to an app (`listing.shown` and `listing.owned`
+from `/apps/:app/validate`). What an owner set stays on the home whatever whisk.yaml says
+(CONTRACT.md §3.4); one finding per field, at its line.

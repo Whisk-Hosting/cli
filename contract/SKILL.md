@@ -351,6 +351,9 @@ are on every plan, the free app included, within its allowances.
 ```yaml
 whisk: 1                          # required
 name: job-tracker                 # required; the app's address derives from it
+title: Job board                  # what people call it, two to four plain words
+description: Every open job, who is on it and what is due this week.   # one sentence, 120 at most
+category: Jobs                    # the group the business's home lists it under
 routes:
   public: ["/", "/health"]        # everything else needs a signed-in person (§4)
   challenge: ["/contact"]         # public POSTs here need a solved bot challenge (§4)
@@ -411,6 +414,18 @@ the live image with the new settings: routes and who can visit, `always_on`, `he
 the rest. It goes live in the time a deploy takes. Commit a settings change on its own to get
 this, and tell the human it applies straight away. A route made public still waits for a person
 to allow it.
+
+**Describe the app.** The business's home lists every app by its `title`, `description` and
+`category`, so set all three in whisk.yaml before the first deploy. People open apps from the home,
+and most of them never see the code. The title is what the people who use the app would call it,
+in two to four plain words: "Job board", never "jobtrackr-v2". The description is one sentence of
+at most 120 characters for someone who uses the app, starting with what they do in it: "Log your
+hours each day and send them for approval on Friday." Leave out the app's name, technical words,
+the stack, and words like "powerful" or "AI-powered". The category is the group it sits in, such
+as Sales or Jobs. Reuse one the business already has: `whisk doctor` lists them (`W160`). When the
+app changes what it is for, change the description in the same commit. An owner can change all
+three on the home, and what they set stays, so doctor tells you when your values are no longer the
+ones shown.
 
 **Say what changed.** Every deploy shows the subject line of its commit to the business, on the
 app's Deploys page and in `whisk deploys list`. Write it for the people who use the app, in one

@@ -175,7 +175,7 @@ var baseWire = []any{
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
-	OrgHome{}, NeedsYou{},
+	OrgHome{}, NeedsYou{}, AppListing{}, ListingValues{}, AppAccess{}, HomeLayout{}, HomeApp{}, ValidationListing{},
 	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PersonAppsRequest{}, PatchMemberRequest{},
 	GroupRequest{}, GroupMembersRequest{}, CreateAppRequest{}, PatchAppRequest{}, AlwaysOnRequest{}, AlwaysOnResult{}, RenameAppRequest{}, ValidateRequest{},
 	AccessRequest{}, CreateDeployRequest{}, DeclareSecretRequest{}, SecretValueRequest{},

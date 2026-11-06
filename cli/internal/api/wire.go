@@ -22,6 +22,8 @@ type (
 	AppMemory           = apitypes.AppMemory
 	CreateAppRequest    = apitypes.CreateAppRequest
 	Validation          = apitypes.Validation
+	ValidationListing   = apitypes.ValidationListing
+	ListingValues       = apitypes.ListingValues
 	Phase               = apitypes.Phase
 	Deploy              = apitypes.Deploy
 	DeployEvent         = apitypes.DeployEvent

@@ -1,5 +1,8 @@
 whisk: 1
 name: job-tracker
+title: Job board
+description: Every open job, who is on it and what is due this week.
+category: Jobs
 
 routes:
   public: ["/", "/public/**", "/health", "/contact"]

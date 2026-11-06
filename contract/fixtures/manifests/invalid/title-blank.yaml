@@ -1,0 +1,4 @@
+# expect: MANIFEST_INVALID /title
+whisk: 1
+name: job-tracker
+title: "   "

@@ -18,6 +18,24 @@
       "minLength": 3,
       "maxLength": 40
     },
+    "title": {
+      "description": "What the people who use the app call it, in two to four plain words. The business's home and the app's pages show it.",
+      "type": "string",
+      "pattern": "^[^\\x00-\\x1f\\x7f]*\\S[^\\x00-\\x1f\\x7f]*$",
+      "maxLength": 60
+    },
+    "description": {
+      "description": "One sentence, for the people who use the app, on what they do in it. The business's home shows it under the title.",
+      "type": "string",
+      "pattern": "^[^\\x00-\\x1f\\x7f]*\\S[^\\x00-\\x1f\\x7f]*$",
+      "maxLength": 120
+    },
+    "category": {
+      "description": "The group the business's home lists the app under, such as Sales. Reuse one the business already has.",
+      "type": "string",
+      "pattern": "^[^\\x00-\\x1f\\x7f]*\\S[^\\x00-\\x1f\\x7f]*$",
+      "maxLength": 30
+    },
     "routes": {
       "type": "object",
       "additionalProperties": false,

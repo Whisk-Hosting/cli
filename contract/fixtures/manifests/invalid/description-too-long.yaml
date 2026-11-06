@@ -1,0 +1,4 @@
+# expect: MANIFEST_INVALID /description
+whisk: 1
+name: job-tracker
+description: Every open job on the board, who is working on it, what is due this week and next week, and which customer is waiting on it.

@@ -116,6 +116,13 @@ type App struct {
 	Managed *AppManaged `json:"managed,omitempty"`
 	// PausedAt is when a person paused the app, absent while it is not paused (MANAGED-APPS.md §4).
 	PausedAt *time.Time `json:"paused_at,omitempty"`
+	// Listing and Access are how the business's home lists the app and who can open it
+	// (CONTRACT.md §3.4), sent on the home's apps only.
+	Listing *AppListing `json:"listing,omitempty"`
+	Access  *AppAccess  `json:"access,omitempty"`
+	// ShotAt is when the picture of the app's page the home shows was taken, sent on the home's
+	// apps that have one; GET /orgs/{org}/apps/{app}/shot answers it.
+	ShotAt *time.Time `json:"shot_at,omitempty"`
 	// Warnings, on the answer to creating an app, say what its first production deploy would be
 	// refused for (FREE_APP_TAKEN, PLAN_LIMIT_APPS), so an agent learns it before building
 	// anything; previews still deploy. Absent when it can publish.
@@ -515,6 +522,9 @@ type Validation struct {
 	// Calls is what the platform knows of the manifest's calls both ways (CONTROL-PLANE.md
 	// §4.4 "Call consent"), for doctor's W120 and W121.
 	Calls CallConsent `json:"calls"`
+	// Listing is the business's categories and what an owner set for this app, for doctor's
+	// W160 and W161; absent from a platform that predates it.
+	Listing *ValidationListing `json:"listing,omitempty"`
 }
 
 // CallConsent is the validate answer's view of call consent for the manifest checked.
@@ -797,6 +807,9 @@ type OrgHome struct {
 	// Owners names the org's owners for a member, who asks one of them for an app; empty for
 	// everyone else (CONTROL-PLANE.md §5.2, "Inspect").
 	Owners []string `json:"owners"`
+	// Categories is the home's categories in the order an owner put them, each once, those with
+	// no app included (CONTRACT.md §3.4).
+	Categories []string `json:"categories"`
 }
 
 // NeedsYou lists what waits on a human.
