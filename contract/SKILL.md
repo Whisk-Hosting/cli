@@ -576,13 +576,14 @@ business's GitHub; a person links it in the app's settings.
 **Analytics.** Every app has analytics on every plan. Put `<script defer
 src="/.whisk/analytics.js"></script>` in the `<head>` of every page layout (the templates do), and
 each page view is counted. The script and what it sends stay on the app's own address, it sets no
-cookie and keeps no IP address, and the business's people signed in to Whisk are counted like any
-visitor. A browser asking not to be tracked is left out; `analytics: { do_not_track: ignore }` in
-whisk.yaml counts it too. Send an event from the page with `umami.track("signup", { plan: "team" })`
+cookie and keeps no IP address. The business's own people signed in to the app are left out
+(`analytics: { team: count }` in whisk.yaml counts them), and so is a browser asking not to be
+tracked (`analytics: { do_not_track: ignore }` counts it). Send an event from the page with `umami.track("signup", { plan: "team" })`
 (check `window.umami` first, since a blocker can stop the script), or mark a button with
 `data-umami-event="signup"`. `whisk analytics` prints views, visitors, top pages, sources and events
 (`--period 24h|7d|30d|90d`); the human sees everything with `whisk open analytics`. Visits are kept
-7 days on Free, 13 months on paid plans and 25 months on Business. Do not add another analytics
+7 days on Free, 13 months on paid plans and 25 months on Business. If the app has a privacy notice, say there
+that it counts visits with Whisk's analytics, without cookies, and for how long. Do not add another analytics
 tool unless the human names one.
 
 **Known vulnerabilities in packages (Business plan).** Whisk checks the live app's packages after

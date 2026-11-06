@@ -104,9 +104,24 @@ type Manifest struct {
 }
 
 // Analytics is the manifest's analytics: whether a browser that asks not to be tracked is
-// counted. DoNotTrack is DoNotTrackRespect, the default, or DoNotTrackIgnore.
+// counted (DoNotTrack is DoNotTrackRespect, the default, or DoNotTrackIgnore), and whether the
+// business's own people signed in to the app are (Team is TeamLeaveOut, the default, or
+// TeamCount).
 type Analytics struct {
 	DoNotTrack string `json:"do_not_track,omitempty"`
+	Team       string `json:"team,omitempty"`
+}
+
+// The analytics' team values.
+const (
+	TeamLeaveOut = "leave_out"
+	TeamCount    = "count"
+)
+
+// CountsTeam reports whether the app's analytics counts the business's own people: false unless
+// the manifest says count. Pure.
+func (m Manifest) CountsTeam() bool {
+	return m.Analytics != nil && m.Analytics.Team == TeamCount
 }
 
 // The analytics' do_not_track values.

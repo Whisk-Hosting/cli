@@ -322,7 +322,7 @@
       "default": "open"
     },
     "analytics": {
-      "description": "How the app's analytics counts visitors. Every app has analytics; this only changes how it counts.",
+      "description": "How the app's analytics counts visitors. Every app has analytics; this only changes who it counts.",
       "type": "object",
       "additionalProperties": false,
       "properties": {
@@ -331,6 +331,12 @@
           "type": "string",
           "enum": ["respect", "ignore"],
           "default": "respect"
+        },
+        "team": {
+          "description": "leave_out (the default) leaves out the business's own people signed in to the app, not its guests. count counts them like any visitor.",
+          "type": "string",
+          "enum": ["leave_out", "count"],
+          "default": "leave_out"
         }
       }
     },
