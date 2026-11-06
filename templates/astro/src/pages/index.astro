@@ -8,7 +8,7 @@ const greeting = id.audience === "anonymous" ? "You are not signed in." : `Signe
 ---
 <!doctype html>
 <html lang="en">
-  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>{appName}</title></head>
+  <head><meta charset="utf-8" /><meta name="viewport" content="width=device-width" /><title>{appName}</title><script is:inline defer src="/.whisk/analytics.js"></script></head>
   <body style="font-family:system-ui;max-width:40rem;margin:4rem auto;padding:0 1rem">
     <h1>{appName}</h1>
     <p>{greeting}</p>

@@ -100,6 +100,22 @@
   ]
  },
  {
+  "name": "analytics",
+  "short": "The app's visits: views, visitors, top pages, sources and events",
+  "commands": [
+   {
+    "usage": "whisk analytics",
+    "short": "The app's visits: views, visitors, top pages, sources and events",
+    "flags": [
+     {
+      "name": "--period string",
+      "usage": "the period: 24h, 7d, 30d or 90d"
+     }
+    ]
+   }
+  ]
+ },
+ {
   "name": "approvals",
   "short": "Decisions the app's workflows are waiting on",
   "commands": [
@@ -1258,7 +1274,7 @@
   "short": "Print the dashboard page or the app's URL and open it in a browser when one exists",
   "commands": [
    {
-    "usage": "whisk open [dashboard|app|deploys|logs|runs|secrets|domains|access|errors]",
+    "usage": "whisk open [dashboard|app|deploys|logs|runs|secrets|domains|access|errors|analytics]",
     "short": "Print the dashboard page or the app's URL and open it in a browser when one exists",
     "flags": [
      {

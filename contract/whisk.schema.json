@@ -321,6 +321,19 @@
       "enum": ["open", "closed"],
       "default": "open"
     },
+    "analytics": {
+      "description": "How the app's analytics counts visitors. Every app has analytics; this only changes how it counts.",
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "do_not_track": {
+          "description": "respect (the default) leaves out a browser that asks not to be tracked. ignore counts it like any other.",
+          "type": "string",
+          "enum": ["respect", "ignore"],
+          "default": "respect"
+        }
+      }
+    },
     "managed": {
       "description": "Declares a Whisk product this app is the source of. Honoured only for an app Whisk registered as a product's source; ignored elsewhere.",
       "type": "object",

@@ -33,7 +33,7 @@ const who = (c: { req: { header: (n: string) => string | undefined } }) => ident
 app.get("/", (c) => {
   const id = who(c);
   const greeting = id.audience === "anonymous" ? "You are not signed in." : `Signed in as ${id.name || id.email}.`;
-  return c.html(html`<!doctype html><title>${appName}</title>
+  return c.html(html`<!doctype html><title>${appName}</title><script defer src="/.whisk/analytics.js"></script>
 <main style="font-family:system-ui;max-width:40rem;margin:4rem auto">
 <h1>${appName}</h1><p>${greeting}</p>
 <p><a href="/notes">Notes</a> · <a href="/.whisk/login?return=/">Sign in</a> · <a href="/.whisk/logout?return=/">Sign out</a></p></main>`);

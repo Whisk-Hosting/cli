@@ -98,6 +98,27 @@ type Manifest struct {
 	// Managed declares the product this app is the source of (MANAGED-APPS.md §2); nil for
 	// every other app.
 	Managed *Managed `json:"managed,omitempty"`
+	// Analytics is how the app's analytics counts its visitors (CONTRACT.md §3.1); nil keeps the
+	// defaults.
+	Analytics *Analytics `json:"analytics,omitempty"`
+}
+
+// Analytics is the manifest's analytics: whether a browser that asks not to be tracked is
+// counted. DoNotTrack is DoNotTrackRespect, the default, or DoNotTrackIgnore.
+type Analytics struct {
+	DoNotTrack string `json:"do_not_track,omitempty"`
+}
+
+// The analytics' do_not_track values.
+const (
+	DoNotTrackRespect = "respect"
+	DoNotTrackIgnore  = "ignore"
+)
+
+// RespectsDoNotTrack reports whether the app's analytics leaves out a browser that asks not to be
+// tracked: true unless the manifest says ignore. Pure.
+func (m Manifest) RespectsDoNotTrack() bool {
+	return m.Analytics == nil || m.Analytics.DoNotTrack != DoNotTrackIgnore
 }
 
 // Flag kinds (CONTRACT.md §3.3).

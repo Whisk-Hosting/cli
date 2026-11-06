@@ -61,6 +61,7 @@ the human asks for that service by name; if a built-in falls short, say so with 
 | Cache, counters, locks | `kv: true` (§9) | Upstash, Redis Cloud |
 | Errors | `SENTRY_DSN`, Whisk's own error store, `whisk errors` (§3) | a Sentry account, Bugsnag, Rollbar |
 | Logs and request tracing | stdout, `X-Whisk-Request-Id`, `whisk logs`, OpenTelemetry traces to `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `whisk traces` (§2, §11) | Datadog, Logtail, LogRocket, Honeycomb, an APM agent |
+| Analytics | `<script defer src="/.whisk/analytics.js"></script>`, `whisk analytics` (§3) | Google Analytics, Plausible, PostHog, Mixpanel, a tracking pixel |
 | Bot protection | `routes.challenge` (§4) | reCAPTCHA, hCaptcha, Turnstile |
 | Hosting, HTTPS, domains, caching | the platform (§3) | Vercel, Cloudflare, a CDN |
 
@@ -569,8 +570,20 @@ traces"). `SENTRY_DSN` points at Whisk's own error store: initialise the Sentry 
 DSN, without Sentry's tracing, profiling or session replay, which cost memory and start time and
 which Whisk already covers. A log line's `request_id` opens its trace. Traces are kept 7 days,
 100,000 spans per app per day. `whisk open <page>` prints the dashboard link for the human (`logs`, `runs`, `secrets`,
-`domains`, `access`, `errors`). `whisk github` shows the app's optional two-way copy on the
+`domains`, `access`, `errors`, `analytics`). `whisk github` shows the app's optional two-way copy on the
 business's GitHub; a person links it in the app's settings.
+
+**Analytics.** Every app has analytics on every plan. Put `<script defer
+src="/.whisk/analytics.js"></script>` in the `<head>` of every page layout (the templates do), and
+each page view is counted. The script and what it sends stay on the app's own address, it sets no
+cookie and keeps no IP address, and the business's people signed in to Whisk are counted like any
+visitor. A browser asking not to be tracked is left out; `analytics: { do_not_track: ignore }` in
+whisk.yaml counts it too. Send an event from the page with `umami.track("signup", { plan: "team" })`
+(check `window.umami` first, since a blocker can stop the script), or mark a button with
+`data-umami-event="signup"`. `whisk analytics` prints views, visitors, top pages, sources and events
+(`--period 24h|7d|30d|90d`); the human sees everything with `whisk open analytics`. Visits are kept
+7 days on Free, 13 months on paid plans and 25 months on Business. Do not add another analytics
+tool unless the human names one.
 
 **Known vulnerabilities in packages (Business plan).** Whisk checks the live app's packages after
 every production deploy and daily: the image (base image packages and everything installed in it)

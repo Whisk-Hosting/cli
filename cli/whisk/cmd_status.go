@@ -87,12 +87,13 @@ func statusCmd(s *session) *cobra.Command {
 var openTargets = map[string]string{
 	"dashboard": "", "app": "", "deploys": "/deploys", "logs": "/logs", "runs": "/runs",
 	"secrets": "/secrets", "domains": "/domains", "access": "/access", "errors": "/errors",
+	"analytics": "/analytics",
 }
 
 func openCmd(s *session) *cobra.Command {
 	var noBrowser bool
 	c := &cobra.Command{
-		Use:   "open [dashboard|app|deploys|logs|runs|secrets|domains|access|errors]",
+		Use:   "open [dashboard|app|deploys|logs|runs|secrets|domains|access|errors|analytics]",
 		Short: "Print the dashboard page or the app's URL and open it in a browser when one exists",
 		Args:  cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {

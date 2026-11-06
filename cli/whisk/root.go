@@ -160,7 +160,7 @@ func newRoot(s *session) *cobra.Command {
 
 	root.AddCommand(
 		versionCmd(s), updateCmd(s), skillCmd(s), errorGroupsCmd(s, errorsCmd(s)), schemaCmd(s), cronCmd(s), webhooksCmd(s), inboxCmd(s), emailCmd(s),
-		logsCmd(s), tracesCmd(s), mcpCmd(s),
+		logsCmd(s), tracesCmd(s), analyticsCmd(s), mcpCmd(s),
 		loginCmd(s), logoutCmd(s), whoamiCmd(s), accountCmd(s), orgsCmd(s), useCmd(s), cloneCmd(s), gitCredentialCmd(s),
 		initCmd(s), appsCmd(s), managedCmd(s), pauseCmd(s), resumeCmd(s), doctorCmd(s), devCmd(s),
 		deployCmd(s), deploysCmd(s), rollbackCmd(s), statusCmd(s), scanCmd(s), openCmd(s),

@@ -204,6 +204,7 @@ var baseWire = []any{
 	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
 	PackageCounts{}, PackageScan{}, Packages{}, LogDestination{}, LogDestinationList{},
 	LogDestinationRequest{}, LogLine{}, LogPage{}, ErrorGroup{}, ErrorSample{}, ErrorFrame{},
+	AppAnalytics{}, AnalyticsCount{}, AnalyticsOpen{},
 	TraceSummary{}, TraceUsage{}, TraceList{}, TraceSpan{}, TraceEvent{}, TraceDetail{}, Customer{},
 	CustomerList{}, WebhookSource{}, WebhookEvent{}, DeliveryError{},
 	Inbox{}, InboxDomain{}, InboxDomainRequest{}, InboxMessage{},

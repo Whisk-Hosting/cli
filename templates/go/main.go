@@ -76,7 +76,7 @@ func run() error {
 			greeting = fmt.Sprintf("Signed in as %s.", who)
 		}
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		fmt.Fprintf(w, `<!doctype html><title>%[1]s</title><main style="font-family:system-ui;max-width:40rem;margin:4rem auto">
+		fmt.Fprintf(w, `<!doctype html><title>%[1]s</title><script defer src="/.whisk/analytics.js"></script><main style="font-family:system-ui;max-width:40rem;margin:4rem auto">
 <h1>%[1]s</h1><p>%[2]s</p>
 <p><a href="/notes">Notes</a> · <a href="/.whisk/login?return=/">Sign in</a> · <a href="/.whisk/logout?return=/">Sign out</a></p></main>`, html.EscapeString(appName), html.EscapeString(greeting))
 	})

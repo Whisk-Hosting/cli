@@ -48,7 +48,7 @@ async def log_requests(request: Request, call_next):
 def home(request: Request) -> str:
     who = identity(request.headers)
     greeting = "You are not signed in." if who.audience == "anonymous" else f"Signed in as {who.name or who.email}."
-    return f"""<!doctype html><title>{APP_NAME}</title><main style="font-family:system-ui;max-width:40rem;margin:4rem auto">
+    return f"""<!doctype html><title>{APP_NAME}</title><script defer src="/.whisk/analytics.js"></script><main style="font-family:system-ui;max-width:40rem;margin:4rem auto">
 <h1>{APP_NAME}</h1><p>{greeting}</p>
 <p><a href="/notes">Notes</a> · <a href="/.whisk/login?return=/">Sign in</a> · <a href="/.whisk/logout?return=/">Sign out</a></p></main>"""
 
