@@ -474,14 +474,25 @@ ANAME record, or CNAME flattening (Cloudflare flattens a CNAME at the domain its
 that way at the `apex_target` printed, the app's address: it then goes through the app's CDN
 while that is on. Otherwise it takes A (and AAAA) records to the addresses printed, which reach
 the app directly and never through the CDN; to have the site on the CDN anyway, make
-`www.acme.com` the main name and redirect the bare domain to it (below). Relay the records with their HOST, the name as a DNS provider's form
+`www.acme.com` the main address (below). Relay the records with their HOST, the name as a DNS provider's form
 takes it (`@` is the domain itself), changing the name's existing A record rather than adding a
 second one and leaving its MX and other TXT records alone. Then `whisk domains verify jobs.acme.com` once they
 are in place; until then it answers `DOMAIN_UNVERIFIED` naming what is missing. The certificate
 is issued on verification and the app answers on the name with no deploy. DNS cannot redirect
-`www.acme.com` to `acme.com`: add and verify both, then redirect one to the other (below). Prefer relative
+`www.acme.com` to `acme.com`: add and verify both, then make one the main address (below). Prefer relative
 links; `WHISK_PUBLIC_URL` stays the platform address, and the `Host` header is the name the
 visitor used.
+
+**One main address.** Once the human's domain answers, ask them whether it should be the app's
+main address, and if so run `whisk domains main acme.com`. Every other address of the app (its
+Whisk address, `www.acme.com`, an old domain) then sends a browser to the same page on
+`acme.com` with a 301, so people and search engines see one site. Anything other than a page
+load, such as a webhook's POST, is still answered on the address it was sent to, so integrations
+set up with an old address keep working; point new ones at the main address. Previews keep
+their own addresses. A domain becomes the main address only once its certificate is issued, and
+the Whisk address takes over again by itself if the domain stops working. `whisk domains main`
+prints the main address and `whisk domains main --whisk` makes the Whisk address the main one
+again; a human can press Make main on the app's domains page.
 
 To put every app on the business's domain at once (crm.acme.com, billing.acme.com, and each new
 app with no further DNS), an owner or admin's session runs `whisk domains business add acme.com`
@@ -511,8 +522,9 @@ push. `whisk redirects test /old-page` prints what a request gets, and `whisk re
 what is live. To move the old domain itself, add it to the app (`whisk domains add
 old-acme.com`, verify it), then `whisk domains redirect old-acme.com acme.com`: every request
 to the old name gets a 301 to the same path on the new one, and a path a rule names goes
-straight to the rule's target there. The same command sends `www.acme.com` to `acme.com`; a
-human can also set either on the app's domains page in the dashboard.
+straight to the rule's target there. A human can also set it on the app's domains page in the
+dashboard. To send `www.acme.com` and every other address to `acme.com`, make `acme.com` the main
+address instead (above).
 
 **Their customers' domains.** An app that serves other businesses under their own names (a
 white-label app) lets each bring a domain of its own from inside the app, with no person running

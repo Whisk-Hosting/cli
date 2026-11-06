@@ -69,3 +69,21 @@ func TestApexAdvice(t *testing.T) {
 		})
 	}
 }
+
+func TestMainDomain(t *testing.T) {
+	cases := []struct {
+		name      string
+		all       []api.Domain
+		main      string
+		answering bool
+	}{
+		{"none", []api.Domain{{Hostname: "acme.com", Kind: apitypes.DomainCustom, Status: apitypes.DomainActive}}, "", false},
+		{"live", []api.Domain{{Hostname: "www.acme.com"}, {Hostname: "acme.com", Main: true, Status: apitypes.DomainActive}}, "acme.com", true},
+		{"waiting", []api.Domain{{Hostname: "acme.com", Main: true, Status: apitypes.DomainPendingCertificate}}, "acme.com", false},
+	}
+	for _, c := range cases {
+		if main, live := mainDomain(c.all); main != c.main || live != c.answering {
+			t.Errorf("%s: mainDomain = %q, %v; want %q, %v", c.name, main, live, c.main, c.answering)
+		}
+	}
+}

@@ -223,8 +223,72 @@ www.example.com to example.com. --off serves the app on the domain again.`,
 		},
 	}
 	redirect.Flags().BoolVar(&off, "off", false, "serve the app on the domain again")
-	domains.AddCommand(list, add, verify, remove, redirect, orgDomainCmd(s))
+	main := domainsMainCmd(s)
+	domains.AddCommand(list, add, verify, remove, redirect, main, orgDomainCmd(s))
 	return domains
+}
+
+// domainsMainCmd is whisk domains main: it sets or prints the app's main address
+// (CONTROL-PLANE.md §6.11).
+func domainsMainCmd(s *session) *cobra.Command {
+	var whisk bool
+	main := &cobra.Command{
+		Use:   "main [<hostname>]",
+		Short: "Make one address the app's main address, which every other one sends visitors to",
+		Long: `Makes <hostname>, one of the app's verified custom domains, its main address. Once its
+certificate is issued, a browser opening the app's Whisk address or any other of its domains is
+sent to the same path and query there with a 301. Any other request, such as a webhook's POST,
+is still answered where it arrives, so integrations set up with an old address keep working.
+Previews keep their own addresses. --whisk makes the app's Whisk address the main one again.
+With no argument, it prints the main address.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if whisk && len(args) == 1 {
+				return output.New("INVALID_REQUEST", "--whisk takes no hostname.", "Run whisk domains main --whisk, or name the hostname without --whisk.", nil)
+			}
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			var all []api.Domain
+			switch {
+			case whisk:
+				all, err = client.SetMainAddress(s.ctx, org, app, "")
+			case len(args) == 1:
+				all, err = client.SetMainAddress(s.ctx, org, app, strings.ToLower(strings.TrimSpace(args[0])))
+			default:
+				all, err = client.ListDomains(s.ctx, org, app)
+			}
+			if err != nil {
+				return wrap(err)
+			}
+			main, live := mainDomain(all)
+			s.printer.Result(map[string]any{"org": org, "app": app, "main": main, "domains": all}, func(w io.Writer) {
+				switch {
+				case main == "":
+					fmt.Fprintln(w, "The app's Whisk address is its main address.")
+				case live:
+					fmt.Fprintf(w, "%s is the main address: the app's other addresses send browsers there.\n", main)
+				default:
+					fmt.Fprintf(w, "%s is the main address once its certificate is issued; until then the app's addresses serve it as before.\n", main)
+				}
+			})
+			return nil
+		},
+	}
+	main.Flags().BoolVar(&whisk, "whisk", false, "make the app's Whisk address the main one again")
+	return main
+}
+
+// mainDomain is the custom domain marked as the app's main address, "" when none is, and whether
+// it answers already (its certificate is issued). Pure.
+func mainDomain(all []api.Domain) (string, bool) {
+	for _, d := range all {
+		if d.Main {
+			return d.Hostname, d.Status == apitypes.DomainActive
+		}
+	}
+	return "", false
 }
 
 // dnsRecords is the JSON form of the records a custom domain needs: the API's own list, which

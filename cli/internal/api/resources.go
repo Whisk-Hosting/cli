@@ -141,6 +141,16 @@ func (c *Client) VerifyDomain(ctx context.Context, org, app, id string) (Domain,
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/domains/"+pathSeg(id)+"/verify", map[string]any{}, &out)
 }
 
+// SetMainAddress makes hostname, one of the app's verified custom domains, its main address,
+// which its other addresses send browsers to, or makes its Whisk address the main one again with
+// "" or that address. The answer is the app's domains.
+func (c *Client) SetMainAddress(ctx context.Context, org, app, hostname string) ([]Domain, error) {
+	var out struct {
+		Items []Domain `json:"items"`
+	}
+	return out.Items, c.Do(ctx, http.MethodPut, appPath(org, app)+"/main-address", map[string]string{"hostname": hostname}, &out)
+}
+
 // SetDomainRedirect makes a custom domain send every request to another hostname of the app,
 // or serve the app again when to is "".
 func (c *Client) SetDomainRedirect(ctx context.Context, org, app, id, to string) (Domain, error) {

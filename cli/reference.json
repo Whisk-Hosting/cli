@@ -690,6 +690,16 @@
     "short": "List the app's hostnames and their verification state"
    },
    {
+    "usage": "whisk domains main [\u003chostname\u003e]",
+    "short": "Make one address the app's main address, which every other one sends visitors to",
+    "flags": [
+     {
+      "name": "--whisk",
+      "usage": "make the app's Whisk address the main one again"
+     }
+    ]
+   },
+   {
     "usage": "whisk domains redirect \u003chostname\u003e [\u003cto\u003e]",
     "short": "Send every request to a custom domain on to another hostname of the app",
     "flags": [

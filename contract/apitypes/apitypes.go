@@ -370,6 +370,10 @@ type Domain struct {
 	// RedirectTo is another hostname of the app that this custom domain sends every request to
 	// with a permanent redirect (CONTROL-PLANE.md §6.11); absent while it serves the app.
 	RedirectTo string `json:"redirect_to,omitempty"`
+	// Main is set on the custom domain chosen as the app's main address (CONTROL-PLANE.md
+	// §6.11): once it answers, every other address of the app sends browsers to it. No domain
+	// with main leaves the app's Whisk address the main one.
+	Main bool `json:"main,omitempty"`
 	// For custom domains awaiting verification.
 	TXTRecord   string `json:"txt_record,omitempty"`
 	TXTValue    string `json:"txt_value,omitempty"`
