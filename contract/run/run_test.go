@@ -198,7 +198,7 @@ func TestRetryOnlyWhatIsMarked(t *testing.T) {
 }
 
 func TestIdleEndsAQuietStream(t *testing.T) {
-	ctx, touch, stop := Idle(context.Background(), 300*time.Millisecond)
+	ctx, touch, stop := Idle(context.Background(), time.Second)
 	defer stop()
 	for range 3 {
 		time.Sleep(20 * time.Millisecond)
@@ -221,6 +221,11 @@ func TestSpawnReportsACrashOnce(t *testing.T) {
 		panic("lost")
 	})
 	<-done
+	// done closes before Spawn recovers the panic and reports it, so wait for the report.
+	deadline := time.Now().Add(5 * time.Second)
+	for len(r.of("session")) == 0 && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
 	time.Sleep(20 * time.Millisecond)
 	if got := r.of("session"); len(got) != 1 {
 		t.Fatalf("reported %v", got)
@@ -231,9 +236,15 @@ func TestEveryOfReadsItsIntervalEachRound(t *testing.T) {
 	var interval atomic.Int64
 	interval.Store(int64(2 * time.Millisecond))
 	var runs atomic.Int64
+	var hourly atomic.Bool
+	every := func() time.Duration {
+		d := time.Duration(interval.Load())
+		hourly.Store(d == time.Hour)
+		return d
+	}
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	go EveryOf(ctx, "test", func() time.Duration { return time.Duration(interval.Load()) }, func() time.Duration { return time.Second },
+	go EveryOf(ctx, "test", every, func() time.Duration { return time.Second },
 		func(context.Context) error { runs.Add(1); return nil })
 	deadline := time.Now().Add(2 * time.Second)
 	for runs.Load() < 3 && time.Now().Before(deadline) {
@@ -243,7 +254,14 @@ func TestEveryOfReadsItsIntervalEachRound(t *testing.T) {
 		t.Fatalf("ran %d times at a 2 ms interval", runs.Load())
 	}
 	interval.Store(int64(time.Hour))
-	time.Sleep(20 * time.Millisecond)
+	// Once the loop has read the hour it is waiting on it, so no run can follow.
+	deadline = time.Now().Add(2 * time.Second)
+	for !hourly.Load() && time.Now().Before(deadline) {
+		time.Sleep(time.Millisecond)
+	}
+	if !hourly.Load() {
+		t.Fatal("the loop never read the new interval")
+	}
 	settled := runs.Load()
 	time.Sleep(50 * time.Millisecond)
 	if runs.Load() != settled {

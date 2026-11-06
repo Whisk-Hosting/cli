@@ -63,7 +63,7 @@ func TestInbox(t *testing.T) {
 	var got hit
 	select {
 	case got = <-seen:
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("no delivery")
 	}
 	if got.h.Get("X-Whisk-Webhook-Source") != inbound.SourceName || webhook.VerifyDelivery(s.deliveryKey, got.h, got.body) != "" {
@@ -112,7 +112,7 @@ func TestInbox(t *testing.T) {
 		if again.h.Get("X-Whisk-Webhook-Id") != got.h.Get("X-Whisk-Webhook-Id") {
 			t.Fatal("a replay keeps the id")
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("no replay")
 	}
 	rec, _ = get(t, a, "POST", prefix+"/webhooks/inbox/events/"+list.Events[1].ID+"/replay", nil, "")

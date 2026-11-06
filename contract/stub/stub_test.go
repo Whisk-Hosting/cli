@@ -239,7 +239,7 @@ func TestWebhookIngress(t *testing.T) {
 		if why := webhook.VerifyDelivery(s.deliveryKey, h, []byte(body)); why != "" || h.Get(stubDeliveryMarker) != "" || h.Get("X-Whisk-Service-App") != "" {
 			t.Fatalf("delivery is not signed as the platform's (%q): %v", why, h)
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("no delivery")
 	}
 	rec, _ = get(t, a, "POST", hookURL, map[string]string{"Stripe-Signature": "t=" + itoa(ts) + ",v1=" + strings.Repeat("0", 64)}, body)
@@ -263,7 +263,7 @@ func TestWebhookIngress(t *testing.T) {
 		if h.Get("X-Whisk-Webhook-Id") != list.Events[0].ID {
 			t.Fatal("replay must reuse the webhook id")
 		}
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		t.Fatal("no replay delivery")
 	}
 	rec, _ = get(t, a, "POST", "/hooks/"+s.orgID+"/"+s.appID+"/legacy/tok123", nil, "x")

@@ -24,6 +24,7 @@ type webhookEvent struct {
 	DeliveryStatus string `json:"delivery_status"`
 	Attempts       int    `json:"attempts"`
 	LastStatus     int    `json:"last_status,omitempty"`
+	seq            uint64 // the order it was put in, which breaks a tie between equal times
 }
 
 type approval struct {
@@ -36,6 +37,7 @@ type approval struct {
 	RequestedAt time.Time      `json:"requested_at"`
 	Status      string         `json:"status"` // pending | approved | rejected
 	Decision    map[string]any `json:"decision,omitempty"`
+	seq         uint64         // the order it was put in, which breaks a tie between equal times
 }
 
 type store struct {
@@ -45,6 +47,7 @@ type store struct {
 	mails     []*sentMail // oldest first, at most maxSent
 	domains   *domains
 	files     map[string]*stubFile
+	seq       uint64 // the last order number given to an event or approval
 }
 
 func newStore() *store {
@@ -99,6 +102,8 @@ func (s *store) file(id string) (*stubFile, bool) {
 func (s *store) putEvent(e *webhookEvent) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	s.seq++
+	e.seq = s.seq
 	s.events[e.ID] = e
 }
 
@@ -126,7 +131,12 @@ func (s *store) eventsFor(source string) []webhookEvent {
 			out = append(out, *e)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].ReceivedAt.Before(out[j].ReceivedAt) })
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].ReceivedAt.Equal(out[j].ReceivedAt) {
+			return out[i].ReceivedAt.Before(out[j].ReceivedAt)
+		}
+		return out[i].seq < out[j].seq
+	})
 	return out
 }
 
@@ -134,6 +144,8 @@ func (s *store) putApproval(a *approval) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	if _, exists := s.approvals[a.ID]; !exists {
+		s.seq++
+		a.seq = s.seq
 		s.approvals[a.ID] = a
 	}
 }
@@ -166,6 +178,11 @@ func (s *store) approvalList(status string) []approval {
 			out = append(out, *a)
 		}
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].RequestedAt.Before(out[j].RequestedAt) })
+	sort.Slice(out, func(i, j int) bool {
+		if !out[i].RequestedAt.Equal(out[j].RequestedAt) {
+			return out[i].RequestedAt.Before(out[j].RequestedAt)
+		}
+		return out[i].seq < out[j].seq
+	})
 	return out
 }

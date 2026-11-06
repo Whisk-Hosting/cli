@@ -30,6 +30,7 @@ type partsAPI struct {
 	failing   map[int]int
 	puts      []int
 	active    int // store requests being handled
+	round     int // the run whose part URLs the store takes; a part sent to another run's URL is refused uncounted
 	authorise int
 	listed    int
 	joined    []byte
@@ -64,11 +65,16 @@ func newPartsAPI(t *testing.T) *partsAPI {
 		p.mu.Unlock()
 		writeJSON(w, 200, p.state())
 	})
-	mux.HandleFunc("PUT /store/{n}", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("PUT /store/{round}/{n}", func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
 			t.Error("the store was sent the token")
 		}
 		p.mu.Lock()
+		if r.PathValue("round") != strconv.Itoa(p.round) {
+			p.mu.Unlock()
+			http.Error(w, "<Error><Code>AccessDenied</Code></Error>", 403)
+			return
+		}
 		p.active++
 		p.mu.Unlock()
 		defer func() {
@@ -147,7 +153,7 @@ func (p *partsAPI) state() map[string]any {
 		if _, ok := p.stored[n]; ok {
 			part["etag"] = fmt.Sprintf(`"e%d"`, n)
 		} else {
-			part["url"] = p.srv.URL + "/store/" + strconv.Itoa(n)
+			part["url"] = p.srv.URL + "/store/" + strconv.Itoa(p.round) + "/" + strconv.Itoa(n)
 		}
 		parts = append(parts, part)
 	}
@@ -200,6 +206,9 @@ func TestUploadsAddCarriesOn(t *testing.T) {
 	}
 	p.settle()
 	p.mu.Lock()
+	// A part of the stopped run can still reach the store after settling; the next run's URLs
+	// are new, so such a late part is refused and does not change the counts taken here.
+	p.round++
 	delete(p.failing, 3)
 	before := len(p.puts)
 	held := len(p.stored)

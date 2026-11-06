@@ -16,7 +16,8 @@ import (
 
 func TestCommandKillsTheWholeGroupAtItsDeadline(t *testing.T) {
 	pidFile := t.TempDir() + "/child"
-	cmd := Command(context.Background(), 200*time.Millisecond, "sh", "-c", "sleep 30 & echo $! > "+pidFile+"; wait")
+	// The deadline leaves the shell time to record its child's pid before the group is killed.
+	cmd := Command(context.Background(), time.Second, "sh", "-c", "sleep 30 & echo $! > "+pidFile+"; wait")
 	start := time.Now()
 	err := cmd.Run()
 	if err == nil || time.Since(start) > 8*time.Second {
@@ -27,13 +28,28 @@ func TestCommandKillsTheWholeGroupAtItsDeadline(t *testing.T) {
 		t.Fatal(rerr)
 	}
 	pid, _ := strconv.Atoi(strings.TrimSpace(string(raw)))
-	deadline := time.Now().Add(2 * time.Second)
-	for syscall.Kill(pid, 0) == nil {
+	deadline := time.Now().Add(5 * time.Second)
+	for running(pid) {
 		if time.Now().After(deadline) {
 			t.Fatalf("the child %d outlived the command", pid)
 		}
 		time.Sleep(20 * time.Millisecond)
 	}
+}
+
+// running reports whether pid is a live process. A killed child is reparented and stays a
+// zombie until whatever process adopted it reaps it, which can take seconds; a zombie has
+// stopped running, so it counts as gone.
+func running(pid int) bool {
+	if syscall.Kill(pid, 0) != nil {
+		return false
+	}
+	stat, err := os.ReadFile("/proc/" + strconv.Itoa(pid) + "/stat")
+	if err != nil {
+		return true
+	}
+	state := string(stat)[strings.LastIndex(string(stat), ")")+1:]
+	return !strings.HasPrefix(strings.TrimSpace(state), "Z")
 }
 
 func TestOutputIsCappedAndCarriesStderr(t *testing.T) {

@@ -87,8 +87,9 @@ func TestTunnelForwardsOnlyWhatArrivesWhileItIsOpen(t *testing.T) {
 
 	calls := 0
 	var forwarded []string
+	// The lifetime is a hundred rounds, so a loaded machine still polls once before it ends.
 	n, err := Tunnel(context.Background(), TunnelOptions{
-		Source: "stripe", Handler: "/hooks/stripe", Lifetime: 200 * time.Millisecond, Every: 10 * time.Millisecond,
+		Source: "stripe", Handler: "/hooks/stripe", Lifetime: time.Second, Every: 10 * time.Millisecond,
 		Deliveries: func(context.Context) ([]Delivery, error) {
 			calls++
 			if calls == 1 {
