@@ -14,6 +14,9 @@ type AppAnalytics = apitypes.AppAnalytics
 // AnalyticsCount is one page, source or event and how often it came.
 type AnalyticsCount = apitypes.AnalyticsCount
 
+// AnalyticsCrawler is one robot that asked for the app's pages and how often.
+type AnalyticsCrawler = apitypes.AnalyticsCrawler
+
 // Analytics reads an app's visits over a period: 24h, 7d, 30d or 90d, empty for 7d.
 func (c *Client) Analytics(ctx context.Context, org, app, period string) (AppAnalytics, error) {
 	var out AppAnalytics

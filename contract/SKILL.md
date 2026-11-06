@@ -580,7 +580,9 @@ cookie and keeps no IP address. The business's own people signed in to the app a
 (`analytics: { team: count }` in whisk.yaml counts them), and so is a browser asking not to be
 tracked (`analytics: { do_not_track: ignore }` counts it). Send an event from the page with `umami.track("signup", { plan: "team" })`
 (check `window.umami` first, since a blocker can stop the script), or mark a button with
-`data-umami-event="signup"`. `whisk analytics` prints views, visitors, top pages, sources and events
+`data-umami-event="signup"`. Crawlers run no script, so Whisk counts them from its own request log:
+search engines, AI assistants and crawlers, link previews and other bots, with nothing to add to the
+app. `whisk analytics` prints views, visitors, top pages, sources, events and crawlers
 (`--period 24h|7d|30d|90d`); the human sees everything with `whisk open analytics`. Visits are kept
 7 days on Free, 13 months on paid plans and 25 months on Business. If the app has a privacy notice, say there
 that it counts visits with Whisk's analytics, without cookies, and for how long. Do not add another analytics

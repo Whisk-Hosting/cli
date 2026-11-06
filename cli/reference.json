@@ -101,11 +101,11 @@
  },
  {
   "name": "analytics",
-  "short": "The app's visits: views, visitors, top pages, sources and events",
+  "short": "The app's visits: views, visitors, top pages, sources, events and crawlers",
   "commands": [
    {
     "usage": "whisk analytics",
-    "short": "The app's visits: views, visitors, top pages, sources and events",
+    "short": "The app's visits: views, visitors, top pages, sources, events and crawlers",
     "flags": [
      {
       "name": "--period string",

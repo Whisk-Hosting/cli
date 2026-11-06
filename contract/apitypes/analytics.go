@@ -18,6 +18,11 @@ type AppAnalytics struct {
 	Pages          []AnalyticsCount `json:"pages"`
 	Sources        []AnalyticsCount `json:"sources"`
 	Events         []AnalyticsCount `json:"events"`
+	// Crawlers are the robots that asked the app for its pages over the period, most first:
+	// search engines, AI assistants and crawlers, link previews, SEO tools and other bots. They
+	// run no script, so they are counted from the platform's request log and are in none of the
+	// numbers above.
+	Crawlers []AnalyticsCrawler `json:"crawlers"`
 	// KeptDays is how many days the business's plan keeps; 0 keeps everything.
 	KeptDays int `json:"kept_days"`
 }
@@ -27,6 +32,15 @@ type AppAnalytics struct {
 type AnalyticsCount struct {
 	Name  string `json:"name"`
 	Count int    `json:"count"`
+}
+
+// AnalyticsCrawler is one robot and how many requests it made. Kind is search, ai_assistant (an
+// assistant fetching for a person), ai_crawler, preview (a link preview), seo or other; every
+// robot no list names is "Other bots".
+type AnalyticsCrawler struct {
+	Name     string `json:"name"`
+	Kind     string `json:"kind"`
+	Requests int    `json:"requests"`
 }
 
 // AnalyticsOpen is POST /orgs/:org/apps/:app/analytics/open: the address that opens the app's

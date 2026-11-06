@@ -17,10 +17,12 @@ func analyticsCmd(s *session) *cobra.Command {
 	var period string
 	c := &cobra.Command{
 		Use:   "analytics",
-		Short: "The app's visits: views, visitors, top pages, sources and events",
+		Short: "The app's visits: views, visitors, top pages, sources, events and crawlers",
 		Long: `Prints the app's visits over a period (--period 24h, 7d, 30d or 90d): views, visitors, visits,
 the bounce rate and the average visit, then the top pages, where visitors came from and the
 events the app sent. A page is counted when it loads <script defer src="/.whisk/analytics.js">.
+Last come the crawlers that asked for the app's pages (search engines, AI assistants and
+crawlers, link previews and other bots), counted from Whisk's request log.
 whisk open analytics opens the full analytics in the dashboard.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -37,7 +39,11 @@ whisk open analytics opens the full analytics in the dashboard.`,
 					*l = []api.AnalyticsCount{}
 				}
 			}
+			if a.Crawlers == nil {
+				a.Crawlers = []api.AnalyticsCrawler{}
+			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "analytics": a}, func(w io.Writer) {
+				defer printCrawlers(s, w, a.Crawlers)
 				if a.Views == 0 {
 					fmt.Fprintln(w, "No visits in that period. Pages are counted once they load <script defer src=\"/.whisk/analytics.js\"></script>.")
 					return
@@ -70,6 +76,29 @@ whisk open analytics opens the full analytics in the dashboard.`,
 	}
 	c.Flags().StringVar(&period, "period", "7d", "the period: 24h, 7d, 30d or 90d")
 	return c
+}
+
+// crawlerKinds are the API's crawler kinds as the table shows them.
+var crawlerKinds = map[string]string{
+	"search": "search engine", "ai_assistant": "AI assistant", "ai_crawler": "AI crawler",
+	"preview": "link preview", "seo": "SEO tool", "other": "other",
+}
+
+// printCrawlers is the robots that asked for the app's pages, which no visit count includes.
+func printCrawlers(s *session, w io.Writer, crawlers []api.AnalyticsCrawler) {
+	if len(crawlers) == 0 {
+		return
+	}
+	fmt.Fprintln(w)
+	rows := make([][]string, len(crawlers))
+	for i, c := range crawlers {
+		kind := crawlerKinds[c.Kind]
+		if kind == "" {
+			kind = c.Kind
+		}
+		rows[i] = []string{c.Name, kind, strconv.Itoa(c.Requests)}
+	}
+	s.printer.Table(w, []string{"CRAWLER", "KIND", "REQUESTS"}, rows)
 }
 
 // visitLength is an average visit's length: 42s, 2m, 1m 35s. Pure.
