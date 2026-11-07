@@ -33,7 +33,8 @@ func crawlersAPI(query *string) *httptest.Server {
 		}
 		writeJSON(w, 200, map[string]any{
 			"journey": map[string]any{"id": "MTc5Mw", "name": "Googlebot", "kind": "search", "network": "66.249.66.0",
-				"start": "2026-11-06T09:00:00Z", "end": "2026-11-06T09:12:00Z", "requests": 2, "pages": 2, "first_path": "/", "last_path": "/old"},
+				"start": "2026-11-06T09:00:00Z", "end": "2026-11-06T09:12:00Z", "requests": 2, "pages": 2, "first_path": "/", "last_path": "/old",
+				"user_agent": "Mozilla/5.0 (compatible; Googlebot/2.1)", "address": "66.249.66.1", "country": "US", "asn": "Google LLC"},
 			"requests": []map[string]any{
 				{"at": "2026-11-06T09:00:00Z", "method": "GET", "path": "/", "status": 200, "bytes": 5120, "millis": 42, "source": "edge"},
 				{"at": "2026-11-06T09:12:00Z", "method": "GET", "path": "/old", "status": 404, "bytes": 300, "millis": 0, "source": "cdn", "cached": true},
@@ -77,7 +78,7 @@ func TestAnalyticsJourney(t *testing.T) {
 	dir := boundDir(t, srv.URL)
 
 	r := runRemote(t, dir, srv.URL, nil, "analytics", "journey", "MTc5Mw")
-	for _, want := range []string{"Googlebot (search engine) from 66.249.66.0", "/old", "404", "5120", "CDN", "the journey has more"} {
+	for _, want := range []string{"Googlebot (search engine) from 66.249.66.1", "Network: US, Google LLC", "User agent: Mozilla/5.0 (compatible; Googlebot/2.1)", "/old", "404", "5120", "CDN", "the journey has more"} {
 		if r.Code != 0 || !strings.Contains(r.Stdout, want) {
 			t.Errorf("journey lacks %q: %+v", want, r)
 		}
@@ -85,6 +86,14 @@ func TestAnalyticsJourney(t *testing.T) {
 	r = runRemote(t, dir, srv.URL, nil, "analytics", "journey", "nope", "--json")
 	if e, _ := r.JSON["error"].(map[string]any); r.Code == 0 || e["code"] != "NOT_FOUND" {
 		t.Fatalf("unknown journey: %+v", r)
+	}
+}
+
+func TestPlaceWords(t *testing.T) {
+	for _, c := range [][3]string{{"US", "Google LLC", "US, Google LLC"}, {"", "Google LLC", "Google LLC"}, {"US", "", "US"}, {"", "", ""}} {
+		if got := placeWords(c[0], c[1]); got != c[2] {
+			t.Errorf("placeWords(%q, %q) = %q, want %q", c[0], c[1], got, c[2])
+		}
 	}
 }
 

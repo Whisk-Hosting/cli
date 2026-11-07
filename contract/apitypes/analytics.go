@@ -109,6 +109,11 @@ type CrawlerJourney struct {
 	Errors    int       `json:"errors"`
 	FirstPath string    `json:"first_path"`
 	LastPath  string    `json:"last_path"`
+	// UserAgent, Address, Country and ASN are the journey's first request's.
+	UserAgent string `json:"user_agent"`
+	Address   string `json:"address"`
+	Country   string `json:"country"`
+	ASN       string `json:"asn"`
 }
 
 // CrawlerJourneyDetail is GET /orgs/:org/apps/:app/analytics/crawlers/journeys/:id: one journey
@@ -122,16 +127,23 @@ type CrawlerJourneyDetail struct {
 
 // CrawlerRequest is one robot request: when, the method and page, the answer, its size and how
 // long the app took (0 when the CDN answered from its copy), and where it was answered: edge or
-// cdn.
+// cdn. UserAgent is the header as sent (cut to 512 bytes); Address is the robot's address, cut
+// short when the CDN answered; Country is a two-letter code and ASN the network owner's name.
 type CrawlerRequest struct {
-	At     time.Time `json:"at"`
-	Method string    `json:"method"`
-	Path   string    `json:"path"`
-	Status int       `json:"status"`
-	Bytes  int64     `json:"bytes"`
-	Millis int       `json:"millis"`
-	Source string    `json:"source"`
-	Cached bool      `json:"cached"`
+	At        time.Time `json:"at"`
+	Method    string    `json:"method"`
+	Path      string    `json:"path"`
+	Status    int       `json:"status"`
+	Bytes     int64     `json:"bytes"`
+	Millis    int       `json:"millis"`
+	Source    string    `json:"source"`
+	Cached    bool      `json:"cached"`
+	UserAgent string    `json:"user_agent"`
+	Address   string    `json:"address"`
+	Host      string    `json:"host"`
+	Referer   string    `json:"referer"`
+	Country   string    `json:"country"`
+	ASN       string    `json:"asn"`
 }
 
 // AnalyticsOpen is POST /orgs/:org/apps/:app/analytics/open: the address that opens the app's

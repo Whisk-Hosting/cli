@@ -78,10 +78,10 @@ func printAppCrawlers(s *session, w io.Writer, a api.AppCrawlers) {
 		fmt.Fprintln(w)
 		rows = make([][]string, len(a.Journeys))
 		for i, j := range a.Journeys {
-			rows[i] = []string{j.ID, j.Name, j.Network, at(j.Start), span(j.End.Sub(j.Start)), strconv.Itoa(j.Requests),
-				strconv.Itoa(j.Pages), j.FirstPath + " → " + j.LastPath}
+			rows[i] = []string{j.ID, j.Name, firstOf(j.Address, j.Network), firstOf(j.Country, "-"), at(j.Start), span(j.End.Sub(j.Start)),
+				strconv.Itoa(j.Requests), strconv.Itoa(j.Pages), j.FirstPath + " → " + j.LastPath}
 		}
-		s.printer.Table(w, []string{"JOURNEY", "CRAWLER", "NETWORK", "STARTED", "LASTED", "REQUESTS", "PAGES", "FIRST → LAST"}, rows)
+		s.printer.Table(w, []string{"JOURNEY", "CRAWLER", "ADDRESS", "COUNTRY", "STARTED", "LASTED", "REQUESTS", "PAGES", "FIRST → LAST"}, rows)
 	}
 }
 
@@ -90,9 +90,10 @@ func journeyCmd(s *session) *cobra.Command {
 	return &cobra.Command{
 		Use:   "journey <id>",
 		Short: "One crawler's journey through the app, request by request",
-		Long: `Prints one crawler's journey, its id from whisk analytics crawlers: every request in order, with
-the time, the page, the answer, its size, how long the app took and whether the CDN answered from
-its copy.`,
+		Long: `Prints one crawler's journey, its id from whisk analytics crawlers: its address, country, network
+and user agent, then every request in order, with the time, the page, the answer, its size, how
+long the app took and whether the CDN answered from its copy. --json adds each request's user
+agent, address, host and referrer.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, org, app, err := s.appClient()
@@ -105,8 +106,15 @@ its copy.`,
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "journey": d}, func(w io.Writer) {
 				j := d.Journey
-				fmt.Fprintf(w, "%s (%s) from %s: %d requests to %d pages over %s, from %s\n\n", j.Name, crawlerKind(j.Kind), j.Network,
+				fmt.Fprintf(w, "%s (%s) from %s: %d requests to %d pages over %s, from %s\n", j.Name, crawlerKind(j.Kind), firstOf(j.Address, j.Network),
 					j.Requests, j.Pages, span(j.End.Sub(j.Start)), at(j.Start))
+				if place := placeWords(j.Country, j.ASN); place != "" {
+					fmt.Fprintf(w, "Network: %s\n", place)
+				}
+				if j.UserAgent != "" {
+					fmt.Fprintf(w, "User agent: %s\n", j.UserAgent)
+				}
+				fmt.Fprintln(w)
 				rows := make([][]string, len(d.Requests))
 				for i, r := range d.Requests {
 					from := "app"
@@ -123,6 +131,18 @@ its copy.`,
 			})
 			return nil
 		},
+	}
+}
+
+// placeWords is a country and a network owner as one phrase: "US, Google LLC". Pure.
+func placeWords(country, asn string) string {
+	switch {
+	case country == "":
+		return asn
+	case asn == "":
+		return country
+	default:
+		return country + ", " + asn
 	}
 }
 
