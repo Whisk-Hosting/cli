@@ -117,12 +117,12 @@ type EmailSendEvent struct {
 	At     time.Time       `json:"at"`
 }
 
-// BucketProvider is whose bucket an org's files are in: Whisk's own (hetzner) or one the
+// BucketProvider is whose bucket an org's files are in: Whisk's own (whisk) or one the
 // business brought (byo).
 type BucketProvider string
 
 const (
-	BucketPlatform BucketProvider = "hetzner"
+	BucketPlatform BucketProvider = "whisk"
 	BucketBYO      BucketProvider = "byo"
 )
 

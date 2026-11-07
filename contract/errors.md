@@ -276,7 +276,7 @@ Status: 403 · Surface: api, git, edge, hooks, deploy
 
 When: a check found an app of the business that looks like a scam or malware, or the business
 was started by a person, address or computer already held, so it is paused until Whisk reviews
-it (CONTROL-PLANE.md §6.27). Apps show a review page; deploys, new apps, previews, app email and
+it. Apps show a review page; deploys, new apps, previews, app email and
 webhooks are refused. Export still works.
 
 Fix: Nothing to do: Whisk reviews every held business and releases it if the check was wrong.
@@ -546,7 +546,7 @@ Status: - · Surface: deploy (a warning), cli
 
 When: the deploy went live, but every route of the app is public (`routes.public` covers `/**`)
 and its code or pages ask for a password, so it runs its own sign-in, which only a Promoted app
-may do (CONTROL-PLANE.md §6.15 "Promoted apps"). The app is neither a Promoted app in force nor a Medusa shop, and its
+may do. The app is neither a Promoted app in force nor a Medusa shop, and its
 whisk.yaml does not say `promoted: true`. It is a warning on the deploy (`warnings`), not a
 failure: the app serves. `details.dashboard` is the app's page, where an owner or billing
 contact makes it a Promoted app; `details.rule` is doctor's matching rule, W106.
@@ -564,7 +564,7 @@ must be public, and the platform signs people in.
 
 Status: 409 · Surface: deploy, cli
 
-When: the app's whisk.yaml says `b2b: true` (the shop template's trade ordering, CONTRACT.md §11)
+When: the app's whisk.yaml says `b2b: true` (the shop template's trade ordering)
 and Whisk will not give it to this build: the app is not a Promoted app in force and the deploy
 is a preview (`details.reason` `promotion`; a production deploy waits as
 `PROMOTED_APP_REQUIRED` instead), the build does not use a Dockerfile (`dockerfile`), or this
@@ -582,7 +582,7 @@ For `not_carried`, remove `b2b: true`; the shop works without trade ordering.
 
 Status: 503 · Surface: app
 
-When: a request to the shop template's site editor (`/cms`, CONTRACT.md §11) reached the shop
+When: a request to the shop template's site editor (`/cms`) reached the shop
 while its editor was starting or starting again. The shop starts it again by itself.
 
 Fix: Try again in a few seconds, as `Retry-After` says. If it lasts, read the app's logs for the
@@ -615,7 +615,7 @@ plan that includes Promoted apps first.
 Status: 409 · Surface: api, git, cli
 
 When: someone asked to change the code of a managed app, an app Whisk supplies and keeps up to
-date in the business (MANAGED-APPS.md §4): a push or clone of its repository, a deploy, a
+date in the business: a push or clone of its repository, a deploy, a
 GitHub link, opening its database, making it a Promoted app or giving it a domain.
 `details.product` names the product.
 
@@ -630,10 +630,10 @@ NAME=value` or on its page in the dashboard, pause it with `whisk pause <app>`, 
 
 Status: 503 · Surface: edge, api
 
-When: a request reached a managed app a person paused (MANAGED-APPS.md §4). The edge answers
+When: a request reached a managed app a person paused. The edge answers
 its public hostnames with the plain paused page, and the app itself answers its other routes
 with this code while `WHISK_PAUSED` is set. The platform's notify route answers a paused
-copy's notice with it too (MANAGED-APPS.md §6.1): a paused copy tells nobody.
+copy's notice with it too: a paused copy tells nobody.
 
 Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 
@@ -645,7 +645,7 @@ Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 
 Status: 409 · Surface: api
 
-When: the business cannot add this product (MANAGED-APPS.md §7): its plan does not include it
+When: the business cannot add this product: its plan does not include it
 (`details.reason: plan`), the product has a price and the business is billed through its
 agency (`details.reason: client`) or inside its free trial (`details.reason: trial`), or the
 product was retired (`details.reason: retired`).
@@ -662,8 +662,7 @@ trial or choose a plan first. A retired product cannot be added.
 
 Status: 409 · Surface: api
 
-When: a business asked to add a product that has no release ready for customers yet
-(MANAGED-APPS.md §3).
+When: a business asked to add a product that has no release ready for customers yet.
 
 Fix: Try again later; nothing in the business needs to change.
 
@@ -676,7 +675,7 @@ Fix: Try again later; nothing in the business needs to change.
 Status: 409 · Surface: api
 
 When: a business asked to add a product, or to link a copy, to an app that already has a copy of
-that product linked to it (MANAGED-APPS.md §4). For a product with a `link_key`, an app may have a
+that product linked to it. For a product with a `link_key`, an app may have a
 copy for each value of that setting, so it is a copy with the same value (or, unset, another
 copy with it unset), named in `details.setting` and `details.value`; changing a copy's value to
 one taken answers it too. `details.copy` names the copy that has it.
@@ -692,8 +691,7 @@ delete the other copy first.
 
 Status: 409 · Surface: api
 
-When: someone asked to delete the source app of a product that still has copies
-(MANAGED-APPS.md §2).
+When: someone asked to delete the source app of a product that still has copies.
 
 Fix: Whisk retires the product first; its copies stay on their last release.
 
@@ -706,12 +704,12 @@ Fix: Whisk retires the product first; its copies stay on their last release.
 Status: 403 · Surface: container
 
 When: an app called the platform's notify route, `POST
-http://connect.internal.whisk:8443/.whisk/notify` (MANAGED-APPS.md §6.1), and it is not the
+http://connect.internal.whisk:8443/.whisk/notify`, and it is not the
 production of a managed app's copy. Only a copy tells its business's owners through it; a
 product's source app, an ordinary app and a preview are refused.
 
 Fix: Treat the notice as not sent and carry on; an ordinary app emails its own people through
-the email send API instead (CONTRACT.md §8).
+the email send API instead.
 
 ```json
 {"error":{"code":"NOTIFY_NOT_MANAGED","message":"erp-link is not a copy of a managed product, so it cannot tell the business's owners through Whisk.","fix":"Treat the notice as not sent and carry on.","docs":"https://skill.whisk.run/errors/NOTIFY_NOT_MANAGED","details":{"app":"erp-link"}}}
@@ -722,7 +720,7 @@ the email send API instead (CONTRACT.md §8).
 Status: 403 · Surface: container
 
 When: a managed app's copy sent a notice whose code the release it runs does not declare in
-`managed.notify` (MANAGED-APPS.md §6.1). `details.declared` lists the codes it may send.
+`managed.notify`. `details.declared` lists the codes it may send.
 
 Fix: Send only a code the product's `whisk.yaml` declares under `managed.notify`, or declare the
 code there and release the product again.
@@ -737,8 +735,7 @@ Status: 400 · Surface: container
 
 When: a notice sent to the platform's notify route is not `POST` with a JSON body of at most
 4 KiB, `{code, occurrence, detail?}`: `code` in the error-code shape, `occurrence` 1 to 100
-letters, digits and `. _ : / -`, and `detail` at most 1000 characters of plain text
-(MANAGED-APPS.md §6.1). `details.field` names the part that is wrong.
+letters, digits and `. _ : / -`, and `detail` at most 1000 characters of plain text. `details.field` names the part that is wrong.
 
 Fix: Send the notice in that shape; the occurrence is the app's own key for one occurrence,
 such as the day it began.
@@ -753,7 +750,7 @@ Status: 429 · Surface: container
 
 When: a managed app's copy has already told its owners about 10 different occurrences this UTC
 day, the most the platform sends for one copy in a day, so a fault in the product cannot fill
-an owner's inbox (MANAGED-APPS.md §6.1). A notice it already sent still answers 202 as a
+an owner's inbox. A notice it already sent still answers 202 as a
 duplicate. `details.retry_after` is the seconds until the next UTC day, also sent as
 `Retry-After`.
 
@@ -1039,12 +1036,11 @@ app may use the same value as that app; if they agree, run
 Status: 409 · Surface: api, deploy, cli
 
 When: a production deploy declares something only a person may allow, and no grant covers it
-yet. One of three kinds: a `connection` (CONTRACT.md §3.1) whose address or recipe differs from
+yet. One of three kinds: a `connection` whose address or recipe differs from
 the granted one, or that names an operation not granted; a `secret` the business shares that
-the app is not on the list of apps for (CONTROL-PLANE.md §6.7 Grants); or `access` wider than the
+the app is not on the list of apps for; or `access` wider than the
 app's live production deploy has: a new app under `calls`, a new webhook, a
-route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`
-(CONTROL-PLANE.md §6.5). The deploy is `blocked`; `details.grants` lists one entry per grant
+route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`. The deploy is `blocked`; `details.grants` lists one entry per grant
 needed, `{kind, name, environment, hash, recipe_changed, new_operations, change}`, where `change`
 says in plain words what a `secret` or `access` entry would allow, and `details.url` the blocked
 deploy's page, where an owner or admin allows every kind in one step, with any value the deploy
@@ -1068,11 +1064,11 @@ own once it is approved.
 Status: - · Surface: deploy
 
 When: the deploy's manifest names a secret Whisk put on hold because its value is a key for an
-AI model (CONTROL-PLANE.md §6.7 Keys for AI models). The app starts without it and the deploy
+AI model. The app starts without it and the deploy
 carries this warning with the names in `details.names` and the providers in
 `details.providers`. Nothing is wrong: AI keys now live in an AI connection with a spend cap.
 
-Fix: Move the key from `secrets` to a connection with `ai:` (CONTRACT.md §3.1 AI models) that
+Fix: Move the key from `secrets` to a connection with `ai:` that
 reads it as `secret.NAME`, talk the spend cap through with the human before you set it, and
 push. The value stays as it is; nobody sets it again.
 
@@ -1085,7 +1081,7 @@ push. The value stays as it is; nobody sets it again.
 Status: - · Surface: deploy
 
 When: a preview deploy's manifest names a secret the business shares that the app is not on the
-list of apps for (CONTROL-PLANE.md §6.7 Grants). The preview never waits: it starts without the
+list of apps for. The preview never waits: it starts without the
 secret, and the deploy carries this warning with the names in `details.names`. A production
 deploy waits instead, with `GRANT_NEEDED`.
 
@@ -1104,7 +1100,7 @@ needs the secret shared with previews.
 
 Status: 403 · Surface: api
 
-When: a person asked for something that needs a confirmed session (CONTROL-PLANE.md §4.2),
+When: a person asked for something that needs a confirmed session,
 such as granting or resuming a connection, and in the last 2 hours they were neither checked by
 an emailed code, a company sign-in whose provider reported re-checking them (auth_time) or a
 passkey, nor made another decision that needed a confirmed session. A password alone does not
@@ -1281,7 +1277,7 @@ the next call.
 Status: 429 · Surface: container
 
 When: the app has spent its AI connection's spend cap for the window `details.window` names
-(`day`, `week`, `month` or `total`; CONTRACT.md §3.1 AI models). Its calls to the model stop
+(`day`, `week`, `month` or `total`). Its calls to the model stop
 until the window ends: `Retry-After` and `details.retry_after` give the seconds, and a `total`
 cap has none. The business's owners, admins and developers were emailed.
 
@@ -1299,7 +1295,7 @@ on at once.
 Status: 409 · Surface: container
 
 When: a success answer from the AI connection named none of its cost parts, so Whisk could not
-count it against the spend cap (CONTRACT.md §3.1 AI models). The connection's calls from this
+count it against the spend cap. The connection's calls from this
 deploy stop; `details.operation` names the call. A stream that never asks the provider for usage
 is the usual cause.
 
@@ -1481,15 +1477,13 @@ tests in the build. Check for a step waiting on input.
 
 Status: - · Surface: deploy
 
-When: the node could not pull the built image from the registry. A platform fault, not the
-app's: a deploy that meets it fails as `PLATFORM_DEPLOY_FAILED` with this code as
-`details.cause_code`.
+When: the built image could not be made ready to run. A platform fault, not the app's: a deploy
+that meets it fails as `PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`.
 
-Fix: Retry `whisk deploy`. If it fails twice, the platform has already paged its team; check
-`https://whisk.run/status`.
+Fix: Retry `whisk deploy`. If it keeps failing, check `https://whisk.run/status`.
 
 ```json
-{"error":{"code":"IMAGE_PULL_FAILED","message":"The node could not pull image sha256:9f3c… from the registry.","fix":"Run whisk deploy again. If it fails twice the platform's team has been paged; see https://whisk.run/status.","docs":"https://skill.whisk.run/errors/IMAGE_PULL_FAILED","details":{"digest":"sha256:9f3c","node":"node1"}}}
+{"error":{"code":"IMAGE_PULL_FAILED","message":"The built image could not be made ready to run.","fix":"Run whisk deploy again. If it keeps failing, see https://whisk.run/status.","docs":"https://skill.whisk.run/errors/IMAGE_PULL_FAILED","details":{}}}
 ```
 
 ## HEALTH_CHECK_FAILED
@@ -1557,24 +1551,21 @@ with `whisk db query --database` and write them back.
 
 Status: - · Surface: deploy, cli
 
-When: a deploy could not finish for a reason outside the app's code: the builder or the registry failed, no
-node was ready, a node could not prepare the database or cache, apply its network rules, pull
-the image, start the container, take a restore point or finish running the migration, or the
-edge could not be updated. `details.fault` is `platform`, `details.cause_code` names the part
-that failed (`NODE_DOWN`, `IMAGE_PULL_FAILED`, `POLICY_APPLY_FAILED`, `DATABASE_FAILED`,
-`BUILD_FAILED` for the builder, `PACKAGE_CHECK_FAILED` for the check before the build,
-`MIGRATE_FAILED` for the node, and so on), `details.step_code`
-the deploy step when that differs, and `details.cause` the node's own words where it gave
-them. The platform's team is told the cause when it happens. The CLI exits 5, not 6.
+When: a deploy could not finish for a reason outside the app's code. `details.fault` is
+`platform`, `details.cause_code` names the part that failed (`NODE_DOWN`, `IMAGE_PULL_FAILED`,
+`POLICY_APPLY_FAILED`, `DATABASE_FAILED`, `BUILD_FAILED` for the builder, `PACKAGE_CHECK_FAILED`
+for the check before the build, `MIGRATE_FAILED`, and so on), `details.step_code` the deploy step
+when that differs, and `details.step` the step. Whatever was live before the deploy stays live.
+The CLI exits 5, not 6.
 
-The message opens "This deploy could not finish:" and says what happened, not whose fault it
-was; `details.fault` is how an agent tells.
+The message says the deploy could not finish, not whose fault it was; `details.fault` is how an
+agent tells.
 
 Fix: Do not change the code. Run `whisk deploy` again; if it stops the same way, wait a few
 minutes and run it again.
 
 ```json
-{"error":{"code":"PLATFORM_DEPLOY_FAILED","message":"This deploy could not finish: the migration could not start on node node1: the node's network rules would not load (network policy could not be applied). It did not run, so the database is as it was and the previous deploy is still live.","fix":"Run whisk deploy again; if it stops the same way, wait a few minutes and run it again.","docs":"https://skill.whisk.run/errors/PLATFORM_DEPLOY_FAILED","details":{"fault":"platform","cause_code":"POLICY_APPLY_FAILED","step_code":"POLICY_APPLY_FAILED","step":"migrate","node":"node1","cause":"network policy could not be applied"}}}
+{"error":{"code":"PLATFORM_DEPLOY_FAILED","message":"This deploy could not finish. Whatever was live before it is still live.","fix":"Run whisk deploy again; if it stops the same way, wait a few minutes and run it again.","docs":"https://skill.whisk.run/errors/PLATFORM_DEPLOY_FAILED","details":{"step":"migrate","cause_code":"POLICY_APPLY_FAILED","fault":"platform"}}}
 ```
 
 ## DEPLOY_FAILED
@@ -1642,16 +1633,14 @@ Fix: Wait a minute and retry. If it persists, run `whisk deploy`.
 
 Status: - · Surface: deploy
 
-When: the node could not apply the network policy for the container or the migration, so it was
-not started. A platform fault; the database is untouched and the previous deploy stays live. A
+When: the container or the migration could not be given its network rules, so it was not
+started. A platform fault; the database is untouched and the previous deploy stays live. A
 deploy that meets it fails as `PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`.
-`details` carries `step`, `node`, `cause` (nft's own words) and `fault: platform`, and the
-platform's team is paged.
 
-Fix: Retry `whisk deploy`. The platform's team has been paged if it fails twice.
+Fix: Retry `whisk deploy`. If it keeps failing, check `https://whisk.run/status`.
 
 ```json
-{"error":{"code":"POLICY_APPLY_FAILED","message":"The node could not apply network policy for the container and refused to start it.","fix":"Run whisk deploy again. If it fails twice the platform's team has been paged.","docs":"https://skill.whisk.run/errors/POLICY_APPLY_FAILED","details":{"node":"node1"}}}
+{"error":{"code":"POLICY_APPLY_FAILED","message":"The container could not be given its network rules, so it was not started.","fix":"Run whisk deploy again. If it keeps failing, see https://whisk.run/status.","docs":"https://skill.whisk.run/errors/POLICY_APPLY_FAILED","details":{}}}
 ```
 
 ## CSRF_REJECTED
@@ -1733,8 +1722,7 @@ Status: 400 · Surface: edge, auth
 When: the request path has a `.` or `..` segment, counted after percent-decoding and splitting
 on `/` and `\` (so `%2e%2e`, `..%2f` and `..\` count), or does not percent-decode. The edge
 classifies routes on the path as sent, and an app that resolves dot segments could serve a
-different route than the one the edge classified, so it refuses the path instead of guessing
-(CADDY.md §5.1 step 1). Browsers resolve dot segments before sending, so pages never see this.
+different route than the one the edge classified, so it refuses the path instead of guessing. Browsers resolve dot segments before sending, so pages never see this.
 
 Fix: Send the path already resolved, as a browser does: `/a/b/../c` is `/a/c`.
 
@@ -1746,15 +1734,12 @@ Fix: Send the path already resolved, as a browser does: `/a/b/../c` is `/a/c`.
 
 Status: 403 · Surface: edge
 
-When: a request reached the origin of a hostname that a CDN fronts, and it neither carried the
-shared `X-Whisk-Edge-Key` nor came from the CDN's published ranges (CADDY.md §3).
+When: a request for a hostname that a CDN fronts reached Whisk without coming through the CDN.
 
-Fix: Send the request to the hostname's CDN address rather than to the origin. If the CDN itself
-is refused, its configured origin header or the platform's ranges are stale; the platform's
-team fixes either.
+Fix: Send the request to the hostname's public address.
 
 ```json
-{"error":{"code":"CDN_ORIGIN_REQUIRED","message":"This hostname accepts requests only through its CDN.","fix":"Send the request to the hostname's CDN address, not to the origin; a CDN must present X-Whisk-Edge-Key or come from its published ranges.","docs":"https://skill.whisk.run/errors/CDN_ORIGIN_REQUIRED","details":{"hostname":"app.acme.com"}}}
+{"error":{"code":"CDN_ORIGIN_REQUIRED","message":"This hostname accepts requests only through its CDN.","fix":"Send the request to the hostname's public address.","docs":"https://skill.whisk.run/errors/CDN_ORIGIN_REQUIRED","details":{"hostname":"app.acme.com"}}}
 ```
 
 ## CHALLENGE_REQUIRED
@@ -2132,7 +2117,7 @@ Status: - · Surface: deploy (a warning), cli
 
 When: other apps of the business call this app only because they called it before apps had to
 accept their callers, and this app's `whisk.yaml` has no `accepted_callers` line. Those calls
-still work for this platform release (the call bridge, CONTROL-PLANE.md §4.4), and stop when it
+still work for this platform release (the call bridge), and stop when it
 ends. A production deploy goes live with this warning; `details.callers` names the apps and
 `details.line` the line to add. `whisk doctor` reports the same as `W120`. Once the app declares
 `accepted_callers`, only the apps it lists may call it, whether or not they called it before.
@@ -2650,72 +2635,6 @@ then try again.
 {"error":{"code":"BUCKET_UNREACHABLE","message":"The bucket this business brought did not answer.","fix":"Check that the endpoint is your provider's public https:// S3 address and that it is up, then try again.","docs":"https://skill.whisk.run/errors/BUCKET_UNREACHABLE","details":{}}}
 ```
 
-## STORE_UNREACHABLE
-
-Status: 502 · Surface: api
-
-When: an operator recorded a store (CONTROL-PLANE.md §6.13 "Stores") and the platform could not
-reach it as a store with the key sent: the endpoint did not answer, the key was refused, or the
-root bucket is not there (and was not asked to be made). The store is not recorded. The same when
-a move to a recorded store could not make the business's bucket there.
-
-Fix: Check the endpoint, the key and that the root bucket exists, then send the store again.
-
-```json
-{"error":{"code":"STORE_UNREACHABLE","message":"The store did not answer as a store: the root bucket whisk-files is not there","fix":"Check the endpoint, the key and that the root bucket exists, then send the store again.","docs":"https://skill.whisk.run/errors/STORE_UNREACHABLE","details":{}}}
-```
-
-## STORE_EXISTS
-
-Status: 409 · Surface: api
-
-When: a store is recorded under a name another store already has.
-
-Fix: Name the store differently, or remove the one there first.
-
-```json
-{"error":{"code":"STORE_EXISTS","message":"A store named backblaze is already recorded.","fix":"Name the store differently, or remove the one there first.","docs":"https://skill.whisk.run/errors/STORE_EXISTS","details":{"name":"backblaze"}}}
-```
-
-## STORE_IN_USE
-
-Status: 409 · Surface: api
-
-When: a store is being forgotten while a business's bucket is at it or still moving from it, or
-while it is the default store, where new businesses' files go.
-
-Fix: Make another store the default first, and move each business away, then wait for the moves
-to finish.
-
-```json
-{"error":{"code":"STORE_IN_USE","message":"Buckets are at the store hetzner, or still moving from it.","fix":"Move each business away first and wait for the moves to finish.","docs":"https://skill.whisk.run/errors/STORE_IN_USE","details":{"name":"hetzner"}}}
-```
-
-## STORE_MOVING
-
-Status: 409 · Surface: api
-
-When: a business's files are asked to move while a move of them is still running.
-
-Fix: Wait for the move to finish; where the business's files are says how far it is.
-
-```json
-{"error":{"code":"STORE_MOVING","message":"The business's files are already moving.","fix":"Wait for the move to finish: where the business's files are says how far it is.","docs":"https://skill.whisk.run/errors/STORE_MOVING","details":{"org":"acme"}}}
-```
-
-## STORE_OWN_BUCKET
-
-Status: 409 · Surface: api
-
-When: a business that brought its own bucket is asked to move to one of the platform's stores.
-Its files are at no store of the platform's.
-
-Fix: Nothing to move: the business's files are where it put them.
-
-```json
-{"error":{"code":"STORE_OWN_BUCKET","message":"The business brought its own bucket, which is at no store of the platform's.","fix":"Nothing to move: the business's files are where it put them.","docs":"https://skill.whisk.run/errors/STORE_OWN_BUCKET","details":{}}}
-```
-
 ## UPLOAD_TOO_LARGE
 
 Status: 413 · Surface: api
@@ -2878,15 +2797,15 @@ Fix: Wait for it; `whisk export --wait` follows the existing job.
 
 Status: - · Surface: api (the export's record), cli
 
-When: an export could not be written: a node did not answer, a dump failed, or the org's bucket
-refused the archive. `details.piece` names where it stopped, `details.node` the node when one was
-involved, and `details.cause_code` the node's own code when it gave one.
+When: an export could not be written: a piece of it could not be read, or the org's bucket
+refused the archive. `details.piece` names where it stopped, and `details.cause_code` the code of
+the part that failed when there is one.
 
 Fix: Start the export again. If it stops at the same piece, report it with `whisk feedback
 --kind bug --code EXPORT_FAILED`, naming the export's id and `details.piece`.
 
 ```json
-{"error":{"code":"EXPORT_FAILED","message":"The export stopped at apps/notes/databases/production.dump on node node1: pg_dump app_01: exited 1","fix":"Start the export again. If it stops at the same piece, report it with whisk feedback --kind bug --code EXPORT_FAILED --message \"export <id> stopped at <piece>\".","docs":"https://skill.whisk.run/errors/EXPORT_FAILED","details":{"piece":"apps/notes/databases/production.dump","node":"node1","cause":"pg_dump app_01: exited 1","cause_code":"DATABASE_FAILED"}}}
+{"error":{"code":"EXPORT_FAILED","message":"The export stopped at apps/notes/databases/production.dump.","fix":"Start the export again. If it stops at the same piece, report it with whisk feedback --kind bug --code EXPORT_FAILED --message \"export <id> stopped at <piece>\".","docs":"https://skill.whisk.run/errors/EXPORT_FAILED","details":{"piece":"apps/notes/databases/production.dump","cause_code":"DATABASE_FAILED"}}}
 ```
 
 ## RESTORE_NOT_AVAILABLE
@@ -2940,7 +2859,7 @@ Status: 409 · Surface: api
 When: a provider answered with a thing the platform's record already holds for another business:
 the same id at the same provider and account (a bucket, a sending domain, a GitHub installation).
 The platform never records one thing as two businesses', because releasing it for one would
-delete it for the other (`CONTROL-PLANE.md §6.32`).
+delete it for the other.
 
 Fix: Use another one, or ask its business to remove it first.
 
@@ -3129,7 +3048,7 @@ Status: 503 · Surface: api, edge, cli
 When: a platform component is down. The response is temporary and safe to retry. The CLI
 answers with it when it could not reach the platform, when a download or stream was cut off,
 or when a successful answer was not the API's JSON (a proxy or captive portal answered
-instead); it has already retried a call that was safe to (CLI.md §1) and exits 5.
+instead); it has already retried a call that was safe to and exits 5.
 
 Fix: Retry with backoff. Status is at `https://whisk.run/status`.
 
@@ -3141,16 +3060,14 @@ Fix: Retry with backoff. Status is at `https://whisk.run/status`.
 
 Status: 503 · Surface: api, edge, cli
 
-When: the node hosting the app is not answering. The platform's team has been paged; apps on other
-nodes are unaffected. From `whisk db query` and `whisk db schema` it means the environment's
-database did not answer the connection at all; a database that answers and refuses the
-password is `DATABASE_CREDENTIALS_REJECTED` instead.
+When: the server hosting the app is not answering. From `whisk db query` and `whisk db schema` it
+means the environment's database did not answer the connection at all; a database that answers
+and refuses the password is `DATABASE_CREDENTIALS_REJECTED` instead.
 
-Fix: Wait. Nothing the app can do; deploys are refused until the node is back or the app has
-been moved.
+Fix: Wait. Nothing the app can do; deploys are refused until the app is running again.
 
 ```json
-{"error":{"code":"NODE_DOWN","message":"The node hosting job-tracker has not been seen for 3 minutes.","fix":"Wait; the platform's team has been paged. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/NODE_DOWN","details":{"node":"node1","last_seen_at":"2026-09-07T10:00:00Z"}}}
+{"error":{"code":"NODE_DOWN","message":"This could not be done just now.","fix":"Retry in a few minutes. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/NODE_DOWN","details":{}}}
 ```
 
 ## PACKAGE_CHECK_OFF
@@ -3161,7 +3078,7 @@ When: lockfiles are sent to be checked before a deploy (`whisk doctor`) on a pla
 no lockfile to osv.dev, because the platform's team turned it off. Nothing was checked or sent.
 
 Fix: Deploy as usual: once the app is live the platform's registry checks the packages in its
-image. The platform's team can turn the lockfile check on with `WHISK_OSV=on`.
+image.
 
 ```json
 {"error":{"code":"PACKAGE_CHECK_OFF","message":"This platform does not send lockfiles to osv.dev, so they cannot be checked before a deploy.","fix":"Deploy as usual: once the app is live the platform's registry checks the packages in its image. The platform's team can turn the lockfile check on with WHISK_OSV=on.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_OFF","details":{"setting":"WHISK_OSV"}}}
@@ -3272,7 +3189,7 @@ Status: - · Surface: cli
 
 When: a CLI command reached a point only a human can complete: login approval, setting a secret
 value, connecting an account, confirming the org, or approving an invite, a removal or a change to
-who can open an app that the agent asked for (`details.request_id`, CONTROL-PLANE.md §4.9). The
+who can open an app that the agent asked for (`details.request_id`). The
 CLI prints the URL and exits 2. After a
 deploy, a `NEEDS_HUMAN` block lists unset secrets even though the deploy succeeded.
 
@@ -3287,8 +3204,7 @@ that does not depend on it.
 
 Status: 409 · Surface: api, cli
 
-When: a change an agent asked a person to approve, or a person asked the owners to approve
-(CONTROL-PLANE.md §4.9, §4.10), is no longer waiting: it was already approved or declined, or its
+When: a change an agent asked a person to approve, or a person asked the owners to approve, is no longer waiting: it was already approved or declined, or its
 time ran out (24 hours for a person, 7 days for the owners). The API answers it to a second
 approve or decline; `whisk requests show` answers it for a declined or expired request.
 `details.status` says which.
@@ -3439,8 +3355,8 @@ it with `whisk feedback --kind bug --code CLI_ERROR` and the message.
 Status: - · Surface: container, run
 
 When: the app's previous run was killed with SIGKILL that no stop preceded, which on Whisk means
-it used more memory than its container's limit (files in `/tmp` count as memory). Under gVisor
-the kernel kills the whole sandbox, so the app itself prints nothing more. At the moment of the
+it used more memory than its container's limit (files in `/tmp` count as memory). The whole
+sandbox is killed, so the app itself prints nothing more. At the moment of the
 kill the platform writes a line into the app's logs (`whisk logs`, stream `platform`) starting
 `whisk: killed at ... for going over its ... memory limit`; the node agent restarts the
 container a second later and whisk-init prints this as the first line of the new run. A function
@@ -3564,7 +3480,7 @@ Status: - · Surface: container
 When: whisk-init found no container token at start. A platform fault; the container is
 restarted with a fresh token.
 
-Fix: Nothing. If it repeats in the log, the platform's team has been paged.
+Fix: Nothing. The platform restarts the container.
 
 ```json
 {"error":{"code":"INIT_NO_TOKEN","message":"whisk-init: no container token was provided; refusing to start.","fix":"No action; the platform restarts the container with a new token.","docs":"https://skill.whisk.run/errors/INIT_NO_TOKEN","details":{}}}
@@ -3617,24 +3533,27 @@ platform's team.
 
 Status: - · Surface: deploy, node
 
-When: the node's disk is above 90% and the node agent refused to start a container or pull an image until space is freed. The deploy that hit it is failed with this code; the previous deploy stays live.
+When: the server had too little disk to start a container or ready an image. The deploy that hit
+it fails as `PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`; the previous deploy
+stays live.
 
-Fix: Nothing on the tenant's side; the platform's team is paged. Retry the deploy once the node reports space again.
+Fix: Nothing on the tenant's side. Retry the deploy in a few minutes.
 
 ```json
-{"error":{"code":"DISK_CRITICAL","message":"The node is out of disk and refused to start job-tracker.","fix":"Retry in a few minutes; the platform's team has been paged.","docs":"https://skill.whisk.run/errors/DISK_CRITICAL","details":{"node":"node1","disk_used_percent":93}}}
+{"error":{"code":"DISK_CRITICAL","message":"This could not be done just now.","fix":"Retry in a few minutes. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/DISK_CRITICAL","details":{}}}
 ```
 
 ## POSTGRES_DOWN
 
 Status: - · Surface: deploy, node
 
-When: the node's Postgres cluster did not answer, so a container start, a migration or a database creation was refused. Running containers are untouched.
+When: the database server did not answer, so a container start, a migration or a database
+creation was refused. Running containers are untouched.
 
-Fix: Nothing on the tenant's side; the platform's team is paged. Retry the deploy once the node reports Postgres up.
+Fix: Nothing on the tenant's side. Retry the deploy in a few minutes.
 
 ```json
-{"error":{"code":"POSTGRES_DOWN","message":"The database cluster on node1 is not answering, so job-tracker was not started.","fix":"Retry in a few minutes; the platform's team has been paged.","docs":"https://skill.whisk.run/errors/POSTGRES_DOWN","details":{"node":"node1"}}}
+{"error":{"code":"POSTGRES_DOWN","message":"This could not be done just now.","fix":"Retry in a few minutes. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/POSTGRES_DOWN","details":{}}}
 ```
 
 ## IMAGE_NO_COMMAND
@@ -3665,24 +3584,24 @@ Fix: Make the command exist in the image and be executable: install the tool the
 
 Status: - · Surface: deploy, node
 
-When: Docker or the sandbox runtime refused to start the container. The node's diagnosis is in message; the container's first log lines, when any, are in details.
+When: the container could not be started. The reason is in message; the container's first log lines, when any, are in details.
 
-Fix: Read the message and the log lines: this is a runtime error on Whisk's side, and the platform's team has been told. A command the image cannot run is COMMAND_NOT_RUNNABLE instead.
+Fix: Read the message and the log lines. A command the image cannot run is COMMAND_NOT_RUNNABLE instead.
 
 ```json
-{"error":{"code":"CONTAINER_START_FAILED","message":"runsc could not start job-tracker: exec /app/start: permission denied.","fix":"Make the start command executable in the image (chmod +x in the Dockerfile) and deploy again.","docs":"https://skill.whisk.run/errors/CONTAINER_START_FAILED","details":{"log_tail":["exec /app/start: permission denied"]}}}
+{"error":{"code":"CONTAINER_START_FAILED","message":"job-tracker could not start: exec /app/start: permission denied.","fix":"Make the start command executable in the image (chmod +x in the Dockerfile) and deploy again.","docs":"https://skill.whisk.run/errors/CONTAINER_START_FAILED","details":{"log_tail":["exec /app/start: permission denied"]}}}
 ```
 
 ## CONTAINER_NOT_FOUND
 
 Status: - · Surface: node
 
-When: the control plane referred to a container the node no longer has, for example after a node rebuild pruned it.
+When: the container an operation named no longer exists, for example after the app was moved.
 
-Fix: The control plane redeploys the last live build; retry the operation once the deploy is live.
+Fix: Whisk redeploys the last live build; retry the operation once the deploy is live.
 
 ```json
-{"error":{"code":"CONTAINER_NOT_FOUND","message":"The container for job-tracker no longer exists on node1.","fix":"Wait for the redeploy, then retry.","docs":"https://skill.whisk.run/errors/CONTAINER_NOT_FOUND","details":{"container_id":"3f2a..."}}}
+{"error":{"code":"CONTAINER_NOT_FOUND","message":"The container for job-tracker no longer exists.","fix":"Wait for the redeploy, then retry.","docs":"https://skill.whisk.run/errors/CONTAINER_NOT_FOUND","details":{"container_id":"3f2a..."}}}
 ```
 
 ## TOKEN_MALFORMED
@@ -3703,7 +3622,7 @@ Status: 504 · Surface: edge, node
 
 When: a sleeping app was asked to wake and its container did not reach a healthy state within the wake timeout (60 seconds). The edge shows the platform's timeout page; the node reports the wake.
 
-Fix: Retry in a moment. An app that regularly takes longer than a few seconds to answer its health route should start faster (CONTRACT.md §2, rule 9) or be always_on.
+Fix: Retry in a moment. An app that regularly takes longer than a few seconds to answer its health route should start faster (rule 9 of the app rules) or be always_on.
 
 ```json
 {"error":{"code":"WAKE_TIMEOUT","message":"Starting job-tracker took too long.","fix":"Retry in a moment. If it keeps timing out, make the app start faster or set always_on in whisk.yaml.","docs":"https://skill.whisk.run/errors/WAKE_TIMEOUT","details":{"app":"job-tracker","retry_after":5}}}
@@ -3716,10 +3635,10 @@ Status: 500 · Surface: edge, node
 When: a sleeping app was asked to wake and its container could not be started at all (the
 image is gone from the node, the container would not create, or its network or secrets could
 not be prepared), as opposed to starting and not becoming healthy (`WAKE_TIMEOUT`). The edge
-shows the platform's error page; `message` carries the node's own words.
+shows the platform's error page.
 
 Fix: Run `whisk status` and `whisk logs`; if the app stays unreachable, run `whisk deploy`
-again, which places a fresh container. The platform's team sees the node's cause.
+again, which places a fresh container.
 
 ```json
 {"error":{"code":"WAKE_FAILED","message":"The container for job-tracker could not be started: image not present on the node.","fix":"Run whisk deploy if the app stays unreachable.","docs":"https://skill.whisk.run/errors/WAKE_FAILED","details":{}}}
@@ -3775,83 +3694,32 @@ Fix: Nothing a tenant sends causes this. If it reaches you, report it with `whis
 
 Status: - · Surface: deploy, node
 
-When: the node could not prepare, rotate or drop an app's database, role or cache. On a deploy
-it arrives as `PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`; the message names the node and the part of it that failed, and `details` carries `step`
-(`database` or `cache`), `node`, `cause_code` (the node's own code: `POLICY_APPLY_FAILED` for
-its network rules, `DOCKER_FAILED`, `POSTGRES_DOWN`, `DISK_CRITICAL`, or `DATABASE_FAILED` for
-Postgres itself), `cause` (the node's own words) and `fault: platform`. No password is ever
+When: an app's database, role or cache could not be prepared, rotated or dropped. On a deploy it
+arrives as `PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`, `details.step`
+(`database` or `cache`) and `details.cause_code` for the part that failed. No password is ever
 included.
 
-Fix: Nothing in the app causes this, and the platform's team has been paged with the cause. Run
-`whisk deploy` again later; if it fails the same way, report it with `whisk feedback --kind bug
---code DATABASE_FAILED`, naming the deploy id and `details.cause`.
+Fix: Nothing in the app causes this. Run `whisk deploy` again later; if it fails the same way,
+report it with `whisk feedback --kind bug --code DATABASE_FAILED`, naming the deploy id.
 
 ```json
-{"error":{"code":"DATABASE_FAILED","message":"The app's database could not be prepared on node node1: the node's network rules would not load (nft: exit status 1: /dev/stdin:14:40-58: Error: Could not process rule: Invalid argument).","fix":"Nothing in the app causes this, and the platform's team has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_FAILED","details":{"step":"database","node":"node1","cause_code":"POLICY_APPLY_FAILED","cause":"nft: exit status 1: /dev/stdin:14:40-58: Error: Could not process rule: Invalid argument","fault":"platform"}}}
+{"error":{"code":"DATABASE_FAILED","message":"The app's database could not be prepared.","fix":"Nothing in the app causes this. Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/DATABASE_FAILED","details":{"step":"database"}}}
 ```
 
 ## DATABASE_MOVE_FAILED
 
 Status: - · Surface: deploy
 
-When: a deploy was placed on another node than the one its database is on, because that node was
-down or taken out of service, and its database could not be moved there first. It arrives as
-`PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`; `details` carries `step`
-(`database_move`), `from_node`, `node`, `database`, `cause_code` (`COPY_UNAVAILABLE`,
-`COPY_BEHIND`, `DATABASE_FAILED`, `IMAGE_PULL_FAILED`, `HEALTH_CHECK_FAILED` or another step's
-code), `cause` and `fault: platform`. Nothing of the app changed: its database, its credentials
-and the version that was live stay where they were. No password is ever included.
+When: a deploy needed the app's database moved first, and the move could not finish. It arrives
+as `PLATFORM_DEPLOY_FAILED` with this code as `details.step_code`, `details.step`
+(`database_move`) and `details.cause_code`. Nothing of the app changed: its database, its
+credentials and the version that was live stay where they were. No password is ever included.
 
-Fix: Nothing in the app causes this, and the platform's team has been paged with the cause. Run `whisk
-deploy` again later; if it fails the same way, report the deploy id with `details.cause`.
+Fix: Nothing in the app causes this. Run `whisk deploy` again later; if it fails the same way,
+report the deploy id with `whisk feedback`.
 
 ```json
-{"error":{"code":"DATABASE_MOVE_FAILED","message":"The app's database could not be moved from node1 to node2, so it stays on node1: node2's copy of node1 did not catch up within 2 minutes.","fix":"Nothing in the app causes this, and the platform's team has been paged with the cause. Run whisk deploy again later; if it fails the same way, report the deploy id with details.cause.","docs":"https://skill.whisk.run/errors/DATABASE_MOVE_FAILED","details":{"step":"database_move","from_node":"node1","node":"node2","database":"app_01jabc","cause_code":"COPY_BEHIND","cause":"the copy replayed to 0/3A000060, short of 0/3A0001F8","fault":"platform"}}}
-```
-
-## COPY_UNAVAILABLE
-
-Status: - · Surface: node
-
-When: a node was asked to move a database out of its copy of another node, and it holds no copy
-of that node, or its copy cluster does not answer (NODE-AGENT.md §A6b). Nothing was changed.
-
-Fix: Nothing on the tenant's side; the platform's team is paged, checks the holder's copy and
-runs the deploy again.
-
-```json
-{"error":{"code":"COPY_UNAVAILABLE","message":"node2 holds no running copy of node1.","fix":"Check node2's copy of node1; once it streams, deploy again.","docs":"https://skill.whisk.run/errors/COPY_UNAVAILABLE","details":{"node":"node2","source":"node1"}}}
-```
-
-## COPY_BEHIND
-
-Status: - · Surface: node
-
-When: a node was asked to move a database out of its copy of a node that is still up, and the copy
-did not replay to the position the source reported after closing the database within 2 minutes.
-Nothing was copied.
-
-Fix: Nothing on the tenant's side; the platform's team is paged, checks the copy's lag and runs
-the deploy again.
-
-```json
-{"error":{"code":"COPY_BEHIND","message":"node2's copy of node1 did not catch up within 2 minutes.","fix":"Check the lag of node2's copy of node1; once it is caught up, deploy again.","docs":"https://skill.whisk.run/errors/COPY_BEHIND","details":{"node":"node2","source":"node1","replayed":"0/3A000060","wanted":"0/3A0001F8"}}}
-```
-
-## COPY_VERSION_MISMATCH
-
-Status: - · Surface: node
-
-When: a node was asked to make a copy of another node's cluster, and the source runs another
-Postgres major version than this node does. A copy streams only between the same major version,
-so no base backup was taken and the copy's directory was left as it was. The copy reads `failed`
-with this message until both nodes run the same major version.
-
-Fix: Nothing on the tenant's side; the platform's team is paged once, and brings both nodes to
-the one Postgres major version every machine runs; the next attempt makes the copy.
-
-```json
-{"error":{"code":"COPY_VERSION_MISMATCH","message":"COPY_VERSION_MISMATCH: node1 runs Postgres major 17 and this node runs major 18; a copy streams only between the same major version","fix":"Bring both nodes to the same Postgres major version (the one setting, infra/postgres-version); the copy is made again on its own.","docs":"https://skill.whisk.run/errors/COPY_VERSION_MISMATCH","details":{"node":"node2","source":"node1","source_major":17,"major":18}}}
+{"error":{"code":"DATABASE_MOVE_FAILED","message":"The app's database could not be moved, so it stays where it was.","fix":"Nothing in the app causes this. Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/DATABASE_MOVE_FAILED","details":{"step":"database_move"}}}
 ```
 
 ## DATABASE_CREDENTIALS_REJECTED
@@ -3889,25 +3757,24 @@ RESTORE_FAILED` and the restore id.
 
 Status: - · Surface: node
 
-When: the node could not write to its own working directory (WHISK_STATE), so it could not keep
-the file it was handed while scanning an upload, converting a video or resizing an image: the
-disk is full or read-only, or the directory's permissions are wrong. The upload itself is
-untouched in the store.
+When: a file handed over for scanning, converting or resizing could not be kept while the work
+ran. The upload itself is untouched in the store.
 
-Fix: Nothing on the tenant's side; the platform's team reads the node log. Retry in a few minutes.
+Fix: Nothing on the tenant's side. Retry in a few minutes.
 
 ```json
-{"error":{"code":"NODE_STATE_FAILED","message":"The node could not write to its working directory, so team-photo.jpg was not resized.","fix":"Retry in a few minutes; the platform's team has been notified.","docs":"https://skill.whisk.run/errors/NODE_STATE_FAILED","details":{"node":"node1"}}}
+{"error":{"code":"NODE_STATE_FAILED","message":"team-photo.jpg could not be resized just now.","fix":"Retry in a few minutes.","docs":"https://skill.whisk.run/errors/NODE_STATE_FAILED","details":{}}}
 ```
 
 ## DOCKER_FAILED
 
 Status: - · Surface: deploy, node
 
-When: the Docker Engine returned an error the node could not classify further (network creation, inspect, stop, remove). The daemon's message is in message.
+When: the container's surroundings could not be prepared or cleaned up. A platform fault; a
+deploy that meets it fails as `PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`.
 
-Fix: The platform's team reads the node log. Retry the deploy once fixed.
+Fix: Nothing on the tenant's side. Retry the deploy in a few minutes.
 
 ```json
-{"error":{"code":"DOCKER_FAILED","message":"Docker refused to create the network for job-tracker.","fix":"Retry in a few minutes; the platform's team has been notified.","docs":"https://skill.whisk.run/errors/DOCKER_FAILED","details":{"operation":"network create"}}}
+{"error":{"code":"DOCKER_FAILED","message":"This could not be done just now.","fix":"Retry in a few minutes. See https://whisk.run/status.","docs":"https://skill.whisk.run/errors/DOCKER_FAILED","details":{}}}
 ```
