@@ -19,6 +19,7 @@ import (
 	"github.com/whisk-run/cli/internal/config"
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract"
 )
 
 // Version is set by the build (-ldflags "-X github.com/whisk-run/cli/whisk.Version=...").
@@ -172,6 +173,9 @@ func newRoot(s *session) *cobra.Command {
 	)
 	root.AddCommand(privateCmds(s)...)
 	root.CompletionOptions.HiddenDefaultCmd = false
+	// whisk --version answers what whisk version does, since agents reach for the flag first.
+	root.Version = Version
+	root.SetVersionTemplate(fmt.Sprintf("whisk %s (api %s, conventions %d)\n", Version, output.APIVersion, contract.Version))
 	return root
 }
 

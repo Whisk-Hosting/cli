@@ -58,6 +58,10 @@ func TestVersionAndAgentHelpers(t *testing.T) {
 	if r.Code != 0 || r.JSON["whisk_cli"] != "dev" || r.JSON["api"] != "v1" {
 		t.Fatalf("version: %+v", r)
 	}
+	r = runCLI(t, dir, nil, &memStore{}, "--version")
+	if r.Code != 0 || !strings.HasPrefix(r.Stdout, "whisk dev (api v1, conventions ") {
+		t.Fatalf("--version: %+v", r)
+	}
 	r = runCLI(t, dir, nil, &memStore{}, "errors", "NEEDS_HUMAN", "--json")
 	if r.Code != 0 || r.JSON["code"] != "NEEDS_HUMAN" || r.JSON["fix"] == "" {
 		t.Fatalf("errors: %+v", r)
@@ -264,7 +268,7 @@ func must(t *testing.T, err error) {
 // An unknown flag is an error for the human, not a crash: the printer has its streams before
 // anything is parsed.
 func TestUnknownFlagIsAnErrorNotACrash(t *testing.T) {
-	r := runCLI(t, t.TempDir(), nil, nil, "--version")
+	r := runCLI(t, t.TempDir(), nil, nil, "--no-such-flag")
 	if r.Code != 1 || !strings.Contains(r.Stderr, "UNKNOWN_COMMAND") || !strings.Contains(r.Stderr, "unknown flag") || !strings.Contains(r.Stderr, "whisk update") {
 		t.Errorf("code %d, stderr %q", r.Code, r.Stderr)
 	}
