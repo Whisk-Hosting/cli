@@ -3,14 +3,16 @@ package apitypes
 import "time"
 
 // AppAnalytics is GET /orgs/:org/apps/:app/analytics: an app's visits and events over a period,
-// as its analytics recorded them.
+// or from and to, as its analytics recorded them, narrowed by Filters. Period is "" when the
+// reading names from and to.
 type AppAnalytics struct {
-	Period   string    `json:"period"`
-	From     time.Time `json:"from"`
-	To       time.Time `json:"to"`
-	Views    int       `json:"views"`
-	Visitors int       `json:"visitors"`
-	Visits   int       `json:"visits"`
+	Period   string           `json:"period"`
+	From     time.Time        `json:"from"`
+	To       time.Time        `json:"to"`
+	Filters  AnalyticsFilters `json:"filters"`
+	Views    int              `json:"views"`
+	Visitors int              `json:"visitors"`
+	Visits   int              `json:"visits"`
 	// BounceRate is the share of visits that saw one page and did nothing else, 0 to 1.
 	BounceRate float64 `json:"bounce_rate"`
 	// AverageSeconds is how long a visit lasted on average.
@@ -25,6 +27,163 @@ type AppAnalytics struct {
 	Crawlers []AnalyticsCrawler `json:"crawlers"`
 	// KeptDays is how many days the business's plan keeps; 0 keeps everything.
 	KeptDays int `json:"kept_days"`
+	// By is what Breakdown breaks the reading down by, "" for none: page, entry, exit, source,
+	// event, country, browser, os, device, hour, day, month or event-property.
+	By        string         `json:"by,omitempty"`
+	Breakdown []AnalyticsRow `json:"breakdown,omitempty"`
+	// TZ is the time zone a breakdown by hour, day or month starts its hours and days in.
+	TZ string `json:"tz,omitempty"`
+}
+
+// AnalyticsFilters narrow a reading to the visits that came from a site (Source, its domain),
+// viewed a page (Page, its path) or sent an event (Event, its name). "" leaves one out, and a
+// comma in one means any of its values.
+type AnalyticsFilters struct {
+	Source string `json:"source,omitempty"`
+	Page   string `json:"page,omitempty"`
+	Event  string `json:"event,omitempty"`
+}
+
+// AnalyticsRow is one row of a breakdown. A breakdown by hour, day or month has the views and
+// visitors of each, named 2026-11-06 14:00, 2026-11-06 or 2026-11, every one in the reading
+// included. Every other breakdown counts one thing in Count, most first: the views of a page,
+// the visits that entered or left by it, came from a source or a country or used a browser, os
+// or device, the times an event was sent, or for event-property the times an event carried a
+// property's value, named property=value.
+type AnalyticsRow struct {
+	Name     string `json:"name"`
+	Views    int    `json:"views,omitempty"`
+	Visitors int    `json:"visitors,omitempty"`
+	Count    int    `json:"count,omitempty"`
+}
+
+// AppVisitors is GET /orgs/:org/apps/:app/analytics/visitors: a page of the visitors of a
+// reading, latest first. A visitor is one browser on one device, as analytics tells them apart
+// without cookies; Total is how many the reading has. NextCursor, sent back as cursor, reads
+// the next page, and is "" on the last.
+type AppVisitors struct {
+	Period     string             `json:"period"`
+	From       time.Time          `json:"from"`
+	To         time.Time          `json:"to"`
+	Filters    AnalyticsFilters   `json:"filters"`
+	Total      int                `json:"total"`
+	Visitors   []AnalyticsVisitor `json:"visitors"`
+	NextCursor string             `json:"next_cursor"`
+}
+
+// AnalyticsVisitor is one visitor: when they were first and last seen in the reading, how many
+// visits, page views and events, and where and on what, as far as analytics knows.
+type AnalyticsVisitor struct {
+	ID       string    `json:"id"`
+	FirstAt  time.Time `json:"first_at"`
+	LastAt   time.Time `json:"last_at"`
+	Visits   int       `json:"visits"`
+	Views    int       `json:"views"`
+	Events   int       `json:"events"`
+	Country  string    `json:"country,omitempty"`
+	Region   string    `json:"region,omitempty"`
+	City     string    `json:"city,omitempty"`
+	Browser  string    `json:"browser,omitempty"`
+	OS       string    `json:"os,omitempty"`
+	Device   string    `json:"device,omitempty"`
+	Language string    `json:"language,omitempty"`
+	Hostname string    `json:"hostname,omitempty"`
+}
+
+// AnalyticsVisitorSteps is GET /orgs/:org/apps/:app/analytics/visitors/:visitor: what one
+// visitor did over a reading, earliest first, at most the latest 500.
+type AnalyticsVisitorSteps struct {
+	ID    string          `json:"id"`
+	From  time.Time       `json:"from"`
+	To    time.Time       `json:"to"`
+	Steps []AnalyticsStep `json:"steps"`
+}
+
+// AnalyticsStep is one page a visitor viewed (Kind view) or one event the app sent for them
+// (Kind event, named in Event). Source is the site the visit came from; Visit tells one visit
+// from the next.
+type AnalyticsStep struct {
+	At       time.Time `json:"at"`
+	Kind     string    `json:"kind"`
+	Path     string    `json:"path"`
+	Query    string    `json:"query,omitempty"`
+	Event    string    `json:"event,omitempty"`
+	Source   string    `json:"source,omitempty"`
+	Visit    string    `json:"visit"`
+	Hostname string    `json:"hostname,omitempty"`
+}
+
+// AppTraffic is GET /orgs/:org/apps/:app/analytics/traffic: every request the edge or the CDN
+// answered for the app over the period, or from and to, people, robots and scripts alike, and
+// what the CDN answered from its copy, which never reached the app. By is what the rows are
+// grouped by, in order, from day, hour (both UTC), path, status, cached, source, method, host,
+// agent, kind, user_agent, referer, country and network; each row's Group names its value for
+// each. Agent is a crawler's, browser's or tool's name, "Other bots", "Other" or "(none)"; Kind
+// is the crawler's kind (search, ai_assistant, ai_crawler, preview, seo, other), browser, tool or
+// unknown. Filters are what narrowed it, each by name. Requests are kept as long as the plan keeps
+// analytics, at most 90 days (KeptDays), and the newest arrive a few minutes late.
+type AppTraffic struct {
+	Period    string            `json:"period"`
+	From      time.Time         `json:"from"`
+	To        time.Time         `json:"to"`
+	By        []string          `json:"by"`
+	Filters   map[string]string `json:"filters"`
+	Requests  int               `json:"requests"`
+	Addresses int               `json:"addresses"`
+	Rows      []TrafficRow      `json:"rows"`
+	KeptDays  int               `json:"kept_days"`
+}
+
+// TrafficRow is one group of the traffic: its value for each part grouped by, its requests and
+// how many client addresses made them.
+type TrafficRow struct {
+	Group     map[string]string `json:"group"`
+	Requests  int               `json:"requests"`
+	Addresses int               `json:"addresses"`
+}
+
+// AppTrafficRequests is GET /orgs/:org/apps/:app/analytics/traffic/requests: the app's latest
+// requests one by one, narrowed as for AppTraffic, latest first.
+type AppTrafficRequests struct {
+	From     time.Time         `json:"from"`
+	To       time.Time         `json:"to"`
+	Filters  map[string]string `json:"filters"`
+	Requests []TrafficRequest  `json:"requests"`
+}
+
+// TrafficRequest is one request to an app: its time, method, host, path and query (without its ?,
+// its secrets masked: a token, key, code, password or signature reads REDACTED), answer, bytes
+// sent and received, how long the edge took in all (0 for the CDN's copy), how long the app took
+// to send its headers and how long the request waited for the app to wake (each left out when
+// that did not happen), Source (edge or cdn), whether the CDN answered from its copy and what
+// the edge's own cache said (hit or miss, left out when it was not asked), the user agent as
+// sent (cut to 512 bytes) and the agent and kind it names, the referer (secrets masked), the
+// signed-in person's user id as the app knows it, the client's address (the CDN's log cuts it
+// short), and the country (two letters) and network it is in.
+type TrafficRequest struct {
+	At         time.Time `json:"at"`
+	Method     string    `json:"method"`
+	Host       string    `json:"host"`
+	Path       string    `json:"path"`
+	Query      string    `json:"query,omitempty"`
+	Status     int       `json:"status"`
+	Bytes      int64     `json:"bytes"`
+	Received   int64     `json:"received"`
+	Millis     int       `json:"millis"`
+	AppMillis  *int      `json:"app_millis,omitempty"`
+	WakeMillis *int      `json:"wake_millis,omitempty"`
+	Source     string    `json:"source"`
+	Cached     bool      `json:"cached"`
+	EdgeCache  string    `json:"edge_cache,omitempty"`
+	UserAgent  string    `json:"user_agent"`
+	Agent      string    `json:"agent"`
+	Kind       string    `json:"kind"`
+	Referer    string    `json:"referer,omitempty"`
+	UserID     string    `json:"user_id,omitempty"`
+	Address    string    `json:"address"`
+	Country    string    `json:"country,omitempty"`
+	ASN        int       `json:"asn,omitempty"`
+	Network    string    `json:"network,omitempty"`
 }
 
 // AnalyticsCount is one row of a breakdown: a page, a referring site or an event, and how many

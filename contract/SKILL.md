@@ -582,10 +582,18 @@ tracked (`analytics: { do_not_track: ignore }` counts it). Send an event from th
 (check `window.umami` first, since a blocker can stop the script), or mark a button with
 `data-umami-event="signup"`. Crawlers run no script, so Whisk counts them from its own request log:
 search engines, AI assistants and crawlers, link previews and other bots, with nothing to add to the
-app. `whisk analytics` prints views, visitors, top pages, sources, events and crawlers
-(`--period 24h|7d|30d|90d`); `whisk analytics crawlers [--crawler Googlebot]` prints each crawler's
-pages, answers and journeys, and `whisk analytics journey <id>` one journey request by request; the
-human sees everything with `whisk open analytics`. Visits are kept
+app. `whisk analytics` prints views, visitors, top pages, sources, events and crawlers over
+`--period 24h|7d|30d|90d` or `--from 2026-11-01 --to 2026-11-07`. `--source google.com`, `--page /pricing`
+and `--event signup` narrow it to those visits, and `--by` breaks it down by `day` (or `hour`, `month`,
+with `--tz`), `page`, `entry`, `exit`, `source`, `event`, `event-property` (the properties `--event`
+carried), `country`, `browser`, `os` or `device`. `whisk analytics visitors` lists the visitors and
+`whisk analytics visitor <id>` what one did, page by page. `whisk analytics traffic --by day,path,agent`
+counts every request, robots, scripts and what the CDN answered from its copy included, grouped by any
+of its parts (`query`, `user_agent`, `referer`, `user_id`, `address`, `country`, `network`, `edge_cache`,
+`hour`…) and narrowed with `--status 404`, `--kind ai_crawler`, `--country NZ` or `--user-id <id>`; `--list`
+prints the latest requests one by one, with the time the app and a wake took, and `--json` every field. `whisk analytics crawlers [--crawler Googlebot]`
+prints each crawler's pages, answers and journeys, and `whisk analytics journey <id>` one journey request
+by request; the human sees everything with `whisk open analytics`. Visits are kept
 7 days on Free, 13 months on paid plans and 25 months on Business. If the app has a privacy notice, say there
 that it counts visits with Whisk's analytics, without cookies, and for how long. Do not add another analytics
 tool unless the human names one.
@@ -629,6 +637,7 @@ every request, read who it is from headers (full table in `headers.md`):
 | `X-Whisk-Roles` | comma-separated org roles: `owner`, `admin`, `developer`, `billing`, `member`, plus `guest` (team only) |
 | `X-Whisk-Flags` | comma-separated feature flags on for this person, when any is (below) |
 | `X-Whisk-Request-Id` | trace ID; put it in every log line |
+| `X-Whisk-Country` | the visitor's country, `NZ`, when the edge knows it; a hint, not proof |
 
 Routes are private unless listed under `routes.public` in the manifest. A private route only
 ever receives requests with a `team` or `customer` identity (or `service`, for platform

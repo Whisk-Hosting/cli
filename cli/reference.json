@@ -108,8 +108,40 @@
     "short": "The app's visits: views, visitors, top pages, sources, events and crawlers",
     "flags": [
      {
+      "name": "--by string",
+      "usage": "break the reading down by hour, day, month, page, entry, exit, source, event, event-property, country, browser, os or device"
+     },
+     {
+      "name": "--event string",
+      "usage": "only visits that sent this event, such as signup"
+     },
+     {
+      "name": "--from string",
+      "usage": "start at a date, 2026-11-01, or a time, 2026-11-01T09:00:00Z, in place of --period"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many rows a breakdown by name lists (default 10, at most 500)"
+     },
+     {
+      "name": "--page string",
+      "usage": "only visits that viewed this page, such as /pricing"
+     },
+     {
       "name": "--period string",
-      "usage": "the period: 24h, 7d, 30d or 90d"
+      "usage": "the period: 24h, 7d, 30d or 90d (default 7d)"
+     },
+     {
+      "name": "--source string",
+      "usage": "only visits from this site, such as google.com (a comma means any of)"
+     },
+     {
+      "name": "--to string",
+      "usage": "end with a date (its whole day) or a time; default now"
+     },
+     {
+      "name": "--tz string",
+      "usage": "the time zone dates and days are in, such as America/New_York (default UTC)"
      }
     ]
    },
@@ -130,6 +162,164 @@
    {
     "usage": "whisk analytics journey \u003cid\u003e",
     "short": "One crawler's journey through the app, request by request"
+   },
+   {
+    "usage": "whisk analytics traffic",
+    "short": "Every request to the app: pages, answers, the CDN's copy, who asked and from where",
+    "flags": [
+     {
+      "name": "--address string",
+      "usage": "only requests from this client address"
+     },
+     {
+      "name": "--agent string",
+      "usage": "only requests from this agent, such as Googlebot, Chrome or curl"
+     },
+     {
+      "name": "--by string",
+      "usage": "group by any of day, hour, path, query, status, cached, edge_cache, source, method, host, agent, kind, user_agent, referer, user_id, address, country and network, as a comma list in order"
+     },
+     {
+      "name": "--cached string",
+      "usage": "true for only what the CDN answered from its copy, false for the rest"
+     },
+     {
+      "name": "--country string",
+      "usage": "only requests from this country, two letters, such as NZ"
+     },
+     {
+      "name": "--edge-cache string",
+      "usage": "hit for what the edge's own cache answered, miss for what it was asked and passed on"
+     },
+     {
+      "name": "--from string",
+      "usage": "start at a date, 2026-11-01, or a time, 2026-11-01T09:00:00Z, in place of --period"
+     },
+     {
+      "name": "--host string",
+      "usage": "only requests to this hostname"
+     },
+     {
+      "name": "--kind string",
+      "usage": "only requests from this kind of agent: search, ai_assistant, ai_crawler, preview, seo, other, browser, tool or unknown"
+     },
+     {
+      "name": "--limit int",
+      "usage": "how many rows or requests to list (default 100, at most 1000)"
+     },
+     {
+      "name": "--list",
+      "usage": "list the latest requests one by one instead of counting them"
+     },
+     {
+      "name": "--method string",
+      "usage": "only requests with this method, such as POST"
+     },
+     {
+      "name": "--network string",
+      "usage": "only requests from this network, such as GOOGLE"
+     },
+     {
+      "name": "--path string",
+      "usage": "only requests for this page, such as /pricing"
+     },
+     {
+      "name": "--period string",
+      "usage": "the period: 24h, 7d, 30d or 90d (default 7d)"
+     },
+     {
+      "name": "--query string",
+      "usage": "only requests with exactly this query, without its ?, such as page=2"
+     },
+     {
+      "name": "--referer string",
+      "usage": "only requests with this referer, such as https://www.google.com/"
+     },
+     {
+      "name": "--source string",
+      "usage": "edge for what Whisk's edge answered, cdn for what the CDN answered from its copy"
+     },
+     {
+      "name": "--status int",
+      "usage": "only requests answered with this status, such as 404"
+     },
+     {
+      "name": "--to string",
+      "usage": "end with a date (its whole day) or a time; default now"
+     },
+     {
+      "name": "--tz string",
+      "usage": "the time zone dates and days are in, such as America/New_York (default UTC)"
+     },
+     {
+      "name": "--user-agent string",
+      "usage": "only requests with exactly this user agent"
+     },
+     {
+      "name": "--user-id string",
+      "usage": "only requests from this signed-in person, by the user id the app knows them by"
+     }
+    ]
+   },
+   {
+    "usage": "whisk analytics visitor \u003cid\u003e",
+    "short": "What one visitor did, page by page and event by event",
+    "flags": [
+     {
+      "name": "--from string",
+      "usage": "start at a date, 2026-11-01, or a time, 2026-11-01T09:00:00Z, in place of --period"
+     },
+     {
+      "name": "--period string",
+      "usage": "the period: 24h, 7d, 30d or 90d (default 7d)"
+     },
+     {
+      "name": "--to string",
+      "usage": "end with a date (its whole day) or a time; default now"
+     },
+     {
+      "name": "--tz string",
+      "usage": "the time zone dates and days are in, such as America/New_York (default UTC)"
+     }
+    ]
+   },
+   {
+    "usage": "whisk analytics visitors",
+    "short": "The app's visitors one by one, latest first",
+    "flags": [
+     {
+      "name": "--cursor string",
+      "usage": "the next page, as the last one named it"
+     },
+     {
+      "name": "--event string",
+      "usage": "only visits that sent this event, such as signup"
+     },
+     {
+      "name": "--from string",
+      "usage": "start at a date, 2026-11-01, or a time, 2026-11-01T09:00:00Z, in place of --period"
+     },
+     {
+      "name": "--page string",
+      "usage": "only visits that viewed this page, such as /pricing"
+     },
+     {
+      "name": "--period string",
+      "usage": "the period: 24h, 7d, 30d or 90d (default 7d)"
+     },
+     {
+      "name": "--source string",
+      "usage": "only visits from this site, such as google.com (a comma means any of)"
+     },
+     {
+      "name": "--to string",
+      "usage": "end with a date (its whole day) or a time; default now"
+     },
+     {
+      "name": "--tz string",
+      "usage": "the time zone dates and days are in, such as America/New_York (default UTC)"
+     }
+    ]
    }
   ]
  },

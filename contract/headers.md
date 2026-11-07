@@ -22,12 +22,13 @@ platform edge; there is no other path that could set them.
 | `X-Whisk-Service-App` | service, app-to-app | ULID of the calling app |
 | `X-Whisk-Flags` | a feature flag whisk.yaml declares is on for the person | comma-separated flag names, in alphabetical order; absent when none is (CONTRACT.md §3.3) |
 | `X-Whisk-Request-Id` | always | ULID; echo it in every log line. Also returned on the response so a client can quote it. |
+| `X-Whisk-Country` | the edge places the visitor's address in a country | two capital letters, ISO 3166-1 (`NZ`, `DE`); absent when the address is in none, such as on an app-to-app call. From DB-IP's country data, so treat it as a hint for defaults (currency, language), never as proof of where someone is. A page whose answer depends on it sends `Vary: X-Whisk-Country`, which the edge's cache keys on; a page the app's CDN keeps a copy of is the same for every country. |
 | `traceparent` | always | W3C trace context, `00-<trace id>-<parent id>-01`. The trace id is the request id's 16 bytes in hex, so an OpenTelemetry SDK that continues it records the request under its request id. Whatever the caller sent is replaced, and `tracestate` removed. |
 
 Audiences:
 
-- **anonymous**: a public route with no session. Only `X-Whisk-Audience` and
-  `X-Whisk-Request-Id` are present.
+- **anonymous**: a public route with no session. Only `X-Whisk-Audience`,
+  `X-Whisk-Request-Id` and, when known, `X-Whisk-Country` are present.
 - **team**: a member or guest of the org that owns the app, with a grant to it.
 - **customer**: a user of the app's own customer pool (`customer_identity: app | org`). No groups,
   no roles. Authorise customers by `X-Whisk-User-Id` against your own tables.
