@@ -22,7 +22,8 @@ func analyticsCmd(s *session) *cobra.Command {
 the bounce rate and the average visit, then the top pages, where visitors came from and the
 events the app sent. A page is counted when it loads <script defer src="/.whisk/analytics.js">.
 Last come the crawlers that asked for the app's pages (search engines, AI assistants and
-crawlers, link previews and other bots), counted from Whisk's request log.
+crawlers, link previews and other bots), counted from Whisk's request log; whisk analytics
+crawlers shows each one's pages and journeys.
 whisk open analytics opens the full analytics in the dashboard.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -75,6 +76,7 @@ whisk open analytics opens the full analytics in the dashboard.`,
 		},
 	}
 	c.Flags().StringVar(&period, "period", "7d", "the period: 24h, 7d, 30d or 90d")
+	c.AddCommand(crawlersCmd(s), journeyCmd(s))
 	return c
 }
 
@@ -92,11 +94,7 @@ func printCrawlers(s *session, w io.Writer, crawlers []api.AnalyticsCrawler) {
 	fmt.Fprintln(w)
 	rows := make([][]string, len(crawlers))
 	for i, c := range crawlers {
-		kind := crawlerKinds[c.Kind]
-		if kind == "" {
-			kind = c.Kind
-		}
-		rows[i] = []string{c.Name, kind, strconv.Itoa(c.Requests)}
+		rows[i] = []string{c.Name, crawlerKind(c.Kind), strconv.Itoa(c.Requests)}
 	}
 	s.printer.Table(w, []string{"CRAWLER", "KIND", "REQUESTS"}, rows)
 }

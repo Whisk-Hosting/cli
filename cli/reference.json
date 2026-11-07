@@ -112,6 +112,24 @@
       "usage": "the period: 24h, 7d, 30d or 90d"
      }
     ]
+   },
+   {
+    "usage": "whisk analytics crawlers",
+    "short": "What crawlers asked the app for: each crawler, its pages, the answers and its journeys",
+    "flags": [
+     {
+      "name": "--crawler string",
+      "usage": "one crawler's pages, answers and journeys, by its name: Googlebot, GPTBot…"
+     },
+     {
+      "name": "--period string",
+      "usage": "the period: 24h, 7d, 30d or 90d"
+     }
+    ]
+   },
+   {
+    "usage": "whisk analytics journey \u003cid\u003e",
+    "short": "One crawler's journey through the app, request by request"
    }
   ]
  },

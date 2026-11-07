@@ -588,7 +588,9 @@ tracked (`analytics: { do_not_track: ignore }` counts it). Send an event from th
 `data-umami-event="signup"`. Crawlers run no script, so Whisk counts them from its own request log:
 search engines, AI assistants and crawlers, link previews and other bots, with nothing to add to the
 app. `whisk analytics` prints views, visitors, top pages, sources, events and crawlers
-(`--period 24h|7d|30d|90d`); the human sees everything with `whisk open analytics`. Visits are kept
+(`--period 24h|7d|30d|90d`); `whisk analytics crawlers [--crawler Googlebot]` prints each crawler's
+pages, answers and journeys, and `whisk analytics journey <id>` one journey request by request; the
+human sees everything with `whisk open analytics`. Visits are kept
 7 days on Free, 13 months on paid plans and 25 months on Business. If the app has a privacy notice, say there
 that it counts visits with Whisk's analytics, without cookies, and for how long. Do not add another analytics
 tool unless the human names one.
