@@ -521,6 +521,21 @@ func (s *session) push(token string, plan pushPlan, gitURL string) (gitcmd.Sideb
 	if err != nil {
 		return gitcmd.Sideband{}, gitcmd.PushUnknown, err
 	}
+	for attempt := 1; !res.OK(); attempt++ {
+		outcome, _ := gitcmd.ParsePush(res.Stdout)
+		wait, again := pushRetry(res.Stderr, outcome, s.now().Sub(started), attempt)
+		if !again {
+			break
+		}
+		s.printer.Progress("git push could not reach the platform (%s); trying again in %s.", lastLine(gitcmd.LastLines(res.Stderr, 1)), wait)
+		if err := s.sleep(wait); err != nil {
+			return gitcmd.Sideband{}, gitcmd.PushUnknown, err
+		}
+		started = s.now()
+		if res, err = s.gitRun(env, args...); err != nil {
+			return gitcmd.Sideband{}, gitcmd.PushUnknown, err
+		}
+	}
 	retried := false
 	if !res.OK() && s.goos() == "windows" && gitcmd.Failure(res.Stderr, gitcmd.PushUnknown) == "tls" {
 		// Git for Windows verifies with its own OpenSSL bundle, which lacks roots that only the
@@ -617,6 +632,21 @@ func readTrace(path string) string {
 		return ""
 	}
 	return gitcmd.RequestID(string(b))
+}
+
+// pushRetries are the waits before each new try of a push whose connection failed quickly: a
+// connection refused or reset as the push began is a platform restarting or a link that dropped
+// for a moment, and a push is safe to repeat, since it moves the branch to the same commit.
+var pushRetries = []time.Duration{2 * time.Second, 5 * time.Second}
+
+// pushRetry says whether a failed push is tried again, and after how long: only a network
+// failure, only within slowPush (a long upload that dropped is the upload's to fix), and at most
+// len(pushRetries) times. Pure.
+func pushRetry(stderr string, outcome gitcmd.PushOutcome, took time.Duration, attempt int) (time.Duration, bool) {
+	if attempt > len(pushRetries) || took >= slowPush || gitcmd.Failure(stderr, outcome) != "network" {
+		return 0, false
+	}
+	return pushRetries[attempt-1], true
 }
 
 // slowPush is how long a push runs before a lost connection is put down to the upload's size
