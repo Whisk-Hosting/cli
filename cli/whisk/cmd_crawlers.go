@@ -14,7 +14,7 @@ import (
 // crawlersCmd is what robots asked the app for (CLI.md §5): each crawler, the pages, the answers
 // and the latest journeys, from Whisk's request log and the CDN's.
 func crawlersCmd(s *session) *cobra.Command {
-	var period, crawler string
+	var period, crawler, status string
 	c := &cobra.Command{
 		Use:   "crawlers",
 		Short: "What crawlers asked the app for: each crawler, its pages, the answers and its journeys",
@@ -22,15 +22,21 @@ func crawlersCmd(s *session) *cobra.Command {
 each crawler's requests, pages, journeys, errors (an answer of 400 or more) and requests the CDN
 answered from its copy; then the pages asked for most, the answers the app gave, and the latest
 journeys. A journey is one crawler's requests from one network with no long pause; open one with
-whisk analytics journey <id>. --crawler narrows the pages, answers and journeys to one crawler.
+whisk analytics journey <id>.
+
+--crawler prints only that crawler's row and narrows the pages, answers and journeys to it.
+--status narrows them to the requests answered with one status (404) or a class (4xx, 5xx): the
+pages that got those answers, how often and the last of them, and the journeys that met one.
 Single requests are kept as long as the plan keeps analytics, at most 90 days.`,
+		Example: `  whisk analytics crawlers --status 5xx
+  whisk analytics crawlers --crawler Googlebot --status 404 --period 30d`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
-			a, err := client.Crawlers(s.ctx, org, app, period, crawler)
+			a, err := client.Crawlers(s.ctx, org, app, period, crawler, status)
 			if err != nil {
 				return wrap(err)
 			}
@@ -40,24 +46,63 @@ Single requests are kept as long as the plan keeps analytics, at most 90 days.`,
 	}
 	c.Flags().StringVar(&period, "period", "7d", "the period: 24h, 7d, 30d or 90d")
 	c.Flags().StringVar(&crawler, "crawler", "", "one crawler's pages, answers and journeys, by its name: Googlebot, GPTBot…")
+	c.Flags().StringVar(&status, "status", "", "only the requests answered with this status or class: 404, 4xx, 5xx")
 	return c
+}
+
+// crawlerView is what the crawlers command prints of an answer: the crawlers' rows (every one, or
+// only the one --crawler names), the line above the pages, answers and journeys, and, when there
+// is nothing to show, the one line that says so instead. Pure.
+func crawlerView(a api.AppCrawlers) (crawlers []api.CrawlerSummary, heading, empty string) {
+	if len(a.Crawlers) == 0 {
+		return nil, "", "No crawlers in that period."
+	}
+	crawlers = a.Crawlers
+	if a.Crawler != "" {
+		crawlers = []api.CrawlerSummary{}
+		for _, c := range a.Crawlers {
+			if c.Name == a.Crawler {
+				crawlers = append(crawlers, c)
+			}
+		}
+	}
+	nothing := len(a.Pages) == 0 && len(a.Statuses) == 0 && len(a.Journeys) == 0
+	switch {
+	case nothing && a.Status != "" && a.Crawler != "":
+		return nil, "", fmt.Sprintf("No request from %s in that period was answered %s.", a.Crawler, a.Status)
+	case nothing && a.Status != "":
+		return nil, "", fmt.Sprintf("No crawler request in that period was answered %s.", a.Status)
+	case nothing && len(crawlers) == 0:
+		return nil, "", fmt.Sprintf("%s asked for nothing in that period. whisk analytics crawlers lists the crawlers that did; the name is as it lists it.", a.Crawler)
+	case a.Status != "" && a.Crawler != "":
+		heading = fmt.Sprintf("%s's requests answered %s:", a.Crawler, a.Status)
+	case a.Status != "":
+		heading = fmt.Sprintf("Crawler requests answered %s:", a.Status)
+	case a.Crawler != "":
+		heading = fmt.Sprintf("Pages, answers and journeys of %s:", a.Crawler)
+	}
+	return crawlers, heading, ""
 }
 
 // printAppCrawlers is the crawlers' tables.
 func printAppCrawlers(s *session, w io.Writer, a api.AppCrawlers) {
-	if len(a.Crawlers) == 0 {
-		fmt.Fprintln(w, "No crawlers in that period.")
+	crawlers, heading, empty := crawlerView(a)
+	if empty != "" {
+		fmt.Fprintln(w, empty)
 		return
 	}
-	rows := make([][]string, len(a.Crawlers))
-	for i, c := range a.Crawlers {
-		rows[i] = []string{c.Name, crawlerKind(c.Kind), strconv.Itoa(c.Requests), strconv.Itoa(c.Pages), strconv.Itoa(c.Journeys),
-			strconv.Itoa(c.Errors), strconv.Itoa(c.Cached), at(c.Last)}
+	if len(crawlers) > 0 {
+		rows := make([][]string, len(crawlers))
+		for i, c := range crawlers {
+			rows[i] = []string{c.Name, crawlerKind(c.Kind), strconv.Itoa(c.Requests), strconv.Itoa(c.Pages), strconv.Itoa(c.Journeys),
+				strconv.Itoa(c.Errors), strconv.Itoa(c.Cached), at(c.Last)}
+		}
+		s.printer.Table(w, []string{"CRAWLER", "KIND", "REQUESTS", "PAGES", "JOURNEYS", "ERRORS", "FROM CDN", "LAST"}, rows)
 	}
-	s.printer.Table(w, []string{"CRAWLER", "KIND", "REQUESTS", "PAGES", "JOURNEYS", "ERRORS", "FROM CDN", "LAST"}, rows)
-	if a.Crawler != "" {
-		fmt.Fprintf(w, "\nPages, answers and journeys of %s:\n", a.Crawler)
+	if heading != "" {
+		fmt.Fprintf(w, "\n%s\n", heading)
 	}
+	var rows [][]string
 	if len(a.Pages) > 0 {
 		fmt.Fprintln(w)
 		rows = make([][]string, len(a.Pages))

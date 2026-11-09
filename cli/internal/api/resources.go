@@ -567,6 +567,33 @@ func (c *Client) EmailSend(ctx context.Context, org, app, id string) (apitypes.E
 	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/email/sends/"+pathSeg(id), nil, &out)
 }
 
+// EmailDomain is one of the business's sending domains: where it stands and, while it waits,
+// the records to publish (CONTROL-PLANE.md §6.12).
+type EmailDomain = apitypes.EmailDomain
+
+// EmailDomains lists the business's sending domains, its apps' own among them.
+func (c *Client) EmailDomains(ctx context.Context, org string) ([]EmailDomain, error) {
+	return listAll[EmailDomain](ctx, c, orgPath(org)+"/email/domains")
+}
+
+// AddEmailDomain registers a sending domain for the business; the answer carries the records.
+func (c *Client) AddEmailDomain(ctx context.Context, org, domain string) (EmailDomain, error) {
+	var out EmailDomain
+	return out, c.Do(ctx, http.MethodPost, orgPath(org)+"/email/domains", map[string]string{"domain": domain}, &out)
+}
+
+// VerifyEmailDomain asks the provider whether the records are in place; DOMAIN_UNVERIFIED when
+// they are not.
+func (c *Client) VerifyEmailDomain(ctx context.Context, org, id string) (EmailDomain, error) {
+	var out EmailDomain
+	return out, c.Do(ctx, http.MethodPost, orgPath(org)+"/email/domains/"+pathSeg(id)+"/verify", map[string]any{}, &out)
+}
+
+// DeleteEmailDomain removes a sending domain, by id.
+func (c *Client) DeleteEmailDomain(ctx context.Context, org, id string) error {
+	return c.Do(ctx, http.MethodDelete, orgPath(org)+"/email/domains/"+pathSeg(id), nil, nil)
+}
+
 // RemoveInboxDomain stops the domain reaching the app, by id.
 func (c *Client) RemoveInboxDomain(ctx context.Context, org, app, id string) error {
 	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/inbox/domains/"+pathSeg(id), nil, nil)
@@ -681,6 +708,22 @@ func (c *Client) ErrorGroups(ctx context.Context, org, app, query, since string,
 		Items []ErrorGroup `json:"items"`
 	}
 	return out.Items, c.Do(ctx, http.MethodGet, appPath(org, app)+"/errors?"+v.Encode(), nil, &out)
+}
+
+// ErrorSample is a group as whisk errors show opens it: its newest occurrence with the stack,
+// the request it was in, the group, and its recent occurrences.
+type ErrorSample = apitypes.ErrorSample
+
+// ErrorFrame is one line of a stack, innermost last.
+type ErrorFrame = apitypes.ErrorFrame
+
+// ErrorOccurrence is one time a group happened, with the request it was in.
+type ErrorOccurrence = apitypes.ErrorOccurrence
+
+// ErrorGroupSample opens one of the app's error groups by the id the list shows.
+func (c *Client) ErrorGroupSample(ctx context.Context, org, app, id string) (ErrorSample, error) {
+	var out ErrorSample
+	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/errors/"+pathSeg(id), nil, &out)
 }
 
 // SetErrorStatus resolves or ignores a group.

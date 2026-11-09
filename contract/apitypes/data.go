@@ -487,6 +487,21 @@ type ErrorSample struct {
 	Message string         `json:"message,omitempty"`
 	Frames  []ErrorFrame   `json:"frames"`
 	Tags    map[string]any `json:"tags,omitempty"`
+	// RequestID is the X-Whisk-Request-Id of the request in flight when it threw, read from the
+	// event's request_id tag: it opens the request's trace and finds its log lines.
+	RequestID string `json:"request_id,omitempty"`
+	// Group is the group the occurrence belongs to, as the errors list says it.
+	Group *ErrorGroup `json:"group,omitempty"`
+	// Recent is the group's most recent occurrences, newest first.
+	Recent []ErrorOccurrence `json:"recent,omitempty"`
+}
+
+// ErrorOccurrence is one time a group happened: when, what it said, and the request it was in.
+type ErrorOccurrence struct {
+	ID        string    `json:"id"`
+	At        time.Time `json:"at"`
+	Message   string    `json:"message,omitempty"`
+	RequestID string    `json:"request_id,omitempty"`
 }
 
 // ErrorFrame is one line of a stack, innermost last, as a stack trace reads.

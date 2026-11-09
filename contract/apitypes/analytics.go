@@ -49,7 +49,8 @@ type AnalyticsFilters struct {
 // included. Every other breakdown counts one thing in Count, most first: the views of a page,
 // the visits that entered or left by it, came from a source or a country or used a browser, os
 // or device, the times an event was sent, or for event-property the times an event carried a
-// property's value, named property=value.
+// property's value, named property=value. By source, the row named "" is the visitors no other
+// site sent: typed in, bookmarked, or under a page filter reaching that page from the app's own.
 type AnalyticsRow struct {
 	Name     string `json:"name"`
 	Views    int    `json:"views,omitempty"`
@@ -204,20 +205,24 @@ type AnalyticsCrawler struct {
 
 // AppCrawlers is GET /orgs/:org/apps/:app/analytics/crawlers: what robots asked an app for over
 // a period, one by one, as the platform's request log and the CDN's log recorded it. Crawler is
-// the one robot the answer is narrowed to, "" for every one. Single requests are kept as long as
-// the plan keeps analytics and at most 90 days (KeptDays).
+// the one robot Pages, Statuses and Journeys are narrowed to, "" for every one, and Status the
+// answers they are narrowed to: one (404) or a class (5xx), omitted for every answer. Crawlers
+// is every robot whatever either narrows. Single requests are kept as long as the plan keeps
+// analytics and at most 90 days (KeptDays).
 type AppCrawlers struct {
 	Period   string           `json:"period"`
 	From     time.Time        `json:"from"`
 	To       time.Time        `json:"to"`
 	Crawler  string           `json:"crawler"`
+	Status   string           `json:"status,omitempty"`
 	Crawlers []CrawlerSummary `json:"crawlers"`
-	// Pages are the pages asked for most, most first.
+	// Pages are the pages asked for most, most first; with Status, the pages that got those
+	// answers, counting only those requests.
 	Pages []CrawlerPage `json:"pages"`
 	// Statuses are the answers the app gave, most first.
 	Statuses []CrawlerStatus `json:"statuses"`
 	// Journeys are the latest journeys, latest first: one robot's requests from one network with
-	// no pause longer than JourneyGapMinutes.
+	// no pause longer than JourneyGapMinutes. With Status, the journeys that got such an answer.
 	Journeys          []CrawlerJourney `json:"journeys"`
 	JourneyGapMinutes int              `json:"journey_gap_minutes"`
 	KeptDays          int              `json:"kept_days"`

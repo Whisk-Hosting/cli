@@ -12,7 +12,7 @@ import (
 )
 
 // emailCmd is the app's sent mail (CLI.md §5.8, CONTROL-PLANE.md §6.12 "Delivery"): what became
-// of a message, by the id its send answered.
+// of a message, by the id its send answered, and the business's sending domains.
 func emailCmd(s *session) *cobra.Command {
 	email := &cobra.Command{Use: "email", Short: "The mail the app sends"}
 	status := &cobra.Command{
@@ -37,7 +37,7 @@ reported. A message's delivery is kept 30 days.`,
 			return nil
 		},
 	}
-	email.AddCommand(status)
+	email.AddCommand(status, emailDomainsCmd(s))
 	return email
 }
 

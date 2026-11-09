@@ -1533,8 +1533,9 @@ refused with `INVALID_REQUEST`, since mail servers refuse it (a domain with acce
 mail goes from the business's own address on Whisk's domain, `<app>.<org>@whisk.page`, under the
 app's name, with no setup; `from: "Training <training@whisk.page>"` sends as
 `training.<org>@whisk.page` instead. To send from the
-business's own domain, an owner verifies it under Settings, Email, and `from` names an address on
-it; any other domain gets `EMAIL_DOMAIN_UNVERIFIED` naming the domains that are. Set `reply_to`
+business's own domain, an owner or admin adds it with `whisk email domains add <domain>` (or under
+Settings, Email), creates the DNS records it prints, runs `whisk email domains verify <domain>`,
+and `from` names an address on it; any other domain gets `EMAIL_DOMAIN_UNVERIFIED` naming the domains that are. Set `reply_to`
 when people should be able to answer. Email is for transactional mail a person asked for or
 needs now, never mailings: one business may use only a share of Whisk's shared sending allowance,
 and past it sends answer `EMAIL_RATE_LIMITED` until the day or month resets.

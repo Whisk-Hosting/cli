@@ -21,6 +21,9 @@ func readingAPI(queries map[string]url.Values) *httptest.Server {
 		if by == "day" {
 			rows = []map[string]any{{"name": "2026-11-05", "views": 30, "visitors": 9}, {"name": "2026-11-06"}}
 		}
+		if by == "event" {
+			rows = []map[string]any{}
+		}
 		writeJSON(w, 200, map[string]any{"period": "", "views": 32, "visitors": 9, "visits": 11, "bounce_rate": 0.5, "average_seconds": 61,
 			"filters": map[string]any{"source": r.URL.Query().Get("source")}, "by": by, "breakdown": rows,
 			"pages": []any{}, "sources": []any{}, "events": []any{}, "crawlers": []any{}})
@@ -57,6 +60,12 @@ func TestAnalyticsReadings(t *testing.T) {
 		if !strings.Contains(r.Stdout, want) {
 			t.Errorf("breakdown lacks %q:\n%s", want, r.Stdout)
 		}
+	}
+
+	// A reading with views and an empty breakdown says so, under its numbers.
+	r = runRemote(t, dir, srv.URL, nil, "analytics", "--page", "/software/submit", "--by", "event")
+	if r.Code != 0 || !strings.Contains(r.Stdout, "32") || !strings.Contains(r.Stdout, "Analytics recorded no event for these visits.") || strings.Contains(r.Stdout, "No visits") {
+		t.Errorf("empty breakdown:\n%s", r.Stdout)
 	}
 
 	r = runRemote(t, dir, srv.URL, nil, "analytics", "--from", "2026-11-05", "--to", "2026-11-06", "--tz", "America/New_York", "--by", "day")
@@ -103,7 +112,7 @@ func TestBreakdownTable(t *testing.T) {
 	if head[0] != "EVENT PROPERTY" || rows[0][0] != "target=https://a.example" || rows[0][1] != "3" {
 		t.Errorf("event-property: %v %v", head, rows)
 	}
-	if _, rows := breakdownTable("source", []api.AnalyticsRow{{Name: "", Count: 1}}); rows[0][0] != "(direct)" {
+	if _, rows := breakdownTable("source", []api.AnalyticsRow{{Name: "", Count: 1}}); rows[0][0] != "(direct or own pages)" {
 		t.Errorf("no source is direct: %v", rows)
 	}
 }

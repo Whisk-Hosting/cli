@@ -3333,6 +3333,21 @@ still unknown, check the spelling against `whisk --help`.
 {"error":{"code":"UNKNOWN_COMMAND","message":"This whisk (pilot-66313c9) has no such command or flag: unknown command \"db\" for \"whisk\".","fix":"Run whisk update to install the platform's current CLI, then retry; run whisk --help for what this build offers.","docs":"https://skill.whisk.run/errors/UNKNOWN_COMMAND","details":{"whisk_cli":"pilot-66313c9"}}}
 ```
 
+## NOT_AN_ERROR_CODE
+
+Status: - · Surface: cli
+
+When: `whisk errors <CODE>` was given the id of one of the app's error groups, a whole number as
+`whisk errors` lists them, where it explains a platform error code. `details.show` is the command
+that opens the group.
+
+Fix: Run `whisk errors show <id>` to open the group: its stack, the request it was in and its
+recent occurrences. Platform error codes are upper snake case, like `BUILD_FAILED`.
+
+```json
+{"error":{"code":"NOT_AN_ERROR_CODE","message":"62 is an error group's id, not a platform error code.","fix":"Run whisk errors show 62 to open the group: its stack, the request it was in and its recent occurrences. Platform error codes are upper snake case, like BUILD_FAILED.","docs":"https://skill.whisk.run/errors/NOT_AN_ERROR_CODE","details":{"argument":"62","show":"whisk errors show 62"}}}
+```
+
 ## CLI_ERROR
 
 Status: - · Surface: cli

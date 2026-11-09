@@ -106,6 +106,12 @@ func (c *Client) VisitorSteps(ctx context.Context, org, app, id string, q Analyt
 // and the latest journeys.
 type AppCrawlers = apitypes.AppCrawlers
 
+// CrawlerSummary is one robot over a period.
+type CrawlerSummary = apitypes.CrawlerSummary
+
+// CrawlerPage is one page robots asked for.
+type CrawlerPage = apitypes.CrawlerPage
+
 // CrawlerJourney is one robot's run of requests from one network.
 type CrawlerJourney = apitypes.CrawlerJourney
 
@@ -113,15 +119,14 @@ type CrawlerJourney = apitypes.CrawlerJourney
 type CrawlerJourneyDetail = apitypes.CrawlerJourneyDetail
 
 // Crawlers reads what robots asked an app for over a period (24h, 7d, 30d or 90d, empty for 7d),
-// every robot's or the one crawler names.
-func (c *Client) Crawlers(ctx context.Context, org, app, period, crawler string) (AppCrawlers, error) {
+// every robot's or the one crawler names, every answer or those status names (404, 5xx).
+func (c *Client) Crawlers(ctx context.Context, org, app, period, crawler, status string) (AppCrawlers, error) {
 	var out AppCrawlers
 	q := url.Values{}
-	if period != "" {
-		q.Set("period", period)
-	}
-	if crawler != "" {
-		q.Set("crawler", crawler)
+	for k, v := range map[string]string{"period": period, "crawler": crawler, "status": status} {
+		if v != "" {
+			q.Set(k, v)
+		}
 	}
 	path := appPath(org, app) + "/analytics/crawlers"
 	if len(q) > 0 {

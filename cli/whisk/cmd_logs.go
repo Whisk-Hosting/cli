@@ -328,10 +328,14 @@ func errorGroupsCmd(s *session, explain *cobra.Command) *cobra.Command {
 		Short: "Error groups the app reported, or the meaning of one platform error code",
 		Long: `With no argument, the app's error groups: what broke, how often, and when it was last
 seen. With a code (upper case, like BUILD_FAILED), the platform's explanation of that code and how
-to fix it.`,
+to fix it. whisk errors show <id> opens one group by the id the list shows: the stack, the request
+it was in, and its recent occurrences.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
+				if errorsArgOf(args[0]) == errorsArgGroup {
+					return notAnErrorCode(args[0])
+				}
 				return explain.RunE(explain, args)
 			}
 			client, org, app, err := s.appClient()
@@ -365,6 +369,7 @@ to fix it.`,
 					rows[i] = []string{g.ID, truncate(g.Title, 60), fmt.Sprint(g.Count), ago(g.LastSeen), g.Status}
 				}
 				s.printer.Table(w, []string{"ID", "ERROR", "COUNT", "LAST SEEN", "STATUS"}, rows)
+				fmt.Fprintf(w, "\nOpen one with whisk errors show %s: the stack, its request and recent occurrences.\n", groups[0].ID)
 			})
 			return nil
 		},
@@ -375,15 +380,19 @@ to fix it.`,
 	f.IntVar(&limit, "limit", 25, "how many groups to show")
 	f.StringVar(&resolve, "resolve", "", "mark a group resolved by id")
 	f.StringVar(&ignore, "ignore", "", "mark a group ignored by id")
+	c.AddCommand(errorShowCmd(s))
 	return c
 }
 
 // ago is a last-seen time in words.
-func ago(t time.Time) string {
+func ago(t time.Time) string { return agoAt(t, time.Now()) }
+
+// agoAt is how long before now t was, in words. Pure.
+func agoAt(t, now time.Time) string {
 	if t.IsZero() {
 		return "never"
 	}
-	d := time.Since(t)
+	d := now.Sub(t)
 	switch {
 	case d < time.Minute:
 		return "just now"

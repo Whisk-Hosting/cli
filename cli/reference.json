@@ -156,6 +156,10 @@
      {
       "name": "--period string",
       "usage": "the period: 24h, 7d, 30d or 90d"
+     },
+     {
+      "name": "--status string",
+      "usage": "only the requests answered with this status or class: 404, 4xx, 5xx"
      }
     ]
    },
@@ -948,6 +952,22 @@
   "short": "The mail the app sends",
   "commands": [
    {
+    "usage": "whisk email domains add \u003cdomain\u003e",
+    "short": "Send the business's mail from a domain of its own and print the DNS records it needs"
+   },
+   {
+    "usage": "whisk email domains list",
+    "short": "List the business's sending domains and where each stands"
+   },
+   {
+    "usage": "whisk email domains remove \u003cdomain\u003e",
+    "short": "Stop sending from a domain; apps naming a from address at it are refused"
+   },
+   {
+    "usage": "whisk email domains verify \u003cdomain\u003e",
+    "short": "Check a sending domain's DNS records; it is verified once they are published"
+   },
+   {
     "usage": "whisk email status \u003cid\u003e",
     "short": "What became of a message the app sent: sent, delayed, delivered, failed, bounced or complained"
    }
@@ -1006,6 +1026,10 @@
       "usage": "only groups seen since: 24h, 7d"
      }
     ]
+   },
+   {
+    "usage": "whisk errors show \u003cid\u003e",
+    "short": "Open one error group: its stack, the request it was in, and its recent occurrences"
    }
   ]
  },

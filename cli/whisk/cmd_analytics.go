@@ -107,6 +107,10 @@ func printAnalytics(s *session, w io.Writer, a api.AppAnalytics) {
 	}})
 	if a.By != "" {
 		fmt.Fprintln(w)
+		if len(a.Breakdown) == 0 {
+			fmt.Fprintf(w, "Analytics recorded no %s for these visits.\n", strings.ReplaceAll(a.By, "-", " "))
+			return
+		}
 		head, rows := breakdownTable(a.By, a.Breakdown)
 		s.printer.Table(w, head, rows)
 		return
@@ -122,14 +126,20 @@ func printAnalytics(s *session, w io.Writer, a api.AppAnalytics) {
 		rows := make([][]string, len(part.rows))
 		for i, r := range part.rows {
 			name := r.Name
-			if name == "" {
-				name = "(direct)"
+			if name == "" && part.head == "SOURCE" {
+				name = unreferred
+			} else if name == "" {
+				name = "(none)"
 			}
 			rows[i] = []string{name, strconv.Itoa(r.Count)}
 		}
 		s.printer.Table(w, []string{part.head, "COUNT"}, rows)
 	}
 }
+
+// unreferred names the source row of the visitors no other site sent: typed in, bookmarked, or,
+// under --page, reaching that page from the app's own pages.
+const unreferred = "(direct or own pages)"
 
 // noVisits is what an empty reading says: why it may be empty. Pure.
 func noVisits(f api.AnalyticsFilters) string {
@@ -154,7 +164,7 @@ func breakdownTable(by string, rows []api.AnalyticsRow) ([]string, [][]string) {
 		if name == "" {
 			name = "(none)"
 			if by == "source" {
-				name = "(direct)"
+				name = unreferred
 			}
 		}
 		out[i] = []string{name, strconv.Itoa(r.Count)}

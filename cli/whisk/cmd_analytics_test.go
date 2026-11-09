@@ -30,7 +30,7 @@ func TestAnalytics(t *testing.T) {
 	dir := boundDir(t, srv.URL)
 
 	r := runRemote(t, dir, srv.URL, nil, "analytics")
-	for _, want := range []string{"VIEWS", "1240", "25%", "1m 35s", "/pricing", "(direct)"} {
+	for _, want := range []string{"VIEWS", "1240", "25%", "1m 35s", "/pricing", "(direct or own pages)"} {
 		if r.Code != 0 || !strings.Contains(r.Stdout, want) {
 			t.Errorf("analytics lacks %q: %+v", want, r)
 		}

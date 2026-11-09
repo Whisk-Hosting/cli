@@ -318,7 +318,7 @@ type DNSRecord struct {
 	Value string `json:"value"`
 	// Host is Name as a DNS provider's form takes it: relative to the registered domain, "@"
 	// for the registered domain itself (some providers want that left blank). Sent with a
-	// custom domain's records.
+	// custom domain's records and a sending domain's.
 	Host string `json:"host,omitempty"`
 }
 
