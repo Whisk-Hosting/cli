@@ -36,6 +36,10 @@ func d(t time.Duration) int64 { return int64(t) }
 // Knobs are every edge tunable.
 var Knobs = []Knob{
 	{Key: "edge.challenge_lifetime", Label: "How long a proof-of-work challenge the gate hands out stays good", Kind: Duration, Default: d(10 * time.Minute), Min: d(time.Minute), Max: d(time.Hour)},
+	{Key: "edge.challenge_base", Label: "The maxnumber of the proof-of-work challenge the gate hands an address that has not been sending", Kind: Count, Default: 100_000, Min: 1_000, Max: 10_000_000},
+	{Key: "edge.challenge_free", Label: "Challenges an address solves on one app before the next is made harder", Kind: Count, Default: 3, Min: 1, Max: 100},
+	{Key: "edge.challenge_ceiling", Label: "The highest maxnumber the gate raises a sending address's challenge to", Kind: Count, Default: 10_000_000, Min: 10_000, Max: 100_000_000},
+	{Key: "edge.challenge_decay", Label: "How long the gate takes to forget one challenge an address solved", Kind: Duration, Default: d(10 * time.Minute), Min: d(time.Minute), Max: d(24 * time.Hour)},
 	{Key: "edge.mcp_body_limit", Label: "How much of an MCP request's body the gate reads to judge it", Kind: Bytes, Default: 1 << 20, Min: 64 << 10, Max: 16 << 20},
 	{Key: "edge.service_cache_ttl", Label: "How long the gate keeps a service token's decision", Kind: Duration, Default: d(time.Minute), Min: d(5 * time.Second), Max: d(10 * time.Minute)},
 	{Key: "edge.trap_strikes", Label: "Probes of the trap's paths within the window that bar an address", Kind: Count, Default: 3, Min: 1, Max: 20},

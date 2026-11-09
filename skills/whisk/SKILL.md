@@ -754,7 +754,10 @@ same holds for `whisk apps restore`.
 from the app's own pages with no token. Put a public form that strangers fill in (contact, quote
 request, sign-up) under `routes.challenge`: a POST without a solved proof-of-work challenge gets
 `CHALLENGE_REQUIRED` carrying one; solve it with the Altcha widget and resend with the solution in
-the `altcha` form field. `routes.headers` adds or replaces response headers on every route, such
+the `altcha` form field. There is no difficulty to set: a person gets one a phone solves in about
+a second, and an address that keeps posting to the app gets harder ones (a larger `maxnumber`)
+until it slows down, so always solve the challenge the latest `CHALLENGE_REQUIRED` carries.
+`routes.headers` adds or replaces response headers on every route, such
 as a `Content-Security-Policy`. The edge sends `Cross-Origin-Opener-Policy: same-origin`, so a
 link to the app from inside a sandboxed iframe (a CRM tile, a widget on another site) opens to
 Chrome's `ERR_BLOCKED_BY_RESPONSE`; when the app is meant to be opened that way, set
