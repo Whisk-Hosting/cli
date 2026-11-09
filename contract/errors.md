@@ -75,7 +75,7 @@ before continuing.
 
 ## TOKEN_SCOPE
 
-Status: 403 · Surface: api
+Status: 403 · Surface: api, edge
 
 When: the token is valid but not scoped to this org, this app, or this action. An agent token
 does only what its grant scopes allow, even when the person it acts for may do more: deploying,
@@ -86,9 +86,13 @@ token's own. Agent tokens never carry `secrets:read`, so reading a secret value 
 with this code. An app's own token sending an event is refused with this code when it is tied
 to no deploy the platform knows, and a workflow registration from an app's SDK is refused with it
 when it names another app or any URL, at the top or on a step, other than the app's serve URL
-(`details.field` names the first such field, `details.url` the serve URL).
+(`details.field` names the first such field, `details.url` the serve URL). At an app's address,
+a `whisk login` whose person is not an owner of the app's business is refused with this code
+(`details.required` is `an owner's login or an agent token`), as is a login sent unsigned.
 
-Fix: Use the org and app the token was issued for (`whisk whoami` shows them), or ask a human to
+Fix: For an app's address, send the call with `whisk call` from the computer that ran
+`whisk login` when your person owns the business, or else an agent token as `WHISK_TOKEN`.
+Otherwise, use the org and app the token was issued for (`whisk whoami` shows them), or ask a human to
 create a token with the needed scope with `whisk agent-token create --scopes`, or run
 `whisk login`, which grants `deploy`, `logs:read` and `secrets:declare`. Send events with the
 `WHISK_SERVICE_TOKEN` the container received, and leave the workflow SDK's serve origin and path
@@ -122,13 +126,13 @@ computer and when it was made, and tap Add; then retry. No new login is needed. 
 
 ## TOKEN_SIGNATURE
 
-Status: 401 · Surface: api, git
+Status: 401 · Surface: api, edge, git
 
 When: the agent token is bound to the computer that ran `whisk login`, and the request did not
 prove it came from there. On the API, the `Whisk-Signature` header is missing, cannot be read,
 was made more than five minutes from the platform's clock, or does not match the request and
 the token's key: the token was copied to another computer, or sent by something other than the
-whisk CLI. On git, the bound token itself was given as the password, which git cannot sign.
+whisk CLI. At an app's address, the same holds for an owner's login that `whisk call` signs. On git, the bound token itself was given as the password, which git cannot sign.
 `details.reason` is `missing`, `malformed`, `stale`, `mismatch` or (git) `git`, and
 `details.device` names the computer the token belongs to.
 

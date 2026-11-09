@@ -41,16 +41,28 @@ var (
 // unix time, the hex SHA-256 of the body (of nothing when there is no body) and the hex
 // SHA-256 of the token value, so a signature made for one token never verifies for another.
 func Canonical(method, requestURI string, t int64, body []byte, token string) []byte {
-	bodySum := sha256.Sum256(body)
+	return CanonicalSum(method, requestURI, t, BodySum(body), token)
+}
+
+// CanonicalSum is Canonical for a body already hashed with BodySum, for a checker that never
+// holds the body itself: the edge hashes an app request's body and the control plane checks
+// the signature against that hash (CADDY.md §5.1).
+func CanonicalSum(method, requestURI string, t int64, bodySum, token string) []byte {
 	tokenSum := sha256.Sum256([]byte(token))
 	return []byte(strings.Join([]string{
 		version,
 		strings.ToUpper(method),
 		requestURI,
 		strconv.FormatInt(t, 10),
-		hex.EncodeToString(bodySum[:]),
+		strings.ToLower(bodySum),
 		hex.EncodeToString(tokenSum[:]),
 	}, "\n"))
+}
+
+// BodySum is the hex SHA-256 of a body, as the canonical string carries it.
+func BodySum(body []byte) string {
+	sum := sha256.Sum256(body)
+	return hex.EncodeToString(sum[:])
 }
 
 // Sign is the Whisk-Signature header value for a request made at now.
@@ -100,6 +112,11 @@ func Parse(header string) (int64, []byte, error) {
 // to: present and well formed, signed within MaxSkew of now, and over exactly this method,
 // request URI, body and token.
 func Verify(pub ed25519.PublicKey, header, method, requestURI string, body []byte, token string, now time.Time) error {
+	return VerifySum(pub, header, method, requestURI, BodySum(body), token, now)
+}
+
+// VerifySum is Verify for a body already hashed with BodySum.
+func VerifySum(pub ed25519.PublicKey, header, method, requestURI, bodySum, token string, now time.Time) error {
 	t, sig, err := Parse(header)
 	if err != nil {
 		return err
@@ -108,7 +125,7 @@ func Verify(pub ed25519.PublicKey, header, method, requestURI string, body []byt
 	if skew > MaxSkew || skew < -MaxSkew {
 		return ErrStale
 	}
-	if len(pub) != ed25519.PublicKeySize || !ed25519.Verify(pub, Canonical(method, requestURI, t, body, token), sig) {
+	if len(pub) != ed25519.PublicKeySize || !ed25519.Verify(pub, CanonicalSum(method, requestURI, t, bodySum, token), sig) {
 		return ErrBad
 	}
 	return nil

@@ -11,6 +11,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/whisk-run/contract/tokensig"
+
 	"github.com/whisk-run/cli/internal/config"
 )
 
@@ -88,8 +90,8 @@ func TestCallOutcome(t *testing.T) {
 // and refuses before sending anything when the request or the credential cannot work.
 func TestCallSendsToTheApp(t *testing.T) {
 	var got struct {
-		auth, ct, body, method, path string
-		calls                        int
+		auth, ct, body, method, path, sig string
+		calls                             int
 	}
 	mux := http.NewServeMux()
 	var srv *httptest.Server
@@ -101,7 +103,7 @@ func TestCallSendsToTheApp(t *testing.T) {
 	})
 	mux.HandleFunc("/app/", func(w http.ResponseWriter, r *http.Request) {
 		b, _ := io.ReadAll(r.Body)
-		got.auth, got.ct, got.body, got.method, got.path = r.Header.Get("Authorization"), r.Header.Get("Content-Type"), string(b), r.Method, r.URL.RequestURI()
+		got.auth, got.ct, got.body, got.method, got.path, got.sig = r.Header.Get("Authorization"), r.Header.Get("Content-Type"), string(b), r.Method, r.URL.RequestURI(), r.Header.Get(tokensig.Header)
 		got.calls++
 		w.Header().Set("X-Whisk-Request-Id", "01REQ")
 		switch r.URL.Path {
@@ -134,7 +136,7 @@ func TestCallSendsToTheApp(t *testing.T) {
 	if r.Code != 0 || r.JSON["status"] != float64(200) || doc == nil || r.JSON["request_id"] != "01REQ" {
 		t.Fatalf("GET: %+v", r)
 	}
-	if got.auth != "Bearer whsk_agent_test" || got.method != "GET" || got.path != "/app/cms/api/pages/4?depth=0" || got.ct != "" {
+	if got.auth != "Bearer whsk_agent_test" || got.method != "GET" || got.path != "/app/cms/api/pages/4?depth=0" || got.ct != "" || got.sig != "" {
 		t.Errorf("GET sent %+v", got)
 	}
 	if strings.Contains(r.Stdout, "whsk_agent_test") || strings.Contains(r.Stderr, "whsk_agent_test") {
@@ -192,11 +194,12 @@ func TestCallSendsToTheApp(t *testing.T) {
 		t.Errorf("a refused call reached the app")
 	}
 
-	// A login bound to this computer, or a token that is not an agent's, is refused locally.
-	bound := &memStore{m: map[string]config.Credential{"default": {Token: "whsk_agent_login", PrivateKey: "k"}}}
-	r = runCLI(t, dir, map[string]string{"WHISK_API": srv.URL}, bound, "call", "GET", "/cms/api/pages/4", "--json")
-	if r.Code != 4 || errCode(r) != "TOKEN_SCOPE" {
-		t.Errorf("a bound login: %+v", r)
+	// A token that is not an agent's, or a login whose stored key cannot be read, is refused
+	// locally.
+	unreadable := &memStore{m: map[string]config.Credential{"default": {Token: "whsk_agent_login", PrivateKey: "k"}}}
+	r = runCLI(t, dir, map[string]string{"WHISK_API": srv.URL}, unreadable, "call", "GET", "/cms/api/pages/4", "--json")
+	if r.Code != 4 || errCode(r) != "AUTH_REQUIRED" {
+		t.Errorf("a login with an unreadable key: %+v", r)
 	}
 	r = runCLI(t, dir, map[string]string{"WHISK_API": srv.URL, "WHISK_TOKEN": "whsk_deploy_x"}, &memStore{m: map[string]config.Credential{}}, "call", "GET", "/cms/api/pages/4", "--json")
 	if r.Code != 4 || errCode(r) != "TOKEN_SCOPE" {
@@ -204,5 +207,42 @@ func TestCallSendsToTheApp(t *testing.T) {
 	}
 	if got.calls != before {
 		t.Errorf("a refused credential reached the app")
+	}
+}
+
+// A whisk login reaches the app signed by this computer's key, over the request exactly as
+// sent, so the edge can check it is the login's own computer; WHISK_TOKEN is sent unsigned.
+func TestCallSignsWithTheLogin(t *testing.T) {
+	pubB64, privB64, err := tokensig.NewKey()
+	must(t, err)
+	pub, _ := tokensig.ParsePublic(pubB64)
+	var verified, sig string
+	var srv *httptest.Server
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/orgs/acme/apps/crm", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]any{"slug": "crm", "url": srv.URL})
+	})
+	mux.HandleFunc("/notes", func(w http.ResponseWriter, r *http.Request) {
+		b, _ := io.ReadAll(r.Body)
+		token, _ := strings.CutPrefix(r.Header.Get("Authorization"), "Bearer ")
+		sig = r.Header.Get(tokensig.Header)
+		verified = "no"
+		if tokensig.Verify(pub, sig, r.Method, r.URL.RequestURI(), b, token, time.Now()) == nil {
+			verified = "yes"
+		}
+		writeJSON(w, 201, map[string]any{"ok": true})
+	})
+	srv = httptest.NewServer(mux)
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+
+	login := &memStore{m: map[string]config.Credential{"default": {Token: "whsk_agent_login", API: srv.URL, PrivateKey: privB64}}}
+	r := runCLI(t, dir, map[string]string{"WHISK_API": srv.URL}, login, "call", "POST", "/notes?x=1", "--data", `{"body":"hi"}`, "--json")
+	if r.Code != 0 || verified != "yes" {
+		t.Fatalf("a login's call: %+v, signature verified %s (%q)", r, verified, sig)
+	}
+	r = runCLI(t, dir, map[string]string{"WHISK_API": srv.URL, "WHISK_TOKEN": "whsk_agent_ci"}, login, "call", "POST", "/notes", "--data", "{}", "--json")
+	if r.Code != 0 || sig != "" {
+		t.Fatalf("WHISK_TOKEN's call: %+v, signature %q", r, sig)
 	}
 }

@@ -3,6 +3,7 @@ package whisk
 import (
 	"bytes"
 	"context"
+	"crypto/ed25519"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -17,6 +18,7 @@ import (
 
 	werrors "github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/run/runhttp"
+	"github.com/whisk-run/contract/tokensig"
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
@@ -152,24 +154,31 @@ func callOutcome(method string, u *url.URL, a callAnswer) error {
 		Fix: fix, Docs: werrors.DocsBase + "CALL_FAILED", Details: details, Status: a.Status}
 }
 
-// callCredential is the token whisk call sends, refusing one the app's address would not
-// accept so the agent learns why before anything is sent.
-func (s *session) callCredential() (string, error) {
+// callCredential is the token whisk call sends, and for a whisk login the key of this computer
+// that signs each request, refusing a token the app's address would not accept so the agent
+// learns why before anything is sent. A login reaches the app only for an owner of its
+// business; the edge decides that.
+func (s *session) callCredential() (string, ed25519.PrivateKey, error) {
 	cred, ok, err := s.credential()
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	if !ok || cred.Token == "" {
-		return "", output.New("AUTH_REQUIRED", "No token for profile "+s.profile+".", "Set WHISK_TOKEN to your agent identity's credential, or ask the person for one from whisk agent-token create.", map[string]any{"profile": s.profile})
-	}
-	fix := "Set WHISK_TOKEN to an agent identity's credential, or ask the person to run whisk agent-token create --label \"<agent>\" and set it as WHISK_TOKEN. A whisk login stays as it is for every other command."
-	if cred.PrivateKey != "" && s.env.Getenv("WHISK_TOKEN") == "" {
-		return "", output.New("TOKEN_SCOPE", "This login from whisk login is bound to this computer and signs each request, which an app's address cannot check, so whisk call cannot use it.", fix, map[string]any{"profile": s.profile})
+		return "", nil, output.New("AUTH_REQUIRED", "No token for profile "+s.profile+".", "Run whisk login, or set WHISK_TOKEN to your agent identity's credential or a token from whisk agent-token create.", map[string]any{"profile": s.profile})
 	}
 	if !strings.HasPrefix(cred.Token, agentCredentialPrefix) {
-		return "", output.New("TOKEN_SCOPE", "Only an agent's credential reaches an app as its person; this token is not one.", fix, nil)
+		return "", nil, output.New("TOKEN_SCOPE", "Only a whisk login or an agent's credential reaches an app as its person; this token is neither.",
+			"Run whisk login, or set WHISK_TOKEN to an agent identity's credential, or ask the person to run whisk agent-token create --label \"<agent>\" and set it as WHISK_TOKEN.", nil)
 	}
-	return cred.Token, nil
+	if cred.PrivateKey == "" || s.env.Getenv("WHISK_TOKEN") != "" {
+		return cred.Token, nil, nil
+	}
+	key, err := tokensig.ParsePrivate(cred.PrivateKey)
+	if err != nil {
+		return "", nil, output.New("AUTH_REQUIRED", "The key stored with profile "+s.profile+"'s token cannot be read: "+err.Error()+".",
+			"Run whisk login again on this computer.", map[string]any{"profile": s.profile})
+	}
+	return cred.Token, key, nil
 }
 
 // appAddress is the address of the app's environment: production unless --env names another.
@@ -207,15 +216,16 @@ API exactly as the person you act for may: read and change its pages, records an
 through the app, never its database. The edge lets you in with that person's grants, removes
 the credential and tells the app which agent sent it, and the app records the change as theirs.
 
-The credential goes only to the app's address and is never printed. It must be an agent's
-credential (WHISK_TOKEN from an agent identity, or from whisk agent-token create); an agent
-identity needs read for GET and change for anything else. --data sends a body: JSON text,
+The credential goes only to the app's address and is never printed. It is your whisk login,
+signed on this computer, when the person is an owner of the app's business; otherwise an
+agent's credential (WHISK_TOKEN from an agent identity, or from whisk agent-token create). An
+agent identity needs read for GET and change for anything else. --data sends a body: JSON text,
 @file to read a file, or - for stdin; JSON goes as application/json unless --header sets a
 Content-Type. Redirects are not followed.
 
 Prints the app's answer. --json prints {status, url, body, request_id}, with body as JSON when
 the app answered JSON. An answer outside 2xx is CALL_FAILED with the answer in details; the
-edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, FORBIDDEN_ROLE).`,
+edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, TOKEN_SIGNATURE, FORBIDDEN_ROLE).`,
 		Example: `  whisk call GET /cms/api/product-pages?limit=5
   whisk call PATCH /cms/api/product-pages/4 --data @page.json`,
 		Args: cobra.ExactArgs(2),
@@ -235,7 +245,7 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, FORBIDDEN_ROLE
 			if err != nil {
 				return err
 			}
-			token, err := s.callCredential()
+			token, key, err := s.callCredential()
 			if err != nil {
 				return err
 			}
@@ -251,7 +261,7 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, FORBIDDEN_ROLE
 			if err != nil {
 				return err
 			}
-			a, err := s.sendCall(method, u, header, body, token, timeout)
+			a, err := s.sendCall(method, u, header, body, token, key, timeout)
 			if err != nil {
 				return err
 			}
@@ -302,8 +312,9 @@ func (s *session) callBody(data string, header http.Header) ([]byte, error) {
 	return body, nil
 }
 
-// sendCall sends the request with the credential and reads the answer, within the deadline.
-func (s *session) sendCall(method string, u *url.URL, header http.Header, body []byte, token string, timeout time.Duration) (callAnswer, error) {
+// sendCall sends the request with the credential, signed with key for a whisk login, and reads
+// the answer, within the deadline.
+func (s *session) sendCall(method string, u *url.URL, header http.Header, body []byte, token string, key ed25519.PrivateKey, timeout time.Duration) (callAnswer, error) {
 	ctx, cancel := context.WithTimeout(s.ctx, timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
@@ -315,6 +326,9 @@ func (s *session) sendCall(method string, u *url.URL, header http.Header, body [
 		req.Header.Set("Accept", "application/json")
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
+	if key != nil {
+		req.Header.Set(tokensig.Header, tokensig.Sign(key, method, req.URL.RequestURI(), time.Now(), body, token))
+	}
 	req.Header.Set("User-Agent", "whisk-cli/"+Version)
 	hc := runhttp.Client(timeout)
 	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }

@@ -3,6 +3,7 @@ package tokensig
 import (
 	"crypto/ed25519"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 )
@@ -83,5 +84,29 @@ func TestEmptyBodyAndKeys(t *testing.T) {
 	}
 	if err := Verify(ed25519.PublicKey{1, 2}, h, "GET", "/v1/whoami", nil, "tok", now); !errors.Is(err, ErrBad) {
 		t.Fatalf("a malformed stored key verified: %v", err)
+	}
+}
+
+// A checker that holds only the body's hash, as the control plane does for a request the edge
+// hashed, verifies what Sign made over the body, and nothing made over another.
+func TestVerifySum(t *testing.T) {
+	_, privB64, _ := NewKey()
+	priv, _ := ParsePrivate(privB64)
+	pub := priv.Public().(ed25519.PublicKey)
+	now := time.Now()
+	body := []byte(`{"title":"Home"}`)
+	h := Sign(priv, "PATCH", "/cms/api/pages/4", now, body, "tok")
+	for _, c := range []struct {
+		name, sum string
+		want      error
+	}{
+		{"the body's sum", BodySum(body), nil},
+		{"in upper case", strings.ToUpper(BodySum(body)), nil},
+		{"another body's sum", BodySum([]byte(`{}`)), ErrBad},
+		{"no sum", "", ErrBad},
+	} {
+		if err := VerifySum(pub, h, "PATCH", "/cms/api/pages/4", c.sum, "tok", now); !errors.Is(err, c.want) {
+			t.Errorf("%s: %v, want %v", c.name, err, c.want)
+		}
 	}
 }

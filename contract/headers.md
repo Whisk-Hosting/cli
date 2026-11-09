@@ -42,8 +42,12 @@ person's team headers, plus `X-Whisk-Agent` and `X-Whisk-Agent-Id`. The request 
 person's, made through their agent: record it as theirs and, where the app keeps a history,
 note the agent. An agent identity needs `read` for GET, HEAD and OPTIONS and `change` for
 anything else; a token needs `deploy` and to cover the app; either way the person needs a grant
-to the app. A refusal is the standard error body (`TOKEN_SCOPE`, `AGENT_CATEGORY`,
-`AGENT_PAUSED`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `FORBIDDEN_ROLE`) and never reaches the app.
+to the app. An owner of the app's business may send their `whisk login` instead, signed by
+its computer with `Whisk-Signature` (`whisk call` does this); the edge removes the signature too,
+and the request arrives exactly like an agent token's, named by the login. Anyone else's login
+is refused. A refusal is the standard error body (`TOKEN_SCOPE`, `TOKEN_SIGNATURE`,
+`AGENT_CATEGORY`, `AGENT_PAUSED`, `TOKEN_EXPIRED`, `TOKEN_REVOKED`, `FORBIDDEN_ROLE`) and never
+reaches the app.
 Any other `Authorization` header reaches the app unchanged.
 
 Chat assistants: an app that names its MCP server in the manifest (`mcp.path`) can be added to

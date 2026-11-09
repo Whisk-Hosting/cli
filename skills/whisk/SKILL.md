@@ -669,9 +669,12 @@ It sends the request to the app's address with your Whisk credential, so you nev
 in a request yourself; prefer it to curl. The edge lets you in as the person you act for, with
 their grants, and adds `X-Whisk-Agent` (your name) and `X-Whisk-Agent-Id`; the app records the
 change as theirs, made by you. An answer outside 2xx is `CALL_FAILED` with the app's answer in
-`details.body`. An agent identity needs `change` to write; a token from `whisk
-agent-token create` needs `deploy`. A `whisk login` token is bound to its computer and is
-refused there (`TOKEN_SCOPE`). In the site and shop templates the pages are at `/cms/api`.
+`details.body`. When the person you act for is an owner of the app's business, your `whisk
+login` works as it is: `whisk call` signs each request on this computer, and the call is
+recorded in the business's audit log like any agent's. For anyone else (an admin, a member) the
+edge refuses a login with `TOKEN_SCOPE`, and you need an agent token: an agent identity's
+credential, which needs `change` to write, or one from `whisk agent-token create`, which needs
+`deploy`, as `WHISK_TOKEN`. In the site and shop templates the pages are at `/cms/api`.
 
 `customer` identities are the app's own users (portals, public apps), enabled with
 `customer_identity: app | org`. They arrive in the same headers without roles or groups, and
