@@ -83,6 +83,13 @@ func dataAPI(t *testing.T, st *dataState) *httptest.Server {
 	}))
 	mux.HandleFunc("POST "+app+"/restore", auth(func(w http.ResponseWriter, r *http.Request) {
 		body := st.record(r)
+		if before, ok := body["before"]; ok {
+			if before != "d1" || body["at"] != nil {
+				t.Errorf("restore before %v at %v", before, body["at"])
+			}
+			writeJSON(w, 202, map[string]any{"id": "r2", "environment": "production", "at": "2026-09-07T14:12:58Z", "before": "d1", "swap": body["swap"], "status": "queued", "target_database": "app_a1_restore_20260907141258", "created_at": "2026-09-16T10:00:00Z"})
+			return
+		}
 		if body["at"] != "2026-09-07T14:13:00Z" {
 			t.Errorf("restore at %v", body["at"])
 		}
@@ -276,6 +283,20 @@ func TestDBAndRestore(t *testing.T) {
 	r = runRemote(t, dir, srv.URL, nil, "restore", "--at", "2026-09-07T14:13:00Z", "--swap", "--json")
 	if r.Code != 1 || errCode(r) != "RESTORE_NOT_AVAILABLE" {
 		t.Fatalf("restore on a plan without it: %+v", r)
+	}
+
+	// --before names a deploy instead of a moment, and is never sent with one.
+	sent := len(st.bodies["POST /v1/orgs/acme/apps/crm/restore"])
+	r = runRemote(t, dir, srv.URL, nil, "restore", "--at", "2026-09-07T14:13:00Z", "--before", "d1", "--json")
+	if r.Code != 1 || errCode(r) != "INVALID_REQUEST" || len(st.bodies["POST /v1/orgs/acme/apps/crm/restore"]) != sent {
+		t.Fatalf("restore with both --at and --before: %+v", r)
+	}
+	r = runRemote(t, dir, srv.URL, nil, "restore", "--before", "d1", "--swap")
+	if r.Code != 0 || !strings.Contains(r.Stdout, "to before deploy d1 (2026-09-07T14:12:58Z)") || !strings.Contains(r.Stdout, "app_a1_restore_20260907141258") {
+		t.Fatalf("restore before a deploy: %+v", r)
+	}
+	if bodies := st.bodies["POST /v1/orgs/acme/apps/crm/restore"]; len(bodies) != sent+1 || bodies[sent]["before"] != "d1" || bodies[sent]["swap"] != true {
+		t.Fatalf("restore before a deploy sent %v", bodies[sent:])
 	}
 }
 

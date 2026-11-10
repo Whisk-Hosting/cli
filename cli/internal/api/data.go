@@ -49,13 +49,16 @@ func (c *Client) SnapshotDatabase(ctx context.Context, org, app, environment str
 
 // Restore is a self-service point-in-time restore as the API records it.
 type Restore struct {
-	ID             string    `json:"id"`
-	Environment    string    `json:"environment"`
-	At             time.Time `json:"at"`
-	Import         string    `json:"import,omitempty"` // the import whose dump it loads, instead of a time
-	Swap           bool      `json:"swap"`
-	Status         string    `json:"status"` // queued | running | done | failed
-	TargetDatabase string    `json:"target_database,omitempty"`
+	ID          string    `json:"id"`
+	Environment string    `json:"environment"`
+	At          time.Time `json:"at"`
+	Import      string    `json:"import,omitempty"` // the import whose dump it loads, instead of a time
+	// Before is the deploy whose restore point it goes back to, the moment just before that
+	// deploy's migration; At is then that point's moment.
+	Before         string `json:"before,omitempty"`
+	Swap           bool   `json:"swap"`
+	Status         string `json:"status"` // queued | running | done | failed
+	TargetDatabase string `json:"target_database,omitempty"`
 	// PreviousDatabase is the database a swap replaced, kept for 7 days.
 	PreviousDatabase string     `json:"previous_database,omitempty"`
 	Error            *ErrorBody `json:"error,omitempty"`
@@ -90,6 +93,17 @@ func (e *ErrorBody) UnmarshalJSON(b []byte) error {
 func (c *Client) RestoreDatabase(ctx context.Context, org, app, environment string, at time.Time, swap bool) (Restore, error) {
 	body := envBody(environment)
 	body["at"] = at.UTC().Format(time.RFC3339)
+	body["swap"] = swap
+	var out Restore
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", body, &out)
+}
+
+// RestoreBefore starts a restore of an environment's database to the restore point a deploy took
+// just before its migration, swapped in when swap is set. POST /orgs/:org/apps/:app/restore
+// {before, swap, environment}.
+func (c *Client) RestoreBefore(ctx context.Context, org, app, environment, deploy string, swap bool) (Restore, error) {
+	body := envBody(environment)
+	body["before"] = deploy
 	body["swap"] = swap
 	var out Restore
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", body, &out)

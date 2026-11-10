@@ -1006,7 +1006,8 @@ minute in the plan's window: the last 7 days on Starter, Team and Agency, 30 on 
 has no self-service restore. `whisk db snapshot` marks a restore point before risky work and
 prints the command that returns to it, or says the plan cannot. `whisk restore --at <time or 2h>`
 restores into a new database beside the live one, which `whisk db query --database <name>` reads,
-so you can check it first; `--swap` puts it live. A restore runs in the background: add `--wait`
+so you can check it first; `--swap` puts it live. `whisk restore --before <deploy-id>` goes back
+to just before that deploy's migration instead. A restore runs in the background: add `--wait`
 to follow it, or `whisk restore show <id> --wait` later. An owner or admin downloads all of the
 business's data with `whisk export --wait`; its link works for five minutes, and
 `whisk export show <id>` signs a new one while the archive is kept (seven days).

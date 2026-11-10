@@ -39,6 +39,9 @@ func TestRestoreEndedAndRow(t *testing.T) {
 	if !strings.Contains(row, "r1") || !strings.Contains(row, "2026-09-07T14:13:00Z") || !strings.Contains(row, "RESTORE_FAILED") {
 		t.Errorf("row %q", row)
 	}
+	if row := restoreRow(api.Restore{ID: "r2", Status: "done", Environment: "production", Before: "d1", At: time.Date(2026, 9, 7, 14, 12, 58, 0, time.UTC), TargetDatabase: "app_a1"}); row != "r2  done     production to before deploy d1 (2026-09-07T14:12:58Z) into app_a1" {
+		t.Errorf("row before a deploy %q", row)
+	}
 }
 
 // restoreAPI starts a restore that runs for two reads then finishes, and one that failed.

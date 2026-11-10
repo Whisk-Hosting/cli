@@ -1584,9 +1584,11 @@ migration changed its definitions (tables, columns, constraints, indexes, views,
 types): it is then restored to the restore point taken before the migration, the message names
 the window whose writes are not in the live database, `details.kept_copy` names the replaced
 database (kept for 7 days and readable with `whisk db query --database <kept_copy>`), and
-`details.writes_not_kept` holds the window. A migration that changed no definitions (one in a
-transaction undoes itself) leaves the database as it is, with `details.restored` `left as it
-was`; data it changed outside a transaction stays changed. A restore point that did not reach
+`details.writes_not_kept` holds the window. Where the app's server kept a copy of the database
+taken with the restore point, that copy is put back in a moment, `details.from_instant_copy` is
+`true` and the window starts when the copy was taken. A migration that changed no definitions
+(one in a transaction undoes itself) leaves the database as it is, with `details.restored` `left
+as it was`; data it changed outside a transaction stays changed. A restore point that did not reach
 the backup archive fails the deploy before the migration runs, with `details.step` `snapshot`.
 
 Fix: Read the output in `details.log`. Fix the migration and redeploy. Write migrations to run

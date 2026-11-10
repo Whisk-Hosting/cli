@@ -80,33 +80,34 @@ schema, which run on the platform. --private prints the inside address anyway.`,
 
 // restoreCmd is self-service point-in-time restore (CLI.md §5.9, CONTROL-PLANE.md §6.18).
 func restoreCmd(s *session) *cobra.Command {
-	var atFlag, environment string
+	var atFlag, beforeFlag, environment string
 	var swap, wait bool
 	c := &cobra.Command{
-		Use:   "restore --at <RFC 3339 time> [--swap] [--env name] [--wait]",
+		Use:   "restore (--at <RFC 3339 time> | --before <deploy-id>) [--swap] [--env name] [--wait]",
 		Short: "Restore the database to a point in time, beside the live one or swapped in",
 		Long: `Restores the environment's database to the moment given by --at into a fresh database
 beside the live one, named in the result, so the data can be inspected first. With --swap the
 restored database becomes the live one and the previous one is kept for 7 days. Both are
 audited. Paid plans; the time must be inside the plan's retention window.
 
+--before <deploy-id> restores to the restore point that deploy took just before its migration
+instead. When the app's server kept the copy of the database it took then, the restore is made
+from that copy in a moment; otherwise it is recovered from the backups like any other.
+
 A restore runs in the background and prints its id. --wait follows it until it is done or failed,
 with progress on stderr; whisk restore show <id> reads it later and whisk restore list lists the
 app's restores.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if atFlag == "" {
-				return output.New("INVALID_REQUEST", "--at names the moment to restore to.", "Pass an RFC 3339 time, for example --at 2026-09-07T14:13:00Z, or a duration ago like 2h.", nil)
-			}
-			at, err := parseSince(atFlag, time.Now())
+			at, err := restoreTo(atFlag, beforeFlag, time.Now())
 			if err != nil {
-				return output.New("INVALID_REQUEST", fmt.Sprintf("--at %q is not a time or a duration.", atFlag), "Pass an RFC 3339 time like 2026-09-07T14:13:00Z, or a duration ago like 2h or 3d.", nil)
+				return err
 			}
 			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
-			r, err := client.RestoreDatabase(s.ctx, org, app, environment, at, swap)
+			r, err := startRestore(s.ctx, client, org, app, environment, at, beforeFlag, swap)
 			if err != nil {
 				return wrap(err)
 			}
@@ -128,6 +129,7 @@ app's restores.`,
 		},
 	}
 	c.Flags().StringVar(&atFlag, "at", "", "the moment to restore to: RFC 3339, or a duration ago (2h, 3d)")
+	c.Flags().StringVar(&beforeFlag, "before", "", "a deploy: restore to just before its migration")
 	c.Flags().BoolVar(&swap, "swap", false, "make the restored database the live one")
 	c.Flags().StringVar(&environment, "env", "", "the environment; production when omitted")
 	c.Flags().BoolVar(&wait, "wait", false, "follow the restore until it is done or failed")
@@ -192,6 +194,30 @@ app's restores.`,
 	return c
 }
 
+// restoreTo is the moment whisk restore goes back to with --at, or zero with --before, which
+// names a deploy instead; exactly one of the two is given. Pure.
+func restoreTo(atFlag, beforeFlag string, now time.Time) (time.Time, error) {
+	if (atFlag == "") == (beforeFlag == "") {
+		return time.Time{}, output.New("INVALID_REQUEST", "Name what to restore to with --at or with --before, one of them.", "Pass --at with an RFC 3339 time, for example --at 2026-09-07T14:13:00Z, or a duration ago like 2h; or --before with a deploy id from whisk deploys list.", nil)
+	}
+	if atFlag == "" {
+		return time.Time{}, nil
+	}
+	at, err := parseSince(atFlag, now)
+	if err != nil {
+		return time.Time{}, output.New("INVALID_REQUEST", fmt.Sprintf("--at %q is not a time or a duration.", atFlag), "Pass an RFC 3339 time like 2026-09-07T14:13:00Z, or a duration ago like 2h or 3d.", nil)
+	}
+	return at, nil
+}
+
+// startRestore asks for a restore to just before the deploy before names, or else to at.
+func startRestore(ctx context.Context, client *api.Client, org, app, environment string, at time.Time, before string, swap bool) (api.Restore, error) {
+	if before != "" {
+		return client.RestoreBefore(ctx, org, app, environment, before, swap)
+	}
+	return client.RestoreDatabase(ctx, org, app, environment, at, swap)
+}
+
 // restorePoll is how often --wait asks how a restore is going.
 var restorePoll = 3 * time.Second
 
@@ -238,8 +264,11 @@ func restoreFailed(r api.Restore) error {
 // restoreSource is what a restore loads: a point in the app's history, or an imported dump.
 // Pure.
 func restoreSource(r api.Restore) string {
-	if r.Import != "" {
+	switch {
+	case r.Import != "":
 		return "from import " + r.Import
+	case r.Before != "":
+		return "to before deploy " + r.Before + " (" + r.At.UTC().Format(time.RFC3339) + ")"
 	}
 	return "to " + r.At.UTC().Format(time.RFC3339)
 }

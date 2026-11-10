@@ -1592,12 +1592,16 @@
   "short": "Restore the database to a point in time, beside the live one or swapped in",
   "commands": [
    {
-    "usage": "whisk restore --at \u003cRFC 3339 time\u003e [--swap] [--env name] [--wait]",
+    "usage": "whisk restore (--at \u003cRFC 3339 time\u003e | --before \u003cdeploy-id\u003e) [--swap] [--env name] [--wait]",
     "short": "Restore the database to a point in time, beside the live one or swapped in",
     "flags": [
      {
       "name": "--at string",
       "usage": "the moment to restore to: RFC 3339, or a duration ago (2h, 3d)"
+     },
+     {
+      "name": "--before string",
+      "usage": "a deploy: restore to just before its migration"
      },
      {
       "name": "--env string",

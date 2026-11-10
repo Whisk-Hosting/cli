@@ -99,7 +99,7 @@ and the exit codes of `CLI.md §3`:
   whose code and releases are Whisk's (`CLI.md §5.2`, `MANAGED-APPS.md`); `whisk apps list`
   marks a copy `managed` and a paused app `paused`.
 - `whisk runs list/show/replay/cancel`.
-- `whisk db query/schema/shell/url/snapshot`, `whisk restore --at`, `whisk export`.
+- `whisk db query/schema/shell/url/snapshot`, `whisk restore --at/--before`, `whisk export`.
 
 `whisk logs` and `whisk errors` need the logs and errors modules of the control plane and are not
 in the binary yet; they are absent rather than stubbed.
