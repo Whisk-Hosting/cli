@@ -33,7 +33,9 @@ const (
 // entered, [] when nothing, and Report is the comparison it is read from: only the tables and
 // columns where something changed, in counts, never a value. Copy is the copy kept for the
 // business's people to look at with `whisk db query --database`, which its node drops at
-// KeptUntil or within the hour after; "" once it is dropped or due to be.
+// KeptUntil or within the hour after; "" once it is dropped or due to be. MigrateMS is how long
+// the migration ran on the copy, for a rehearsal whose migration finished: a short one switches
+// the update with the app's requests held (CONTROL-PLANE.md §6.5).
 type Rehearsal struct {
 	Status      RehearsalStatus  `json:"status"`
 	Release     int              `json:"release"`
@@ -42,6 +44,7 @@ type Rehearsal struct {
 	Rows        int64            `json:"rows"`
 	Bytes       int64            `json:"bytes"`
 	Truncated   bool             `json:"truncated"`
+	MigrateMS   int64            `json:"migrate_ms,omitempty"`
 	Changes     []string         `json:"changes"`
 	Report      []RehearsedTable `json:"report"`
 	Copy        string           `json:"copy,omitempty"`

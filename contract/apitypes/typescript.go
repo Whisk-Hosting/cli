@@ -100,6 +100,7 @@ var baseEnums = func() map[reflect.Type]enumSet {
 	add(enumOf("GrantKind", "GRANT_KINDS", GrantConnection, GrantSecret, GrantAccess, GrantData))
 	add(enumOf("RehearsalStatus", "REHEARSAL_STATUSES", RehearsalRunning, RehearsalClean, RehearsalChanged, RehearsalFailed, RehearsalStopped))
 	add(enumOf("DataRollbackState", "DATA_ROLLBACK_STATES", DataRollbackWaiting, DataRollbackHeld, DataRollbackRestored, DataRollbackGivenBack, DataRollbackUnchanged))
+	add(enumOf("UpdateHoldState", "UPDATE_HOLD_STATES", UpdateHoldHeld, UpdateHoldSwitched, UpdateHoldPutBack, UpdateHoldUnchanged, UpdateHoldReleased))
 	add(enumOf("ConnectionEnvironment", "CONNECTION_ENVIRONMENTS", ConnectionProduction, ConnectionPreviews))
 	add(enumOf("ProductKind", "PRODUCT_KINDS", ProductManaged, ProductForks))
 	add(enumOf("ConnectionState", "CONNECTION_STATES", ConnectionActive, ConnectionPaused, ConnectionRevoked))
@@ -173,7 +174,7 @@ var baseWire = []any{
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
 	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppManaged{}, AppFork{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
-	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, DeployEvent{}, Warning{}, ForkUpdate{},
+	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, UpdateHold{}, DeployEvent{}, Warning{}, ForkUpdate{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},

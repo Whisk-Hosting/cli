@@ -952,12 +952,7 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 		result["caught_up"] = s.caughtUp
 	}
 	maps.Copy(result, s.forkUpdate)
-	var data []string
-	if s.followsData {
-		if d, err := client.GetDeploy(s.ctx, org, app, ev.DeployID); err == nil && d.Data != nil {
-			result["data"], data = d.Data, dataLines(d.Data)
-		}
-	}
+	data := s.followed(client, org, app, ev.DeployID, result)
 	label := "Live:"
 	note := previewNote(environment)
 	if note != "" {
@@ -1177,6 +1172,12 @@ func (s *session) deployFailure(client *api.Client, org, app string, ev api.Depl
 			fmt.Fprintln(s.env.Stderr, strings.Join(dataLines(d.Data), "\n"))
 		}
 	}
+	if d.Hold != nil {
+		e.Details["hold"] = d.Hold
+		if !s.json {
+			fmt.Fprintln(s.env.Stderr, strings.Join(holdLines(d.Hold), "\n"))
+		}
+	}
 	lines := s.logExcerpt(client, org, app, d, e)
 	if len(lines) > 0 {
 		e.Details["log"] = lines
@@ -1370,6 +1371,9 @@ func printDeploy(p output.Printer, w io.Writer, d api.Deploy) {
 	for _, line := range dataLines(d.Data) {
 		fmt.Fprintf(w, "  %s\n", line)
 	}
+	for _, line := range holdLines(d.Hold) {
+		fmt.Fprintf(w, "  %s\n", line)
+	}
 	if d.Error != nil {
 		fmt.Fprintf(w, "  %s: %s\n    %s\n", p.Bad(d.Error.Code), d.Error.Message, p.Dim("fix: "+d.Error.Fix))
 	}
@@ -1439,16 +1443,17 @@ before.`,
 	return c
 }
 
-// dataSettleWait bounds how long a failed rollback with its data is followed while it gives
-// back what it changed, which its deploy does after it fails.
+// dataSettleWait bounds how long a failed rollback with its data, or a failed held update, is
+// followed while it puts back what it changed, which its deploy does as it fails.
 const dataSettleWait = 3 * time.Minute
 
-// dataSettled follows a failed rollback with its data until its data is settled, for at most
-// dataSettleWait, so its report says where the data ended up; every other deploy passes at once.
-// A read that fails ends the wait, and the report says where the data stood at the last one.
+// dataSettled follows a failed rollback with its data, or a failed held update, until what it
+// changed is settled (unsettled), for at most dataSettleWait, so its report says where the data
+// ended up; every other deploy passes at once. A read that fails ends the wait, and the report
+// says where the data stood at the last one.
 func (s *session) dataSettled(client *api.Client, org, app string, d api.Deploy) api.Deploy {
 	deadline := time.Now().Add(dataSettleWait)
-	for d.Data != nil && d.Data.EndedAt == nil && time.Now().Before(deadline) {
+	for unsettled(d) && time.Now().Before(deadline) {
 		select {
 		case <-s.ctx.Done():
 			return d

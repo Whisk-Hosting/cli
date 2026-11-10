@@ -290,10 +290,13 @@ type Deploy struct {
 	Rehearsal *Rehearsal `json:"rehearsal,omitempty"`
 	// Data is what a rollback with its data did to the database (`whisk rollback --data`);
 	// absent for every other deploy.
-	Data       *DataRollback `json:"data,omitempty"`
-	StartedAt  *time.Time    `json:"started_at,omitempty"`
-	FinishedAt *time.Time    `json:"finished_at,omitempty"`
-	CreatedAt  time.Time     `json:"created_at"`
+	Data *DataRollback `json:"data,omitempty"`
+	// Hold is how an update of a fork switched with the app's requests held (CONTROL-PLANE.md
+	// §6.5); absent for every other deploy.
+	Hold       *UpdateHold `json:"hold,omitempty"`
+	StartedAt  *time.Time  `json:"started_at,omitempty"`
+	FinishedAt *time.Time  `json:"finished_at,omitempty"`
+	CreatedAt  time.Time   `json:"created_at"`
 }
 
 // DeployEvent is one SSE event on GET /deploys/:id/events. The last one of a live deploy

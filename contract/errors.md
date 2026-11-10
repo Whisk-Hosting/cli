@@ -1543,10 +1543,12 @@ Fix: Retry `whisk deploy`. If it keeps failing, check `https://whisk.run/status`
 Status: - · Surface: deploy, cli
 
 When: the new container kept running but did not answer 200 on `health.path` within
-`health.timeout` seconds. The previous deploy stays live and the new container is stopped.
-`details.log` has the container's last 200 lines, `details.path` the path, `details.timeout_seconds`
-the limit and `details.last_status` the last HTTP status it answered (0 when nothing answered).
-A container that exited instead is `CONTAINER_CRASHED`.
+`health.timeout` seconds, or less for an update that holds the app's requests while it switches,
+so the version that was live answers them within the minute the edge holds a request. The previous
+deploy stays live and the new container is stopped. `details.log` has the container's last 200
+lines, `details.path` the path, `details.timeout_seconds` the limit it had and
+`details.last_status` the last HTTP status it answered (0 when nothing answered). A container that
+exited instead is `CONTAINER_CRASHED`.
 
 Fix: Read the log. Typical causes: not listening on `PORT` (8080) on all interfaces, the health
 route missing or answering non-200, a crash at start, a slow start beyond the timeout. Run the
@@ -2923,14 +2925,14 @@ backups still cover the org.
 Status: 409 · Surface: api, cli
 
 When: a self-service restore, or a rollback with its data (`whisk rollback --data`), was
-requested for an app that already has a restore queued or running, or a rollback with its data
-that has not finished. Each can put a copy in the live database's place, and two at once race for
-its name, so one runs at a time. `details.restore` names the restore, or `details.deploy` the
-rollback's deploy.
+requested for an app that already has a restore queued or running, a rollback with its data that
+has not finished, or an update that holds the app's requests while it switches. Each can put a
+copy in the live database's place, and two at once race for its name, so one runs at a time.
+`details.restore` names the restore, or `details.deploy` the rollback's or the update's deploy.
 
 Fix: Wait for it to finish: `whisk restore show <id> --wait` follows a restore
 (`GET /orgs/:org/apps/:app/restores/:id`), `whisk deploys info <deploy>` shows where a rollback
-stands, and `whisk restore list` lists the app's restores.
+or an update stands, and `whisk restore list` lists the app's restores.
 
 ```json
 {"error":{"code":"RESTORE_IN_PROGRESS","message":"A restore started at 2026-09-16T10:02:00Z is still running.","fix":"Wait for it to finish: whisk restore show 01J9 --wait follows it (GET /orgs/:org/apps/:app/restores/01J9).","docs":"https://skill.whisk.run/errors/RESTORE_IN_PROGRESS","details":{"restore":"01J9","started_at":"2026-09-16T10:02:00Z"}}}
