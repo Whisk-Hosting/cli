@@ -1075,20 +1075,29 @@ app may use the same value as that app; if they agree, run
 Status: 409 · Surface: api, deploy, cli
 
 When: a production deploy declares something only a person may allow, and no grant covers it
-yet. One of three kinds: a `connection` whose address or recipe differs from
+yet. One of four kinds: a `connection` whose address or recipe differs from
 the granted one, or that names an operation not granted; a `secret` the business shares that
-the app is not on the list of apps for; or `access` wider than the
+the app is not on the list of apps for; `access` wider than the
 app's live production deploy has: a new app under `calls`, a new webhook, a
-route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`. The deploy is `blocked`; `details.grants` lists one entry per grant
+route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`; or
+`data`: in an app that follows one of Whisk's products as the business's own code, an update to
+a later release whose migration, run first on a private copy of the live data, removed or
+changed what people entered. The deploy is `blocked`; `details.grants` lists one entry per grant
 needed, `{kind, name, environment, hash, recipe_changed, new_operations, change}`, where `change`
-says in plain words what a `secret` or `access` entry would allow, and `details.url` the blocked
+says in plain words what a `secret`, `access` or `data` entry would allow, and `details.url` the blocked
 deploy's page, where an owner or admin allows every kind in one step, with any value the deploy
-needs and an AI connection's spending limit. Unset secrets the deploy also needs are named
+needs and an AI connection's spending limit. Each `data` entry is one change and all of them name
+the same `hash`, the update's build, so one approval covers the update and the same build never
+asks again; past 19 changes the last entry counts the rest, and the deploy's `rehearsal`
+(`whisk deploys info`) lists every one. When the copy as the update left it is kept, the fix names
+it and until when `whisk db query --database <copy>` reads it. Unset secrets the deploy also needs are named
 in `details.unset_secrets`. A preview never waits for any of them.
 
 Fix: Relay the message and the URL to the human and say what each entry would allow. Do not try
 to grant or approve it yourself: only a person, freshly signed in, can. The deploy starts on its
-own once it is approved.
+own once it is approved. For `data` entries, say what the update does to the data people entered,
+and when the fix names a kept copy, offer to show the person the rows it changes there with
+`whisk db query --database` before they decide.
 
 ```json
 {"error":{"code":"GRANT_NEEDED","message":"The connection erp needs a person to grant it before this deploy can go live.","fix":"Ask an owner or admin to allow erp at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one step there, signed in. Do not try to allow it yourself. The deploy starts when it is allowed.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"connection","name":"erp","environment":"production","recipe_changed":true,"new_operations":[{"name":"Read stock levels","method":"GET","path":"/stock/**"}]}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
@@ -1096,6 +1105,10 @@ own once it is approved.
 
 ```json
 {"error":{"code":"GRANT_NEEDED","message":"This deploy waits for an owner or admin to approve the use of the shared secret MAPS_KEY and wider access than the live app has (it may call the app billing; anyone may open /api/** without signing in).","fix":"Ask an owner or admin to approve it at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one tap there, signed in. Do not try to approve it yourself. The deploy starts when it is approved.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"secret","name":"MAPS_KEY","environment":"production","hash":"01J9Y","recipe_changed":false,"new_operations":[],"change":"It reads the business's shared secret MAPS_KEY, which crm is not on the list of apps for."},{"kind":"access","name":"calls:billing","environment":"production","hash":"9f2c…","recipe_changed":false,"new_operations":[],"change":"It may call the app billing."},{"kind":"access","name":"public:/api/**","environment":"production","hash":"9f2c…","recipe_changed":false,"new_operations":[],"change":"Anyone may open /api/** without signing in."}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
+```
+
+```json
+{"error":{"code":"GRANT_NEEDED","message":"This deploy waits for an owner or admin to approve what the update does to the data people entered (1 row of notes is removed; 2 rows of notes have a different value in body).","fix":"Ask an owner or admin to approve it at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one tap there, signed in. Do not try to approve it yourself. The deploy starts when it is approved. To look first, read the data as the update left it with whisk db query --database app_crm_restore_1762765200 until 2026-11-11T09:00:00Z.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"data","name":"rows:notes","environment":"production","hash":"sha256:4b1e…","recipe_changed":false,"new_operations":[],"change":"1 row of notes is removed."},{"kind":"data","name":"column:notes.body:changed","environment":"production","hash":"sha256:4b1e…","recipe_changed":false,"new_operations":[],"change":"2 rows of notes have a different value in body."}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
 ## SECRET_HELD
@@ -1584,6 +1597,30 @@ with `whisk db query --database` and write them back.
 
 ```json
 {"error":{"code":"MIGRATE_FAILED","message":"The migrate command failed (exit 1); the migration changed none of the database's tables, columns, indexes or functions, so the database was left as it was and nothing the app's users wrote was undone.","fix":"Fix the migration using the output below and redeploy. The previous deploy is still live.","docs":"https://skill.whisk.run/errors/MIGRATE_FAILED","details":{"command":"node dist/migrate.js","exit_code":1,"restored":"left as it was","snapshot":"deploy_01J9","log":["error: relation \"notes\" already exists"]}}}
+```
+
+## REHEARSAL_FAILED
+
+Status: - · Surface: deploy, cli
+
+When: in an app that follows one of Whisk's products as the business's own code, an update to a
+later release ran its migration first on a private copy of the live data, and the migration
+exited non-zero or ran longer than 600 seconds and was stopped (`details.timed_out`,
+`details.timeout_seconds`). It never ran on the live data, which is unchanged, and the previous
+deploy is still live. `details.release` is the release the update brings, `details.from_release`
+the one live, `details.command` the migration and `details.log` its last lines. The migration
+runs there with `DATABASE_URL` set to the copy and none of the app's secrets. As the
+`details.cause_code` of a `PLATFORM_DEPLOY_FAILED` it is instead a rehearsal Whisk could not
+carry out, with nothing about the migration.
+
+Fix: Read `details.log`. If `whisk apps info` says the code is a release as Whisk made it, do not
+change the code: report it with `whisk feedback --kind bug --code REHEARSAL_FAILED`, naming the
+deploy id, and take the release that fixes it once it arrives. If the business changed the code,
+find what of its changes the migration meets on this data (a table, column or constraint of its
+own, a migration that reads a secret), fix that, and deploy again.
+
+```json
+{"error":{"code":"REHEARSAL_FAILED","message":"The migration of release 4 failed on a private copy of the app's data (exit 1), so it never ran on the live data, which is unchanged. The previous deploy is still live.","fix":"Read the log. If the code is a release as Whisk made it, report it with whisk feedback --kind bug --code REHEARSAL_FAILED and the deploy id; otherwise fix what of the business's changes the migration meets on this data and deploy again.","docs":"https://skill.whisk.run/errors/REHEARSAL_FAILED","details":{"command":"npm run migrate","exit_code":1,"log":["ERROR: check constraint \"notes_short\" of relation \"notes\" is violated by some row"],"step":"rehearse","release":4,"from_release":3,"fault":"app"}}}
 ```
 
 ## PLATFORM_DEPLOY_FAILED
@@ -3213,10 +3250,13 @@ the edge answers this rather than an empty response. `details.kind` is `hostname
 edge: a path only an attacker's scanner asks for (WordPress, PHP, secrets or version control files such as
 `/.env` and `.git`), which nothing on Whisk serves; `details.kind` is `path`. Also on the edge: a static file
 of an app whose business brought its bucket that the bucket does not have, or a request for one
-that is not a GET or HEAD.
+that is not a GET or HEAD. Also from `db query`: the copy `--database` names is no longer there,
+since a copy from a restore or from an update's rehearsal is kept only for a while;
+`details.kind` is `database`.
 
 Fix: Check the identifiers with the matching `list` command; `whisk use <org>/<app>` fixes a
-directory bound to the wrong app.
+directory bound to the wrong app. For a copy no longer there, leave `--database` out to read the
+live data.
 
 ```json
 {"error":{"code":"NOT_FOUND","message":"No app named job-trakcer in org acme.","fix":"Run whisk apps list to see the app slugs, then whisk use acme/<slug>.","docs":"https://skill.whisk.run/errors/NOT_FOUND","details":{"kind":"app","org":"acme","slug":"job-trakcer"}}}
@@ -3758,6 +3798,38 @@ report it with `whisk feedback --kind bug --code DATABASE_FAILED`, naming the de
 
 ```json
 {"error":{"code":"DATABASE_FAILED","message":"The app's database could not be prepared.","fix":"Nothing in the app causes this. Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/DATABASE_FAILED","details":{"step":"database"}}}
+```
+
+## REHEARSAL_NO_ROOM
+
+Status: - · Surface: deploy, node
+
+When: an update was to be rehearsed on a private copy of the app's live data, and the server
+holding the app's database had too little disk for the copy beside everything else. It arrives
+as `PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code` and `details.step`
+`rehearse`. Nothing ran on the live data, which is unchanged, and the previous deploy is still
+live. The platform's team is told.
+
+Fix: Nothing in the app causes this. Run `whisk deploy` again later; if it stops the same way,
+report the deploy id with `whisk feedback`.
+
+```json
+{"error":{"code":"REHEARSAL_NO_ROOM","message":"There was no room for a copy of the app's data to rehearse the update on. Nothing ran on the live data.","fix":"Nothing in the app causes this. Run whisk deploy again later; if it stops the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/REHEARSAL_NO_ROOM","details":{"step":"rehearse"}}}
+```
+
+## REHEARSAL_GONE
+
+Status: - · Surface: deploy, node
+
+When: the private copy an update was being rehearsed on was dropped before the rehearsal
+ended, as when it outlived the time a copy is kept. It arrives as `PLATFORM_DEPLOY_FAILED` with
+this code as `details.cause_code` and `details.step` `rehearse`. Nothing ran on the live data,
+which is unchanged, and the previous deploy is still live.
+
+Fix: Run `whisk deploy` again: the update is rehearsed on a new copy.
+
+```json
+{"error":{"code":"REHEARSAL_GONE","message":"The copy of the app's data the update was rehearsed on was dropped before the rehearsal ended. Nothing ran on the live data.","fix":"Run whisk deploy again: the update is rehearsed on a new copy.","docs":"https://skill.whisk.run/errors/REHEARSAL_GONE","details":{"step":"rehearse"}}}
 ```
 
 ## DATABASE_MOVE_FAILED

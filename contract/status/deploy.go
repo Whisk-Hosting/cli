@@ -13,8 +13,11 @@ type Deploy string
 
 // Deploy statuses, in pipeline order, then the finished ones.
 const (
-	DeployQueued         Deploy = "queued"
-	DeployBuilding       Deploy = "building"
+	DeployQueued   Deploy = "queued"
+	DeployBuilding Deploy = "building"
+	// DeployRehearsing is a production deploy that brings a fork a newer release running its
+	// migration on a private copy of the live data before the data itself (FORKS.md §4).
+	DeployRehearsing     Deploy = "rehearsing"
 	DeploySnapshotting   Deploy = "snapshotting"
 	DeployMigrating      Deploy = "migrating"
 	DeployStarting       Deploy = "starting"
@@ -30,7 +33,7 @@ const (
 )
 
 var deploys = []Deploy{
-	DeployQueued, DeployBuilding, DeploySnapshotting, DeployMigrating, DeployStarting,
+	DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting,
 	DeployHealthChecking, DeploySwitching, DeployDraining, DeployLive, DeployFailed,
 	DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded,
 }
@@ -46,7 +49,7 @@ func (d Deploy) Finished() bool {
 	switch d {
 	case DeployLive, DeployFailed, DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded:
 		return true
-	case DeployQueued, DeployBuilding, DeploySnapshotting, DeployMigrating, DeployStarting,
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting,
 		DeployHealthChecking, DeploySwitching, DeployDraining:
 		return false
 	}
@@ -57,7 +60,7 @@ func (d Deploy) Finished() bool {
 // one that has not begun switching traffic. A deploy that is switching or draining finishes.
 func (d Deploy) Supersedable() bool {
 	switch d {
-	case DeployQueued, DeployBuilding, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking:
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking:
 		return true
 	case DeploySwitching, DeployDraining, DeployLive, DeployFailed, DeployRolledBack,
 		DeployCancelled, DeployBlocked, DeploySuperseded:
@@ -72,7 +75,7 @@ func (d Deploy) Running() bool {
 	switch d {
 	case DeployStarting, DeployHealthChecking, DeploySwitching, DeployDraining, DeployLive:
 		return true
-	case DeployQueued, DeployBuilding, DeploySnapshotting, DeployMigrating, DeployFailed,
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployFailed,
 		DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded:
 		return false
 	}

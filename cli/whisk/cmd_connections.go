@@ -520,7 +520,7 @@ func allowPage(dash, org, app, deployID string) string {
 // grantChange says what one waiting grant would allow that the last one did not: for a shared
 // secret or wider access, the words the control plane gave.
 func grantChange(g api.GrantNeeded) string {
-	if g.Kind == apitypes.GrantSecret || g.Kind == apitypes.GrantAccess {
+	if g.Kind == apitypes.GrantSecret || g.Kind == apitypes.GrantAccess || g.Kind == apitypes.GrantData {
 		if c := strings.TrimSuffix(g.Change, "."); len(c) > 1 && c[0] >= 'A' && c[0] <= 'Z' && (c[1] < 'A' || c[1] > 'Z') {
 			return strings.ToLower(c[:1]) + c[1:]
 		} else if c != "" {

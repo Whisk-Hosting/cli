@@ -10,8 +10,9 @@ import (
 // credential, and what a person granted each (CONTROL-PLANE.md §6.8, BROKER.md).
 
 // GrantKind is what a person grants for a deploy to go ahead: a connection, a business secret
-// the app is not on the list of, or access wider than the live deploy's (grants.go). Every kind
-// waits in the same list (Deploy.GrantsNeeded) and answers GRANT_NEEDED.
+// the app is not on the list of, access wider than the live deploy's (grants.go), or an update
+// that changes what people entered (rehearsals.go). Every kind waits in the same list
+// (Deploy.GrantsNeeded) and answers GRANT_NEEDED.
 type GrantKind string
 
 const (
@@ -23,6 +24,10 @@ const (
 	// calls, a new webhook, a route made public, or a change to how routes or customers sign
 	// in (CONTROL-PLANE.md §6.5). A secret name never is: the app's own needs no grant.
 	GrantAccess GrantKind = "access"
+	// GrantData is an update whose migration, rehearsed on a copy of the live data, changed what
+	// people entered (FORKS.md §4): one entry for each change, all carrying the same hash, which
+	// names the release's build. One approval covers them all.
+	GrantData GrantKind = "data"
 )
 
 // ConnectionEnvironment is what a connection's grant covers: production, or every preview of

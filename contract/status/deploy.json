@@ -10,6 +10,7 @@
   "statuses": [
     "queued",
     "building",
+    "rehearsing",
     "snapshotting",
     "migrating",
     "starting",
@@ -26,6 +27,7 @@
   "supersedable": [
     "queued",
     "building",
+    "rehearsing",
     "snapshotting",
     "migrating",
     "starting",

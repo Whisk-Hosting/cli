@@ -185,6 +185,9 @@ func TestGrantChange(t *testing.T) {
 		{api.GrantNeeded{Name: "erp", Environment: "production", NewOperations: ops}, "erp (production) with new operations GET /stock/** (Read stock levels), POST /orders"},
 		{api.GrantNeeded{Name: "erp", RecipeChanged: true, NewOperations: ops[:1]}, "erp with a new address or recipe and new operations GET /stock/** (Read stock levels)"},
 		{api.GrantNeeded{Name: "erp", Environment: "production"}, "erp (production)"},
+		// An update's change to the data says what it does, in the control plane's words.
+		{api.GrantNeeded{Kind: apitypes.GrantData, Name: "rows:notes", Environment: "production", Change: "1 row of notes is removed."}, "1 row of notes is removed"},
+		{api.GrantNeeded{Kind: apitypes.GrantData, Name: "table:old", Environment: "production", Change: "The empty table old is removed."}, "the empty table old is removed"},
 	}
 	for _, c := range cases {
 		if got := grantChange(c.g); got != c.want {

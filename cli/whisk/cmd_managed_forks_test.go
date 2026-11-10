@@ -10,6 +10,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 )
 
 // A fork in words (FORKS.md §4): where its code stands against its product's releases, and what
@@ -152,6 +153,9 @@ type forkState struct {
 	release int    // the release the fork's code holds
 	changed bool   // whether the business changed its code
 	update  string // how POST .../fork/update answers: forward, current, none or changed
+	// blocked is an update whose rehearsal changed what people entered: its deploy waits for an
+	// owner's or admin's yes, with the copy kept to look at.
+	blocked bool
 	adds    []map[string]any
 	updates int
 }
@@ -213,7 +217,28 @@ func forkAPI(t *testing.T, st *forkState) *httptest.Server {
 		writeJSON(w, 400, map[string]any{"error": map[string]any{"code": "INVALID_REQUEST", "message": "shop does not follow one of Whisk's products.",
 			"fix": "Deploy it as any app of your own, with whisk deploy.", "details": map[string]any{"app": "shop"}}})
 	})
+	changes := []any{
+		map[string]any{"kind": "data", "name": "rows:notes", "environment": "production", "hash": "sha256:r3", "recipe_changed": false, "new_operations": []any{}, "change": "1 row of notes is removed."},
+		map[string]any{"kind": "data", "name": "column:notes.body:changed", "environment": "production", "hash": "sha256:r3", "recipe_changed": false, "new_operations": []any{}, "change": "2 rows of notes have a different value in body."},
+	}
+	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/deploys/d_up", func(w http.ResponseWriter, r *http.Request) {
+		d := deploy("blocked")
+		d["grants_needed"] = changes
+		d["rehearsal"] = map[string]any{"status": "changed", "release": 3, "from_release": 2, "tables": 4, "rows": 120, "bytes": 8192, "truncated": false,
+			"changes": []any{"1 row of notes is removed.", "2 rows of notes have a different value in body."}, "report": []any{},
+			"copy": "app_crm_restore_1700000000", "kept_until": "2026-11-11T09:00:00Z", "started_at": "2026-11-10T10:00:01Z", "ended_at": "2026-11-10T10:00:03Z"}
+		writeJSON(w, 200, d)
+	})
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/deploys/d_up/events", func(w http.ResponseWriter, r *http.Request) {
+		if st.blocked {
+			sse(w,
+				map[string]any{"deploy_id": "d_up", "status": "rehearsing", "phase": map[string]any{"phase": "rehearsing", "at": "2026-11-10T10:00:01Z"}, "done": false},
+				map[string]any{"deploy_id": "d_up", "status": "blocked", "phase": map[string]any{"phase": "blocked", "at": "2026-11-10T10:00:03Z"}, "done": true,
+					"error": map[string]any{"code": "GRANT_NEEDED", "message": "This deploy waits for an owner or admin to approve what the update does to the data people entered.",
+						"fix": "Ask an owner or admin to approve it.", "details": map[string]any{"grants": changes, "unset_secrets": []any{}}}},
+			)
+			return
+		}
 		sse(w,
 			map[string]any{"deploy_id": "d_up", "status": "starting", "phase": map[string]any{"phase": "starting", "at": "2026-11-10T10:00:01Z"}, "done": false},
 			map[string]any{"deploy_id": "d_up", "status": "live", "phase": map[string]any{"phase": "live", "at": "2026-11-10T10:00:04Z"}, "done": true, "url": "https://crm.acme.whisk.page", "unset_secrets": []string{}},
@@ -361,5 +386,56 @@ func TestManagedUpdate(t *testing.T) {
 	}
 	if r := runRemote(t, dir, srv.URL, nil, "managed", "update", "crm", "shop", "--json"); r.Code == 0 {
 		t.Errorf("two apps accepted: %+v", r)
+	}
+}
+
+// An update whose rehearsal changed what people entered waits for an owner or admin: the command
+// says what the update does to the data and how to read the data as the update left it first, and
+// whisk deploys info shows the rehearsal (FORKS.md §4).
+func TestManagedUpdateRehearsed(t *testing.T) {
+	st := &forkState{release: 2, update: "forward", blocked: true}
+	srv := forkAPI(t, st)
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+
+	r := runRemote(t, dir, srv.URL, nil, "managed", "update", "crm", "--json")
+	e, _ := r.JSON["error"].(map[string]any)
+	if r.Code != output.ExitNeedsHuman || e["code"] != "GRANT_NEEDED" {
+		t.Fatalf("a rehearsed update that changes the data: %+v", r)
+	}
+	message, _ := e["message"].(string)
+	fix, _ := e["fix"].(string)
+	if !strings.Contains(message, "1 row of notes is removed; 2 rows of notes have a different value in body") {
+		t.Errorf("message %q", message)
+	}
+	if !strings.Contains(fix, "/o/acme/apps/crm/deploys?approve=d_up") || !strings.Contains(fix, "Do not try to allow it yourself") ||
+		!strings.Contains(fix, "read the data as the update left it with whisk db query --database app_crm_restore_1700000000 until ") {
+		t.Errorf("fix %q", fix)
+	}
+	details, _ := e["details"].(map[string]any)
+	if rehearsal, _ := details["rehearsal"].(map[string]any); rehearsal["copy"] != "app_crm_restore_1700000000" || rehearsal["status"] != "changed" {
+		t.Errorf("details %v", details)
+	}
+
+	r = runRemote(t, dir, srv.URL, nil, "deploys", "info", "d_up")
+	for _, want := range []string{"rehearsal changed: release 3 from 2, a copy of 4 tables and 120 rows", "1 row of notes is removed.",
+		"read the copy with whisk db query --database app_crm_restore_1700000000 until "} {
+		if r.Code != 0 || !strings.Contains(r.Stdout, want) {
+			t.Errorf("deploys info lacks %q (exit %d):\n%s%s", want, r.Code, r.Stdout, r.Stderr)
+		}
+	}
+}
+
+func TestRehearsalLines(t *testing.T) {
+	if got := rehearsalLines(nil); got != nil {
+		t.Errorf("no rehearsal = %v", got)
+	}
+	clean := rehearsalLines(&apitypes.Rehearsal{Status: apitypes.RehearsalClean, Release: 2, FromRelease: 1, Tables: 3, Rows: 9, Changes: []string{}})
+	if !slices.Equal(clean, []string{"rehearsal clean: release 2 from 1, a copy of 3 tables and 9 rows"}) {
+		t.Errorf("a clean rehearsal = %q", clean)
+	}
+	failed := rehearsalLines(&apitypes.Rehearsal{Status: apitypes.RehearsalFailed, Release: 4})
+	if !slices.Equal(failed, []string{"rehearsal failed: release 4"}) {
+		t.Errorf("a failed rehearsal = %q", failed)
 	}
 }

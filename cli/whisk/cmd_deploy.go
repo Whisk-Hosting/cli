@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 	werrors "github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/status"
 )
@@ -929,7 +931,7 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 	case status.DeployBlocked:
 		return s.deployBlocked(client, org, app, ev)
 	case status.DeployFailed, status.DeployRolledBack, status.DeployCancelled,
-		status.DeployQueued, status.DeployBuilding, status.DeploySnapshotting, status.DeployMigrating,
+		status.DeployQueued, status.DeployBuilding, status.DeployRehearsing, status.DeploySnapshotting, status.DeployMigrating,
 		status.DeployStarting, status.DeployHealthChecking, status.DeploySwitching, status.DeployDraining:
 	}
 	return s.deployFailure(client, org, app, ev)
@@ -1019,7 +1021,11 @@ func (s *session) deployBlocked(client *api.Client, org, app string, ev api.Depl
 		grants = s.grantsNeeded(client, org, app, ev.DeployID)
 	}
 	if len(grants) > 0 {
-		return grantsNeededBlock(ev.DeployID, grants, unset, allowPage(s.dashboard(), org, app, ev.DeployID))
+		e := grantsNeededBlock(ev.DeployID, grants, unset, allowPage(s.dashboard(), org, app, ev.DeployID))
+		if slices.ContainsFunc(grants, func(g api.GrantNeeded) bool { return g.Kind == apitypes.GrantData }) {
+			withRehearsal(e, s.rehearsalOf(client, org, app, ev.DeployID))
+		}
+		return e
 	}
 	if len(unset) == 0 {
 		// Best effort: the deploy is blocked either way, and that is the error to report,
@@ -1076,6 +1082,58 @@ func (s *session) grantsNeeded(client *api.Client, org, app, id string) []api.Gr
 		return nil
 	}
 	return d.GrantsNeeded
+}
+
+// rehearsalOf is what a blocked deploy's rehearsal found, read from the deploy. Best effort: the
+// deploy waits either way, so a failed read only leaves out where to look first.
+func (s *session) rehearsalOf(client *api.Client, org, app, id string) *apitypes.Rehearsal {
+	d, err := client.GetDeploy(s.ctx, org, app, id)
+	if err != nil {
+		s.printer.Progress("Could not read the deploy's rehearsal: %v", err)
+		return nil
+	}
+	return d.Rehearsal
+}
+
+// withRehearsal adds to GRANT_NEEDED for an update what its rehearsal found and, while the node
+// keeps the copy, how to read the data as the update left it before anyone allows it
+// (FORKS.md §4).
+func withRehearsal(e *output.Error, r *apitypes.Rehearsal) {
+	if r == nil {
+		return
+	}
+	e.Details["rehearsal"] = r
+	if r.Copy == "" {
+		return
+	}
+	e.Fix += " To look first, read the data as the update left it with whisk db query --database " + r.Copy
+	if r.KeptUntil != nil {
+		e.Fix += " until " + when(r.KeptUntil)
+	}
+	e.Fix += "."
+}
+
+// rehearsalLines are a deploy's rehearsal in whisk deploys info: how it ended, the release it
+// rehearsed, what it changed and the copy kept to look at. Pure.
+func rehearsalLines(r *apitypes.Rehearsal) []string {
+	if r == nil {
+		return nil
+	}
+	head := fmt.Sprintf("rehearsal %s: release %d", r.Status, r.Release)
+	if r.FromRelease > 0 {
+		head += fmt.Sprintf(" from %d", r.FromRelease)
+	}
+	if r.Tables > 0 {
+		head += fmt.Sprintf(", a copy of %d tables and %d rows", r.Tables, r.Rows)
+	}
+	out := []string{head}
+	for _, c := range r.Changes {
+		out = append(out, "  "+c)
+	}
+	if r.Copy != "" {
+		out = append(out, fmt.Sprintf("  read the copy with whisk db query --database %s until %s", r.Copy, when(r.KeptUntil)))
+	}
+	return out
 }
 
 // deployFailure is exit 6: the code and fix from the deploy record, with the last 40 lines
@@ -1289,6 +1347,9 @@ func printDeploy(p output.Printer, w io.Writer, d api.Deploy) {
 			detail = "  " + ph.Detail
 		}
 		fmt.Fprintf(w, "  %s  %s%s\n", ph.At.Local().Format("15:04:05"), ph.Phase, detail)
+	}
+	for _, line := range rehearsalLines(d.Rehearsal) {
+		fmt.Fprintf(w, "  %s\n", line)
 	}
 	if d.Error != nil {
 		fmt.Fprintf(w, "  %s: %s\n    %s\n", p.Bad(d.Error.Code), d.Error.Message, p.Dim("fix: "+d.Error.Fix))
