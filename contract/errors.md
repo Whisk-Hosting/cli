@@ -1627,6 +1627,83 @@ own, a migration that reads a secret), fix that, and deploy again.
 {"error":{"code":"REHEARSAL_FAILED","message":"The migration of release 4 failed on a private copy of the app's data (exit 1), so it never ran on the live data, which is unchanged. The previous deploy is still live.","fix":"Read the log. If the code is a release as Whisk made it, report it with whisk feedback --kind bug --code REHEARSAL_FAILED and the deploy id; otherwise fix what of the business's changes the migration meets on this data and deploy again.","docs":"https://skill.whisk.run/errors/REHEARSAL_FAILED","details":{"command":"npm run migrate","exit_code":1,"log":["ERROR: check constraint \"notes_short\" of relation \"notes\" is violated by some row"],"step":"rehearse","release":4,"from_release":3,"fault":"app"}}}
 ```
 
+## CUSTOM_SQL_FAILED
+
+Status: - · Surface: deploy, cli
+
+When: in an app that follows one of Whisk's products as the business's own code, the business's own
+SQL in `custom/` failed as the database ran it: a syntax error, a table or column that is not there
+(often a view in `custom/views` reading a column of Whisk's that the update removed or renamed), or
+a lock another session held for more than 10 seconds (`details.sqlstate` `55P03`). All of the
+business's SQL runs in one transaction, so none of it was applied. The message names the file and
+line; `details.file`, `details.line`, `details.sqlstate` and `details.detail` carry what the
+database said, and its hint, when it gave one, is the fix. `details.own_step` is `clear` when the
+business's views, functions and triggers could not be taken away before the migration step, of
+which nothing then ran, and `apply` when the business's SQL failed after Whisk's migration. After
+`apply` the database is put back to the restore point taken before the migration when its
+definitions changed, as with `MIGRATE_FAILED` (`details.restored`, `details.kept_copy`,
+`details.writes_not_kept`), and left as it was otherwise. With `details.step` `rehearse` it failed
+on a private copy of the live data (`details.release`, `details.from_release`) and never ran on the
+live data. The previous deploy is still live.
+
+Fix: Fix the file and line the message names and deploy again. A view, function or trigger in
+`custom/views` that uses something of Whisk's the update changed is changed to fit Whisk's tables
+as the update leaves them. A lock timeout needs no change: deploy again. If `details.kept_copy` is
+set and users wrote during the window, read their rows from the kept copy with
+`whisk db query --database` and write them back.
+
+```json
+{"error":{"code":"CUSTOM_SQL_FAILED","message":"The business's own SQL failed (custom/views/deal_summary.sql, line 3: column d.amount does not exist), so none of it was applied. The migration had changed the database, so the copy of it taken just before the migration started was put back, in 2 seconds. Anything the app's users wrote in the 41 seconds from then until it was put back is not in the live database: Whisk keeps the replaced database as app_crm_pre_1 for 7 days, and whisk db query --database app_crm_pre_1 reads it.","fix":"Fix the file and line the message names and deploy again. A view, function or trigger in custom/views that uses something of Whisk's the update changed is changed to fit Whisk's tables as the update leaves them.","docs":"https://skill.whisk.run/errors/CUSTOM_SQL_FAILED","details":{"step":"own-sql","own_step":"apply","file":"custom/views/deal_summary.sql","line":3,"sqlstate":"42703","restored":"restored","from_instant_copy":true,"kept_copy":"app_crm_pre_1","writes_not_kept":{"from":"2026-11-11T09:00:00Z","until":"2026-11-11T09:00:41Z"},"fault":"app"}}}
+```
+
+## CUSTOM_SQL_REFUSED
+
+Status: - · Surface: deploy, cli
+
+When: in an app that follows one of Whisk's products as the business's own code, the business's own
+SQL in `custom/` would break the wall that keeps it from Whisk's tables, so Whisk ran none of it.
+The wall refuses a command other than those that make, change and drop tables, indexes, sequences,
+views, functions, types, triggers, policies and statistics or comment on them; in
+`custom/migrations`, anything made or changed outside schema `custom`, and a table of the
+business's that uses one of Whisk's (a foreign key to it, or a type or function of Whisk's); in
+`custom/views`, anything made or changed outside schema `custom_views` other than a trigger whose
+function is there, and a table, whose rows would go on every update; anything outside
+`custom_views` that uses what `custom/views` makes; a change to `custom.whisk_migrations`, where
+Whisk keeps the migrations that ran; and a file that commits, rolls back or starts a transaction.
+`details.file` names the file or folder, `details.detail` lists more of what was found and the fix
+says what to do instead; what happened to the database reads as for `CUSTOM_SQL_FAILED`. A deploy
+whose code holds `custom/` files Whisk cannot run at all (a name that is not letters, digits, `_`,
+`-` and `.` ending `.sql`, a link, a file over 256 KiB or not UTF-8 text, the two folders over 2
+MiB together), or an app without a database of its own, fails with this code before anything runs.
+The previous deploy is still live.
+
+Fix: Change what the message names and deploy again. The business's tables go in
+`custom/migrations`, in schema `custom`, and link to Whisk's records by their id alone, without a
+foreign key. Views, functions and triggers that read or act on Whisk's tables go in `custom/views`,
+in schema `custom_views`, which Whisk makes again on every update. Take COMMIT, ROLLBACK, BEGIN and
+SAVEPOINT out of the files. A file Whisk cannot run is renamed, made a plain file or split.
+
+```json
+{"error":{"code":"CUSTOM_SQL_REFUSED","message":"The business's own SQL failed (custom/migrations: table custom.deal_notes uses table public.deals, which is Whisk's, so an update of Whisk's could not change it), so none of it was applied. The database's tables, columns, indexes and functions had not changed, so it was left as it was and nothing the app's users wrote was undone.","fix":"Link your tables to Whisk's records by their id alone, without a foreign key, or Whisk's types and functions. A view, function or trigger that reads or acts on Whisk's tables goes in custom/views.","docs":"https://skill.whisk.run/errors/CUSTOM_SQL_REFUSED","details":{"step":"own-sql","own_step":"apply","file":"custom/migrations","restored":"left as it was","fault":"app"}}}
+```
+
+## CUSTOM_MIGRATION_CHANGED
+
+Status: - · Surface: deploy, cli
+
+When: in an app that follows one of Whisk's products as the business's own code, a file in
+`custom/migrations` that already ran on this database has changed since. Whisk runs each of these
+files once and keeps its SHA-256, so it ran none of the business's SQL. `details.file` names the
+file and the fix says what to do; what happened to the database reads as for `CUSTOM_SQL_FAILED`.
+The previous deploy is still live.
+
+Fix: Put the file back as it was when it ran (`git log -p -- <file>` shows it) and make the change
+in a new file in `custom/migrations`, named to sort after it, then deploy again.
+
+```json
+{"error":{"code":"CUSTOM_MIGRATION_CHANGED","message":"The business's own SQL failed (custom/migrations/001_deal_notes.sql has changed since it ran on this database), so none of it was applied. The database's tables, columns, indexes and functions had not changed, so it was left as it was and nothing the app's users wrote was undone.","fix":"A migration runs once, so put back the file as it was when it ran and make the change in a new file in custom/migrations.","docs":"https://skill.whisk.run/errors/CUSTOM_MIGRATION_CHANGED","details":{"step":"own-sql","own_step":"apply","file":"custom/migrations/001_deal_notes.sql","restored":"left as it was","fault":"app"}}}
+```
+
 ## DATA_ROLLBACK_FAILED
 
 Status: - · Surface: deploy, cli
