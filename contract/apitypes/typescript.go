@@ -99,6 +99,7 @@ var baseEnums = func() map[reflect.Type]enumSet {
 	add(enumOf("SecretScope", "SECRET_SCOPES", ScopeOrg, ScopeApp))
 	add(enumOf("GrantKind", "GRANT_KINDS", GrantConnection, GrantSecret, GrantAccess))
 	add(enumOf("ConnectionEnvironment", "CONNECTION_ENVIRONMENTS", ConnectionProduction, ConnectionPreviews))
+	add(enumOf("ProductKind", "PRODUCT_KINDS", ProductManaged, ProductForks))
 	add(enumOf("ConnectionState", "CONNECTION_STATES", ConnectionActive, ConnectionPaused, ConnectionRevoked))
 	add(enumOf("AIPeriod", "AI_PERIODS", AIDay, AIWeek, AIMonth, AITotal))
 	add(enumOf("BrokerDrop", "BROKER_DROPS", BrokerDropped, BrokerUnreachable))
@@ -169,8 +170,8 @@ var baseWire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppManaged{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
-	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppManaged{}, AppFork{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
+	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, DeployEvent{}, Warning{}, ForkUpdate{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},

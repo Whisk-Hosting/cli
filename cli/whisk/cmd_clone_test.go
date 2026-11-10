@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -101,6 +102,74 @@ func TestCloneBindsTheDirectoryAndSetsTheCredentialHelper(t *testing.T) {
 	b, ok, err := config.LoadBinding(target)
 	if err != nil || !ok || b.Org != "acme" || b.App != "crm" {
 		t.Fatalf("binding: %v %v %v", b, ok, err)
+	}
+}
+
+// A fork's checkout keeps the binding whisk clone writes out of git's sight, so code that is
+// still the product's release has nothing to commit. Any other app's binding is left for git to
+// see, and a binding that came with the code is kept as it came.
+func TestCloneOfAForkLeavesTheBindingOutOfGit(t *testing.T) {
+	fork := map[string]any{"product": "crm", "name": "CRM", "branch": "upstream", "release": 1, "newest": 1}
+	exclude := func(dir string) string {
+		raw, err := os.ReadFile(filepath.Join(dir, "crm", ".git", "info", "exclude"))
+		if err != nil && !os.IsNotExist(err) {
+			t.Fatal(err)
+		}
+		return string(raw)
+	}
+	clone := func(st *remoteState, git gitcmd.Runner) string {
+		t.Helper()
+		srv := remoteAPI(t, st)
+		defer srv.Close()
+		dir := t.TempDir()
+		if r := runCloneCLI(t, "", dir, srv.URL, git, "clone", "acme/crm", "--json"); r.Code != 0 {
+			t.Fatalf("clone: %d %s %s", r.Code, r.Stdout, r.Stderr)
+		}
+		if b, ok, err := config.LoadBinding(filepath.Join(dir, "crm")); err != nil || !ok || b.Org != "acme" || b.App != "crm" {
+			t.Fatalf("binding: %v %v %v", b, ok, err)
+		}
+		return dir
+	}
+
+	if got := exclude(clone(&remoteState{fork: fork}, &cloneGit{sha: "abc1234abc"})); got != "/.whisk/app.json\n" {
+		t.Errorf("a fork's checkout excludes %q, want the binding", got)
+	}
+	if got := exclude(clone(&remoteState{}, &cloneGit{sha: "abc1234abc"})); got != "" {
+		t.Errorf("an app that is no fork excludes %q, want nothing", got)
+	}
+	// The code brought a binding of its own: nothing is written, so nothing is excluded.
+	bound := &bindingGit{cloneGit: cloneGit{sha: "abc1234abc"}}
+	if got := exclude(clone(&remoteState{fork: fork}, bound)); got != "" {
+		t.Errorf("a fork whose code carries a binding excludes %q, want nothing", got)
+	}
+}
+
+// bindingGit is cloneGit whose clone brings a binding with the code.
+type bindingGit struct{ cloneGit }
+
+func (g *bindingGit) Run(ctx context.Context, dir string, env []string, args ...string) (gitcmd.Result, error) {
+	res, err := g.cloneGit.Run(ctx, dir, env, args...)
+	if err == nil && res.OK() && slices.Contains(args, "clone") {
+		err = config.SaveBinding(args[len(args)-1], config.Binding{Org: "acme", App: "crm"})
+	}
+	return res, err
+}
+
+func TestWithExcluded(t *testing.T) {
+	for _, c := range []struct {
+		name, existing, want string
+		changed              bool
+	}{
+		{"an empty list", "", "/.whisk/app.json\n", true},
+		{"git's own comments", "# git ls-files --others --exclude-from=.git/info/exclude\n", "# git ls-files --others --exclude-from=.git/info/exclude\n/.whisk/app.json\n", true},
+		{"a list with no last newline", "*.log", "*.log\n/.whisk/app.json\n", true},
+		{"already there", "*.log\n/.whisk/app.json\n", "*.log\n/.whisk/app.json\n", false},
+		{"already there with a carriage return", "/.whisk/app.json\r\n", "/.whisk/app.json\r\n", false},
+	} {
+		got, changed := withExcluded(c.existing, "/.whisk/app.json")
+		if got != c.want || changed != c.changed {
+			t.Errorf("%s: %q, %v; want %q, %v", c.name, got, changed, c.want, c.changed)
+		}
 	}
 }
 

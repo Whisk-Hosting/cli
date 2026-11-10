@@ -16,7 +16,9 @@ import (
 
 // Managed apps (MANAGED-APPS.md §11, CLI.md §5.2): apps in the business whose code and releases
 // are Whisk's. The business adds a copy of a product, sets what the product lets it set, links
-// it to one of its own apps, and pauses or resumes it.
+// it to one of its own apps, and pauses or resumes it. A product whose copies are forks
+// (FORKS.md) is added the same way, and its app is the business's own code, which follows the
+// product's releases.
 
 // settingName is an environment variable's name, the form a product's settings take.
 var settingName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
@@ -168,13 +170,20 @@ func listText(names []string) string {
 }
 
 // appStatusText is an app's status in whisk apps list, with managed for a copy, paused for a
-// paused app and held for a copy Whisk holds on its release. Pure.
+// paused app, held for a copy Whisk holds on its release, and fork for an app that follows a
+// product, with how many of its releases the app's code has not taken. Pure.
 func appStatusText(a api.App) string {
 	words := []string{string(a.Status)}
 	if a.Managed != nil {
 		words = append(words, "managed")
 		if a.Managed.Held {
 			words = append(words, "held")
+		}
+	}
+	if f := a.Fork; f != nil {
+		words = append(words, "fork")
+		if f.Behind > 0 {
+			words = append(words, fmt.Sprintf("%d behind", f.Behind))
 		}
 	}
 	if a.PausedAt != nil {
@@ -227,6 +236,201 @@ func managedLines(a api.App, apps []api.App) []string {
 	return out
 }
 
+// forkEmpty reports whether a fork has no code of its own yet: it holds no release and nothing
+// of the business's. Pure.
+func forkEmpty(f *api.AppFork) bool { return f.Release == 0 && !f.Changed }
+
+// forkText is where a fork stands against its product's releases, in a few words. Pure.
+func forkText(f *api.AppFork) string {
+	code := "as Whisk made it"
+	if f.Changed {
+		code = "with changes of its own"
+	}
+	switch {
+	case forkEmpty(f):
+		return "no code of its own yet"
+	case f.Release == 0:
+		return "code of its own that holds none of its releases"
+	case f.Behind == 0:
+		return fmt.Sprintf("release %d, the newest, %s", f.Release, code)
+	}
+	return fmt.Sprintf("release %d %s, %d behind release %d", f.Release, code, f.Behind, f.Newest)
+}
+
+// forkNext is what brings a fork its product's newest release: the update for code Whisk may
+// move, the merge for code the business changed, and "" for a fork that holds it. Pure.
+func forkNext(slug string, f *api.AppFork) string {
+	switch {
+	case f.Behind == 0:
+		return ""
+	case f.Changed:
+		return fmt.Sprintf("git fetch whisk, then git merge whisk/%s, brings release %d into its code, and whisk deploy puts it live", f.Branch, f.Newest)
+	}
+	return fmt.Sprintf("whisk managed update %s moves it to release %d", slug, f.Newest)
+}
+
+// forkLines is what whisk apps info adds for a fork. Pure.
+func forkLines(a api.App) []string {
+	f := a.Fork
+	if f == nil {
+		return nil
+	}
+	out := []string{
+		fmt.Sprintf("follows %s (%s): %s", f.Name, f.Product, forkText(f)),
+		fmt.Sprintf("its releases arrive on the branch %s, which only Whisk moves", f.Branch),
+	}
+	if next := forkNext(a.Slug, f); next != "" {
+		out = append(out, next)
+	}
+	return out
+}
+
+// forkRow is a fork's row in whisk managed list: the release its code holds, the newest, whether
+// the code is the business's own by now, and its status. Pure.
+func forkRow(a api.App) []string {
+	f := a.Fork
+	if f == nil {
+		return []string{a.Slug, "-", "-", "-", "-", appStatusText(a)}
+	}
+	release, code := fmt.Sprint(f.Release), "as released"
+	switch {
+	case forkEmpty(f):
+		release, code = "-", "-"
+	case f.Release == 0:
+		release, code = "-", "changed"
+	case f.Changed:
+		code = "changed"
+	}
+	return []string{a.Slug, f.Product, release, fmt.Sprint(f.Newest), code, appStatusText(a)}
+}
+
+// kindText is what a copy of the product is, in a product's row. Pure.
+func kindText(p api.ManagedProduct) string {
+	if p.Kind == api.ProductForks {
+		return "your own code"
+	}
+	return "run by Whisk"
+}
+
+// forksOffered reports whether the products include one whose copies are the business's own
+// code. Pure.
+func forksOffered(products []api.ManagedProduct) bool {
+	return slices.ContainsFunc(products, func(p api.ManagedProduct) bool { return p.Kind == api.ProductForks })
+}
+
+// addHints are the closing lines of whisk managed list: how to add a product of each kind
+// listed. Pure.
+func addHints(products []api.ManagedProduct) []string {
+	var out []string
+	if slices.ContainsFunc(products, func(p api.ManagedProduct) bool { return p.Kind != api.ProductForks }) {
+		out = append(out, "Add one with: whisk managed add <product> --link <role>=<app> [--variant v] [--set NAME=value]")
+	}
+	if forksOffered(products) {
+		out = append(out, "Add one that is your own code with: whisk managed add <product>")
+	}
+	return out
+}
+
+// updateLine says what an update of a fork did. Pure.
+func updateLine(org string, u api.ForkUpdate) string {
+	a, f := u.App, u.App.Fork
+	switch {
+	case f == nil && u.Updated:
+		return fmt.Sprintf("Moved %s/%s to its product's newest release.", org, a.Slug)
+	case f == nil:
+		return fmt.Sprintf("%s/%s has nothing to take.", org, a.Slug)
+	case u.Updated:
+		return fmt.Sprintf("Moved %s/%s to %s release %d.", org, a.Slug, f.Name, f.Release)
+	case u.Deploy == nil:
+		return fmt.Sprintf("%s/%s holds %s release %d, the newest, with changes of its own, so there is nothing to take.", org, a.Slug, f.Name, f.Release)
+	}
+	return fmt.Sprintf("%s/%s already holds %s release %d, the newest.", org, a.Slug, f.Name, f.Release)
+}
+
+// forkUpdated reports what an update of a fork did, and follows the deploy that carries the
+// fork's code when there is one: the deploy the update started, or the one already live or on
+// its way.
+func (s *session) forkUpdated(client *api.Client, org, app string, u api.ForkUpdate, noWait bool) error {
+	line := updateLine(org, u)
+	if u.Deploy == nil {
+		s.printer.Result(map[string]any{"org": org, "app": u.App, "updated": false}, func(w io.Writer) { fmt.Fprintln(w, line) })
+		return nil
+	}
+	d := *u.Deploy
+	if noWait {
+		s.printer.Result(map[string]any{"org": org, "app": u.App, "updated": u.Updated, "deploy_id": d.ID, "status": d.Status, "commit_sha": d.CommitSHA, "environment": d.Environment}, func(w io.Writer) {
+			fmt.Fprintln(w, line)
+			fmt.Fprintf(w, "Follow its deploy with: whisk deploys info %s\n", d.ID)
+		})
+		return nil
+	}
+	s.printer.Progress("%s", line)
+	s.forkUpdate = map[string]any{"updated": u.Updated, "fork": u.App.Fork}
+	return s.waitForDeploy(client, org, app, d)
+}
+
+// addedLines is what whisk managed add says once the copy is made: the product by the name its
+// copy carries, the variant and links when there are any, what a fork's business does next, and
+// the copy's address. linked is the links in words, empty for none. Pure.
+func addedLines(org, product string, a api.App, variant, linked string) []string {
+	name := product
+	if a.Managed != nil {
+		name = a.Managed.Name
+	}
+	if a.Fork != nil {
+		name = a.Fork.Name
+	}
+	line := fmt.Sprintf("Added %s to %s as %s", name, org, a.Slug)
+	if variant != "" {
+		line += " (" + variant + ")"
+	}
+	if linked != "" {
+		line += ", linked " + linked
+	}
+	out := []string{line + ".", fmt.Sprintf("It is deploying the newest release now; whisk status --app %s shows when it is live.", a.Slug)}
+	if f := a.Fork; f != nil {
+		out = append(out,
+			fmt.Sprintf("Its code is the business's own: whisk clone %s/%s brings it here, and whisk deploy puts a change live.", org, a.Slug),
+			fmt.Sprintf("New releases of %s arrive on its branch %s, which only Whisk moves; whisk managed update %s takes one while the code is unchanged.", f.Name, f.Branch, a.Slug))
+	}
+	if a.Hostname != "" {
+		out = append(out, "https://"+a.Hostname)
+	}
+	return out
+}
+
+// managedUpdateCmd is whisk managed update: a fork's unchanged code moves to its product's
+// newest release and that deploys (FORKS.md §4).
+func managedUpdateCmd(s *session) *cobra.Command {
+	var noWait bool
+	update := &cobra.Command{
+		Use:   "update [<app>]",
+		Short: "Move a fork's unchanged code to its product's newest release and deploy it",
+		Long: `For an app that follows one of Whisk's products as the business's own code (default: the app
+this directory is bound to). When its code is a release as Whisk made it, the code moves to the
+product's newest release and that deploys. Code the business has changed is never moved: the
+command answers FORK_CHANGED, and its fix is the merge to run. When the code already holds the
+newest release, the command follows the deploy that carries it.`,
+		Args: cobra.MaximumNArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				s.appFlag = args[0]
+			}
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			u, err := client.UpdateFork(s.ctx, org, app)
+			if err != nil {
+				return wrap(err)
+			}
+			return s.forkUpdated(client, org, app, u, noWait)
+		},
+	}
+	update.Flags().BoolVar(&noWait, "no-wait", false, "print the deploy id and exit")
+	return update
+}
+
 func managedCmd(s *session) *cobra.Command {
 	listRun := func(*cobra.Command, []string) error { return s.managedList() }
 
@@ -237,6 +441,10 @@ func managedCmd(s *session) *cobra.Command {
 a copy of a product, links it to one of its own apps, sets what the product lets it set, and
 pauses or resumes it, and every Whisk release reaches the copy without anyone deploying. Its code
 cannot be pushed, cloned or deployed (APP_MANAGED).
+
+A product listed as your own code is added the same way and makes an ordinary app of the
+business's, to clone, change and deploy as any other. Whisk's releases of the product arrive on
+the app's branch "upstream", which only Whisk moves, and whisk managed update takes one.
 
 With no subcommand, whisk managed lists the products and the business's copies.`,
 		Args: cobra.NoArgs,
@@ -252,12 +460,15 @@ With no subcommand, whisk managed lists the products and the business's copies.`
 	var variant string
 	var linkWords, setWords []string
 	add := &cobra.Command{
-		Use:   "add <product> --link <role>=<app> [--variant v] [--set NAME=value]",
+		Use:   "add <product> [--link <role>=<app>] [--variant v] [--set NAME=value]",
 		Short: "Add a copy of a product, linked to the business's own apps",
 		Long: `Adds a copy of the product to the business and deploys its newest release. --link names, for
 each role the product lists, one of the business's apps by slug or id; --variant picks the form
 the product comes in when it has several, fixed for the copy's life; --set gives a setting the
-product, or the chosen variant, lists a value. whisk managed list shows each product's roles, variants and settings.`,
+product, or the chosen variant, lists a value. whisk managed list shows each product's roles, variants and settings.
+
+A product listed as your own code takes only its name, and the app it makes is the business's to
+clone, change and deploy.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			links, err := parseLinks(linkWords)
@@ -290,22 +501,13 @@ product, or the chosen variant, lists a value. whisk managed list shows each pro
 			if err != nil {
 				return wrap(err)
 			}
+			linked := ""
+			if len(ids) > 0 {
+				linked = linksText(ids, apps)
+			}
 			s.printer.Result(map[string]any{"org": org, "app": a}, func(w io.Writer) {
-				name := args[0]
-				if a.Managed != nil {
-					name = a.Managed.Name
-				}
-				line := fmt.Sprintf("Added %s to %s as %s", name, org, a.Slug)
-				if variant != "" {
-					line += " (" + variant + ")"
-				}
-				if len(ids) > 0 {
-					line += ", linked " + linksText(ids, apps)
-				}
-				fmt.Fprintln(w, line+".")
-				fmt.Fprintf(w, "It is deploying the newest release now; whisk status --app %s shows when it is live.\n", a.Slug)
-				if a.Hostname != "" {
-					fmt.Fprintf(w, "https://%s\n", a.Hostname)
+				for _, line := range addedLines(org, args[0], a, variant, linked) {
+					fmt.Fprintln(w, line)
 				}
 			})
 			return nil
@@ -392,7 +594,7 @@ is running; a sleeping one reads it at its next start.`,
 			return nil
 		},
 	}
-	managed.AddCommand(list, add, set, link)
+	managed.AddCommand(list, add, set, link, managedUpdateCmd(s))
 	return managed
 }
 
@@ -468,32 +670,51 @@ func (s *session) managedList() error {
 	if m.Copies == nil {
 		m.Copies = []api.App{}
 	}
+	if m.Forks == nil {
+		m.Forks = []api.App{}
+	}
 	var apps []api.App
 	if !s.printer.JSON && slices.ContainsFunc(m.Copies, func(a api.App) bool { return a.Managed != nil && len(a.Managed.Links) > 0 }) {
 		// The links name apps by id; the list puts their slugs in a person's table. Without
 		// it the ids are shown, so a failure here does not fail the command.
 		apps, _ = client.ListApps(s.ctx, org)
 	}
-	s.printer.Result(map[string]any{"org": org, "products": m.Products, "copies": m.Copies}, func(w io.Writer) { s.managedTables(w, m, apps) })
+	s.printer.Result(map[string]any{"org": org, "products": m.Products, "copies": m.Copies, "forks": m.Forks}, func(w io.Writer) { s.managedTables(w, m, apps) })
 	return nil
 }
 
-// managedTables prints the products and the copies for a person. apps names the apps a copy's
-// links name by id; without them the ids are shown.
+// productsTable is the products as whisk managed list shows them. What a copy is has a column
+// of its own only when a product whose copies are the business's own code is listed. Pure.
+func productsTable(products []api.ManagedProduct) (header []string, rows [][]string) {
+	kinds := forksOffered(products)
+	header = []string{"PRODUCT", "NAME", "PRICE", "VARIANTS", "LINKS", "SETTINGS", "AVAILABLE"}
+	if kinds {
+		header = slices.Insert(header, 2, "KIND")
+	}
+	rows = make([][]string, len(products))
+	for i, p := range products {
+		rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), settingsText(p), unavailableText(p)}
+		if kinds {
+			rows[i] = slices.Insert(rows[i], 2, kindText(p))
+		}
+	}
+	return header, rows
+}
+
+// managedTables prints the products, the copies and the forks for a person. apps names the apps
+// a copy's links name by id; without them the ids are shown.
 func (s *session) managedTables(w io.Writer, m api.Managed, apps []api.App) {
 	if len(m.Products) == 0 {
 		fmt.Fprintln(w, "Whisk offers no managed apps to this business yet.")
 	} else {
-		rows := make([][]string, len(m.Products))
-		for i, p := range m.Products {
-			rows[i] = []string{p.Slug, p.Name, monthText(p.MonthCents), variantsText(p), listText(p.Links), settingsText(p), unavailableText(p)}
-		}
-		s.printer.Table(w, []string{"PRODUCT", "NAME", "PRICE", "VARIANTS", "LINKS", "SETTINGS", "AVAILABLE"}, rows)
+		header, rows := productsTable(m.Products)
+		s.printer.Table(w, header, rows)
 	}
 	fmt.Fprintln(w)
-	if len(m.Copies) == 0 {
+	if len(m.Copies) == 0 && len(m.Forks) == 0 {
 		fmt.Fprintln(w, "No copies yet.")
-	} else {
+	}
+	if len(m.Copies) > 0 {
 		rows := make([][]string, len(m.Copies))
 		for i, a := range m.Copies {
 			product, variant, links := "-", "-", "-"
@@ -504,7 +725,17 @@ func (s *session) managedTables(w io.Writer, m api.Managed, apps []api.App) {
 		}
 		s.printer.Table(w, []string{"APP", "PRODUCT", "VARIANT", "RELEASE", "STATUS", "LINKS"}, rows)
 	}
-	if len(m.Products) > 0 {
-		fmt.Fprintln(w, "Add one with: whisk managed add <product> --link <role>=<app> [--variant v] [--set NAME=value]")
+	if len(m.Forks) > 0 {
+		if len(m.Copies) > 0 {
+			fmt.Fprintln(w)
+		}
+		rows := make([][]string, len(m.Forks))
+		for i, a := range m.Forks {
+			rows[i] = forkRow(a)
+		}
+		s.printer.Table(w, []string{"APP", "PRODUCT", "RELEASE", "NEWEST", "CODE", "STATUS"}, rows)
+	}
+	for _, hint := range addHints(m.Products) {
+		fmt.Fprintln(w, hint)
 	}
 }

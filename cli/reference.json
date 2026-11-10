@@ -1418,7 +1418,7 @@
     "short": "Apps Whisk runs for the business: add, set up, list"
    },
    {
-    "usage": "whisk managed add \u003cproduct\u003e --link \u003crole\u003e=\u003capp\u003e [--variant v] [--set NAME=value]",
+    "usage": "whisk managed add \u003cproduct\u003e [--link \u003crole\u003e=\u003capp\u003e] [--variant v] [--set NAME=value]",
     "short": "Add a copy of a product, linked to the business's own apps",
     "flags": [
      {
@@ -1446,6 +1446,16 @@
    {
     "usage": "whisk managed set \u003capp\u003e NAME=value...",
     "short": "Change a copy's settings (NAME= removes one); it restarts on its release"
+   },
+   {
+    "usage": "whisk managed update [\u003capp\u003e]",
+    "short": "Move a fork's unchanged code to its product's newest release and deploy it",
+    "flags": [
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit"
+     }
+    ]
    }
   ]
  },

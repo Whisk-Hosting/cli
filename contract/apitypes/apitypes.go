@@ -114,6 +114,9 @@ type App struct {
 	// Managed is set when the app is a copy of a product Whisk runs, absent otherwise
 	// (MANAGED-APPS.md §10).
 	Managed *AppManaged `json:"managed,omitempty"`
+	// Fork is set when the app is a fork of a product, whose code is the business's own and
+	// follows Whisk's releases, absent otherwise (FORKS.md §4).
+	Fork *AppFork `json:"fork,omitempty"`
 	// PausedAt is when a person paused the app, absent while it is not paused (MANAGED-APPS.md §4).
 	PausedAt *time.Time `json:"paused_at,omitempty"`
 	// Listing and Access are how the business's home lists the app and who can open it
@@ -525,6 +528,10 @@ type Validation struct {
 	// Listing is the business's categories and what an owner set for this app, for doctor's
 	// W160 and W161; absent from a platform that predates it.
 	Listing *ValidationListing `json:"listing,omitempty"`
+	// Names are the names the app's whisk.yaml may carry, for doctor's W003: its slug, the slugs
+	// it had before, and for a fork the names its product's releases carry (FORKS.md §3). Absent
+	// from a platform that predates it, and when no app was named.
+	Names []string `json:"names,omitempty"`
 }
 
 // CallConsent is the validate answer's view of call consent for the manifest checked.

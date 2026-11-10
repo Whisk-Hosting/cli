@@ -145,6 +145,7 @@ type remoteState struct {
 	failGets    int              // GETs of d-fail: the first sees it still building
 	events      []map[string]any // POST events bodies
 	previews    []string         // POST previews branches
+	fork        map[string]any   // the app's fork record, when it is one
 }
 
 func sse(w http.ResponseWriter, events ...map[string]any) {
@@ -183,8 +184,12 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 		}
 	}
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm", auth(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"id": "a1", "org_id": "01J", "slug": "crm", "hostname": "crm--acme.whisk.page", "url": "https://crm--acme.whisk.page", "state": "running", "status": "active", "region": "eu",
-			"git_url": "https://git.whisk.run/01J/a1.git", "current_deploy_id": "d-live", "unset_secrets": st.unset, "created_at": "2026-09-07T00:00:00Z"})
+		app := map[string]any{"id": "a1", "org_id": "01J", "slug": "crm", "hostname": "crm--acme.whisk.page", "url": "https://crm--acme.whisk.page", "state": "running", "status": "active", "region": "eu",
+			"git_url": "https://git.whisk.run/01J/a1.git", "current_deploy_id": "d-live", "unset_secrets": st.unset, "created_at": "2026-09-07T00:00:00Z"}
+		if st.fork != nil {
+			app["fork"] = st.fork
+		}
+		writeJSON(w, 200, app)
 	}))
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/deploys", auth(func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"items": st.deploys, "next_cursor": ""})

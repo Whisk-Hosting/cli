@@ -61,6 +61,9 @@ Fix: Set name to the slug in .whisk/app.json, or run whisk use <org>/<app> to re
 Safe fix: no
 
 Details: skipped when `.whisk/app.json` does not exist yet, because `whisk init` writes both.
+A name the platform takes for the app also passes when the platform can be asked: a slug the app
+had before it was renamed, and, for an app made from one of Whisk's products as the business's own
+code, the name the product's releases carry.
 
 ## W004
 

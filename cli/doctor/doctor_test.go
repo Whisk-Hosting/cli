@@ -369,6 +369,39 @@ func TestW003NameMismatch(t *testing.T) {
 	}
 }
 
+// A name the platform takes for the bound app passes W003 though it is not the app's slug: a
+// fork keeps the name its product's releases carry (FORKS.md §3). A name the platform does not
+// list still fails, and so does every other name when the platform could not be asked.
+func TestW003NameThePlatformTakes(t *testing.T) {
+	files := with(passing, map[string]string{".whisk/app.json": `{"org":"acme","app":"crm-2","api":"https://api.whisk.run"}`})
+	dir := writeAll(t, files)
+	run := func(names []string, fail bool) Report {
+		t.Helper()
+		rep, err := Run(context.Background(), Options{Dir: dir, Validate: func(context.Context, []byte) (api.Validation, error) {
+			if fail {
+				return api.Validation{}, errors.New("unreachable")
+			}
+			return api.Validation{Names: names}, nil
+		}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rep
+	}
+	if rep := run([]string{"crm-2", "fixture"}, false); has(rep, "W003") {
+		t.Errorf("W003 fired on a name the platform takes: %+v", rep.Findings)
+	}
+	if rep := run([]string{"crm-2", "crm"}, false); !has(rep, "W003") {
+		t.Errorf("W003 passed a name the platform does not take")
+	}
+	if rep := run(nil, false); !has(rep, "W003") {
+		t.Errorf("W003 passed with no names from the platform")
+	}
+	if rep := run(nil, true); !has(rep, "W003") {
+		t.Errorf("W003 passed when the platform could not be asked")
+	}
+}
+
 func TestW020Loopback(t *testing.T) {
 	files := with(passing, map[string]string{"src/index.ts": strings.ReplaceAll(passing["src/index.ts"], `"0.0.0.0"`, `"127.0.0.1"`)})
 	rep := runDoctor(t, files, false)

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
 	"os"
 	"runtime"
@@ -948,6 +949,7 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 	if s.caughtUp != nil {
 		result["caught_up"] = s.caughtUp
 	}
+	maps.Copy(result, s.forkUpdate)
 	label := "Live:"
 	note := previewNote(environment)
 	if note != "" {

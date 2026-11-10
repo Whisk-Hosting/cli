@@ -69,6 +69,9 @@ type session struct {
 
 	// caughtUp is what whisk deploy rebased onto after a push refused as behind, for its summary.
 	caughtUp map[string]any
+	// forkUpdate is what whisk managed update did to the fork whose deploy it follows, for the
+	// deploy's summary.
+	forkUpdate map[string]any
 }
 
 // Run executes args and returns the exit code. Nothing is written except through env.

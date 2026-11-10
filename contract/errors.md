@@ -703,6 +703,41 @@ Fix: Whisk retires the product first; its copies stay on their last release.
 {"error":{"code":"MANAGED_SOURCE_IN_USE","message":"erp-link is the source of the ERP link, which 12 businesses use.","fix":"Retire the product first, then delete the app.","docs":"https://skill.whisk.run/errors/MANAGED_SOURCE_IN_USE","details":{"product":"erp-link","copies":12}}}
 ```
 
+## BRANCH_RESERVED
+
+Status: 409 · Surface: git, api
+
+When: a push would make, move or delete the `upstream` branch of an app that follows one of
+Whisk's products, or a preview was asked for on it. That branch is where Whisk puts the product's
+releases, one commit a release, and only Whisk moves it. An app that follows no product has no
+such rule: a branch of that name is its own.
+
+Fix: Work on a branch of your own. To take a release, merge it into `main` (`git fetch whisk`,
+`git merge whisk/upstream`) and run `whisk deploy`. To try a release first, make a branch from
+`whisk/upstream`, push it and start its preview.
+
+```json
+{"error":{"code":"BRANCH_RESERVED","message":"upstream is where Whisk puts CRM's releases in crm's repository, so nothing else moves it.","fix":"Work on a branch of your own. To take a release, merge it into main: git fetch whisk, git merge whisk/upstream, then whisk deploy. To try one first, make a branch from whisk/upstream, push it and start its preview.","docs":"https://skill.whisk.run/errors/BRANCH_RESERVED","details":{"app":"crm","branch":"upstream"}}}
+```
+
+## FORK_CHANGED
+
+Status: 409 · Surface: api, cli
+
+When: Whisk was asked to bring an app that follows one of its products up to the product's newest
+release, and the app's code is no longer a release as Whisk made it: the business has commits of
+its own on `main`. Whisk moves `main` only from one release straight to a later one, so it never
+decides how the business's changes and a release go together. `details.release` is the release
+the code is built on (absent when it shares none) and `details.newest` the product's newest.
+
+Fix: Merge the release yourself: `git fetch whisk`, `git merge whisk/upstream`, settle any
+conflicts so both the business's changes and the release still do what they were meant to, run
+the tests, then `whisk deploy`.
+
+```json
+{"error":{"code":"FORK_CHANGED","message":"crm has changes of its own since CRM release 3, so Whisk does not move its code to release 5.","fix":"Merge the release yourself: git fetch whisk, git merge whisk/upstream, settle any conflicts, run the tests, then whisk deploy.","docs":"https://skill.whisk.run/errors/FORK_CHANGED","details":{"app":"crm","product":"crm","release":3,"newest":5}}}
+```
+
 ## NOTIFY_NOT_MANAGED
 
 Status: 403 · Surface: container

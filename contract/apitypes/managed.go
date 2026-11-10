@@ -15,6 +15,33 @@ type AppManaged struct {
 	Held     bool              `json:"held"`
 }
 
+// AppFork is what an app carries when it is a fork of a product: the business's own code, which
+// follows Whisk's releases of the product (FORKS.md §4).
+type AppFork struct {
+	Product string `json:"product"`
+	Name    string `json:"name"`
+	// Branch is the branch of the app's repository that carries the product's releases, which
+	// only Whisk moves.
+	Branch string `json:"branch"`
+	// Release is the number of the newest release the app's own code holds, 0 when it holds
+	// none; Newest is the newest release on Branch; Behind is how many releases the code has not
+	// taken.
+	Release int `json:"release"`
+	Newest  int `json:"newest"`
+	Behind  int `json:"behind"`
+	// Changed is whether the app's code is anything but release Release as Whisk made it.
+	Changed bool `json:"changed"`
+}
+
+// ForkUpdate is POST /orgs/:org/apps/:app/fork/update: the app as it stands now, the deploy that
+// carries its code when the update started or found one, and whether its code moved to a newer
+// release.
+type ForkUpdate struct {
+	App     App     `json:"app"`
+	Deploy  *Deploy `json:"deploy,omitempty"`
+	Updated bool    `json:"updated"`
+}
+
 // ManagedRelease is one release of a product: the source deploy's commit and when it went live.
 type ManagedRelease struct {
 	ID     string    `json:"id"`
@@ -31,11 +58,24 @@ type ManagedVariant struct {
 	Settings []string `json:"settings"`
 }
 
+// ProductKind is what a copy of a product is (FORKS.md §1): ProductManaged is Whisk's code, which
+// Whisk runs for the business; ProductForks is the business's own code, which follows Whisk's
+// releases.
+type ProductKind string
+
+const (
+	ProductManaged ProductKind = "managed"
+	ProductForks   ProductKind = "forks"
+)
+
 // ManagedProduct is one product a business may add: what a copy takes and its monthly price in
 // the plan's currency's cents, absent when the plan does not include it (MANAGED-APPS.md §7).
 type ManagedProduct struct {
-	Slug     string           `json:"slug"`
-	Name     string           `json:"name"`
+	Slug string `json:"slug"`
+	Name string `json:"name"`
+	// Kind is ProductManaged or ProductForks. A platform that predates forks sends none, and
+	// every product is managed.
+	Kind     ProductKind      `json:"kind,omitempty"`
 	Variants []ManagedVariant `json:"variants"`
 	Settings []string         `json:"settings"`
 	Links    []string         `json:"links"`
@@ -47,10 +87,12 @@ type ManagedProduct struct {
 	Unavailable string `json:"unavailable,omitempty"` // plan | trial | no_release
 }
 
-// Managed is GET /orgs/:org/managed: the products and the business's copies.
+// Managed is GET /orgs/:org/managed: the products, the business's copies of those Whisk runs,
+// and its forks of those whose copies are its own code (FORKS.md).
 type Managed struct {
 	Products []ManagedProduct `json:"products"`
 	Copies   []App            `json:"copies"`
+	Forks    []App            `json:"forks"`
 }
 
 // ManagedAddRequest is POST /orgs/:org/managed.

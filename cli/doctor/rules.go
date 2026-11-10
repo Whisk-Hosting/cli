@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"path"
 	"regexp"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -188,14 +189,21 @@ func w002(r Repo, _ Context) outcome {
 	return out
 }
 
-func w003(r Repo, _ Context) outcome {
+func w003(r Repo, c Context) outcome {
 	if r.Binding == nil {
 		return skip("W003", "the directory is not bound to an app (.whisk/app.json is absent)")
 	}
-	if r.Manifest.Name != r.Binding.App {
+	if r.Manifest.Name != r.Binding.App && !takesName(c, r.Manifest.Name) {
 		return one("W003", manifestFile, yamlLine(r.ManifestNode, "/name"), fmt.Sprintf("name is %q but .whisk/app.json binds this directory to app %q.", r.Manifest.Name, r.Binding.App))
 	}
 	return outcome{}
+}
+
+// takesName reports whether the platform said it takes name for the bound app: a slug the app
+// had before it was renamed, or, for a fork of one of Whisk's products, the name the product's
+// releases carry. False when the platform was not asked.
+func takesName(c Context, name string) bool {
+	return c.Validation != nil && slices.Contains(c.Validation.Names, name)
 }
 
 // bindingTracked reports whether .whisk/app.json is part of what git carries, so it may have

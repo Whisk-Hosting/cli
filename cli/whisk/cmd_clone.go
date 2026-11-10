@@ -15,6 +15,7 @@ import (
 	"github.com/whisk-run/cli/internal/config"
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/cli/internal/safefile"
 )
 
 func cloneCmd(s *session) *cobra.Command {
@@ -102,10 +103,8 @@ func runClone(s *session, org, app, dir string) error {
 			return gitFailed("git config", r)
 		}
 	}
-	if _, ok, _ := config.LoadBinding(target); !ok {
-		if err := config.SaveBinding(target, config.Binding{Org: org, App: app, API: s.cfg.API}); err != nil {
-			return err
-		}
+	if err := s.bindClone(target, org, app, a.Fork != nil); err != nil {
+		return err
 	}
 	sha := ""
 	if r, err := s.git.Run(s.ctx, target, nil, "rev-parse", "--verify", "--quiet", "HEAD"); err == nil && r.OK() {
@@ -119,6 +118,53 @@ func runClone(s *session, org, app, dir string) error {
 		fmt.Fprintf(w, "Cloned %s/%s into %s at %s. git pull and git push work there; whisk deploy puts changes live.\n", org, app, dir, short(sha))
 	})
 	return nil
+}
+
+// bindClone ties a fresh checkout to its app when the code brought no binding of its own. A
+// fork's code is its product's release until the business changes it, so the binding written for
+// one stays the checkout's own and never counts as a change.
+func (s *session) bindClone(target, org, app string, fork bool) error {
+	if _, ok, _ := config.LoadBinding(target); ok {
+		return nil
+	}
+	if err := config.SaveBinding(target, config.Binding{Org: org, App: app, API: s.cfg.API}); err != nil {
+		return err
+	}
+	if !fork {
+		return nil
+	}
+	return excludeBinding(target)
+}
+
+// excludePath is the checkout's own list of files git leaves alone, beside .gitignore but never
+// part of the code.
+const excludePath = ".git/info/exclude"
+
+// excludeBinding tells git, in the checkout at target only, to leave the binding out.
+func excludeBinding(target string) error {
+	existing, err := os.ReadFile(filepath.Join(target, filepath.FromSlash(excludePath)))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	merged, changed := withExcluded(string(existing), "/"+config.BindingPath)
+	if !changed {
+		return nil
+	}
+	return safefile.Write(target, excludePath, []byte(merged), 0o644)
+}
+
+// withExcluded is a list of excluded files with line among them, and whether it had to be added.
+// Pure.
+func withExcluded(existing, line string) (string, bool) {
+	for _, l := range strings.Split(existing, "\n") {
+		if strings.TrimSpace(l) == line {
+			return existing, false
+		}
+	}
+	if existing != "" && !strings.HasSuffix(existing, "\n") {
+		existing += "\n"
+	}
+	return existing + line + "\n", true
 }
 
 // emptyOrMissing reports whether dir does not exist or is an empty directory.

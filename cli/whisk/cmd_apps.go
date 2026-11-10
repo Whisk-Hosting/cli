@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -330,7 +331,7 @@ func appsCmd(s *session) *cobra.Command {
 				for _, line := range memoryLines(a.Memory, time.Now()) {
 					fmt.Fprintln(w, "  "+line)
 				}
-				for _, line := range managedLines(a, linked) {
+				for _, line := range slices.Concat(managedLines(a, linked), forkLines(a)) {
 					fmt.Fprintln(w, "  "+line)
 				}
 			})
