@@ -36,6 +36,13 @@ func (c *Client) CreateDeploy(ctx context.Context, org, app string, req CreateDe
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/deploys", req, &out)
 }
 
+// RollbackWithData queues production's rollback to the version before the live one with the
+// database as it was just before the live version's migration; the answer is the new deploy.
+func (c *Client) RollbackWithData(ctx context.Context, org, app string, req RollbackWithData) (Deploy, error) {
+	var out Deploy
+	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/rollback-with-data", req, &out)
+}
+
 // RestartApp starts the app's live production build again in a new container; the old one
 // stops once the new one is healthy. The deploy it queued is the newest production deploy.
 func (c *Client) RestartApp(ctx context.Context, org, app string) error {

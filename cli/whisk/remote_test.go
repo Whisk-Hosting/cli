@@ -146,6 +146,7 @@ type remoteState struct {
 	events      []map[string]any // POST events bodies
 	previews    []string         // POST previews branches
 	fork        map[string]any   // the app's fork record, when it is one
+	rolledData  []map[string]any // POST rollback-with-data bodies
 }
 
 func sse(w http.ResponseWriter, events ...map[string]any) {
@@ -213,6 +214,9 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 			writeJSON(w, 200, deploy(id, "queued", "abc1234abc", nil))
 		case "d-preview":
 			writeJSON(w, 200, deploy(id, "queued", "abc1234abc", map[string]any{"environment": "preview:feature-x", "branch": "feature-x"}))
+		case "d-rbd":
+			writeJSON(w, 200, deploy(id, "live", "abc1234abc", map[string]any{"data": map[string]any{"state": "restored", "from_deploy": "d-mig", "point_at": "2026-09-08T09:00:00Z",
+				"instant": true, "aside": "app_a1_pre_1788858000", "kept_until": "2026-09-15T10:00:09Z", "started_at": "2026-09-08T10:00:00Z", "ended_at": "2026-09-08T10:00:09Z"}}))
 		default:
 			writeJSON(w, 404, map[string]any{"error": map[string]any{"code": "NOT_FOUND", "message": "That deploy does not exist.", "fix": "whisk deploys list"}})
 		}
@@ -241,6 +245,11 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 			)
 		case "d-preview":
 			sse(w, map[string]any{"deploy_id": id, "status": "live", "phase": map[string]any{"phase": "live", "at": "2026-09-08T10:00:09Z"}, "done": true, "url": "https://crm--acme--feature-x.whisk.page", "unset_secrets": []string{}})
+		case "d-rbd":
+			sse(w,
+				map[string]any{"deploy_id": id, "status": "restoring", "phase": map[string]any{"phase": "restoring", "at": "2026-09-08T10:00:01Z", "detail": "holding the app's requests while the version before it takes over with the data put back"}, "done": false},
+				map[string]any{"deploy_id": id, "status": "live", "phase": map[string]any{"phase": "live", "at": "2026-09-08T10:00:09Z"}, "done": true, "url": "https://crm--acme.whisk.page", "unset_secrets": []string{}},
+			)
 		case "d-old":
 			sse(w, map[string]any{"deploy_id": id, "status": "superseded", "phase": map[string]any{"phase": "superseded", "at": "2026-09-08T10:00:03Z"}, "done": true})
 		case "d-fail":
@@ -264,6 +273,13 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		st.posted = append(st.posted, body)
 		writeJSON(w, 202, deploy("d-rb", "queued", "abc1234abc", map[string]any{"previous_deploy_id": "d-live"}))
+	}))
+	mux.HandleFunc("POST /v1/orgs/acme/apps/crm/rollback-with-data", auth(func(w http.ResponseWriter, r *http.Request) {
+		body := map[string]any{}
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		st.rolledData = append(st.rolledData, body)
+		writeJSON(w, 202, deploy("d-rbd", "queued", "abc1234abc", map[string]any{"previous_deploy_id": "d-live", "data": map[string]any{"state": "waiting",
+			"from_deploy": "d-mig", "point_at": "2026-09-08T09:00:00Z", "instant": false, "started_at": "2026-09-08T10:00:00Z"}}))
 	}))
 	mux.HandleFunc("POST /v1/orgs/acme/apps/crm/events", auth(func(w http.ResponseWriter, r *http.Request) {
 		var body map[string]any

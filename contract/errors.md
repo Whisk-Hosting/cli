@@ -1625,6 +1625,24 @@ own, a migration that reads a secret), fix that, and deploy again.
 {"error":{"code":"REHEARSAL_FAILED","message":"The migration of release 4 failed on a private copy of the app's data (exit 1), so it never ran on the live data, which is unchanged. The previous deploy is still live.","fix":"Read the log. If the code is a release as Whisk made it, report it with whisk feedback --kind bug --code REHEARSAL_FAILED and the deploy id; otherwise fix what of the business's changes the migration meets on this data and deploy again.","docs":"https://skill.whisk.run/errors/REHEARSAL_FAILED","details":{"command":"npm run migrate","exit_code":1,"log":["ERROR: check constraint \"notes_short\" of relation \"notes\" is violated by some row"],"step":"rehearse","release":4,"from_release":3,"fault":"app"}}}
 ```
 
+## DATA_ROLLBACK_FAILED
+
+Status: - · Surface: deploy, cli
+
+When: `whisk rollback --data` could not finish on Whisk's side. The deploy fails as
+`PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code` and `details.step` `restore`.
+Whatever it changed is put back first: the database it set aside takes the live one's place again
+and the version that was live runs on it, so the app is as it was before the rollback. The
+deploy's `data.state` says which: `unchanged` when it ended before it changed the data,
+`given_back` when it put the data back and then gave it back.
+
+Fix: Do not change the code. Run `whisk rollback --data` again; if it stops the same way, wait a
+few minutes and run it again.
+
+```json
+{"error":{"code":"DATA_ROLLBACK_FAILED","message":"The rollback with its data could not finish, so what it changed was put back and the version that was live runs on its data again.","fix":"Run whisk rollback --data again; if it stops the same way, wait a few minutes and run it again.","docs":"https://skill.whisk.run/errors/DATA_ROLLBACK_FAILED","details":{"step":"restore","fault":"platform"}}}
+```
+
 ## PLATFORM_DEPLOY_FAILED
 
 Status: - · Surface: deploy, cli
@@ -2904,11 +2922,15 @@ backups still cover the org.
 
 Status: 409 · Surface: api, cli
 
-When: a self-service restore was requested for an app that already has one queued or running.
-Two restores of one database race for its name, so one runs at a time.
+When: a self-service restore, or a rollback with its data (`whisk rollback --data`), was
+requested for an app that already has a restore queued or running, or a rollback with its data
+that has not finished. Each can put a copy in the live database's place, and two at once race for
+its name, so one runs at a time. `details.restore` names the restore, or `details.deploy` the
+rollback's deploy.
 
-Fix: Wait for the running restore to finish: `whisk restore show <id> --wait` follows it
-(`GET /orgs/:org/apps/:app/restores/:id`), and `whisk restore list` lists the app's restores.
+Fix: Wait for it to finish: `whisk restore show <id> --wait` follows a restore
+(`GET /orgs/:org/apps/:app/restores/:id`), `whisk deploys info <deploy>` shows where a rollback
+stands, and `whisk restore list` lists the app's restores.
 
 ```json
 {"error":{"code":"RESTORE_IN_PROGRESS","message":"A restore started at 2026-09-16T10:02:00Z is still running.","fix":"Wait for it to finish: whisk restore show 01J9 --wait follows it (GET /orgs/:org/apps/:app/restores/01J9).","docs":"https://skill.whisk.run/errors/RESTORE_IN_PROGRESS","details":{"restore":"01J9","started_at":"2026-09-16T10:02:00Z"}}}

@@ -75,7 +75,7 @@ and the exit codes of `CLI.md §3`:
   from the server's `whisk:` sideband lines (or a 30 s poll of the deploys list), then the SSE
   event stream until live (URL, plus a `NEEDS_HUMAN` block for unset secrets), blocked (exit 2)
   or failed (code, fix, the last 40 log lines, exit 6). `whisk deploys list/info/cancel`,
-  `whisk rollback`.
+  `whisk rollback [--data]`.
 - `whisk status`, `whisk open` — the app's state and current deploy; the dashboard page or app
   URL, derived from the API origin (`CLI.md §7`).
 - `whisk scan [--now]` — the live app's known vulnerable packages with the version that fixes

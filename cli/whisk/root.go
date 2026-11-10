@@ -72,6 +72,9 @@ type session struct {
 	// forkUpdate is what whisk managed update did to the fork whose deploy it follows, for the
 	// deploy's summary.
 	forkUpdate map[string]any
+	// followsData is set while whisk rollback --data follows its deploy, whose summary says
+	// where the data stands.
+	followsData bool
 }
 
 // Run executes args and returns the exit code. Nothing is written except through env.

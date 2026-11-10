@@ -29,4 +29,6 @@ type (
 	DeployEvent         = apitypes.DeployEvent
 	Warning             = apitypes.Warning
 	CreateDeployRequest = apitypes.CreateDeployRequest
+	DataRollback        = apitypes.DataRollback
+	RollbackWithData    = apitypes.RollbackWithDataRequest
 )

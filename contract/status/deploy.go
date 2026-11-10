@@ -17,7 +17,10 @@ const (
 	DeployBuilding Deploy = "building"
 	// DeployRehearsing is a production deploy that brings a fork a newer release running its
 	// migration on a private copy of the live data before the data itself (FORKS.md §4).
-	DeployRehearsing     Deploy = "rehearsing"
+	DeployRehearsing Deploy = "rehearsing"
+	// DeployRestoring is a rollback with its data putting the database back to just before the
+	// live version's migration, while the app's requests wait at the edge (CONTROL-PLANE.md §6.5).
+	DeployRestoring      Deploy = "restoring"
 	DeploySnapshotting   Deploy = "snapshotting"
 	DeployMigrating      Deploy = "migrating"
 	DeployStarting       Deploy = "starting"
@@ -33,7 +36,7 @@ const (
 )
 
 var deploys = []Deploy{
-	DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting,
+	DeployQueued, DeployBuilding, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting,
 	DeployHealthChecking, DeploySwitching, DeployDraining, DeployLive, DeployFailed,
 	DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded,
 }
@@ -49,7 +52,7 @@ func (d Deploy) Finished() bool {
 	switch d {
 	case DeployLive, DeployFailed, DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded:
 		return true
-	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting,
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting,
 		DeployHealthChecking, DeploySwitching, DeployDraining:
 		return false
 	}
@@ -57,10 +60,11 @@ func (d Deploy) Finished() bool {
 }
 
 // Supersedable says whether a newer request for the environment stops a deploy in this status:
-// one that has not begun switching traffic. A deploy that is switching or draining finishes.
+// one that has not begun switching traffic. A deploy that is switching or draining finishes, and
+// a rollback with its data that is stopped puts the data it replaced back first.
 func (d Deploy) Supersedable() bool {
 	switch d {
-	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking:
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking:
 		return true
 	case DeploySwitching, DeployDraining, DeployLive, DeployFailed, DeployRolledBack,
 		DeployCancelled, DeployBlocked, DeploySuperseded:
@@ -75,7 +79,7 @@ func (d Deploy) Running() bool {
 	switch d {
 	case DeployStarting, DeployHealthChecking, DeploySwitching, DeployDraining, DeployLive:
 		return true
-	case DeployQueued, DeployBuilding, DeployRehearsing, DeploySnapshotting, DeployMigrating, DeployFailed,
+	case DeployQueued, DeployBuilding, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployFailed,
 		DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded:
 		return false
 	}

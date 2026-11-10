@@ -287,10 +287,13 @@ type Deploy struct {
 	GrantsNeeded []GrantNeeded `json:"grants_needed"`
 	// Rehearsal is what the deploy's rehearsal of its migration did, for a deploy that brings a
 	// fork a newer release (FORKS.md §4); absent for every other deploy.
-	Rehearsal  *Rehearsal `json:"rehearsal,omitempty"`
-	StartedAt  *time.Time `json:"started_at,omitempty"`
-	FinishedAt *time.Time `json:"finished_at,omitempty"`
-	CreatedAt  time.Time  `json:"created_at"`
+	Rehearsal *Rehearsal `json:"rehearsal,omitempty"`
+	// Data is what a rollback with its data did to the database (`whisk rollback --data`);
+	// absent for every other deploy.
+	Data       *DataRollback `json:"data,omitempty"`
+	StartedAt  *time.Time    `json:"started_at,omitempty"`
+	FinishedAt *time.Time    `json:"finished_at,omitempty"`
+	CreatedAt  time.Time     `json:"created_at"`
 }
 
 // DeployEvent is one SSE event on GET /deploys/:id/events. The last one of a live deploy

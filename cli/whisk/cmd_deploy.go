@@ -931,7 +931,7 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 	case status.DeployBlocked:
 		return s.deployBlocked(client, org, app, ev)
 	case status.DeployFailed, status.DeployRolledBack, status.DeployCancelled,
-		status.DeployQueued, status.DeployBuilding, status.DeployRehearsing, status.DeploySnapshotting, status.DeployMigrating,
+		status.DeployQueued, status.DeployBuilding, status.DeployRehearsing, status.DeployRestoring, status.DeploySnapshotting, status.DeployMigrating,
 		status.DeployStarting, status.DeployHealthChecking, status.DeploySwitching, status.DeployDraining:
 	}
 	return s.deployFailure(client, org, app, ev)
@@ -952,6 +952,12 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 		result["caught_up"] = s.caughtUp
 	}
 	maps.Copy(result, s.forkUpdate)
+	var data []string
+	if s.followsData {
+		if d, err := client.GetDeploy(s.ctx, org, app, ev.DeployID); err == nil && d.Data != nil {
+			result["data"], data = d.Data, dataLines(d.Data)
+		}
+	}
 	label := "Live:"
 	note := previewNote(environment)
 	if note != "" {
@@ -977,6 +983,9 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 		fmt.Fprintf(w, "%s %s\n", s.printer.Good(label), ev.URL)
 		if ev.StartMS != nil {
 			fmt.Fprintf(w, "Started in %s\n", output.Seconds(*ev.StartMS))
+		}
+		for _, line := range data {
+			fmt.Fprintln(w, line)
 		}
 		for _, h := range hooks {
 			fmt.Fprintf(w, "Webhook %s: %s\n", h["name"], h["url"])
@@ -1140,6 +1149,7 @@ func rehearsalLines(r *apitypes.Rehearsal) []string {
 // of the build log when the build is what failed.
 func (s *session) deployFailure(client *api.Client, org, app string, ev api.DeployEvent) error {
 	d, _ := client.GetDeploy(s.ctx, org, app, ev.DeployID)
+	d = s.dataSettled(client, org, app, d)
 	detail := ev.Error
 	if detail == nil {
 		detail = d.Error
@@ -1161,6 +1171,12 @@ func (s *session) deployFailure(client *api.Client, org, app string, ev api.Depl
 	}
 	e.Details["deploy_id"] = ev.DeployID
 	e.Details["status"] = ev.Status
+	if d.Data != nil {
+		e.Details["data"] = d.Data
+		if !s.json {
+			fmt.Fprintln(s.env.Stderr, strings.Join(dataLines(d.Data), "\n"))
+		}
+	}
 	lines := s.logExcerpt(client, org, app, d, e)
 	if len(lines) > 0 {
 		e.Details["log"] = lines
@@ -1351,6 +1367,9 @@ func printDeploy(p output.Printer, w io.Writer, d api.Deploy) {
 	for _, line := range rehearsalLines(d.Rehearsal) {
 		fmt.Fprintf(w, "  %s\n", line)
 	}
+	for _, line := range dataLines(d.Data) {
+		fmt.Fprintf(w, "  %s\n", line)
+	}
 	if d.Error != nil {
 		fmt.Fprintf(w, "  %s: %s\n    %s\n", p.Bad(d.Error.Code), d.Error.Message, p.Dim("fix: "+d.Error.Fix))
 	}
@@ -1365,25 +1384,46 @@ func branchSuffix(branch string) string {
 
 func rollbackCmd(s *session) *cobra.Command {
 	var envName string
-	var noWait bool
+	var noWait, withData bool
 	c := &cobra.Command{
 		Use:   "rollback [<deploy-id>]",
 		Short: "Make an earlier deploy live again (default: the previous live one)",
-		Args:  cobra.MaximumNArgs(1),
+		Long: `Makes an earlier deploy live again: the one named, or the one before the live version.
+
+--data rolls production back to the version before the live one with the database as it was
+just before the live version's migration, for a migration that went wrong after it went live.
+The app's requests wait while the two databases change places and that version starts, and the
+database it replaces is kept: the summary names it, and whisk db query --database <name> reads
+it. A rollback that does not go live puts that database back and the live version runs on as
+before.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if withData && len(args) == 1 {
+				return dataRollbackNamed(args[0])
+			}
 			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
-			req := api.CreateDeployRequest{Environment: envName}
-			if len(args) == 1 {
-				req.DeployID = args[0]
+			var d api.Deploy
+			if withData {
+				d, err = client.RollbackWithData(s.ctx, org, app, api.RollbackWithData{Environment: envName})
+			} else {
+				req := api.CreateDeployRequest{Environment: envName}
+				if len(args) == 1 {
+					req.DeployID = args[0]
+				}
+				d, err = client.CreateDeploy(s.ctx, org, app, req)
 			}
-			d, err := client.CreateDeploy(s.ctx, org, app, req)
 			if err != nil {
 				return wrap(err)
 			}
-			s.printer.Progress("Rolling back to %s (deploy %s).", short(d.CommitSHA), d.ID)
+			if d.Data != nil {
+				s.followsData = true
+				s.printer.Progress("Rolling back to %s (deploy %s) with the data as it was at %s, just before deploy %s's migration.", short(d.CommitSHA), d.ID, at(d.Data.PointAt), d.Data.FromDeploy)
+			} else {
+				s.printer.Progress("Rolling back to %s (deploy %s).", short(d.CommitSHA), d.ID)
+			}
 			if noWait {
 				s.printer.Result(map[string]any{"deploy_id": d.ID, "status": d.Status, "commit_sha": d.CommitSHA, "environment": d.Environment}, func(w io.Writer) {
 					fmt.Fprintf(w, "Rollback queued as deploy %s. Follow it with: whisk deploys info %s\n", d.ID, d.ID)
@@ -1395,7 +1435,76 @@ func rollbackCmd(s *session) *cobra.Command {
 	}
 	c.Flags().StringVar(&envName, "env", "", "environment to roll back (default production)")
 	c.Flags().BoolVar(&noWait, "no-wait", false, "print the deploy id and exit")
+	c.Flags().BoolVar(&withData, "data", false, "put production's data back to just before the live version's migration too")
 	return c
+}
+
+// dataSettleWait bounds how long a failed rollback with its data is followed while it gives
+// back what it changed, which its deploy does after it fails.
+const dataSettleWait = 3 * time.Minute
+
+// dataSettled follows a failed rollback with its data until its data is settled, for at most
+// dataSettleWait, so its report says where the data ended up; every other deploy passes at once.
+// A read that fails ends the wait, and the report says where the data stood at the last one.
+func (s *session) dataSettled(client *api.Client, org, app string, d api.Deploy) api.Deploy {
+	deadline := time.Now().Add(dataSettleWait)
+	for d.Data != nil && d.Data.EndedAt == nil && time.Now().Before(deadline) {
+		select {
+		case <-s.ctx.Done():
+			return d
+		case <-time.After(2 * time.Second):
+		}
+		next, err := client.GetDeploy(s.ctx, org, app, d.ID)
+		if err != nil {
+			return d
+		}
+		d = next
+	}
+	return d
+}
+
+// dataRollbackNamed refuses a deploy named with --data, which always goes back to the version
+// before the live one. Pure.
+func dataRollbackNamed(id string) error {
+	return &output.Error{Code: "INVALID_REQUEST", Message: "whisk rollback --data goes back to the version before the live one, so it takes no deploy id (" + id + ").",
+		Fix: "Run whisk rollback --data alone, or whisk rollback " + id + " without --data.", Docs: werrors.DocsBase + "INVALID_REQUEST", Exit: output.ExitValidation}
+}
+
+// dataLines is what a rollback with its data did, for a person: where the data went back to and
+// where the database it replaced is kept. Pure.
+func dataLines(r *api.DataRollback) []string {
+	if r == nil {
+		return nil
+	}
+	point := at(r.PointAt) + ", just before deploy " + r.FromDeploy + "'s migration"
+	from := ""
+	if r.Instant {
+		from = ", from the instant copy taken then"
+	}
+	var head string
+	switch r.State {
+	case apitypes.DataRollbackWaiting:
+		head = "data: going back to " + point
+	case apitypes.DataRollbackHeld:
+		head = "data: going back to " + point + "; the app's requests wait meanwhile"
+	case apitypes.DataRollbackRestored:
+		head = "data: as it was at " + point + from
+	case apitypes.DataRollbackGivenBack:
+		head = "data: given back, as the rollback did not go live: the database is the one that was live"
+	case apitypes.DataRollbackUnchanged:
+		head = "data: unchanged, as the rollback ended before it put anything back"
+	default:
+		head = "data: " + string(r.State)
+	}
+	out := []string{head}
+	if r.Aside != "" {
+		kept := "kept as " + r.Aside
+		if r.KeptUntil != nil {
+			kept += " until " + when(r.KeptUntil)
+		}
+		out = append(out, "  the database it replaced is "+kept+": whisk db query --database "+r.Aside+" reads it")
+	}
+	return out
 }
 
 // clip shortens s to at most n characters for a table cell, ending a cut one with "…". Pure.

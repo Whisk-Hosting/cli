@@ -1652,6 +1652,10 @@
     "short": "Make an earlier deploy live again (default: the previous live one)",
     "flags": [
      {
+      "name": "--data",
+      "usage": "put production's data back to just before the live version's migration too"
+     },
+     {
       "name": "--env string",
       "usage": "environment to roll back (default production)"
      },
