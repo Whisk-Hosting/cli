@@ -22,7 +22,7 @@ export const log = pino({ level: process.env.LOG_LEVEL ?? "info", base: { app: p
 // Tracing starts when the platform sets OTEL_EXPORTER_OTLP_TRACES_ENDPOINT (whisk dev does not);
 // the exporter reads the other OTEL_* variables itself. Requests are traced by the middleware
 // in index.ts, which continues the edge's traceparent, so a trace's id is the request id.
-// fetch calls are traced too, and SQL through traceQueries. Shut it down to flush spans.
+// fetch calls are traced too, and SQL through traceQueries. flushSpans sends what is left.
 export const tracing = process.env.OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
   ? new NodeTracerProvider({ resource: defaultResource().merge(detectResources({ detectors: [envDetector] })), spanProcessors: [new BatchSpanProcessor(new OTLPTraceExporter())] })
   : undefined;
@@ -30,6 +30,21 @@ if (tracing) {
   tracing.register();
   new UndiciInstrumentation();
 }
+
+// flushSpans sends the spans still to send, within two seconds: an exporter waits on a traces
+// endpoint that is busy or away for as long as it is let, and every update of the app waits for
+// its stop. The stop goes on without what it could not send, which is logged.
+export const flushSpans = async (): Promise<void> => {
+  if (!tracing) return;
+  let late: NodeJS.Timeout | undefined;
+  try {
+    await Promise.race([tracing.shutdown(), new Promise((_, fail) => { late = setTimeout(() => fail(new Error("not sent within 2 seconds")), 2000); })]);
+  } catch (err) {
+    log.warn({ err: err instanceof Error ? err.message : String(err) }, "spans not sent before the stop");
+  } finally {
+    clearTimeout(late);
+  }
+};
 
 type Query = { then: (ok?: (v: unknown) => unknown, fail?: (e: unknown) => unknown) => Promise<unknown> };
 

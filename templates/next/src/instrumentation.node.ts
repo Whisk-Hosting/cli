@@ -4,7 +4,7 @@
 // traced beneath. Sentry reports errors only and leaves tracing to whisk.ts.
 import * as Sentry from "@sentry/node";
 import { sql } from "./db";
-import { log, tracing } from "./whisk";
+import { flushSpans, log } from "./whisk";
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
@@ -16,7 +16,7 @@ if (process.env.SENTRY_DSN) {
 const shutdown = () => {
   log.info("shutting down");
   setTimeout(async () => {
-    await Promise.allSettled([sql.end({ timeout: 5 }), tracing?.shutdown(), Sentry.flush(2000)]);
+    await Promise.allSettled([sql.end({ timeout: 5 }), flushSpans(), Sentry.flush(2000)]);
     process.exit(0);
   }, 3000).unref();
   setTimeout(() => process.exit(1), (Number(process.env.WHISK_STOP_GRACE ?? 28) - 2) * 1000).unref();

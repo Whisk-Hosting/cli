@@ -7,7 +7,7 @@ import { context, propagation, SpanKind, SpanStatusCode, trace } from "@opentele
 import * as Sentry from "@sentry/node";
 import { defineMiddleware } from "astro:middleware";
 import { sql } from "./db.js";
-import { identity, log, tracing } from "./whisk.js";
+import { flushSpans, identity, log } from "./whisk.js";
 
 if (process.env.SENTRY_DSN) {
   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
@@ -43,7 +43,7 @@ export const onRequest = defineMiddleware(async (ctx, next) => {
 const shutdown = () => {
   log.info("shutting down");
   setTimeout(async () => {
-    await Promise.allSettled([sql.end({ timeout: 5 }), tracing?.shutdown(), Sentry.flush(2000)]);
+    await Promise.allSettled([sql.end({ timeout: 5 }), flushSpans(), Sentry.flush(2000)]);
     process.exit(0);
   }, 3000).unref();
   setTimeout(() => process.exit(1), (Number(process.env.WHISK_STOP_GRACE ?? 28) - 2) * 1000).unref();

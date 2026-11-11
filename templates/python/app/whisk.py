@@ -13,6 +13,7 @@ import logging
 import os
 import re
 import sys
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -50,12 +51,25 @@ log = structlog.get_logger().bind(app=os.environ.get("WHISK_APP_NAME"))
 
 # Tracing starts when the platform sets OTEL_EXPORTER_OTLP_TRACES_ENDPOINT (whisk dev does not);
 # the provider and exporter read the other OTEL_* variables themselves. urllib calls are traced.
-# Call tracing.shutdown() on the way out to flush spans.
+# Call flush_spans() on the way out.
 tracing = TracerProvider() if os.environ.get("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") else None
 if tracing:
     tracing.add_span_processor(BatchSpanProcessor(OTLPSpanExporter()))
     trace.set_tracer_provider(tracing)
     URLLibInstrumentor().instrument()
+
+
+def flush_spans() -> None:
+    """Sends the spans still to send, within two seconds: an exporter waits on a traces endpoint
+    that is busy or away for as long as it is let, and every update of the app waits for its
+    stop. The stop goes on without what it could not send, which is logged."""
+    if not tracing:
+        return
+    flushing = threading.Thread(target=tracing.shutdown, daemon=True)
+    flushing.start()
+    flushing.join(2)
+    if flushing.is_alive():
+        log.warning("spans not sent before the stop", err="not sent within 2 seconds")
 
 
 def trace_app(app: FastAPI, engine: Engine) -> None:

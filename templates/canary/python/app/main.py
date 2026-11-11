@@ -16,7 +16,7 @@ from .functions import functions
 from .diag import diag_call, diag_pg, diag_post, diag_read, diag_report, diag_share
 from .kv import diag_kv
 from .sync import diag_sync
-from .whisk import Delivery, client, deliveries, enqueue, env, identity, log, trace_app, tracing, whisk_headers
+from .whisk import Delivery, client, deliveries, enqueue, env, flush_spans, identity, log, trace_app, whisk_headers
 
 if os.environ.get("SENTRY_DSN"):
     sentry_sdk.init(dsn=os.environ["SENTRY_DSN"], environment=os.environ.get("WHISK_ENV"))
@@ -27,8 +27,7 @@ async def lifespan(_: FastAPI):
     log.info("listening", port=os.environ.get("PORT"))
     yield
     engine.dispose()  # SIGTERM: uvicorn stops accepting, finishes in-flight requests, then this runs.
-    if tracing:
-        tracing.shutdown()  # flushes the spans not yet sent
+    flush_spans()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)

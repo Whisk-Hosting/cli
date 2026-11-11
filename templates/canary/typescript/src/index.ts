@@ -10,7 +10,7 @@ import { functions } from "./functions.js";
 import { diagCall, diagPG, diagPost, diagRead, diagReport, diagShare } from "./diag.js";
 import { diagKV } from "./kv.js";
 import { diagSync } from "./sync.js";
-import { deliveries, enqueue, env, hasRole, identity, inngest, log, tracing } from "./whisk.js";
+import { deliveries, enqueue, env, flushSpans, hasRole, identity, inngest, log } from "./whisk.js";
 
 // Errors only: Sentry leaves OpenTelemetry to the tracer in whisk.ts.
 if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
@@ -172,7 +172,7 @@ const server = nodeServe({ fetch: app.fetch, port: Number(env("PORT", "8080")), 
 // the grace period.
 const shutdown = () => {
   log.info("shutting down");
-  server.close(async () => { await sql.end({ timeout: 5 }); await tracing?.shutdown(); process.exit(0); });
+  server.close(async () => { await sql.end({ timeout: 5 }); await flushSpans(); process.exit(0); });
   setTimeout(() => process.exit(1), (Number(process.env.WHISK_STOP_GRACE ?? 28) - 2) * 1000).unref();
 };
 process.on("SIGTERM", shutdown);

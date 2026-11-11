@@ -11,7 +11,7 @@ from sqlalchemy import select, text
 
 from .db import Note, db_for, engine
 from .functions import functions
-from .whisk import can_change, can_see, client, enqueue, env, identity, log, scope_for, trace_app, tracing
+from .whisk import can_change, can_see, client, enqueue, env, flush_spans, identity, log, scope_for, trace_app
 
 if os.environ.get("SENTRY_DSN"):
     sentry_sdk.init(dsn=os.environ["SENTRY_DSN"], environment=os.environ.get("WHISK_ENV"))
@@ -22,8 +22,7 @@ async def lifespan(_: FastAPI):
     log.info("listening", port=os.environ.get("PORT"))
     yield
     engine.dispose()  # SIGTERM: uvicorn stops accepting, finishes in-flight requests, then this runs.
-    if tracing:
-        tracing.shutdown()  # flushes the spans not yet sent
+    flush_spans()
 
 
 app = FastAPI(lifespan=lifespan, docs_url=None, redoc_url=None)

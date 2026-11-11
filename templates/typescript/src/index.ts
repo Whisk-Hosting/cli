@@ -7,7 +7,7 @@ import { html } from "hono/html";
 import { serve as inngestServe } from "inngest/hono";
 import { dbFor, notes, sql } from "./db.js";
 import { functions } from "./functions.js";
-import { canChange, canSee, enqueue, env, identity, inngest, log, scopeFor, tracing } from "./whisk.js";
+import { canChange, canSee, enqueue, env, flushSpans, identity, inngest, log, scopeFor } from "./whisk.js";
 
 // Errors only: Sentry leaves OpenTelemetry to the tracer in whisk.ts.
 if (process.env.SENTRY_DSN) Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.WHISK_ENV });
@@ -104,7 +104,7 @@ const server = nodeServe({ fetch: app.fetch, port: Number(env("PORT", "8080")), 
 // the grace period.
 const shutdown = () => {
   log.info("shutting down");
-  server.close(async () => { await sql.end({ timeout: 5 }); await tracing?.shutdown(); process.exit(0); });
+  server.close(async () => { await sql.end({ timeout: 5 }); await flushSpans(); process.exit(0); });
   setTimeout(() => process.exit(1), (Number(process.env.WHISK_STOP_GRACE ?? 28) - 2) * 1000).unref();
 };
 process.on("SIGTERM", shutdown);
