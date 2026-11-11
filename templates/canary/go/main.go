@@ -267,13 +267,24 @@ func run() error {
 		}
 	}()
 	<-ctx.Done()
+	return shutDown(srv, stopTracing)
+}
 
-	// SIGTERM: stop accepting, finish in-flight requests, exit within the grace period.
+// shutDown is the app's SIGTERM: stop accepting, finish in-flight requests, exit within the grace
+// period. The spans still to send get spanFlush after that, and the app stops without any it
+// could not send.
+func shutDown(srv *http.Server, stopTracing func(context.Context) error) error {
 	grace, _ := strconv.Atoi(env("WHISK_STOP_GRACE", "28"))
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), time.Duration(grace-2)*time.Second)
 	defer cancel()
 	logger.Info("shutting down")
-	return errors.Join(srv.Shutdown(shutdownCtx), stopTracing(shutdownCtx))
+	err := srv.Shutdown(shutdownCtx)
+	flushCtx, cancelFlush := context.WithTimeout(shutdownCtx, spanFlush)
+	defer cancelFlush()
+	if ferr := stopTracing(flushCtx); ferr != nil {
+		logger.Warn("spans not sent before the stop", "err", ferr)
+	}
+	return err
 }
 
 // logRequests writes one JSON line per request with the platform request id.

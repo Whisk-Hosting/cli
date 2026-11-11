@@ -56,7 +56,8 @@ var logger = slog.New(slog.NewJSONHandler(os.Stdout, nil)).With("app", os.Getenv
 // startTracing starts OpenTelemetry when the platform sets OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
 // (whisk dev does not); the exporter and provider read the other OTEL_* variables themselves.
 // Calls through http.DefaultClient are traced, and traceRequests and traceQueries trace
-// requests and SQL. The function it returns flushes spans; call it on the way out.
+// requests and SQL. The function it returns flushes spans; call it on the way out, within
+// spanFlush.
 func startTracing(ctx context.Context) (func(context.Context) error, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_TRACES_ENDPOINT") == "" {
 		return func(context.Context) error { return nil }, nil
@@ -71,6 +72,11 @@ func startTracing(ctx context.Context) (func(context.Context) error, error) {
 	http.DefaultClient.Transport = otelhttp.NewTransport(http.DefaultTransport)
 	return provider.Shutdown, nil
 }
+
+// spanFlush is how long the spans still to send may hold up the app's stop. An exporter waits on
+// a traces endpoint that is busy or away for as long as it is let, and every update of the app
+// waits for its stop.
+const spanFlush = 2 * time.Second
 
 // traceRequests is chi middleware: a server span per request that continues the edge's
 // traceparent, so a trace's id is the request id, named by its route once routed.
