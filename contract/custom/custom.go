@@ -1,6 +1,8 @@
 //whisk:pure
 
-// Package custom is the folder of a fork's code that holds the business's own SQL (FORKS.md §8).
+// Package custom is the folder of a fork's code that holds the business's own beside Whisk's: its
+// SQL (FORKS.md §8) and the record of each of its changes (changes.go, FORKS.md §9), with the
+// release line a checkout follows (line.go).
 // custom/migrations holds the files that make and change the business's own tables, in the
 // schema custom, each run once in name order; custom/views holds its views, functions and
 // triggers, in the schema custom_views, which Whisk takes away before each update of the product

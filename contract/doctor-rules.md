@@ -901,3 +901,61 @@ Safe fix: no
 Details: known only when the directory is bound to an app (`listing.shown` and `listing.owned`
 from `/apps/:app/validate`). What an owner set stays on the home whatever whisk.yaml says
 (CONTRACT.md §3.4); one finding per field, at its line.
+
+## W170
+
+Level: error
+Check: in a fork, a file differs from the release the code holds and no change record in custom/changes names it.
+Fix: Run whisk changes draft <name> --asked "<what the business asked for, in its own words>", which writes custom/changes/<name>.yaml naming every such file, with the tests among them as its checks (--check <test> names one); for a change that has a record already, whisk changes draft <its name> adds the files to it.
+Safe fix: no
+
+Details: a fork is a checkout whose remote `whisk` carries the branch `upstream`, its product's
+release line, as `whisk clone` leaves one (FORKS.md §9). The release its code holds is the newest
+its branch has merged, and everything that differs from it counts: a file added, changed or
+deleted, committed or not, never what git ignores, the records themselves or `.whisk/`. A record
+names a file, or a folder ending `/` for everything in it. `whisk changes` lists the records and the
+files no record names. Skipped when git is not installed, and when the branch holds none of the
+releases.
+
+## W171
+
+Level: error
+Check: a change record in custom/changes cannot be read, says nothing in asked, names nothing in touches or checks, or names a check that is not a test in the repository.
+Fix: Write each record as custom/changes/<name>.yaml with asked (what the business asked for, in its own words), touches (each file it adds, changes or deletes from the code's root, or a folder ending /) and checks (the tests that prove the change works), and nothing else.
+Safe fix: no
+
+Details: in a fork, as W170 reads one. A record is named for its change in lower-case letters,
+digits and dashes and ends `.yaml`; `custom/changes` holds nothing else. `asked` is at most 1000
+characters, and `touches` and `checks` at most 200 paths each, never a pattern. A check is a file
+in the repository that doctor reads as a test (`*.test.*`, `*.spec.*`, `*_test.go`, `test_*`, or
+in a folder named `test`, `tests`, `__tests__` or `spec`). Each problem is reported at its line.
+
+```yaml
+asked: When a deal is won, tell the warehouse so the order is packed the same day.
+touches:
+  - custom/server/warehouse.ts
+  - custom/server/test/warehouse.test.ts
+checks:
+  - custom/server/test/warehouse.test.ts
+```
+
+## W172
+
+Level: error
+Check: in a fork, an SQL file outside custom/ differs from the release the code holds.
+Fix: Put tables of your own in custom/migrations and views, functions and triggers in custom/views, and give Whisk's SQL back as the release has it: the message says the git command.
+Safe fix: no
+
+Details: in a fork, as W170 reads one. Whisk's migrations make and change Whisk's own tables, and
+every update runs the release's as Whisk wrote them, so a change to one is lost or stops the update,
+and SQL of the business's own beside them is outside the wall that keeps the two apart (FORKS.md
+§8).
+
+## W173
+
+Level: warning
+Check: a change record names files that are as the release the code holds has them.
+Fix: Take those files out of the record's touches; when nothing it names differs any more, the release holds the change now or it was undone, so delete the record.
+Safe fix: no
+
+Details: in a fork, as W170 reads one. A folder counts as named while anything in it differs.

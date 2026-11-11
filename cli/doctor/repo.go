@@ -54,6 +54,10 @@ type Repo struct {
 	// WhiskRemote is the URL of the git remote named whisk, "" when there is none or the
 	// directory is not a repository (W006).
 	WhiskRemote string
+	// Fork is the checkout against its product's release line when it follows one, and ForkErr
+	// why git could not read it (W170 to W173).
+	Fork    *Fork
+	ForkErr string
 }
 
 const contentCap = 4 << 20
@@ -117,15 +121,27 @@ func Load(ctx context.Context, dir string) (Repo, error) {
 		r.Binding = &b
 	}
 	if r.IsGit && r.GitOK {
-		if out, err := gitOutput(ctx, abs, gitQuick, nil, "remote", "get-url", "whisk"); err == nil {
-			r.WhiskRemote = strings.TrimSpace(string(out))
-		} else {
-			// No remote named whisk, the usual case before a first deploy: W006 has nothing to
-			// compare the binding with, so it stays silent rather than guessing.
-			r.WhiskRemote = ""
-		}
+		r.WhiskRemote, r.Fork, r.ForkErr = readRemote(ctx, abs)
 	}
 	return r, nil
+}
+
+// readRemote reads what the repository at dir holds of the remote whisk: its URL, "" when there is
+// none, and the fork the checkout is against the release line that remote carries, with why git
+// could not read it.
+func readRemote(ctx context.Context, dir string) (url string, fork *Fork, forkErr string) {
+	if out, err := gitOutput(ctx, dir, gitQuick, nil, "remote", "get-url", "whisk"); err == nil {
+		url = strings.TrimSpace(string(out))
+	} else {
+		// No remote named whisk, the usual case before a first deploy: W006 has nothing to
+		// compare the binding with, so it stays silent rather than guessing.
+		url = ""
+	}
+	fork, err := ReadFork(ctx, dir)
+	if err != nil {
+		return url, nil, err.Error()
+	}
+	return url, fork, ""
 }
 
 // listFiles returns every path doctor considers part of the app and which of them git tracks.

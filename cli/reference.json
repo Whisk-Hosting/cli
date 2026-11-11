@@ -466,6 +466,30 @@
   ]
  },
  {
+  "name": "changes",
+  "short": "List a fork's changes of its own, each with its record, and the files no record names",
+  "commands": [
+   {
+    "usage": "whisk changes",
+    "short": "List a fork's changes of its own, each with its record, and the files no record names"
+   },
+   {
+    "usage": "whisk changes draft \u003cname\u003e [--asked \u003ctext\u003e] [--check \u003ctest\u003e]...",
+    "short": "Write the record of a change, naming every file that differs from the release and no record names",
+    "flags": [
+     {
+      "name": "--asked string",
+      "usage": "what the business asked for, in its own plain words"
+     },
+     {
+      "name": "--check stringArray",
+      "usage": "a test that proves the change works, from the code's root (repeat for more)"
+     }
+    ]
+   }
+  ]
+ },
+ {
   "name": "clients",
   "short": "An agency's client businesses: standing, handed over, apps, problems and usage",
   "commands": [
