@@ -63,7 +63,13 @@ type FlagsOn struct {
 	Flags []string `json:"flags"`
 }
 
+// VisitorFlags is GET /v1/flags/visitors: Whisk's own feature flags that are on for visitors
+// nobody signed in (CONTROL-PLANE.md §6.37), by key, which the public site draws them with.
+type VisitorFlags struct {
+	Flags []string `json:"flags"`
+}
+
 var (
-	_ = more.addWire(FlagGroup{}, AppFlag{}, AppFlagList{}, AppFlagRequest{}, FlagsOn{})
+	_ = more.addWire(FlagGroup{}, AppFlag{}, AppFlagList{}, AppFlagRequest{}, FlagsOn{}, VisitorFlags{})
 	_ = more.addEnum(enumOf("FlagKind", "FLAG_KINDS", FlagRelease, FlagKillSwitch, FlagPermission))
 )
