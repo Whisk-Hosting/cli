@@ -258,11 +258,14 @@ func forkText(f *api.AppFork) string {
 }
 
 // forkNext is what brings a fork its product's newest release: the update for code Whisk may
-// move, the merge for code the business changed, and "" for a fork that holds it. Pure.
+// move, the merge for code the business changed (whisk managed merge once the code holds a
+// release), and "" for a fork that holds it. Pure.
 func forkNext(slug string, f *api.AppFork) string {
 	switch {
 	case f.Behind == 0:
 		return ""
+	case f.Changed && f.Release > 0:
+		return fmt.Sprintf("whisk managed merge in a checkout of its code brings release %d in, naming each change of the business's it meets, and whisk deploy puts it live", f.Newest)
 	case f.Changed:
 		return fmt.Sprintf("git fetch whisk, then git merge whisk/%s, brings release %d into its code, and whisk deploy puts it live", f.Branch, f.Newest)
 	}
@@ -391,7 +394,7 @@ func addedLines(org, product string, a api.App, variant, linked string) []string
 	if f := a.Fork; f != nil {
 		out = append(out,
 			fmt.Sprintf("Its code is the business's own: whisk clone %s/%s brings it here, and whisk deploy puts a change live.", org, a.Slug),
-			fmt.Sprintf("New releases of %s arrive on its branch %s, which only Whisk moves; whisk managed update %s takes one while the code is unchanged.", f.Name, f.Branch, a.Slug))
+			fmt.Sprintf("New releases of %s arrive on its branch %s, which only Whisk moves; whisk managed update %s takes one while the code is unchanged, and whisk managed merge brings one into changed code.", f.Name, f.Branch, a.Slug))
 	}
 	if a.Hostname != "" {
 		out = append(out, "https://"+a.Hostname)
@@ -409,8 +412,8 @@ func managedUpdateCmd(s *session) *cobra.Command {
 		Long: `For an app that follows one of Whisk's products as the business's own code (default: the app
 this directory is bound to). When its code is a release as Whisk made it, the code moves to the
 product's newest release and that deploys. Code the business has changed is never moved: the
-command answers FORK_CHANGED, and its fix is the merge to run. When the code already holds the
-newest release, the command follows the deploy that carries it.`,
+command answers FORK_CHANGED, and whisk managed merge in a checkout brings the release in. When the
+code already holds the newest release, the command follows the deploy that carries it.`,
 		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if len(args) == 1 {
@@ -444,7 +447,8 @@ cannot be pushed, cloned or deployed (APP_MANAGED).
 
 A product listed as your own code is added the same way and makes an ordinary app of the
 business's, to clone, change and deploy as any other. Whisk's releases of the product arrive on
-the app's branch "upstream", which only Whisk moves, and whisk managed update takes one.
+the app's branch "upstream", which only Whisk moves: whisk managed update takes one while the code
+is unchanged, and whisk managed merge brings one into a checkout of changed code.
 
 With no subcommand, whisk managed lists the products and the business's copies.`,
 		Args: cobra.NoArgs,
@@ -594,7 +598,7 @@ is running; a sleeping one reads it at its next start.`,
 			return nil
 		},
 	}
-	managed.AddCommand(list, add, set, link, managedUpdateCmd(s))
+	managed.AddCommand(list, add, set, link, managedUpdateCmd(s), managedMergeCmd(s))
 	return managed
 }
 

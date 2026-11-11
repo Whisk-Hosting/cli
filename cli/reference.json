@@ -1468,6 +1468,10 @@
     "short": "The products the business may add, with their price, and the copies it has"
    },
    {
+    "usage": "whisk managed merge",
+    "short": "Bring a fork's newest release into this checkout, naming each of the business's changes it meets"
+   },
+   {
     "usage": "whisk managed set \u003capp\u003e NAME=value...",
     "short": "Change a copy's settings (NAME= removes one); it restarts on its release"
    },

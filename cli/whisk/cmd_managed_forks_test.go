@@ -34,7 +34,7 @@ func TestForkWords(t *testing.T) {
 		{"the newest with the business's changes", fork(3, 3, true), "release 3, the newest, with changes of its own", "",
 			[]string{"crm-2", "crm", "3", "3", "changed", "running, fork"}, "running, fork"},
 		{"changed and behind", fork(1, 3, true), "release 1 with changes of its own, 2 behind release 3",
-			"git fetch whisk, then git merge whisk/upstream, brings release 3 into its code, and whisk deploy puts it live",
+			"whisk managed merge in a checkout of its code brings release 3 in, naming each change of the business's it meets, and whisk deploy puts it live",
 			[]string{"crm-2", "crm", "1", "3", "changed", "running, fork, 2 behind"}, "running, fork, 2 behind"},
 		{"a history of its own", fork(0, 3, true), "code of its own that holds none of its releases",
 			"git fetch whisk, then git merge whisk/upstream, brings release 3 into its code, and whisk deploy puts it live",
@@ -138,7 +138,7 @@ func TestAddedLines(t *testing.T) {
 		{"a fork", api.App{Slug: "erp", Fork: &api.AppFork{Name: "CRM", Branch: "upstream"}}, "", "",
 			[]string{"Added CRM to acme as erp.", deploying,
 				"Its code is the business's own: whisk clone acme/erp brings it here, and whisk deploy puts a change live.",
-				"New releases of CRM arrive on its branch upstream, which only Whisk moves; whisk managed update erp takes one while the code is unchanged."}},
+				"New releases of CRM arrive on its branch upstream, which only Whisk moves; whisk managed update erp takes one while the code is unchanged, and whisk managed merge brings one into changed code."}},
 		{"a copy the answer does not describe", api.App{Slug: "erp"}, "", "", []string{"Added erp-link to acme as erp.", deploying}},
 	} {
 		if got := addedLines("acme", "erp-link", c.a, c.variant, c.linked); !slices.Equal(got, c.want) {
@@ -209,7 +209,7 @@ func forkAPI(t *testing.T, st *forkState) *httptest.Server {
 			writeJSON(w, 200, map[string]any{"app": st.app(), "updated": false})
 		default:
 			writeJSON(w, 409, map[string]any{"error": map[string]any{"code": "FORK_CHANGED", "message": "crm has changes of its own since CRM release 2, so Whisk does not move its code to release 3.",
-				"fix":     "Merge the release yourself: git fetch whisk, git merge whisk/upstream, settle any conflicts, run the tests, then whisk deploy.",
+				"fix":     "Run whisk managed merge in a checkout of crm's code, which brings the release in and names each change of the business's it meets (or git fetch whisk, git merge whisk/upstream), settle any conflicts, run the tests, then whisk deploy.",
 				"details": map[string]any{"app": "crm", "product": "crm", "release": 2, "newest": 3}}})
 		}
 	})

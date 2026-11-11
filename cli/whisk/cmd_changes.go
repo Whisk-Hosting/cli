@@ -36,7 +36,7 @@ holds that no record names, which whisk deploy refuses until one does (doctor W1
 draft writes the record.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			ch, err := s.forkChanges()
+			ch, err := s.forkChanges("whisk changes")
 			if err != nil {
 				return err
 			}
@@ -69,16 +69,16 @@ keeps what it says and gains the files; --asked replaces what it says was asked.
 	return c
 }
 
-// forkChanges reads the checkout as doctor does, refusing one that follows no release line or
-// holds none of its releases.
-func (s *session) forkChanges() (doctor.Changes, error) {
+// forkChanges reads the checkout as doctor does for command, refusing one that follows no release
+// line or holds none of its releases.
+func (s *session) forkChanges(command string) (doctor.Changes, error) {
 	ch, err := doctor.ReadChanges(s.ctx, s.env.Dir)
 	switch {
 	case err != nil:
 		return ch, err
 	case ch.Fork == nil:
 		return ch, output.New("INVALID_REQUEST", "This checkout does not follow one of Whisk's products: its remote whisk has no branch upstream with the product's releases.",
-			"Run whisk changes in a checkout of a fork, which whisk clone <org>/<app> makes; in one made before its first release, run git fetch whisk first.", nil)
+			"Run "+command+" in a checkout of a fork, which whisk clone <org>/<app> makes; in one made before its first release, run git fetch whisk first.", nil)
 	case ch.Fork.Base == "":
 		return ch, output.New("INVALID_REQUEST", "This branch holds none of its product's releases yet.",
 			"Run git fetch whisk and git merge whisk/upstream to bring the newest release, then try again.", nil)
@@ -166,7 +166,7 @@ func runChangesDraft(s *session, name, asked string, checks []string) error {
 				"Pass a test that proves the change works, from the code's root, once it is written: such as --check custom/server/test/warehouse.test.ts.", map[string]any{"check": c})
 		}
 	}
-	ch, err := s.forkChanges()
+	ch, err := s.forkChanges("whisk changes")
 	if err != nil {
 		return err
 	}

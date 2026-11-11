@@ -712,12 +712,12 @@ Whisk's products, or a preview was asked for on it. That branch is where Whisk p
 releases, one commit a release, and only Whisk moves it. An app that follows no product has no
 such rule: a branch of that name is its own.
 
-Fix: Work on a branch of your own. To take a release, merge it into `main` (`git fetch whisk`,
-`git merge whisk/upstream`) and run `whisk deploy`. To try a release first, make a branch from
-`whisk/upstream`, push it and start its preview.
+Fix: Work on a branch of your own. To take a release, run `whisk managed merge` with `main`
+checked out (or `git fetch whisk`, `git merge whisk/upstream`) and run `whisk deploy`. To try a
+release first, make a branch from `whisk/upstream`, push it and start its preview.
 
 ```json
-{"error":{"code":"BRANCH_RESERVED","message":"upstream is where Whisk puts CRM's releases in crm's repository, so nothing else moves it.","fix":"Work on a branch of your own. To take a release, merge it into main: git fetch whisk, git merge whisk/upstream, then whisk deploy. To try one first, make a branch from whisk/upstream, push it and start its preview.","docs":"https://skill.whisk.run/errors/BRANCH_RESERVED","details":{"app":"crm","branch":"upstream"}}}
+{"error":{"code":"BRANCH_RESERVED","message":"upstream is where Whisk puts CRM's releases in crm's repository, so nothing else moves it.","fix":"Work on a branch of your own. To take a release, run whisk managed merge with main checked out (or git fetch whisk, git merge whisk/upstream), then whisk deploy. To try one first, make a branch from whisk/upstream, push it and start its preview.","docs":"https://skill.whisk.run/errors/BRANCH_RESERVED","details":{"app":"crm","branch":"upstream"}}}
 ```
 
 ## FORK_CHANGED
@@ -730,12 +730,33 @@ its own on `main`. Whisk moves `main` only from one release straight to a later 
 decides how the business's changes and a release go together. `details.release` is the release
 the code is built on (absent when it shares none) and `details.newest` the product's newest.
 
-Fix: Merge the release yourself: `git fetch whisk`, `git merge whisk/upstream`, settle any
+Fix: Run `whisk managed merge` in a checkout of the app's code, which brings the release in and
+names each of the business's changes it meets (or `git fetch whisk`, `git merge
+whisk/upstream`; code that holds none of the product's releases is merged that way). Settle any
 conflicts so both the business's changes and the release still do what they were meant to, run
 the tests, then `whisk deploy`.
 
 ```json
-{"error":{"code":"FORK_CHANGED","message":"crm has changes of its own since CRM release 3, so Whisk does not move its code to release 5.","fix":"Merge the release yourself: git fetch whisk, git merge whisk/upstream, settle any conflicts, run the tests, then whisk deploy.","docs":"https://skill.whisk.run/errors/FORK_CHANGED","details":{"app":"crm","product":"crm","release":3,"newest":5}}}
+{"error":{"code":"FORK_CHANGED","message":"crm has changes of its own since CRM release 3, so Whisk does not move its code to release 5.","fix":"Run whisk managed merge in a checkout of crm's code, which brings the release in and names each change of the business's it meets (or git fetch whisk, git merge whisk/upstream), settle any conflicts, run the tests, then whisk deploy.","docs":"https://skill.whisk.run/errors/FORK_CHANGED","details":{"app":"crm","product":"crm","release":3,"newest":5}}}
+```
+
+## MERGE_CONFLICT
+
+Status: - · Surface: cli
+
+When: `whisk managed merge` merged a product's newest release into a checkout of a fork, and git
+left files to settle that both the release and the business changed. The merge is under way and
+nothing is committed. `details.conflicts` names each file with the changes whose records in
+`custom/changes` name it, each with what the business asked for and the checks that prove it; a
+file with no change named is one the business changed with no record. `details.release` is the
+release being merged and `details.from` the one the branch held.
+
+Fix: Settle each file so the release and the change it belongs to both still do what they were
+for, `git add` the files and `git commit`, run the checks the changes name and the app's tests,
+then `whisk deploy`. `git merge --abort` puts the branch back as it was.
+
+```json
+{"error":{"code":"MERGE_CONFLICT","message":"Merging CRM release 3 left 1 file(s) to settle: src/deals/won.ts.","fix":"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.","docs":"https://skill.whisk.run/errors/MERGE_CONFLICT","details":{"release":"CRM release 3","from":"CRM release 2","conflicts":[{"file":"src/deals/won.ts","changes":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"checks":["custom/server/test/warehouse.test.ts"]}]}]}}}
 ```
 
 ## NOTIFY_NOT_MANAGED

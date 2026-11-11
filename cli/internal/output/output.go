@@ -77,6 +77,7 @@ var exitByCode = map[string]int{
 	"PLAN_LIMIT_PREVIEWS":             ExitValidation,
 	"PRODUCTION_NEEDS_MAIN":           ExitValidation,
 	"PUSH_BEHIND":                     ExitValidation,
+	"MERGE_CONFLICT":                  ExitValidation,
 	"AUTH_REQUIRED":                   ExitAuth,
 	"TOKEN_EXPIRED":                   ExitAuth,
 	"TOKEN_REVOKED":                   ExitAuth,
