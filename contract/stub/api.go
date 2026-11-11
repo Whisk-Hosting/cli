@@ -27,6 +27,7 @@ import (
 //	GET  /v1/orgs/{org}/apps/{app}/email/sent                  what the app sent, newest first
 //	GET  /v1/orgs/{org}/apps/{app}/email/sends/{id}            what became of one (service token)
 //	POST /hooks/{org}/{app}/{source}[/{token}]                  webhook ingress
+//	POST /v1/orgs/{org}/apps/{app}/cdn/purge                   drop paths from the CDN (service token; cdn.go)
 //	*    /v1/orgs/{org}/apps/{app}/domains[/{id}[/verify]]       custom domains (domains.go)
 //	*    /v1/orgs/{org}/apps/{app}/email/domains[/{id}[/verify]]  the app's own sending domains
 //	POST /v1/stub/inbox                                         a raw message to the app's inbox
@@ -78,6 +79,8 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"emails": s.store.mailList()})
 	case strings.HasPrefix(p, prefix+"/email/sends/") && r.Method == http.MethodGet:
 		a.emailSend(w, r, strings.TrimPrefix(p, prefix+"/email/sends/"))
+	case p == prefix+"/cdn/purge" && r.Method == http.MethodPost:
+		a.cdnPurge(w, r)
 	case p == prefix+"/domains" || strings.HasPrefix(p, prefix+"/domains/"):
 		a.domains(w, r, strings.TrimPrefix(p, prefix+"/domains"))
 	case p == prefix+"/email/domains" || strings.HasPrefix(p, prefix+"/email/domains/"):

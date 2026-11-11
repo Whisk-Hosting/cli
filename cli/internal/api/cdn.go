@@ -29,3 +29,16 @@ func (c *Client) SetCDN(ctx context.Context, org, app string, on bool) (CDN, err
 	var out CDN
 	return out, c.Do(ctx, http.MethodPut, cdnPath(org, app), map[string]bool{"on": on}, &out)
 }
+
+// CDNPurge is a purge's answer: whether the CDN serves the app, whether its whole copy was
+// dropped, and each address dropped.
+type CDNPurge = apitypes.CdnPurge
+
+// PurgeCDN drops paths from the app's copy on the CDN, or the whole copy when paths is empty.
+func (c *Client) PurgeCDN(ctx context.Context, org, app string, paths []string) (CDNPurge, error) {
+	var out CDNPurge
+	if paths == nil {
+		paths = []string{}
+	}
+	return out, c.Do(ctx, http.MethodPost, cdnPath(org, app)+"/purge", apitypes.CdnPurgeRequest{Paths: paths}, &out)
+}

@@ -3524,6 +3524,26 @@ bundle that includes it), then deploy again.
 {"error":{"code":"GIT_TLS_UNTRUSTED","message":"git does not trust the certificate of git.whisk.run.","fix":"Update the system CA certificates. If an HTTPS-inspecting proxy or antivirus is in the path, point git's http.sslCAInfo at a bundle that includes its root certificate, then run whisk deploy again.","docs":"https://skill.whisk.run/errors/GIT_TLS_UNTRUSTED","details":{"host":"git.whisk.run","git":["fatal: unable to access 'https://git.whisk.run/01J/a1.git/': SSL certificate problem: unable to get local issuer certificate"]}}}
 ```
 
+## TLS_UNTRUSTED
+
+Status: - · Surface: cli
+
+When: the CLI reached the platform's API and refused its certificate (an x509 or certificate
+verification error). Retrying cannot fix it. The message names the certificates the CLI trusted.
+On Windows and macOS that is the system store, plus any file or directory in `SSL_CERT_FILE` or
+`SSL_CERT_DIR`. Elsewhere those variables replace the system's bundle when set. `details.trusts`
+is `system`, `env` or `system+env`, `details.cause` is Go's error, and `details.ssl_cert_file`
+and `details.ssl_cert_dir` name the variables that were set. `whisk doctor` reports the same code
+in its skipped checks.
+
+Fix: An HTTPS-inspecting proxy or antivirus is usually re-signing traffic with a root none of
+those hold: add its current root to the system store (or the file the variable names), then run
+the command again.
+
+```json
+{"error":{"code":"TLS_UNTRUSTED","message":"whisk does not trust the platform's certificate. It is trusting the Windows certificate store and the certificates in SSL_CERT_FILE=C:\\certs\\bundle.pem.","fix":"Neither holds the root that signed it. Something on this machine or network, usually an HTTPS-inspecting proxy or antivirus, is re-signing traffic: add its current root to the Windows certificate store, then run the command again.","docs":"https://skill.whisk.run/errors/TLS_UNTRUSTED","details":{"cause":"tls: failed to verify certificate: x509: certificate signed by unknown authority","ssl_cert_file":"C:\\certs\\bundle.pem","trusts":"system+env"}}}
+```
+
 ## UNKNOWN_COMMAND
 
 Status: - · Surface: cli

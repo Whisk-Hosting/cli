@@ -564,7 +564,12 @@ routes; names under `.test` or `.example` verify there at once.
 and its CNAME'd domains behind a CDN (`whisk cdn` shows the status and each hostname's route).
 It helps public pages, sites and downloads. A public page is cached only as long as the app's
 `Cache-Control` says, so set it on public pages and assets you want cached; a response that sets
-a cookie is never cached.
+a cookie is never cached. Each production deploy empties the cache. To show a change sooner, the app drops
+the pages it changed: `POST /v1/orgs/<org>/apps/<app>/cdn/purge` with `WHISK_SERVICE_TOKEN` and
+`{"paths": ["/entries/42", "/entries/*"]}` (a trailing `*` takes everything under it, at most 20
+paths, `{}` for everything), or `whisk cdn purge` by hand. Then a public page can carry a long
+max-age and still change at once. An app the CDN does not serve answers `"on": false`, and so
+does `whisk dev`, so purging on every change is safe anywhere.
 
 **Looking after a live app.** `whisk status` says whether it is running, sleeping or broken,
 which deploy is live and which secrets are unset, and, when it stopped answering, why: the exit

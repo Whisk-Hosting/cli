@@ -460,6 +460,16 @@
     "short": "Serve the app through the CDN"
    },
    {
+    "usage": "whisk cdn purge \u003cpath\u003e... | --all",
+    "short": "Drop pages from the CDN now, before their max-age runs out",
+    "flags": [
+     {
+      "name": "--all",
+      "usage": "drop everything the CDN holds for the app"
+     }
+    ]
+   },
+   {
     "usage": "whisk cdn status",
     "short": "Whether the CDN is on, each hostname's route, and this month's traffic"
    }

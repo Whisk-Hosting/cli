@@ -2,8 +2,11 @@ package whisk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
+	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -35,19 +38,22 @@ Exit 3 when any error remains.
 				}
 				if client, _, err := s.client(); err == nil {
 					opts.Validate = func(ctx context.Context, m []byte) (api.Validation, error) {
-						return client.Validate(ctx, org, app, m)
+						v, err := client.Validate(ctx, org, app, m)
+						return v, doctorPlatformErr(err)
 					}
 					opts.Packages = func(ctx context.Context) (api.Packages, error) {
-						return client.GetPackages(ctx, org, app)
+						p, err := client.GetPackages(ctx, org, app)
+						return p, doctorPlatformErr(err)
 					}
 					opts.CheckLockfiles = func(ctx context.Context, files []api.Lockfile) (api.PackageCheck, error) {
-						return client.CheckPackages(ctx, org, app, files)
+						c, err := client.CheckPackages(ctx, org, app, files)
+						return c, doctorPlatformErr(err)
 					}
 					if ok {
 						// W006 checks the binding itself, whatever --org and --app say.
 						opts.BoundGitURL = func(ctx context.Context) (string, error) {
 							a, err := client.GetApp(ctx, b.Org, b.App)
-							return a.GitURL, err
+							return a.GitURL, doctorPlatformErr(err)
 						}
 					}
 				}
@@ -76,6 +82,19 @@ Exit 3 when any error remains.
 	}
 	c.Flags().BoolVar(&fix, "fix", false, "apply the safe fixes")
 	return c
+}
+
+// doctorPlatformErr spells out a refused certificate in the report's skipped lines, with its
+// code and fix, so doctor says why the platform could not be asked instead of only that it
+// could not. Any other error is kept as it is.
+func doctorPlatformErr(err error) error {
+	var u *api.Unavailable
+	if errors.As(err, &u) {
+		if e := apiTLSUntrusted(u.Err, runtime.GOOS, os.Getenv); e != nil {
+			return fmt.Errorf("%s: %s %s", e.Code, e.Message, e.Fix)
+		}
+	}
+	return err
 }
 
 func nonNil(f []doctor.Finding) []doctor.Finding {

@@ -215,7 +215,7 @@ var baseWire = []any{
 	CustomerList{}, WebhookSource{}, WebhookEvent{}, DeliveryError{},
 	Inbox{}, InboxDomain{}, InboxDomainRequest{}, InboxMessage{},
 	// integrations.go
-	CdnHostname{}, AppCdn{},
+	CdnHostname{}, AppCdn{}, CdnPurgeRequest{}, CdnPurge{},
 	// connections.go, with contract/connect's summary
 	named{"ConnectionSummary", connect.Summary{}}, named{"ConnectionOperationSummary", connect.SummaryOperation{}},
 	named{"ConnectionSecretUse", connect.Use{}}, named{"ConnectionOperation", connect.Operation{}}, GrantNeeded{}, GrantAI{}, ConnectionGrant{}, Connection{}, ConnectionKeypair{},

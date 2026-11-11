@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"runtime"
 	"strings"
 	"time"
 
@@ -354,6 +355,9 @@ func wrap(err error) error {
 	}
 	var u *api.Unavailable
 	if errors.As(err, &u) {
+		if e := apiTLSUntrusted(u.Err, runtime.GOOS, os.Getenv); e != nil {
+			return e
+		}
 		return output.New("PLATFORM_UNAVAILABLE", "The platform could not be reached: "+u.Err.Error(), "Retry with backoff. Check WHISK_API if you meant another endpoint.", nil)
 	}
 	return err

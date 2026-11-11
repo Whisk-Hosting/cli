@@ -198,6 +198,6 @@ With no subcommand, whisk cdn prints the CDN's status.`,
 		Args:  cobra.NoArgs,
 		RunE:  set(false),
 	}
-	cdn.AddCommand(status, on, off)
+	cdn.AddCommand(status, on, off, cdnPurgeCmd(s))
 	return cdn
 }

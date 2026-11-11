@@ -11,6 +11,7 @@ import (
 )
 
 func main() {
+	whisk.TrustSystemStoreToo()
 	dir, _ := os.Getwd()
 	env := whisk.Env{
 		Stdin:      os.Stdin,
