@@ -3,21 +3,28 @@ package whisk
 import (
 	"fmt"
 	"io"
+	"maps"
+	"os"
+	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/spf13/cobra"
 
+	"github.com/whisk-run/cli/doctor"
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/custom"
 )
 
 // whisk managed merge (FORKS.md §4): a checkout of a fork with changes of the business's own takes
-// its product's newest release. What the release changed is joined with the records before the
-// merge (custom.Meets), so a change the release does not meet carries over with nobody looking,
-// one it meets is named with what it asked for and its checks, and a file left in conflict is
-// named with the changes it belongs to.
+// its product's newest release. What the release changed, and its notes on what it moved, are
+// joined with the records and the business's own lines before the merge (custom.Meets,
+// custom.NoteUses), so a change the release does not meet carries over with nobody looking, one
+// it meets is named with what it asked for, its checks and the notes its lines need, and a file
+// left in conflict is named with the changes it belongs to.
 
 func managedMergeCmd(s *session) *cobra.Command {
 	return &cobra.Command{
@@ -29,6 +36,8 @@ from the remote whisk and merges it into the branch. Before merging it joins the
 changed with the business's records in custom/changes: each change whose files the release changed
 too is named with what it asked for and the checks that prove it, every other change carries over
 as it is, and a file the release changed that differs here with no record naming it is named. A
+change whose own lines use a name the release's notes in moved/ say it removed or renamed is named
+too, with the note (where it went, what became of the values, the fix) and those lines. A
 conflict leaves the merge for you to settle and names the changes each conflicted file belongs to
 (MERGE_CONFLICT); git merge --abort puts the branch back as it was.
 
@@ -40,12 +49,20 @@ migrations on a copy of the live data before they reach it.`,
 }
 
 // metChange is a change the release meets: what it asked for, the files of it the release changed
-// too, and its checks.
+// too, the release's notes on names it moved that the change's own lines use, and its checks.
 type metChange struct {
-	Name   string   `json:"name"`
-	Asked  string   `json:"asked"`
-	Files  []string `json:"files"`
-	Checks []string `json:"checks"`
+	Name   string    `json:"name"`
+	Asked  string    `json:"asked"`
+	Files  []string  `json:"files"`
+	Moved  []metNote `json:"moved"`
+	Checks []string  `json:"checks"`
+}
+
+// metNote is a note of the release on what it moved, and the lines of a change that use a name it
+// says moved.
+type metNote struct {
+	custom.Moved
+	Uses []custom.Use `json:"uses"`
 }
 
 // mergeJoin is what a release changed joined with the business's changes: those it meets, the
@@ -58,17 +75,18 @@ type mergeJoin struct {
 	Unrecorded []string    `json:"unrecorded"`
 }
 
-// mergePlan joins released, the files the release changed, with the branch's records and the files
-// it changed that no record names (doctor.Changes.Uncovered). Pure.
-func mergePlan(changes []custom.Change, uncovered, released []string) mergeJoin {
+// mergePlan joins released, the files the release changed, and notes, its notes on what it moved,
+// with the branch's records, the business's own lines in the files they name, and the files the
+// branch changed that no record names (doctor.Changes.Uncovered). Pure.
+func mergePlan(changes []custom.Change, uncovered, released []string, notes []custom.Moved, lines map[string][]custom.Line) mergeJoin {
 	j := mergeJoin{Met: []metChange{}, Carried: []string{}, Checks: []string{}, Unrecorded: []string{}}
 	for _, c := range changes {
-		files := custom.Meets(c, released)
-		if len(files) == 0 {
+		files, moved := custom.Meets(c, released), notesMet(c, notes, lines)
+		if len(files) == 0 && len(moved) == 0 {
 			j.Carried = append(j.Carried, c.Name)
 			continue
 		}
-		j.Met = append(j.Met, metChange{Name: c.Name, Asked: c.Asked, Files: files, Checks: c.Checks})
+		j.Met = append(j.Met, metChange{Name: c.Name, Asked: c.Asked, Files: nonEmpty(files), Moved: moved, Checks: c.Checks})
 		j.Checks = append(j.Checks, c.Checks...)
 	}
 	slices.Sort(j.Checks)
@@ -81,6 +99,29 @@ func mergePlan(changes []custom.Change, uncovered, released []string) mergeJoin 
 	return j
 }
 
+// notesMet is each of notes, with the lines of the change's own files that use a name it says
+// moved, when there are any. Pure.
+func notesMet(c custom.Change, notes []custom.Moved, lines map[string][]custom.Line) []metNote {
+	own := map[string][]custom.Line{}
+	for _, p := range custom.Meets(c, slices.Sorted(maps.Keys(lines))) {
+		own[p] = lines[p]
+	}
+	out := []metNote{}
+	for _, n := range notes {
+		if uses := custom.NoteUses(n, own); len(uses) > 0 {
+			out = append(out, metNote{n, uses})
+		}
+	}
+	return out
+}
+
+func nonEmpty(s []string) []string {
+	if s == nil {
+		return []string{}
+	}
+	return s
+}
+
 // conflict is a file the merge left for a person or agent to settle, and the changes whose
 // records name it.
 type conflict struct {
@@ -88,14 +129,19 @@ type conflict struct {
 	Changes []metChange `json:"changes"`
 }
 
-// conflictsOf names each conflicted file with the changes it belongs to. A file conflicts only when
-// the branch changed it too, so one no record names is a change of the branch's without one. Pure.
-func conflictsOf(files []string, changes []custom.Change) []conflict {
+// conflictsOf names each conflicted file with the changes it belongs to, each with the notes the
+// join found its lines use. A file conflicts only when the branch changed it too, so one no record
+// names is a change of the branch's without one. Pure.
+func conflictsOf(files []string, changes []custom.Change, j mergeJoin) []conflict {
 	out := make([]conflict, 0, len(files))
 	for _, f := range files {
 		cf := conflict{File: f, Changes: []metChange{}}
 		for _, c := range custom.Naming(changes, f) {
-			cf.Changes = append(cf.Changes, metChange{Name: c.Name, Asked: c.Asked, Files: []string{f}, Checks: c.Checks})
+			moved := []metNote{}
+			if i := slices.IndexFunc(j.Met, func(m metChange) bool { return m.Name == c.Name }); i >= 0 {
+				moved = j.Met[i].Moved
+			}
+			cf.Changes = append(cf.Changes, metChange{Name: c.Name, Asked: c.Asked, Files: []string{f}, Moved: moved, Checks: c.Checks})
 		}
 		out = append(out, cf)
 	}
@@ -184,7 +230,15 @@ func runManagedMerge(s *session) error {
 	if err != nil {
 		return err
 	}
-	join := mergePlan(before.Changes, before.Uncovered, released)
+	notes, err := s.releaseNotes(tip, released)
+	if err != nil {
+		return err
+	}
+	lines, err := s.ownLines(before)
+	if err != nil {
+		return err
+	}
+	join := mergePlan(before.Changes, before.Uncovered, released, notes, lines)
 	s.printer.Progress("Merging %s into %s, after %s.", subject, branch, before.Fork.Release)
 	res, err := s.gitRun(nil, append(s.identityArgs(), "merge", "--no-edit", "-m", mergeMessage(product, number), tip)...)
 	if err != nil {
@@ -195,7 +249,7 @@ func runManagedMerge(s *session) error {
 		if err != nil || len(unsettled) == 0 {
 			return gitFailed("git merge", res)
 		}
-		return s.mergeConflict(subject, before.Fork.Release, conflictsOf(unsettled, before.Changes))
+		return s.mergeConflict(subject, before.Fork.Release, conflictsOf(unsettled, before.Changes, join), join)
 	}
 	head, err := s.gitOut("rev-parse", "HEAD")
 	if err != nil {
@@ -243,6 +297,105 @@ func (s *session) gitOut(args ...string) (string, error) {
 	return strings.TrimSpace(res.Stdout), nil
 }
 
+// releaseNotes reads the release's notes on what moved that it added or changed since the one the
+// branch holds, as the release has them; one it took away, or one that cannot be read, says
+// nothing, as Whisk's source cannot deploy one (doctor W174).
+func (s *session) releaseNotes(tip string, released []string) ([]custom.Moved, error) {
+	var out []custom.Moved
+	for _, p := range released {
+		id, ok := custom.MovedID(p)
+		if !ok {
+			continue
+		}
+		res, err := s.gitRun(nil, "cat-file", "blob", tip+":"+p)
+		if err != nil {
+			return nil, err
+		}
+		if !res.OK() {
+			continue
+		}
+		if n, ps := custom.ParseMoved(id, []byte(res.Stdout)); len(ps) == 0 {
+			out = append(out, n)
+		}
+	}
+	return out, nil
+}
+
+// ownLineMax caps a file of the business's own read for the names a release moved, in bytes.
+const ownLineMax = 1 << 20
+
+// ownLines is the business's own lines in each file a record names that differs from the release
+// the branch holds: every line of a file the business added, and the lines it added to one of the
+// release's. A file too big or not text says nothing.
+func (s *session) ownLines(ch doctor.Changes) (map[string][]custom.Line, error) {
+	out := map[string][]custom.Line{}
+	for _, p := range ch.Fork.Changed {
+		if !slices.ContainsFunc(ch.Changes, func(c custom.Change) bool { return len(custom.Meets(c, []string{p})) > 0 }) {
+			continue
+		}
+		if slices.Contains(ch.Fork.Added, p) {
+			if body, ok := smallText(filepath.Join(s.env.Dir, filepath.FromSlash(p))); ok {
+				out[p] = custom.FileLines(body)
+			}
+			continue
+		}
+		res, err := s.gitRun(nil, "diff", "--no-color", "--no-ext-diff", "--no-renames", "-U0", ch.Fork.Base, "--", p)
+		if err != nil {
+			return nil, err
+		}
+		if res.OK() && len(res.Stdout) <= ownLineMax {
+			out[p] = diffAdded(res.Stdout)
+		}
+	}
+	return out, nil
+}
+
+// smallText is the file at path when it is text of at most ownLineMax bytes.
+func smallText(path string) ([]byte, bool) {
+	info, err := os.Lstat(path)
+	if err != nil || !info.Mode().IsRegular() || info.Size() > ownLineMax {
+		return nil, false
+	}
+	body, err := os.ReadFile(path)
+	return body, err == nil && utf8.Valid(body) && !slices.Contains(body, 0)
+}
+
+// diffAdded is the lines a unified diff of one file adds, each by its number in the new file. Pure.
+func diffAdded(diff string) []custom.Line {
+	var out []custom.Line
+	next := 0
+	for _, l := range strings.Split(diff, "\n") {
+		switch {
+		case strings.HasPrefix(l, "diff --git "):
+			next = 0
+		case strings.HasPrefix(l, "@@ "):
+			next = hunkStart(l)
+		case next > 0 && strings.HasPrefix(l, "+"):
+			out = append(out, custom.Line{Number: next, Text: l[1:]})
+			next++
+		case next > 0 && strings.HasPrefix(l, " "):
+			next++
+		}
+	}
+	return out
+}
+
+// hunkStart is the first line of the new file a hunk header such as "@@ -3,0 +4,2 @@" covers, 0
+// when the header cannot be read.
+func hunkStart(header string) int {
+	_, after, ok := strings.Cut(header, " +")
+	if !ok {
+		return 0
+	}
+	digits, _, _ := strings.Cut(after, ",")
+	digits, _, _ = strings.Cut(digits, " ")
+	n, err := strconv.Atoi(digits)
+	if err != nil {
+		return 0
+	}
+	return max(n, 1)
+}
+
 // gitNames runs git with -z among args and answers the paths it printed, each as git spelled it.
 func (s *session) gitNames(args ...string) ([]string, error) {
 	res, err := s.gitRun(nil, args...)
@@ -256,8 +409,8 @@ func (s *session) gitNames(args ...string) ([]string, error) {
 }
 
 // mergeConflict is MERGE_CONFLICT for a merge left with files to settle, after the changes each
-// belongs to are said on stderr.
-func (s *session) mergeConflict(release, from string, conflicts []conflict) error {
+// belongs to are said on stderr; its details carry the join too, with the notes on what moved.
+func (s *session) mergeConflict(release, from string, conflicts []conflict, j mergeJoin) error {
 	files := make([]string, 0, len(conflicts))
 	for _, c := range conflicts {
 		files = append(files, c.File)
@@ -268,9 +421,19 @@ func (s *session) mergeConflict(release, from string, conflicts []conflict) erro
 			s.printer.Progress("%s belongs to %s: %s Checked by %s.", c.File, ch.Name, ch.Asked, strings.Join(ch.Checks, ", "))
 		}
 	}
+	if !s.printer.Quiet {
+		for _, c := range j.Met {
+			if len(c.Moved) > 0 {
+				fmt.Fprintf(s.printer.Err, "%s uses what %s moved:\n", c.Name, release)
+			}
+			for _, n := range c.Moved {
+				printNote(s.printer, s.printer.Err, n)
+			}
+		}
+	}
 	return output.New("MERGE_CONFLICT", fmt.Sprintf("Merging %s left %d file(s) to settle: %s.", release, len(files), listPreview(files, 5)),
 		"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.",
-		map[string]any{"release": release, "from": from, "conflicts": conflicts})
+		map[string]any{"release": release, "from": from, "conflicts": conflicts, "met": j.Met, "unrecorded": j.Unrecorded})
 }
 
 func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoin) {
@@ -284,7 +447,14 @@ func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoi
 		fmt.Fprintf(w, "Merged %s, after %s. %d of the business's %s %s files the release changed too:\n", release, from, len(j.Met), count(total, "change", "changes"), touchVerb(len(j.Met)))
 	}
 	for _, c := range j.Met {
-		fmt.Fprintf(w, "\n%s\n  %s\n  %s\n  %s\n", p.Bold(c.Name), c.Asked, p.Dim("the release changed "+strings.Join(c.Files, ", ")), p.Dim("checked by "+strings.Join(c.Checks, ", ")))
+		fmt.Fprintf(w, "\n%s\n  %s\n", p.Bold(c.Name), c.Asked)
+		if len(c.Files) > 0 {
+			fmt.Fprintf(w, "  %s\n", p.Dim("the release changed "+strings.Join(c.Files, ", ")))
+		}
+		for _, n := range c.Moved {
+			printNote(p, w, n)
+		}
+		fmt.Fprintf(w, "  %s\n", p.Dim("checked by "+strings.Join(c.Checks, ", ")))
 	}
 	if len(j.Unrecorded) > 0 {
 		fmt.Fprintf(w, "\nNo record names %s, which the release and this branch both changed: whisk changes draft <name> writes one.\n", listPreview(j.Unrecorded, 10))
@@ -295,6 +465,31 @@ func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoi
 		return
 	}
 	fmt.Fprintln(w, "Next: run the app's tests, then whisk deploy, which tries the release's migrations on a copy of the live data first.")
+}
+
+// noteUsesShown caps the lines of a change printed for one note.
+const noteUsesShown = 10
+
+// printNote says what a note says moved, what became of it and the fix, then the change's lines
+// that use it.
+func printNote(p output.Printer, w io.Writer, n metNote) {
+	went := make([]string, 0, len(n.Moves))
+	for _, mv := range n.Moves {
+		if mv.To == "" {
+			went = append(went, mv.From+" went away")
+		} else {
+			went = append(went, mv.From+" went to "+mv.To)
+		}
+	}
+	said := slices.DeleteFunc([]string{sentence(went, 10) + ".", n.Values, n.Fix}, func(s string) bool { return s == "" })
+	fmt.Fprintf(w, "  %s: %s\n", n.ID, strings.Join(said, " "))
+	for i, u := range n.Uses {
+		if i == noteUsesShown {
+			fmt.Fprintf(w, "    %s\n", p.Dim(fmt.Sprintf("and %d more", len(n.Uses)-noteUsesShown)))
+			break
+		}
+		fmt.Fprintf(w, "    %s  %s\n", p.Dim(fmt.Sprintf("%s:%d", u.File, u.Line)), u.Text)
+	}
 }
 
 func touchVerb(n int) string {

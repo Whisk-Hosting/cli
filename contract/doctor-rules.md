@@ -959,3 +959,27 @@ Fix: Take those files out of the record's touches; when nothing it names differs
 Safe fix: no
 
 Details: in a fork, as W170 reads one. A folder counts as named while anything in it differs.
+
+## W174
+
+Level: error
+Check: in a product's source, a migration removes or renames a table, column, view, function or type that no note in moved/ names, or a file in moved/ is not a note that can be read.
+Fix: Write moved/<id>.yaml for the change: moved lists each name with from and, unless it went away, to; values says what became of what it held; fix says what code that used it does instead.
+Safe fix: no
+
+Details: in an app whose `whisk.yaml` declares `managed`, never in a fork's checkout. A migration
+is any SQL outside `custom/` but a `.down.sql` file and what goose (`-- +goose Down`) or dbmate
+(`-- migrate:down`) run only to undo one. A column is named `table.column` and a type's value
+`type.value`. What a migration made itself does not count, nor a view, function or type it makes
+again under the same name; a table or column made again does, since what it held is gone or
+means something else. SQL a migration runs through `EXECUTE`, in a function or a `DO` block, is
+not read. When a business takes the release into code of its own, `whisk managed merge` hands each
+change whose files use a name that moved the note and the lines that use it.
+
+```yaml
+moved:
+  - from: companies.phone_number
+    to: companies.phone_jsonb
+values: every number kept, as a "Work" entry
+fix: read phone_jsonb where you read phone_number
+```

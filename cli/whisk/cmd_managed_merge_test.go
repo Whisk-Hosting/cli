@@ -78,9 +78,11 @@ func TestManagedMerge(t *testing.T) {
 	defer srv.Close()
 	r := newMergeRepos(t, srv.URL)
 	put(t, r.dir, "src/index.ts", "export {};\nexport const ours = 1;\n")
-	r.git(r.dir, "commit", "--quiet", "--all", "-m", "a change with no record")
-	r.release(3, map[string]string{"migrations/0003_stages.sql": "alter table deals add column stage text;\n",
-		"src/deals/won.ts": "// Release 3: a won deal is recorded once.\n" + wonV2, "src/index.ts": "// Release 3\nexport {};\n"})
+	put(t, r.dir, "custom/server/warehouse.ts", "export const tell = (deal) => {\n  post(deal.won_at);\n};\n")
+	r.git(r.dir, "commit", "--quiet", "--all", "-m", "a change with no record, and the warehouse told when")
+	r.release(3, map[string]string{"migrations/0003_stages.sql": "alter table deals rename column won_at to closed_at;\n",
+		"src/deals/won.ts": "// Release 3: a won deal is recorded once.\n" + wonV2, "src/index.ts": "// Release 3\nexport {};\n",
+		"moved/deal-won-at.yaml": "moved:\n  - from: deals.won_at\n    to: deals.closed_at\n  - from: record\nvalues: Every date is kept.\nfix: Read closed_at where you read won_at.\n"})
 
 	r.git(r.dir, "switch", "--quiet", "--detach")
 	if got := runRemote(t, r.dir, srv.URL, nil, "managed", "merge", "--org", "acme", "--app", "crm"); got.Code == 0 || !strings.Contains(got.Stderr, "This checkout is on no branch: its HEAD is detached.") {
@@ -92,7 +94,12 @@ func TestManagedMerge(t *testing.T) {
 	if got.Code != 0 || got.JSON["merged"] != true || got.JSON["release"] != "CRM release 3" || got.JSON["from"] != "CRM release 2" {
 		t.Fatalf("merge: %+v", got)
 	}
+	// The note names record too, which only Whisk's lines of won.ts use: the business's own lines
+	// are the ones looked through.
 	met := []any{map[string]any{"name": "tell-the-warehouse", "asked": "When a deal is won, tell the warehouse.", "files": []any{"src/deals/won.ts"},
+		"moved": []any{map[string]any{"id": "deal-won-at", "moved": []any{map[string]any{"from": "deals.won_at", "to": "deals.closed_at"}, map[string]any{"from": "record"}},
+			"values": "Every date is kept.", "fix": "Read closed_at where you read won_at.",
+			"uses": []any{map[string]any{"file": "custom/server/warehouse.ts", "line": float64(2), "text": "post(deal.won_at);"}}}},
 		"checks": []any{"custom/server/test/warehouse.test.ts"}}}
 	if !reflect.DeepEqual(got.JSON["met"], met) || !reflect.DeepEqual(got.JSON["carried"], []any{"company-region"}) ||
 		!reflect.DeepEqual(got.JSON["checks"], []any{"custom/server/test/warehouse.test.ts"}) || !reflect.DeepEqual(got.JSON["unrecorded"], []any{"src/index.ts"}) {
@@ -118,9 +125,10 @@ func TestManagedMergeConflict(t *testing.T) {
 	defer srv.Close()
 	r := newMergeRepos(t, srv.URL)
 	put(t, r.dir, "src/index.ts", "export const ours = 1;\n")
-	r.git(r.dir, "commit", "--quiet", "--all", "-m", "a change with no record")
+	put(t, r.dir, "custom/web/region.tsx", "export default { read: (c) => c.region };\n")
+	r.git(r.dir, "commit", "--quiet", "--all", "-m", "a change with no record, and the region read")
 	r.release(3, map[string]string{"src/deals/won.ts": "export const won = (deal) => {\n  record(deal);\n  return deal;\n};\nnotify();\n",
-		"src/index.ts": "export const theirs = 1;\n"})
+		"src/index.ts": "export const theirs = 1;\n", "moved/company-area.yaml": "moved:\n  - from: companies.region\n    to: companies.area\nfix: Read area where you read region.\n"})
 
 	put(t, r.dir, "notes.txt", "a note\n")
 	if got := runRemote(t, r.dir, srv.URL, nil, "managed", "merge", "--org", "acme", "--app", "crm", "--json"); got.Code == 0 || !strings.Contains(got.Stdout, "1 file(s) have uncommitted changes: notes.txt.") {
@@ -131,7 +139,9 @@ func TestManagedMergeConflict(t *testing.T) {
 	human := runRemote(t, r.dir, srv.URL, nil, "managed", "merge", "--org", "acme", "--app", "crm")
 	if human.Code == 0 || !strings.Contains(human.Stderr, "Merging CRM release 3 left 2 file(s) to settle: src/deals/won.ts, src/index.ts.") ||
 		!strings.Contains(human.Stderr, "src/deals/won.ts belongs to tell-the-warehouse: When a deal is won, tell the warehouse. Checked by custom/server/test/warehouse.test.ts.") ||
-		!strings.Contains(human.Stderr, "src/index.ts was changed here, and no record in custom/changes names it.") {
+		!strings.Contains(human.Stderr, "src/index.ts was changed here, and no record in custom/changes names it.") ||
+		!strings.Contains(human.Stderr, "company-region uses what CRM release 3 moved:\n  company-area: companies.region went to companies.area. Read area where you read region.\n"+
+			"    custom/web/region.tsx:1  export default { read: (c) => c.region };\n") {
 		t.Fatalf("conflict: %+v", human)
 	}
 	if again := runRemote(t, r.dir, srv.URL, nil, "managed", "merge", "--org", "acme", "--app", "crm"); again.Code == 0 || !strings.Contains(again.Stderr, "A merge is under way in this checkout.") {
@@ -152,10 +162,15 @@ func TestManagedMergeConflict(t *testing.T) {
 		t.Fatalf("conflict, as JSON: %+v", got)
 	}
 	details, _ := e["details"].(map[string]any)
-	want := []any{map[string]any{"file": "src/deals/won.ts", "changes": []any{map[string]any{"name": "tell-the-warehouse", "asked": "When a deal is won, tell the warehouse.",
-		"files": []any{"src/deals/won.ts"}, "checks": []any{"custom/server/test/warehouse.test.ts"}}}},
-		map[string]any{"file": "src/index.ts", "changes": []any{}}}
-	if !reflect.DeepEqual(details["conflicts"], want) || details["release"] != "CRM release 3" || details["from"] != "CRM release 2" {
+	warehouse := map[string]any{"name": "tell-the-warehouse", "asked": "When a deal is won, tell the warehouse.",
+		"files": []any{"src/deals/won.ts"}, "moved": []any{}, "checks": []any{"custom/server/test/warehouse.test.ts"}}
+	want := []any{map[string]any{"file": "src/deals/won.ts", "changes": []any{warehouse}}, map[string]any{"file": "src/index.ts", "changes": []any{}}}
+	region := map[string]any{"name": "company-region", "asked": "Show each company's region.", "files": []any{},
+		"moved": []any{map[string]any{"id": "company-area", "moved": []any{map[string]any{"from": "companies.region", "to": "companies.area"}}, "fix": "Read area where you read region.",
+			"uses": []any{map[string]any{"file": "custom/web/region.tsx", "line": float64(1), "text": "export default { read: (c) => c.region };"}}}},
+		"checks": []any{"custom/server/test/warehouse.test.ts"}}
+	if !reflect.DeepEqual(details["conflicts"], want) || !reflect.DeepEqual(details["met"], []any{region, warehouse}) || !reflect.DeepEqual(details["unrecorded"], []any{"src/index.ts"}) ||
+		details["release"] != "CRM release 3" || details["from"] != "CRM release 2" {
 		t.Errorf("details = %v", details)
 	}
 	abort()
@@ -193,29 +208,62 @@ func TestMergePlan(t *testing.T) {
 	warehouse := custom.Change{Name: "tell-the-warehouse", Asked: "Tell the warehouse.", Touches: []string{"src/deals/won.ts", "custom/server/"}, Checks: []string{"custom/server/test/a.test.ts", "custom/server/test/b.test.ts"}}
 	region := custom.Change{Name: "company-region", Asked: "Show the region.", Touches: []string{"src/companies/"}, Checks: []string{"custom/server/test/a.test.ts"}}
 	page := custom.Change{Name: "own-page", Asked: "A page of our own.", Touches: []string{"custom/web/page.tsx"}, Checks: []string{"custom/web/page.test.tsx"}}
-	j := mergePlan([]custom.Change{warehouse, region, page}, []string{"src/index.ts", "src/app.ts"}, []string{"src/companies/list.tsx", "src/deals/won.ts", "src/index.ts", "migrations/0032.sql"})
-	if want := []metChange{{"tell-the-warehouse", "Tell the warehouse.", []string{"src/deals/won.ts"}, warehouse.Checks}, {"company-region", "Show the region.", []string{"src/companies/list.tsx"}, region.Checks}}; !reflect.DeepEqual(j.Met, want) {
+	quiet := custom.Change{Name: "quiet", Asked: "Nothing the release meets.", Touches: []string{"custom/web/quiet.tsx"}, Checks: []string{"custom/web/quiet.test.tsx"}}
+	phones := custom.Moved{ID: "company-phones-as-list", Moves: []custom.Move{{From: "companies.phone_number", To: "companies.phone_jsonb"}}, Fix: "Read phone_jsonb."}
+	lines := map[string][]custom.Line{
+		"custom/web/page.tsx":  {{Number: 3, Text: "<p>{company.phone_number}</p>"}},
+		"custom/web/quiet.tsx": {{Number: 1, Text: "export default {};"}},
+		"src/deals/won.ts":     {{Number: 5, Text: "tell();"}},
+	}
+	j := mergePlan([]custom.Change{warehouse, region, page, quiet}, []string{"src/index.ts", "src/app.ts"},
+		[]string{"src/companies/list.tsx", "src/deals/won.ts", "src/index.ts", "migrations/0032.sql", "moved/company-phones-as-list.yaml"}, []custom.Moved{phones}, lines)
+	want := []metChange{
+		{"tell-the-warehouse", "Tell the warehouse.", []string{"src/deals/won.ts"}, []metNote{}, warehouse.Checks},
+		{"company-region", "Show the region.", []string{"src/companies/list.tsx"}, []metNote{}, region.Checks},
+		{"own-page", "A page of our own.", []string{}, []metNote{{phones, []custom.Use{{File: "custom/web/page.tsx", Line: 3, Text: "<p>{company.phone_number}</p>"}}}}, page.Checks},
+	}
+	if !reflect.DeepEqual(j.Met, want) {
 		t.Errorf("met = %+v", j.Met)
 	}
-	if !reflect.DeepEqual(j.Carried, []string{"own-page"}) || !reflect.DeepEqual(j.Checks, []string{"custom/server/test/a.test.ts", "custom/server/test/b.test.ts"}) || !reflect.DeepEqual(j.Unrecorded, []string{"src/index.ts"}) {
+	if !reflect.DeepEqual(j.Carried, []string{"quiet"}) || !reflect.DeepEqual(j.Checks, []string{"custom/server/test/a.test.ts", "custom/server/test/b.test.ts", "custom/web/page.test.tsx"}) ||
+		!reflect.DeepEqual(j.Unrecorded, []string{"src/index.ts"}) {
 		t.Errorf("carried %q, checks %q, unrecorded %q", j.Carried, j.Checks, j.Unrecorded)
 	}
-	if j := mergePlan(nil, nil, []string{"src/a.ts"}); j.Met == nil || j.Carried == nil || j.Checks == nil || j.Unrecorded == nil || len(j.Met)+len(j.Carried)+len(j.Checks)+len(j.Unrecorded) != 0 {
+	if j := mergePlan(nil, nil, []string{"src/a.ts"}, nil, nil); j.Met == nil || j.Carried == nil || j.Checks == nil || j.Unrecorded == nil || len(j.Met)+len(j.Carried)+len(j.Checks)+len(j.Unrecorded) != 0 {
 		t.Errorf("no changes: %+v", j)
 	}
-	conflicts := conflictsOf([]string{"src/deals/won.ts", "migrations/0001_init.sql"}, []custom.Change{warehouse, region})
-	if len(conflicts) != 2 || len(conflicts[0].Changes) != 1 || conflicts[0].Changes[0].Name != "tell-the-warehouse" || conflicts[1].Changes == nil || len(conflicts[1].Changes) != 0 {
+	conflicts := conflictsOf([]string{"src/deals/won.ts", "custom/web/page.tsx", "migrations/0001_init.sql"}, []custom.Change{warehouse, region, page}, j)
+	if len(conflicts) != 3 || len(conflicts[0].Changes) != 1 || conflicts[0].Changes[0].Name != "tell-the-warehouse" || conflicts[0].Changes[0].Moved == nil ||
+		!reflect.DeepEqual(conflicts[1].Changes[0].Moved, want[2].Moved) || conflicts[2].Changes == nil || len(conflicts[2].Changes) != 0 {
 		t.Errorf("conflicts = %+v", conflicts)
+	}
+}
+
+// The lines a diff adds, by their numbers in the file as it is now.
+func TestDiffAdded(t *testing.T) {
+	diff := "diff --git a/src/deals/won.ts b/src/deals/won.ts\nindex 1..2 100644\n--- a/src/deals/won.ts\n+++ b/src/deals/won.ts\n" +
+		"@@ -4,0 +5 @@ export const won\n+tell();\n@@ -9,2 +10,3 @@\n-old();\n-older();\n+one();\n+++two;\n+three();\n"
+	want := []custom.Line{{Number: 5, Text: "tell();"}, {Number: 10, Text: "one();"}, {Number: 11, Text: "++two;"}, {Number: 12, Text: "three();"}}
+	if got := diffAdded(diff); !reflect.DeepEqual(got, want) {
+		t.Errorf("diffAdded = %+v", got)
+	}
+	if hunkStart("@@ -1 +0,0 @@") != 1 || hunkStart("@@ bad") != 0 || diffAdded("") != nil {
+		t.Error("hunkStart or an empty diff")
 	}
 }
 
 func TestPrintMerged(t *testing.T) {
 	var b strings.Builder
-	j := mergeJoin{Met: []metChange{{"tell-the-warehouse", "Tell the warehouse.", []string{"src/deals/won.ts"}, []string{"custom/server/test/a.test.ts"}}},
+	note := metNote{custom.Moved{ID: "deal-won-at", Moves: []custom.Move{{From: "deals.won_at", To: "deals.closed_at"}, {From: "record"}}, Values: "Every date is kept.", Fix: "Read closed_at."},
+		[]custom.Use{{File: "custom/server/warehouse.ts", Line: 1, Text: "post(deal.won_at);"}}}
+	j := mergeJoin{Met: []metChange{{"tell-the-warehouse", "Tell the warehouse.", []string{"src/deals/won.ts"}, []metNote{note}, []string{"custom/server/test/a.test.ts"}}},
 		Carried: []string{"company-region"}, Checks: []string{"custom/server/test/a.test.ts"}, Unrecorded: []string{"src/index.ts"}}
 	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", j)
 	want := "Merged CRM release 3, after CRM release 2. 1 of the business's 2 changes touches files the release changed too:\n\n" +
-		"tell-the-warehouse\n  Tell the warehouse.\n  the release changed src/deals/won.ts\n  checked by custom/server/test/a.test.ts\n\n" +
+		"tell-the-warehouse\n  Tell the warehouse.\n  the release changed src/deals/won.ts\n" +
+		"  deal-won-at: deals.won_at went to deals.closed_at and record went away. Every date is kept. Read closed_at.\n" +
+		"    custom/server/warehouse.ts:1  post(deal.won_at);\n" +
+		"  checked by custom/server/test/a.test.ts\n\n" +
 		"No record names src/index.ts, which the release and this branch both changed: whisk changes draft <name> writes one.\n\n" +
 		"Next: run custom/server/test/a.test.ts and the app's tests, then whisk deploy, which tries the release's migrations on a copy of the live data first.\n"
 	if b.String() != want {
@@ -225,5 +273,14 @@ func TestPrintMerged(t *testing.T) {
 	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", mergeJoin{Carried: []string{"company-region"}})
 	if !strings.HasPrefix(b.String(), "Merged CRM release 3, after CRM release 2. The business's 1 change touches no file the release changed.\n") {
 		t.Errorf("none met:\n%s", b.String())
+	}
+	b.Reset()
+	many := note
+	for i := 2; i <= 12; i++ {
+		many.Uses = append(many.Uses, custom.Use{File: "a.ts", Line: i, Text: "won_at"})
+	}
+	printNote(output.Printer{}, &b, many)
+	if !strings.HasSuffix(b.String(), "    a.ts:10  won_at\n    and 2 more\n") {
+		t.Errorf("many uses:\n%s", b.String())
 	}
 }

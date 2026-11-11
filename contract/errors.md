@@ -747,16 +747,19 @@ Status: - · Surface: cli
 When: `whisk managed merge` merged a product's newest release into a checkout of a fork, and git
 left files to settle that both the release and the business changed. The merge is under way and
 nothing is committed. `details.conflicts` names each file with the changes whose records in
-`custom/changes` name it, each with what the business asked for and the checks that prove it; a
-file with no change named is one the business changed with no record. `details.release` is the
-release being merged and `details.from` the one the branch held.
+`custom/changes` name it, each with what the business asked for, the checks that prove it and the
+release's notes on what moved that its own lines use (`moved`, each with those lines in `uses`);
+a file with no change named is one the business changed with no record. `details.met` is every
+change the release meets, as a merge that finishes answers it, and `details.unrecorded` the files
+the release changed that the business changed with no record. `details.release` is the release
+being merged and `details.from` the one the branch held.
 
 Fix: Settle each file so the release and the change it belongs to both still do what they were
 for, `git add` the files and `git commit`, run the checks the changes name and the app's tests,
 then `whisk deploy`. `git merge --abort` puts the branch back as it was.
 
 ```json
-{"error":{"code":"MERGE_CONFLICT","message":"Merging CRM release 3 left 1 file(s) to settle: src/deals/won.ts.","fix":"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.","docs":"https://skill.whisk.run/errors/MERGE_CONFLICT","details":{"release":"CRM release 3","from":"CRM release 2","conflicts":[{"file":"src/deals/won.ts","changes":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"checks":["custom/server/test/warehouse.test.ts"]}]}]}}}
+{"error":{"code":"MERGE_CONFLICT","message":"Merging CRM release 3 left 1 file(s) to settle: src/deals/won.ts.","fix":"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.","docs":"https://skill.whisk.run/errors/MERGE_CONFLICT","details":{"release":"CRM release 3","from":"CRM release 2","conflicts":[{"file":"src/deals/won.ts","changes":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"moved":[{"id":"deal-won-at","moved":[{"from":"deals.won_at","to":"deals.closed_at"}],"values":"Every date is kept.","fix":"Read closed_at where you read won_at.","uses":[{"file":"custom/server/warehouse.ts","line":2,"text":"post(deal.won_at);"}]}],"checks":["custom/server/test/warehouse.test.ts"]}]}],"met":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"moved":[{"id":"deal-won-at","moved":[{"from":"deals.won_at","to":"deals.closed_at"}],"values":"Every date is kept.","fix":"Read closed_at where you read won_at.","uses":[{"file":"custom/server/warehouse.ts","line":2,"text":"post(deal.won_at);"}]}],"checks":["custom/server/test/warehouse.test.ts"]}],"unrecorded":[]}}}
 ```
 
 ## NOTIFY_NOT_MANAGED
