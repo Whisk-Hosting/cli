@@ -82,19 +82,22 @@ type ForkProblem struct {
 
 // ForkSuggestion is one of a fork's changes its business suggested to Whisk (FORKS.md §10): the
 // change as its record said it, the files the suggestion sent, the release the change was made
-// on, the licence Whisk may use it under, and what became of it: open until Whisk decides,
-// replaced by a later suggestion of the same change, declined with Reason, or taken into release
-// TakenIn.
+// on and the commit of the code it was sent from, the licence Whisk may use it under, and what
+// became of it: open until Whisk decides, replaced by a later suggestion of the same change,
+// declined with Reason, or taken into release TakenIn, with Moves saying what becomes of the
+// business's data once that release's version of the change takes the place of its own.
 type ForkSuggestion struct {
 	ID          string            `json:"id"`
 	Change      string            `json:"change"`
 	Asked       string            `json:"asked"`
 	Files       []string          `json:"files"`
 	Release     int               `json:"release"`
+	Commit      string            `json:"commit"`
 	Licence     SuggestionLicence `json:"licence"`
 	Status      SuggestionStatus  `json:"status"`
 	Reason      string            `json:"reason,omitempty"`
 	TakenIn     int               `json:"taken_in,omitempty"`
+	Moves       string            `json:"moves,omitempty"`
 	SuggestedAt time.Time         `json:"suggested_at"`
 	DecidedAt   *time.Time        `json:"decided_at,omitempty"`
 }

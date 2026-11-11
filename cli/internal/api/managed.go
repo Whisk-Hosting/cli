@@ -18,6 +18,8 @@ type (
 	ManagedRelease    = apitypes.ManagedRelease
 	AppFork           = apitypes.AppFork
 	ForkUpdate        = apitypes.ForkUpdate
+	ForkSuggestion    = apitypes.ForkSuggestion
+	ForkSuggestions   = apitypes.ForkSuggestions
 )
 
 // ProductForks is the kind of a product whose copies are the business's own code.
@@ -65,4 +67,11 @@ func (c *Client) SetPaused(ctx context.Context, org, app string, paused bool) (A
 func (c *Client) UpdateFork(ctx context.Context, org, app string) (ForkUpdate, error) {
 	var out ForkUpdate
 	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/fork/update", nil, &out)
+}
+
+// ForkSuggestions reads GET .../fork/suggestions: the business's suggestions of the fork's changes
+// to Whisk, newest first, with what became of each (FORKS.md §10).
+func (c *Client) ForkSuggestions(ctx context.Context, org, app string) (ForkSuggestions, error) {
+	var out ForkSuggestions
+	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/fork/suggestions", nil, &out)
 }

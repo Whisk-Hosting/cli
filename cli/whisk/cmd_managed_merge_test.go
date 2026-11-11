@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/custom"
 )
 
@@ -176,6 +177,90 @@ func TestManagedMergeConflict(t *testing.T) {
 	abort()
 }
 
+// A change Whisk took into the release merged is swapped for Whisk's version when it is as the
+// business suggested it: each file only it names is as the release has it, one another change
+// names stays, and its record is gone. Changed after it was suggested, it is carried as any
+// change; a conflict elsewhere leaves the swap in the merge under way, which git merge --abort
+// puts back.
+func TestManagedMergeSwap(t *testing.T) {
+	st := &forkState{release: 2, changed: true}
+	srv := forkAPI(t, st)
+	defer srv.Close()
+	r := newMergeRepos(t, srv.URL)
+	sent := r.git(r.dir, "rev-parse", "HEAD")
+	st.suggestions = []map[string]any{{"id": "sg_1", "change": "tell-the-warehouse", "asked": "When a deal is won, tell the warehouse.",
+		"files":   []any{"custom/changes/tell-the-warehouse.yaml", "custom/server/test/warehouse.test.ts", "custom/server/warehouse.ts", "src/deals/won.ts"},
+		"release": 2, "commit": sent, "licence": "MIT", "status": "taken", "taken_in": 3, "moves": "Nothing moves: Whisk's version keeps no rows.",
+		"suggested_at": "2026-11-10T10:00:00Z"}}
+	whisks := "export const won = (deal) => {\n  record(deal);\n  warehouse.tell(deal);\n  return deal;\n};\n"
+	r.release(3, map[string]string{"src/deals/won.ts": whisks, "src/warehouse.ts": "export const warehouse = { tell: (deal) => post(deal) };\n",
+		"src/index.ts": "// Release 3\nexport {};\n"})
+	merge := func() result {
+		t.Helper()
+		return runRemote(t, r.dir, srv.URL, nil, "managed", "merge", "--org", "acme", "--app", "crm", "--json")
+	}
+	returned := func(got result, swapped bool) bool {
+		list, _ := got.JSON["returned"].([]any)
+		if e, ok := got.JSON["error"].(map[string]any); ok {
+			details, _ := e["details"].(map[string]any)
+			list, _ = details["returned"].([]any)
+		}
+		want := []any{map[string]any{"name": "tell-the-warehouse", "asked": "When a deal is won, tell the warehouse.", "release": float64(3),
+			"moves": "Nothing moves: Whisk's version keeps no rows.", "swapped": swapped,
+			"files": []any{"custom/server/warehouse.ts", "src/deals/won.ts"}, "kept": []any{"custom/server/test/warehouse.test.ts"}}}
+		return reflect.DeepEqual(list, want)
+	}
+
+	put(t, r.dir, "custom/server/warehouse.ts", "export const tell = () => post();\n")
+	r.git(r.dir, "commit", "--quiet", "--all", "-m", "tell the warehouse by post")
+	got := merge()
+	if met, _ := got.JSON["met"].([]any); got.Code != 0 || got.JSON["merged"] != true || !returned(got, false) || len(met) != 1 {
+		t.Fatalf("changed after it was suggested: %+v", got)
+	}
+	r.git(r.dir, "reset", "--quiet", "--hard", sent)
+
+	put(t, r.dir, "src/index.ts", "export const ours = 1;\n")
+	r.git(r.dir, "commit", "--quiet", "--all", "-m", "a change with no record")
+	got = merge()
+	if e, _ := got.JSON["error"].(map[string]any); got.Code == 0 || e["code"] != "MERGE_CONFLICT" || e["message"] != "Merging CRM release 3 left 1 file(s) to settle: src/index.ts." || !returned(got, true) {
+		t.Fatalf("a conflict elsewhere: %+v", got)
+	}
+	if body, _ := os.ReadFile(filepath.Join(r.dir, "src/deals/won.ts")); string(body) != whisks {
+		t.Errorf("won.ts in the merge under way:\n%s", body)
+	}
+	if _, err := os.Stat(filepath.Join(r.dir, "custom/server/warehouse.ts")); !os.IsNotExist(err) {
+		t.Errorf("the business's own file is still there in the merge under way: %v", err)
+	}
+	r.git(r.dir, "merge", "--abort")
+	if status := r.git(r.dir, "status", "--porcelain"); status != "" {
+		t.Fatalf("after git merge --abort: %q", status)
+	}
+	if _, err := os.Stat(filepath.Join(r.dir, "custom/changes/tell-the-warehouse.yaml")); err != nil {
+		t.Errorf("git merge --abort did not put the record back: %v", err)
+	}
+	r.git(r.dir, "reset", "--quiet", "--hard", sent)
+
+	got = merge()
+	if got.Code != 0 || got.JSON["merged"] != true || !returned(got, true) || !reflect.DeepEqual(got.JSON["carried"], []any{"company-region"}) || !reflect.DeepEqual(got.JSON["met"], []any{}) {
+		t.Fatalf("the swap: %+v", got)
+	}
+	if body, _ := os.ReadFile(filepath.Join(r.dir, "src/deals/won.ts")); string(body) != whisks {
+		t.Errorf("won.ts after the swap:\n%s", body)
+	}
+	for p, there := range map[string]bool{"custom/server/warehouse.ts": false, "custom/changes/tell-the-warehouse.yaml": false, "custom/server/test/warehouse.test.ts": true,
+		"custom/changes/company-region.yaml": true, "custom/web/region.tsx": true, "src/warehouse.ts": true} {
+		if _, err := os.Stat(filepath.Join(r.dir, p)); (err == nil) != there {
+			t.Errorf("%s there %v after the swap, want %v", p, err == nil, there)
+		}
+	}
+	if status := r.git(r.dir, "status", "--porcelain"); status != "" {
+		t.Errorf("after the swap: %q", status)
+	}
+	if parents, tip := r.git(r.dir, "log", "-1", "--format=%P %s"), r.git(r.remote, "rev-parse", "upstream"); parents != sent+" "+tip+" Merge release 3 of CRM" || got.JSON["commit"] != r.git(r.dir, "rev-parse", "HEAD") {
+		t.Errorf("the merge commit: %q, release 3 %s, answered %v", parents, tip, got.JSON["commit"])
+	}
+}
+
 // A branch with nothing of its own since its release takes the next one as it is, by fast-forward.
 func TestManagedMergeFastForward(t *testing.T) {
 	srv := forkAPI(t, &forkState{release: 2})
@@ -239,13 +324,63 @@ func TestMergePlan(t *testing.T) {
 	}
 }
 
+// A change on record comes back as Whisk's when the business's newest suggestion of it was taken
+// into the release merged or an earlier one; it is swapped only when it is as it was sent, a file
+// another change names, in what it touches or in its checks, stays, and the records are never its
+// files.
+func TestReturnedOf(t *testing.T) {
+	warehouse := custom.Change{Name: "tell-the-warehouse", Asked: "Tell the warehouse.", Touches: []string{"src/deals/won.ts", "custom/server/"}, Checks: []string{"custom/server/test/a.test.ts"}}
+	region := custom.Change{Name: "company-region", Asked: "Show the region.", Touches: []string{"src/companies/", "src/deals/won.ts"}, Checks: []string{"custom/server/test/a.test.ts"}}
+	page := custom.Change{Name: "own-page", Asked: "A page of our own.", Touches: []string{"custom/web/page.tsx"}, Checks: []string{"custom/web/page.test.tsx"}}
+	quiet := custom.Change{Name: "quiet", Asked: "Taken into a later release.", Touches: []string{"custom/web/quiet.tsx"}, Checks: []string{"custom/web/quiet.test.tsx"}}
+	changed := []string{"custom/changes/own-page.yaml", "custom/changes/tell-the-warehouse.yaml", "custom/server/test/a.test.ts", "custom/server/warehouse.ts",
+		"custom/web/page.tsx", "custom/web/quiet.tsx", "src/companies/list.tsx", "src/deals/won.ts"}
+	suggestions := []apitypes.ForkSuggestion{
+		{Change: "own-page", Status: apitypes.SuggestionTaken, TakenIn: 2, Moves: "Nothing moves.", Commit: "c2"},
+		{Change: "quiet", Status: apitypes.SuggestionTaken, TakenIn: 4, Moves: "Nothing moves."},
+		{Change: "company-region", Status: apitypes.SuggestionOpen},
+		{Change: "company-region", Status: apitypes.SuggestionTaken, TakenIn: 2},
+		{Change: "tell-the-warehouse", Status: apitypes.SuggestionTaken, TakenIn: 3, Moves: "The feeds go to warehouse_links.", Commit: "c1"},
+		{Change: "tell-the-warehouse", Status: apitypes.SuggestionDeclined, Reason: "Not yet."},
+	}
+	var asked []string
+	sent := func(sg apitypes.ForkSuggestion, files []string) bool {
+		asked = append(asked, sg.Change+" "+strings.Join(files, ","))
+		return sg.Commit == "c1"
+	}
+	got := returnedOf([]custom.Change{warehouse, region, page, quiet}, changed, suggestions, 3, sent)
+	want := []returnedChange{
+		{Name: "tell-the-warehouse", Asked: "Tell the warehouse.", Release: 3, Moves: "The feeds go to warehouse_links.", Swapped: true,
+			Files: []string{"custom/server/warehouse.ts"}, Kept: []string{"custom/server/test/a.test.ts", "src/deals/won.ts"}},
+		{Name: "own-page", Asked: "A page of our own.", Release: 2, Moves: "Nothing moves.", Files: []string{"custom/web/page.tsx"}, Kept: []string{}},
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Errorf("returned =\n%+v\nwant\n%+v", got, want)
+	}
+	if !reflect.DeepEqual(asked, []string{"tell-the-warehouse custom/server/test/a.test.ts,custom/server/warehouse.ts,src/deals/won.ts", "own-page custom/web/page.tsx"}) {
+		t.Errorf("asked whether these were sent as they are: %q", asked)
+	}
+	if out := swappedOut([]custom.Change{warehouse, region, page, quiet}, got); len(out) != 3 || out[0].Name != "company-region" || out[1].Name != "own-page" || out[2].Name != "quiet" {
+		t.Errorf("carried after the swap: %+v", out)
+	}
+
+	all := custom.Change{Name: "all-of-custom", Asked: "Everything of our own.", Touches: []string{"custom/"}, Checks: []string{"custom/server/test/a.test.ts"}}
+	got = returnedOf([]custom.Change{all}, changed, []apitypes.ForkSuggestion{{Change: "all-of-custom", Status: apitypes.SuggestionTaken, TakenIn: 3}}, 3, sent)
+	if len(got) != 1 || !reflect.DeepEqual(got[0].Files, []string{"custom/server/test/a.test.ts", "custom/server/warehouse.ts", "custom/web/page.tsx", "custom/web/quiet.tsx"}) || got[0].Swapped {
+		t.Errorf("a change naming all of custom/ takes no record with it: %+v", got)
+	}
+	if got := returnedOf([]custom.Change{warehouse}, changed, nil, 3, sent); got == nil || len(got) != 0 {
+		t.Errorf("no suggestions: %+v", got)
+	}
+}
+
 func TestPrintMerged(t *testing.T) {
 	var b strings.Builder
 	note := metNote{custom.Moved{ID: "deal-won-at", Moves: []custom.Move{{From: "deals.won_at", To: "deals.closed_at"}, {From: "record"}}, Values: "Every date is kept.", Fix: "Read closed_at."},
 		[]custom.Use{{File: "custom/server/warehouse.ts", Line: 1, Text: "post(deal.won_at);"}}}
 	j := mergeJoin{Met: []metChange{{"tell-the-warehouse", "Tell the warehouse.", []string{"src/deals/won.ts"}, []metNote{note}, []string{"custom/server/test/a.test.ts"}}},
 		Carried: []string{"company-region"}, Checks: []string{"custom/server/test/a.test.ts"}, Unrecorded: []string{"src/index.ts"}}
-	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", j)
+	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", j, nil)
 	want := "Merged CRM release 3, after CRM release 2. 1 of the business's 2 changes touches files the release changed too:\n\n" +
 		"tell-the-warehouse\n  Tell the warehouse.\n  the release changed src/deals/won.ts\n" +
 		"  deal-won-at: deals.won_at went to deals.closed_at and record went away. Every date is kept. Read closed_at.\n" +
@@ -257,9 +392,28 @@ func TestPrintMerged(t *testing.T) {
 		t.Errorf("printed:\n%s\nwant:\n%s", b.String(), want)
 	}
 	b.Reset()
-	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", mergeJoin{Carried: []string{"company-region"}})
+	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", mergeJoin{Carried: []string{"company-region"}}, nil)
 	if !strings.HasPrefix(b.String(), "Merged CRM release 3, after CRM release 2. The business's 1 change touches no file the release changed.\n") {
 		t.Errorf("none met:\n%s", b.String())
+	}
+	b.Reset()
+	printMerged(output.Printer{}, &b, "CRM release 3", "CRM release 2", mergeJoin{}, []returnedChange{
+		{Name: "tell-the-warehouse", Asked: "Tell the warehouse.", Release: 3, Moves: "Release 3 keeps the feeds in warehouse_links.", Swapped: true,
+			Files: []string{"custom/server/warehouse.ts", "src/deals/won.ts"}, Kept: []string{"custom/server/test/warehouse.test.ts"}},
+		{Name: "own-page", Asked: "A page of our own.", Release: 2, Moves: "Nothing moves.", Files: []string{"custom/web/page.tsx"}, Kept: []string{}},
+	})
+	want = "Merged CRM release 3, after CRM release 2. The branch has no change of the business's own on record.\n\n" +
+		"Whisk took 2 changes of the business's into its releases:\n\n" +
+		"tell-the-warehouse in release 3\n  Tell the warehouse.\n" +
+		"  The branch no longer carries it: custom/server/warehouse.ts and src/deals/won.ts are as release 3 has them, and its record is gone.\n" +
+		"  custom/server/test/warehouse.test.ts is another change's too, so take tell-the-warehouse's lines out of it by hand.\n" +
+		"  its data: Release 3 keeps the feeds in warehouse_links.\n\n" +
+		"own-page in release 2\n  A page of our own.\n" +
+		"  It changed after it was suggested, so the branch still carries it: once release 2's version does what it is for, put its files as the release has them and delete custom/changes/own-page.yaml.\n" +
+		"  its data: Nothing moves.\n\n" +
+		"Next: run the app's tests, then whisk deploy, which tries the release's migrations on a copy of the live data first.\n"
+	if b.String() != want {
+		t.Errorf("returned, printed:\n%s\nwant:\n%s", b.String(), want)
 	}
 	b.Reset()
 	many := note

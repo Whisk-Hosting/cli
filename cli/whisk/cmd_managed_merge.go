@@ -15,15 +15,17 @@ import (
 	"github.com/whisk-run/cli/doctor"
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/custom"
 )
 
-// whisk managed merge (FORKS.md §4): a checkout of a fork with changes of the business's own takes
-// its product's newest release. What the release changed, and its notes on what it moved, are
-// joined with the records and the business's own lines before the merge (custom.Meets,
+// whisk managed merge (FORKS.md §4, §10): a checkout of a fork with changes of the business's own
+// takes its product's newest release. What the release changed, and its notes on what it moved,
+// are joined with the records and the business's own lines before the merge (custom.Meets,
 // custom.NoteUses), so a change the release does not meet carries over with nobody looking, one
 // it meets is named with what it asked for, its checks and the notes its lines need, and a file
-// left in conflict is named with the changes it belongs to.
+// left in conflict is named with the changes it belongs to. A change Whisk took into the release
+// is swapped for Whisk's version, so the branch stops carrying it (returnedOf).
 
 func managedMergeCmd(s *session) *cobra.Command {
 	return &cobra.Command{
@@ -36,8 +38,12 @@ changed with the business's records in custom/changes: each change whose files t
 too is named with what it asked for and the checks that prove it, every other change carries over
 as it is, and a file the release changed that differs here with no record naming it is named. A
 change whose own lines use a name the release's notes in moved/ say it removed or renamed is named
-too, with the note (where it went, what became of the values, the fix) and those lines. A
-conflict leaves the merge for you to settle and names the changes each conflicted file belongs to
+too, with the note (where it went, what became of the values, the fix) and those lines. A change
+Whisk took into the release, or an earlier one, as the business's newest suggestion of it says, is
+swapped for Whisk's version when its files are the ones that suggestion sent, as they were sent:
+each file only it names is put as the release has it and its record is taken away, so the branch
+no longer carries it, and the merge says what Whisk said becomes of its data. A conflict leaves
+the merge for you to settle and names the changes each conflicted file belongs to
 (MERGE_CONFLICT); git merge --abort puts the branch back as it was.
 
 Then run the checks it names and the app's tests, and whisk deploy, which tries the release's
@@ -112,6 +118,64 @@ func notesMet(c custom.Change, notes []custom.Moved, lines map[string][]custom.L
 		}
 	}
 	return out
+}
+
+// returnedChange is a change on record that Whisk took into a release no later than the one
+// merged, as the business's newest suggestion of it says (FORKS.md §10): the release that brings
+// Whisk's version, what Whisk said becomes of the business's data, and what the merge did with it.
+// A change whose files are the ones its suggestion sent, as they were sent, is swapped: each file
+// of it no other change names (Files) is put as the release has it and its record is taken away,
+// so the branch no longer carries it, while one another change names too, in what it touches or
+// in its checks (Kept), stays as the merge makes it. One that changed since it was sent is not
+// swapped, and the merge meets it as any other change.
+type returnedChange struct {
+	Name    string   `json:"name"`
+	Asked   string   `json:"asked"`
+	Release int      `json:"release"`
+	Moves   string   `json:"moves"`
+	Swapped bool     `json:"swapped"`
+	Files   []string `json:"files"`
+	Kept    []string `json:"kept"`
+}
+
+// returnedOf is each of changes whose newest suggestion, in suggestions newest first, Whisk took
+// into a release no later than number, with the files of changed, the paths that differ from the
+// release the branch holds, that it names; sentAsIs reports whether those files are the ones the
+// suggestion sent, as they were sent. Pure when sentAsIs is.
+func returnedOf(changes []custom.Change, changed []string, suggestions []apitypes.ForkSuggestion, number int, sentAsIs func(apitypes.ForkSuggestion, []string) bool) []returnedChange {
+	newest := map[string]apitypes.ForkSuggestion{}
+	for _, sg := range suggestions {
+		if _, ok := newest[sg.Change]; !ok {
+			newest[sg.Change] = sg
+		}
+	}
+	out := []returnedChange{}
+	for _, c := range changes {
+		sg, ok := newest[c.Name]
+		if !ok || sg.Status != apitypes.SuggestionTaken || sg.TakenIn > number {
+			continue
+		}
+		files := slices.DeleteFunc(custom.Meets(c, changed), custom.Exempt)
+		r := returnedChange{Name: c.Name, Asked: c.Asked, Release: sg.TakenIn, Moves: sg.Moves, Swapped: sentAsIs(sg, files), Files: []string{}, Kept: []string{}}
+		for _, p := range files {
+			if slices.ContainsFunc(changes, func(o custom.Change) bool {
+				return o.Name != c.Name && (len(custom.Meets(o, []string{p})) > 0 || slices.Contains(o.Checks, p))
+			}) {
+				r.Kept = append(r.Kept, p)
+			} else {
+				r.Files = append(r.Files, p)
+			}
+		}
+		out = append(out, r)
+	}
+	return out
+}
+
+// swappedOut is changes but those returned swaps for Whisk's version. Pure.
+func swappedOut(changes []custom.Change, returned []returnedChange) []custom.Change {
+	return slices.DeleteFunc(slices.Clone(changes), func(c custom.Change) bool {
+		return slices.ContainsFunc(returned, func(r returnedChange) bool { return r.Swapped && r.Name == c.Name })
+	})
 }
 
 func nonEmpty(s []string) []string {
@@ -237,9 +301,18 @@ func runManagedMerge(s *session) error {
 	if err != nil {
 		return err
 	}
-	join := mergePlan(before.Changes, before.Uncovered, released, notes, lines)
+	returned := []returnedChange{}
+	if len(before.Changes) > 0 {
+		list, err := client.ForkSuggestions(s.ctx, org, app)
+		if err != nil {
+			return wrap(err)
+		}
+		returned = returnedOf(before.Changes, before.Fork.Changed, list.Suggestions, number, s.sentAsIs)
+	}
+	carried := swappedOut(before.Changes, returned)
+	join := mergePlan(carried, before.Uncovered, released, notes, lines)
 	s.printer.Progress("Merging %s into %s, after %s.", subject, branch, before.Fork.Release)
-	res, err := s.gitRun(nil, append(s.identityArgs(), "merge", "--no-edit", "-m", mergeMessage(product, number), tip)...)
+	res, err := s.mergeRelease(tip, mergeMessage(product, number), returned)
 	if err != nil {
 		return err
 	}
@@ -248,16 +321,77 @@ func runManagedMerge(s *session) error {
 		if err != nil || len(unsettled) == 0 {
 			return gitFailed("git merge", res)
 		}
-		return s.mergeConflict(subject, before.Fork.Release, conflictsOf(unsettled, before.Changes, join), join)
+		return s.mergeConflict(subject, before.Fork.Release, conflictsOf(unsettled, carried, join), join, returned)
 	}
 	head, err := s.gitOut("rev-parse", "HEAD")
 	if err != nil {
 		return err
 	}
 	s.printer.Result(map[string]any{"merged": true, "release": subject, "from": before.Fork.Release, "commit": head,
-		"met": join.Met, "carried": join.Carried, "checks": join.Checks, "unrecorded": join.Unrecorded},
-		func(w io.Writer) { printMerged(s.printer, w, subject, before.Fork.Release, join) })
+		"met": join.Met, "carried": join.Carried, "checks": join.Checks, "unrecorded": join.Unrecorded, "returned": returned},
+		func(w io.Writer) { printMerged(s.printer, w, subject, before.Fork.Release, join, returned) })
 	return nil
+}
+
+// sentAsIs reports whether files, the files of a change that differ from the release the branch
+// holds, are the ones its suggestion sent, as they were sent: none it did not send, and nothing it
+// sent, the record among them, changed since the commit it was sent from. A checkout without that
+// commit cannot tell, so it is not.
+func (s *session) sentAsIs(sg apitypes.ForkSuggestion, files []string) bool {
+	if sg.Commit == "" || len(sg.Files) == 0 || slices.ContainsFunc(files, func(p string) bool { return !slices.Contains(sg.Files, p) }) {
+		return false
+	}
+	res, err := s.gitRun(nil, append([]string{"--literal-pathspecs", "diff", "--quiet", "--no-ext-diff", "--no-renames", sg.Commit, "HEAD", "--"}, sg.Files...)...)
+	return err == nil && res.OK()
+}
+
+// mergeRelease merges the release at tip into the branch. With a change to swap for Whisk's
+// version, the merge stops before it commits: each file of the change no other change names is put
+// as the release has it, or taken away when the release has no such file, the change's record is
+// taken away, and the merge is committed once nothing is left to settle. A file left to settle
+// leaves the merge under way, as a conflict does without a swap, so git merge --abort still puts
+// the branch back as it was.
+func (s *session) mergeRelease(tip, message string, returned []returnedChange) (gitcmd.Result, error) {
+	swaps := slices.DeleteFunc(slices.Clone(returned), func(r returnedChange) bool { return !r.Swapped })
+	if len(swaps) == 0 {
+		return s.gitRun(nil, append(s.identityArgs(), "merge", "--no-edit", "-m", message, tip)...)
+	}
+	res, err := s.gitRun(nil, append(s.identityArgs(), "merge", "--no-ff", "--no-commit", "-m", message, tip)...)
+	if err != nil {
+		return res, err
+	}
+	if under, err := s.gitRun(nil, "rev-parse", "--verify", "--quiet", "MERGE_HEAD"); err != nil || !under.OK() {
+		return res, err
+	}
+	for _, r := range swaps {
+		for _, p := range append(slices.Clone(r.Files), custom.RecordPath(r.Name)) {
+			if err := s.takeRelease(tip, p); err != nil {
+				return res, err
+			}
+		}
+	}
+	if unsettled, err := s.gitNames("diff", "--name-only", "--diff-filter=U", "-z"); err != nil || len(unsettled) > 0 {
+		return gitcmd.Result{Stdout: res.Stdout, Stderr: res.Stderr, ExitCode: 1}, err
+	}
+	return s.gitRun(nil, append(s.identityArgs(), "commit", "--quiet", "--no-edit")...)
+}
+
+// takeRelease puts the file at p as the release at tip has it, in the merge under way, or takes it
+// away when the release has no such file.
+func (s *session) takeRelease(tip, p string) error {
+	has, err := s.gitRun(nil, "cat-file", "-e", tip+":"+p)
+	if err != nil {
+		return err
+	}
+	args := []string{"--literal-pathspecs", "rm", "--quiet", "--force", "--ignore-unmatch", "--", p}
+	if has.OK() {
+		args = []string{"--literal-pathspecs", "checkout", tip, "--", p}
+	}
+	res, err := s.gitRun(nil, args...)
+	if err == nil && !res.OK() {
+		err = gitFailed("git "+args[1], res)
+	}
+	return err
 }
 
 // cleanForMerge refuses a checkout with anything uncommitted or a merge already under way, so a
@@ -374,8 +508,9 @@ func (s *session) gitNames(args ...string) ([]string, error) {
 }
 
 // mergeConflict is MERGE_CONFLICT for a merge left with files to settle, after the changes each
-// belongs to are said on stderr; its details carry the join too, with the notes on what moved.
-func (s *session) mergeConflict(release, from string, conflicts []conflict, j mergeJoin) error {
+// belongs to are said on stderr; its details carry the join too, with the notes on what moved, and
+// the changes Whisk took, swapped in the merge under way or not.
+func (s *session) mergeConflict(release, from string, conflicts []conflict, j mergeJoin, returned []returnedChange) error {
 	files := make([]string, 0, len(conflicts))
 	for _, c := range conflicts {
 		files = append(files, c.File)
@@ -395,13 +530,16 @@ func (s *session) mergeConflict(release, from string, conflicts []conflict, j me
 				printNote(s.printer, s.printer.Err, n)
 			}
 		}
+		for _, r := range returned {
+			printReturned(s.printer, s.printer.Err, r)
+		}
 	}
 	return output.New("MERGE_CONFLICT", fmt.Sprintf("Merging %s left %d file(s) to settle: %s.", release, len(files), listPreview(files, 5)),
 		"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.",
-		map[string]any{"release": release, "from": from, "conflicts": conflicts, "met": j.Met, "unrecorded": j.Unrecorded})
+		map[string]any{"release": release, "from": from, "conflicts": conflicts, "met": j.Met, "unrecorded": j.Unrecorded, "returned": returned})
 }
 
-func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoin) {
+func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoin, returned []returnedChange) {
 	total := len(j.Met) + len(j.Carried)
 	switch {
 	case total == 0:
@@ -420,6 +558,12 @@ func printMerged(p output.Printer, w io.Writer, release, from string, j mergeJoi
 			printNote(p, w, n)
 		}
 		fmt.Fprintf(w, "  %s\n", p.Dim("checked by "+strings.Join(c.Checks, ", ")))
+	}
+	if len(returned) > 0 {
+		fmt.Fprintf(w, "\nWhisk took %s of the business's into its releases:\n", count(len(returned), "change", "changes"))
+	}
+	for _, r := range returned {
+		printReturned(p, w, r)
 	}
 	if len(j.Unrecorded) > 0 {
 		fmt.Fprintf(w, "\nNo record names %s, which the release and this branch both changed: whisk changes draft <name> writes one.\n", listPreview(j.Unrecorded, 10))
@@ -455,6 +599,34 @@ func printNote(p output.Printer, w io.Writer, n metNote) {
 		}
 		fmt.Fprintf(w, "    %s  %s\n", p.Dim(fmt.Sprintf("%s:%d", u.File, u.Line)), u.Text)
 	}
+}
+
+// printReturned says what the merge did with a change Whisk took: swapped for Whisk's version,
+// with any file another change names too, or carried still because it changed since it was
+// suggested; then what Whisk said becomes of its data.
+func printReturned(p output.Printer, w io.Writer, r returnedChange) {
+	fmt.Fprintf(w, "\n%s %s\n  %s\n", p.Bold(r.Name), p.Dim(fmt.Sprintf("in release %d", r.Release)), r.Asked)
+	switch {
+	case r.Swapped && len(r.Files) > 0:
+		fmt.Fprintf(w, "  The branch no longer carries it: %s %s as release %d has %s, and its record is gone.\n", sentence(r.Files, 10), isVerb(len(r.Files)), r.Release, them(len(r.Files)))
+	case r.Swapped:
+		fmt.Fprintln(w, "  The branch no longer carries it: its record is gone.")
+	default:
+		fmt.Fprintf(w, "  It changed after it was suggested, so the branch still carries it: once release %d's version does what it is for, put its files as the release has them and delete %s.\n", r.Release, custom.RecordPath(r.Name))
+	}
+	if r.Swapped && len(r.Kept) > 0 {
+		fmt.Fprintf(w, "  %s %s another change's too, so take %s's lines out of %s by hand.\n", sentence(r.Kept, 10), isVerb(len(r.Kept)), r.Name, them(len(r.Kept)))
+	}
+	if r.Moves != "" {
+		fmt.Fprintf(w, "  %s %s\n", p.Dim("its data:"), r.Moves)
+	}
+}
+
+func isVerb(n int) string {
+	if n == 1 {
+		return "is"
+	}
+	return "are"
 }
 
 func touchVerb(n int) string {

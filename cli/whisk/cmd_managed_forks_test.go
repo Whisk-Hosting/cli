@@ -158,6 +158,8 @@ type forkState struct {
 	blocked bool
 	adds    []map[string]any
 	updates int
+	// suggestions is what GET .../fork/suggestions answers, newest first.
+	suggestions []map[string]any
 }
 
 func (st *forkState) app() map[string]any {
@@ -212,6 +214,13 @@ func forkAPI(t *testing.T, st *forkState) *httptest.Server {
 				"fix":     "Run whisk managed merge in a checkout of crm's code, which brings the release in and names each change of the business's it meets (or git fetch whisk, git merge whisk/upstream), settle any conflicts, run the tests, then whisk deploy.",
 				"details": map[string]any{"app": "crm", "product": "crm", "release": 2, "newest": 3}}})
 		}
+	})
+	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/fork/suggestions", func(w http.ResponseWriter, r *http.Request) {
+		list := st.suggestions
+		if list == nil {
+			list = []map[string]any{}
+		}
+		writeJSON(w, 200, map[string]any{"suggestions": list})
 	})
 	mux.HandleFunc("POST /v1/orgs/acme/apps/shop/fork/update", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 400, map[string]any{"error": map[string]any{"code": "INVALID_REQUEST", "message": "shop does not follow one of Whisk's products.",
