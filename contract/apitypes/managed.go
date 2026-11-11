@@ -42,6 +42,44 @@ type ForkUpdate struct {
 	Updated bool    `json:"updated"`
 }
 
+// ForkChanges is GET /orgs/:org/apps/:app/fork/changes: the business's own changes in the code
+// the app runs (FORKS.md §9). Commit is that code's commit, "" when nothing runs yet; Release is
+// the number of the newest release it holds, 0 when it holds none.
+type ForkChanges struct {
+	Commit  string `json:"commit"`
+	Release int    `json:"release"`
+	// Changes are the records of custom/changes that can be read, by name; Unreadable the files
+	// there that are not records that can be read; Uncovered the files that differ from the
+	// release and that no record names.
+	Changes    []ForkChange     `json:"changes"`
+	Unreadable []ForkUnreadable `json:"unreadable"`
+	Uncovered  []string         `json:"uncovered"`
+}
+
+// ForkChange is one change of the business's own as its record says it. Unchanged is each path
+// it names that is as the release has it: all of them is a change the release holds now, or one
+// undone.
+type ForkChange struct {
+	Name      string   `json:"name"`
+	Asked     string   `json:"asked"`
+	Touches   []string `json:"touches"`
+	Checks    []string `json:"checks"`
+	Unchanged []string `json:"unchanged"`
+}
+
+// ForkUnreadable is a file of custom/changes that is not a record that can be read, and why.
+type ForkUnreadable struct {
+	File     string        `json:"file"`
+	Problems []ForkProblem `json:"problems"`
+}
+
+// ForkProblem is one reason a file of custom/changes cannot be read, at a line of it when there
+// is one.
+type ForkProblem struct {
+	Line    int    `json:"line,omitempty"`
+	Message string `json:"message"`
+}
+
 // ManagedRelease is one release of a product: the source deploy's commit and when it went live.
 type ManagedRelease struct {
 	ID     string    `json:"id"`
