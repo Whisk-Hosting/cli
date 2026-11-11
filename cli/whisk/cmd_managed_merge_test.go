@@ -239,19 +239,6 @@ func TestMergePlan(t *testing.T) {
 	}
 }
 
-// The lines a diff adds, by their numbers in the file as it is now.
-func TestDiffAdded(t *testing.T) {
-	diff := "diff --git a/src/deals/won.ts b/src/deals/won.ts\nindex 1..2 100644\n--- a/src/deals/won.ts\n+++ b/src/deals/won.ts\n" +
-		"@@ -4,0 +5 @@ export const won\n+tell();\n@@ -9,2 +10,3 @@\n-old();\n-older();\n+one();\n+++two;\n+three();\n"
-	want := []custom.Line{{Number: 5, Text: "tell();"}, {Number: 10, Text: "one();"}, {Number: 11, Text: "++two;"}, {Number: 12, Text: "three();"}}
-	if got := diffAdded(diff); !reflect.DeepEqual(got, want) {
-		t.Errorf("diffAdded = %+v", got)
-	}
-	if hunkStart("@@ -1 +0,0 @@") != 1 || hunkStart("@@ bad") != 0 || diffAdded("") != nil {
-		t.Error("hunkStart or an empty diff")
-	}
-}
-
 func TestPrintMerged(t *testing.T) {
 	var b strings.Builder
 	note := metNote{custom.Moved{ID: "deal-won-at", Moves: []custom.Move{{From: "deals.won_at", To: "deals.closed_at"}, {From: "record"}}, Values: "Every date is kept.", Fix: "Read closed_at."},

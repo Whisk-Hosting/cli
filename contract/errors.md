@@ -762,6 +762,24 @@ then `whisk deploy`. `git merge --abort` puts the branch back as it was.
 {"error":{"code":"MERGE_CONFLICT","message":"Merging CRM release 3 left 1 file(s) to settle: src/deals/won.ts.","fix":"Settle each file so the release and the change it belongs to both still do what they were for (details.conflicts names each change with what it asked for), git add the files and git commit, run the checks, then whisk deploy. git merge --abort puts the branch back as it was.","docs":"https://skill.whisk.run/errors/MERGE_CONFLICT","details":{"release":"CRM release 3","from":"CRM release 2","conflicts":[{"file":"src/deals/won.ts","changes":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"moved":[{"id":"deal-won-at","moved":[{"from":"deals.won_at","to":"deals.closed_at"}],"values":"Every date is kept.","fix":"Read closed_at where you read won_at.","uses":[{"file":"custom/server/warehouse.ts","line":2,"text":"post(deal.won_at);"}]}],"checks":["custom/server/test/warehouse.test.ts"]}]}],"met":[{"name":"tell-the-warehouse","asked":"When a deal is won, tell the warehouse.","files":["src/deals/won.ts"],"moved":[{"id":"deal-won-at","moved":[{"from":"deals.won_at","to":"deals.closed_at"}],"values":"Every date is kept.","fix":"Read closed_at where you read won_at.","uses":[{"file":"custom/server/warehouse.ts","line":2,"text":"post(deal.won_at);"}]}],"checks":["custom/server/test/warehouse.test.ts"]}],"unrecorded":[]}}}
 ```
 
+## SUGGESTION_HOLDS_DETAILS
+
+Status: 422 · Surface: api, dashboard
+
+When: a person who runs a business suggested one of its changes to Whisk, and a line the
+suggestion would send, or a file's name, holds something of the business's own: the value of
+one of its secrets, a Whisk token, a password in an address, an email address, a phone number,
+or the business's name or one of its domains where the release does not use it. Nothing was sent.
+`details.found` names each by file and line (no line for a file's name) and what it is, never
+the value.
+
+Fix: Take each one out of the change's files, reading it from a setting or a secret instead,
+deploy, and suggest the change again.
+
+```json
+{"error":{"code":"SUGGESTION_HOLDS_DETAILS","message":"tell-the-warehouse cannot be suggested to Whisk: 2 of the lines it would send hold something of the business's own.","fix":"Take each one out of the change's files, reading it from a setting or a secret instead, deploy, and suggest the change again.","docs":"https://skill.whisk.run/errors/SUGGESTION_HOLDS_DETAILS","details":{"change":"tell-the-warehouse","found":[{"file":"custom/server/warehouse.ts","line":4,"what":"the value of the secret WAREHOUSE_KEY"},{"file":"custom/server/warehouse.ts","line":9,"what":"an email address"}]}}}
+```
+
 ## NOTIFY_NOT_MANAGED
 
 Status: 403 · Surface: container

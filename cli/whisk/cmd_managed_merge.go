@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
-	"strconv"
 	"strings"
 	"unicode/utf8"
 
@@ -344,7 +343,9 @@ func (s *session) ownLines(ch doctor.Changes) (map[string][]custom.Line, error) 
 			return nil, err
 		}
 		if res.OK() && len(res.Stdout) <= ownLineMax {
-			out[p] = diffAdded(res.Stdout)
+			for _, added := range custom.PatchAdded(res.Stdout) {
+				out[p] = append(out[p], added...)
+			}
 		}
 	}
 	return out, nil
@@ -358,42 +359,6 @@ func smallText(path string) ([]byte, bool) {
 	}
 	body, err := os.ReadFile(path)
 	return body, err == nil && utf8.Valid(body) && !slices.Contains(body, 0)
-}
-
-// diffAdded is the lines a unified diff of one file adds, each by its number in the new file. Pure.
-func diffAdded(diff string) []custom.Line {
-	var out []custom.Line
-	next := 0
-	for _, l := range strings.Split(diff, "\n") {
-		switch {
-		case strings.HasPrefix(l, "diff --git "):
-			next = 0
-		case strings.HasPrefix(l, "@@ "):
-			next = hunkStart(l)
-		case next > 0 && strings.HasPrefix(l, "+"):
-			out = append(out, custom.Line{Number: next, Text: l[1:]})
-			next++
-		case next > 0 && strings.HasPrefix(l, " "):
-			next++
-		}
-	}
-	return out
-}
-
-// hunkStart is the first line of the new file a hunk header such as "@@ -3,0 +4,2 @@" covers, 0
-// when the header cannot be read.
-func hunkStart(header string) int {
-	_, after, ok := strings.Cut(header, " +")
-	if !ok {
-		return 0
-	}
-	digits, _, _ := strings.Cut(after, ",")
-	digits, _, _ = strings.Cut(digits, " ")
-	n, err := strconv.Atoi(digits)
-	if err != nil {
-		return 0
-	}
-	return max(n, 1)
 }
 
 // gitNames runs git with -z among args and answers the paths it printed, each as git spelled it.

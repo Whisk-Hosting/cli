@@ -80,6 +80,62 @@ type ForkProblem struct {
 	Message string `json:"message"`
 }
 
+// ForkSuggestion is one of a fork's changes its business suggested to Whisk (FORKS.md §10): the
+// change as its record said it, the files the suggestion sent, the release the change was made
+// on, the licence Whisk may use it under, and what became of it: open until Whisk decides,
+// replaced by a later suggestion of the same change, declined with Reason, or taken into release
+// TakenIn.
+type ForkSuggestion struct {
+	ID          string            `json:"id"`
+	Change      string            `json:"change"`
+	Asked       string            `json:"asked"`
+	Files       []string          `json:"files"`
+	Release     int               `json:"release"`
+	Licence     SuggestionLicence `json:"licence"`
+	Status      SuggestionStatus  `json:"status"`
+	Reason      string            `json:"reason,omitempty"`
+	TakenIn     int               `json:"taken_in,omitempty"`
+	SuggestedAt time.Time         `json:"suggested_at"`
+	DecidedAt   *time.Time        `json:"decided_at,omitempty"`
+}
+
+// ForkSuggestions is GET /orgs/:org/apps/:app/fork/suggestions: the fork's suggestions, newest
+// first.
+type ForkSuggestions struct {
+	Suggestions []ForkSuggestion `json:"suggestions"`
+}
+
+// ForkSuggestRequest is POST /orgs/:org/apps/:app/fork/suggestions: the change of the code the
+// fork runs to suggest, by name.
+type ForkSuggestRequest struct {
+	Change string `json:"change"`
+}
+
+// ForkDetail is one thing of the business's own that the lines a suggestion would send hold: the
+// file and the line, none for the file's name, and what it is, never the value.
+type ForkDetail struct {
+	File string `json:"file"`
+	Line int    `json:"line,omitempty"`
+	What string `json:"what"`
+}
+
+// SuggestionLicence is the licence a business gives Whisk a suggested change's lines under, which
+// the person is shown before they suggest one.
+type SuggestionLicence string
+
+// SuggestionMIT is the MIT licence, which Whisk's own examples are published under.
+const SuggestionMIT SuggestionLicence = "MIT"
+
+// SuggestionStatus is what became of a suggestion.
+type SuggestionStatus string
+
+const (
+	SuggestionOpen     SuggestionStatus = "open"
+	SuggestionReplaced SuggestionStatus = "replaced"
+	SuggestionDeclined SuggestionStatus = "declined"
+	SuggestionTaken    SuggestionStatus = "taken"
+)
+
 // ManagedRelease is one release of a product: the source deploy's commit and when it went live.
 type ManagedRelease struct {
 	ID     string    `json:"id"`
