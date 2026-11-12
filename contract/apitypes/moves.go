@@ -22,8 +22,9 @@ const (
 	AppMoveCancelled AppMoveStatus = "cancelled"
 )
 
-// AppMoveStep is the step a move is on, or done. Switch is the one step that changes the app
-// that moves: its uploads and addresses go to the new app and it is deleted.
+// AppMoveStep is the step a move is on, or done: files, then switch, which hands the app to the
+// new business in place, then done. App, secrets, code and database are the steps of moves made
+// before moves were in place, and no move is on them now.
 type AppMoveStep string
 
 const (
@@ -37,9 +38,9 @@ const (
 )
 
 // AppMove is one move: the app that moves (App, AppID) from the business From, the business To it
-// goes to, and once made the new app there (NewApp) at URL. OldURL is the address it had, which
-// sends visitors on to URL once the move is done. SecretsURL is the new app's secrets page while a
-// name it reads has no value.
+// goes to, and once done the app's slug there (NewApp) at URL, with the same ID. OldURL is the
+// address it had, which sends visitors on to URL once the move is done. SecretsURL is the app's
+// secrets page while a name it reads has no value.
 type AppMove struct {
 	ID         string          `json:"id"`
 	From       string          `json:"from"`

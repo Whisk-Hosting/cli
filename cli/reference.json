@@ -373,7 +373,7 @@
    },
    {
     "usage": "whisk apps move \u003capp\u003e --to \u003cbusiness\u003e",
-    "short": "Move an app, its data, files, keys and address, to another business you run",
+    "short": "Hand an app, with its data, files, keys and address, to another business you run",
     "flags": [
      {
       "name": "--no-wait",

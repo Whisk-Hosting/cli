@@ -27,12 +27,13 @@ func moveCmd(s *session) *cobra.Command {
 	var noWait bool
 	c := &cobra.Command{
 		Use:   "move <app> --to <business>",
-		Short: "Move an app, its data, files, keys and address, to another business you run",
-		Long: `Moves the app (<app> in the current org, or <org>/<app>) to another business the same person
-owns or administers: its code with history, production database, uploaded files with their ids,
-secrets with their values, custom domains and address. The old address sends visitors on to the
-new one, and the app in the old business is deleted once the new one is live (restorable for 7
-days). Members and grants stay with the old business.
+		Short: "Hand an app, with its data, files, keys and address, to another business you run",
+		Long: `Hands the app (<app> in the current org, or <org>/<app>) to another business the same person
+owns or administers, in place: it keeps its id, code with history, databases and backups,
+uploaded files, secrets with their values, customers, connections, previews, deploys, custom
+domains and address. It starts again there on the build it runs now, and the old address sends
+visitors on to the new one. Members, team grants, links to other apps and a GitHub link stay
+with the old business.
 
 A person, signed in, moves an app. An agent's login moves one only between two of Whisk's own
 businesses its person runs both of; for any other move it prints the link where the person does
@@ -170,7 +171,7 @@ func moveLines(m api.AppMove, page string) []string {
 	switch m.Status {
 	case apitypes.AppMoveDone:
 		out := []string{fmt.Sprintf("Moved %s/%s to %s/%s: %s", m.From, m.App, m.To, m.NewApp, m.URL),
-			m.OldURL + " now sends visitors there. The app left in " + m.From + " is deleted and can be restored for 7 days."}
+			m.OldURL + " now sends visitors there."}
 		if m.SecretsURL != "" {
 			out = append(out, "Some keys still need a value: "+m.SecretsURL)
 		}
