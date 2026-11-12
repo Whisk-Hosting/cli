@@ -95,6 +95,9 @@ func TestCallSendsToTheApp(t *testing.T) {
 	}
 	mux := http.NewServeMux()
 	var srv *httptest.Server
+	// slowDone closes once the slow call's handler has answered, which the client gave up on
+	// first: the test reads got only after it, so the two never touch got at once.
+	slowDone := make(chan struct{})
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"slug": "crm", "url": srv.URL + "/app"})
 	})
@@ -116,6 +119,7 @@ func TestCallSendsToTheApp(t *testing.T) {
 		case "/app/slow":
 			time.Sleep(500 * time.Millisecond)
 			writeJSON(w, 200, map[string]any{})
+			close(slowDone)
 		case "/app/moved":
 			http.Redirect(w, r, "/elsewhere", http.StatusFound)
 		default:
@@ -168,6 +172,7 @@ func TestCallSendsToTheApp(t *testing.T) {
 	if r.Code != 5 || errCode(r) != "PLATFORM_UNAVAILABLE" || !strings.Contains(r.Stdout, "had no answer within 100ms") {
 		t.Errorf("past the deadline: %+v", r)
 	}
+	<-slowDone
 	r = runRemote(t, dir, srv.URL, nil, "call", "GET", "/x", "--env", "draft", "--json")
 	if r.Code != 0 || got.path != "preview:/preview/x" {
 		t.Errorf("--env: %+v, %q", r, got.path)

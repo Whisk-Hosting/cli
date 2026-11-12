@@ -120,7 +120,7 @@ These paths are reserved on every app hostname and never reach the app:
 | `/.whisk/logout?return=<path>` | Ends the session on this hostname, then redirects to `return`. |
 | `/.whisk/ready` | 200 when the app is awake; used by the waking page. |
 | `/.whisk/media/<id>`, `/.whisk/player.js` | An uploaded video or audio file and the player that plays it. |
-| `/.whisk/img/<id>?w=&h=&fit=&format=` | An uploaded image in the size and format asked for. |
+| `/.whisk/img/<id>?w=&h=&fit=&format=` | An uploaded image in the size and format asked for. `X-Whisk-Image` says how: `kept` (made before, which includes the sizes the app's pages usually ask for, drawn once the upload passes its scan), `drawn` (made for this request) or `nearest` (the image has as many sizes as it may keep, so the nearest one answered). |
 | `/.whisk/bar.js` | The Whisk bar's script. |
 | `/.well-known/oauth-protected-resource`, and the same followed by `mcp.path` | The MCP server's OAuth metadata (RFC 9728), when the manifest names `mcp.path`; otherwise the app's own. |
 | either, with `exp`, `kid` and `sig` | A private upload for someone without a Whisk sign-in, through a link the app's server signed with `POST …/uploads/links` (CONTRACT.md §8). |
