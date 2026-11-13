@@ -469,6 +469,9 @@ type Whoami struct {
 	// (CONTROL-PLANE.md §6.37): the dashboard shows what a flag switches on only to those it is on
 	// for. Absent when none is.
 	Flags []string `json:"flags,omitempty"`
+	// LastOrg is the ID of the business the person last opened in the dashboard, one of Orgs, so
+	// a sign-in lands there. Absent when they have opened none they still belong to.
+	LastOrg string `json:"last_org,omitempty"`
 }
 
 // NotInLogin is a business the person belongs to that the login in use does not cover: its
