@@ -285,6 +285,10 @@
       "type": "boolean",
       "default": false
     },
+    "commerce": {
+      "description": "medusa when the app's API is the shop template's Medusa server. Whisk may then answer that API for the app with its own commerce server, with the same answers on the same database; the app keeps serving its pages.",
+      "enum": ["medusa"]
+    },
     "b2b": {
       "description": "true asks the build for trade ordering, the shop template's private plugin, given only to Promoted apps in force. Needs promoted: true.",
       "type": "boolean",

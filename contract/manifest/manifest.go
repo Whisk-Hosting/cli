@@ -76,6 +76,9 @@ type Manifest struct {
 	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
 	// gives only to Promoted apps in force (CONTRACT.md §11).
 	B2B bool `json:"b2b"`
+	// Commerce is "medusa" when the app's API is the shop template's Medusa server, which Whisk
+	// may answer with its own commerce server (CONTRACT.md §11).
+	Commerce string `json:"commerce,omitempty"`
 	// Workers are long-running processes a Promoted app runs beside its web process, in the
 	// same container (CONTRACT.md §3.2).
 	Workers []Worker `json:"workers"`

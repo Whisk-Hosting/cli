@@ -389,6 +389,7 @@ email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
 promoted: false                   # runs only as a Promoted app (§4) · paid
 b2b: false                        # the shop template's trade ordering, beside promoted: true (§4) · paid
+commerce: medusa                  # the shop template's own setting: keep it in a shop made from it (§4)
 workers: []                       # an existing app's own job processes, beside promoted: true (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
@@ -742,7 +743,9 @@ A Promoted app is where an existing product brings what it already has:
 - **Trade ordering.** The shop template (a Medusa shop) runs on any plan with room for it and
   keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
   account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and
-  a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`.
+  a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
+  `commerce: medusa`: keep it, and leave its API (`/store`, `/admin`, `/auth`, `/hooks`) to the
+  template's server, since Whisk may answer that API itself with the same answers.
 
 Who may open the app (groups, people, everyone in the business) and who is in the business are
 an owner's or admin's choice. Everyone in the business means its members. A guest, someone from

@@ -4015,6 +4015,73 @@ Fix: Run `whisk deploy` again: the update is rehearsed on a new copy.
 {"error":{"code":"REHEARSAL_GONE","message":"The copy of the app's data the update was rehearsed on was dropped before the rehearsal ended. Nothing ran on the live data.","fix":"Run whisk deploy again: the update is rehearsed on a new copy.","docs":"https://skill.whisk.run/errors/REHEARSAL_GONE","details":{"step":"rehearse"}}}
 ```
 
+## ENGINE_UNAVAILABLE
+
+Status: - · Surface: deploy, node
+
+When: a shop's deploy (`commerce: medusa`) was to have its API answered by Whisk's commerce
+server, and the machine it was placed on could not answer it there. It arrives as
+`PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`. Nothing of the shop changed, and
+the version that was live is still live.
+
+Fix: Nothing in the app causes this. Run `whisk deploy` again later; if it fails the same way,
+report the deploy id with `whisk feedback`.
+
+```json
+{"error":{"code":"ENGINE_UNAVAILABLE","message":"The shop's API could not be answered on the machine this deploy was placed on, so the deploy stopped. The version that was live is still live.","fix":"Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/ENGINE_UNAVAILABLE","details":{"step":"start"}}}
+```
+
+## ENGINE_SHOP_BUSY
+
+Status: 503 · Surface: edge
+
+When: a shop whose API Whisk's commerce server answers (`commerce: medusa`) is answering as many
+requests as it may at once. Other shops are not slowed by it. `Retry-After` says when to try again.
+
+Fix: Try again in a second.
+
+```json
+{"error":{"code":"ENGINE_SHOP_BUSY","message":"The shop is answering as many requests as it can at once.","fix":"Try again in a second.","docs":"https://skill.whisk.run/errors/ENGINE_SHOP_BUSY","details":{}}}
+```
+
+## ENGINE_SHOP_UNAVAILABLE
+
+Status: 503 · Surface: edge
+
+When: a shop whose API Whisk's commerce server answers (`commerce: medusa`) could not be opened
+just now: its database or its settings could not be reached.
+
+Fix: Try again shortly; if it keeps failing, the engine's log names the cause.
+
+```json
+{"error":{"code":"ENGINE_SHOP_UNAVAILABLE","message":"The shop cannot answer right now.","fix":"Try again shortly; if it keeps failing, the engine's log names the cause.","docs":"https://skill.whisk.run/errors/ENGINE_SHOP_UNAVAILABLE","details":{}}}
+```
+
+## ENGINE_SHOP_UNKNOWN
+
+Status: 404 · Surface: edge
+
+When: Whisk's commerce server was asked for a shop it does not answer: the address's app is not a
+shop (`commerce: medusa`) deployed on that machine, as for a moment while a deploy moves it.
+
+Fix: Check the address; a shop answers once its app is deployed with the commerce engine.
+
+```json
+{"error":{"code":"ENGINE_SHOP_UNKNOWN","message":"No shop answers at this address.","fix":"Check the address; a shop answers once its app is deployed with the commerce engine.","docs":"https://skill.whisk.run/errors/ENGINE_SHOP_UNKNOWN","details":{}}}
+```
+
+## ENGINE_EDGE_ONLY
+
+Status: 403 · Surface: edge
+
+When: Whisk's commerce server was reached other than through a shop's own address.
+
+Fix: Send the request to the shop's address; the engine is not reachable directly.
+
+```json
+{"error":{"code":"ENGINE_EDGE_ONLY","message":"The commerce engine answers only through the shop's own address.","fix":"Send the request to the shop's address; the engine is not reachable directly.","docs":"https://skill.whisk.run/errors/ENGINE_EDGE_ONLY","details":{}}}
+```
+
 ## DATABASE_MOVE_FAILED
 
 Status: - · Surface: deploy
