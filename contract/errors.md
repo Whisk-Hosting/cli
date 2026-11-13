@@ -518,12 +518,13 @@ Fix: Hand the business over and let it choose its own plan first, then boost the
 Status: 402 · Surface: api
 
 When: giving an app Boost or making it a Promoted app, which is charged at once for the days to
-the business's next billing day, found no card to charge (`details.reason: none`), or
+the business's next billing day, or making a copy of a priced product on Free, which is charged
+its first month at once (`details.product`), found no card to charge (`details.reason: none`), or
 the card was declined or wanted the bank's confirmation (`details.reason: declined`). Nothing was
-charged and the app is unchanged. `details.card_url` is a page to give a card on, which comes
-back to the app.
+charged and the app is unchanged, or no copy was made. `details.card_url` is a page to give a
+card on, which comes back to the app, or to the product's page.
 
-Fix: Add a card at `details.card_url`, then boost or promote the app again.
+Fix: Add a card at `details.card_url`, then boost or promote the app, or make the copy, again.
 
 ```json
 {"error":{"code":"CARD_NEEDED","message":"Acme has no card to charge Boost to.","fix":"Add a card at https://whisk.run/o/acme/billing/pay/pay_x8Hq2, then boost the app.","docs":"https://skill.whisk.run/errors/CARD_NEEDED","details":{"reason":"none","card_url":"https://whisk.run/o/acme/billing/pay/pay_x8Hq2"}}}
