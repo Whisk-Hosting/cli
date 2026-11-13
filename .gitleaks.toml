@@ -6,9 +6,10 @@ title = "whisk"
 useDefault = true
 
 [allowlist]
-description = "Recorded webhook fixtures carry the throwaway secret they were signed with, and documented example values are shaped like the real thing on purpose."
+description = "Recorded webhook fixtures carry the throwaway secret they were signed with, the commerce engine's token test holds a token Medusa signed with the public development secret, and documented example values are shaped like the real thing on purpose."
 paths = [
   '''^contract/fixtures/webhooks/[^/]+/[^/]+\.json$''',
+  '''^commerce/engine/auth/token_test\.go$''',
 ]
 regexes = [
   '''whsec_(fixture|test|canary)_[0-9a-z]+''',
