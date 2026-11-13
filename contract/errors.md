@@ -324,7 +324,8 @@ business in its settings, then delete your account again.
 
 Status: 402 · Surface: api
 
-When: creating another app would exceed the plan's app count.
+When: publishing another app would exceed the plan's app count, or a new release of an app that
+moved into the business while it had no room. A moved app keeps serving its current release.
 
 Fix: Delete an unused app with `whisk apps delete`, or ask an owner to upgrade the plan at the
 billing URL.
@@ -341,7 +342,8 @@ When: the first production deploy of an app in a business on the Free plan that 
 Every person gets one free app, for the first business they set up, and every work email domain
 gets one, for the first business confirmed with it. A further business can be created and can
 deploy previews, but publishes only on a paid plan or during a trial it has running.
-`details.held_by` names the business that has the free app. A push to the default branch that
+An app moved into such a business keeps serving its current release and takes no new one until
+the business is on a paid plan. `details.held_by` names the business that has the free app. A push to the default branch that
 would be that deploy is refused at pre-receive with this error, so `whisk deploy` fails at once.
 
 Fix: Ask an owner to choose a paid plan on the business's billing page. Preview deployments keep working meanwhile.

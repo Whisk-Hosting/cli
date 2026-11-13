@@ -66,13 +66,16 @@ type AppMoveRequest struct {
 }
 
 // AppMoveTarget is a business the person runs that the app could move to: the app's slug and
-// address there, and the refusal when it cannot go.
+// address there, the refusal when it cannot go, and why it would wait there when the business
+// has no room for another live app (FREE_APP_TAKEN or PLAN_LIMIT_APPS): it moves and keeps
+// running its current release, and takes no new release until the business has room.
 type AppMoveTarget struct {
 	Org     string          `json:"org"`
 	Name    string          `json:"name"`
 	App     string          `json:"app"`
 	URL     string          `json:"url"`
 	Refusal *werrors.Detail `json:"refusal,omitempty"`
+	Waits   *werrors.Detail `json:"waits,omitempty"`
 }
 
 // AppMoveTargets is GET /orgs/:org/apps/:app/move/targets: every other business the person is an
