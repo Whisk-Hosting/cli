@@ -79,7 +79,7 @@ func dbName(app string) string { return strings.ReplaceAll(app, "-", "_") }
 // Hash identifies the inputs a compose file was generated from, so a changed manifest or
 // port set regenerates it and an unchanged one is reused while the stack runs.
 func Hash(m manifest.Manifest, ports Ports, internalPort int) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%v|%v|%v|%d", m.Name, m.KV, m.Storage, ports, internalPort)))
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%v|%v|%v|%v|%d", m.Name, m.KV, m.KeepsKVKeys(), m.Storage, ports, internalPort)))
 	return hex.EncodeToString(sum[:8])
 }
 
@@ -124,6 +124,9 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 	if m.KV {
 		w("  valkey:")
 		w("    image: %s", imageValkey)
+		// The eviction policy the app's cache has on Whisk (kv_evict), so a queue library that
+		// warns about it does so here first.
+		w(`    command: ["valkey-server", "--maxmemory-policy", %q]`, kvPolicy(m))
 		w(`    ports: ["127.0.0.1:%d:6379"]`, ports.Valkey)
 		w(`    volumes: ["valkey:/data"]`)
 	}
@@ -151,6 +154,14 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 		w("  storage: {}")
 	}
 	return b.String()
+}
+
+// kvPolicy is the maxmemory-policy of the app's cache on Whisk (SKILL.md §9). Pure.
+func kvPolicy(m manifest.Manifest) string {
+	if m.KeepsKVKeys() {
+		return "noeviction"
+	}
+	return "allkeys-lru"
 }
 
 // yamlString quotes s for a YAML flow sequence: JSON's quoting is valid YAML, so a quote in the

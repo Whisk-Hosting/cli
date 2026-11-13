@@ -983,3 +983,17 @@ moved:
 values: every number kept, as a "Work" entry
 fix: read phone_jsonb where you read phone_number
 ```
+
+## W175
+
+Level: warning
+Check: the app runs a job queue on a cache that evicts keys when it is full.
+Fix: Set kv_evict: false in whisk.yaml, so the cache keeps every key and refuses writes until there is room.
+Safe fix: no
+
+Details: only when `kv: true` and `kv_evict` is not false. A queue keeps its jobs as keys, so a
+cache that makes room by dropping the keys used least recently drops jobs too. Matched in server
+code: JavaScript imports of `bullmq`, `bull` and `bee-queue`, and Medusa's
+`@medusajs/medusa/event-bus-redis` and `@medusajs/medusa/workflow-engine-redis` (with or
+without `medusa/`) named as modules; Python imports of `rq`, `arq`, `celery` and `dramatiq`; Go
+imports of `github.com/hibiken/asynq`. One finding, at the first match.

@@ -65,8 +65,11 @@ type Manifest struct {
 	RedirectsFile string            `json:"redirects_file,omitempty"`
 	Storage       bool              `json:"storage"`
 	KV            bool              `json:"kv"`
-	Email         bool              `json:"email"`
-	AlwaysOn      bool              `json:"always_on"`
+	// KVEvict is whether a full cache drops its least recently used key (nil and true) or keeps
+	// every key and refuses writes (false), which a job queue needs (SKILL.md §9).
+	KVEvict  *bool `json:"kv_evict,omitempty"`
+	Email    bool  `json:"email"`
+	AlwaysOn bool  `json:"always_on"`
 	// Promoted is true when the app runs only as a Promoted app: its production deploy waits
 	// until it is one (CONTROL-PLANE.md §6.15).
 	Promoted bool `json:"promoted"`
@@ -937,7 +940,7 @@ func checkRules(m Manifest) Problems {
 // manifestRules are the checks beyond the schema, in the order their problems are listed. Each
 // is pure and checks one part of the manifest.
 var manifestRules = []func(Manifest) Problems{
-	checkChallengeRoutes, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkB2B,
+	checkChallengeRoutes, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV, checkB2B,
 	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
 	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects, checkFlags,
 }
@@ -1010,6 +1013,17 @@ func checkSignIn(m Manifest) Problems {
 		ps = append(ps, invalid("/sign_in/logo", m.SignIn.Logo+" must be a path in the repository, such as brand/logo.png"))
 	}
 	return ps
+}
+
+// KeepsKVKeys reports whether the app's cache keeps every key when full instead of evicting:
+// only when it asks for a cache and sets kv_evict: false. Pure.
+func (m Manifest) KeepsKVKeys() bool { return m.KV && m.KVEvict != nil && !*m.KVEvict }
+
+func checkKV(m Manifest) Problems {
+	if m.KVEvict != nil && !m.KV {
+		return Problems{invalid("/kv_evict", "kv_evict says how the app's cache makes room, so it needs kv: true as well")}
+	}
+	return nil
 }
 
 func checkB2B(m Manifest) Problems {

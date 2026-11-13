@@ -71,5 +71,9 @@ func kvRoute(w http.ResponseWriter, req *http.Request) {
 	if n, err := c.DBSize(ctx).Result(); err == nil {
 		out["keys"] = n
 	}
+	// How the cache makes room when full: allkeys-lru, or noeviction with kv_evict: false (H25).
+	if conf, err := c.ConfigGet(ctx, "maxmemory-policy").Result(); err == nil {
+		out["policy"] = conf["maxmemory-policy"]
+	}
 	writeJSON(w, 200, out)
 }

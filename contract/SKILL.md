@@ -379,6 +379,7 @@ redirects:                        # old addresses the edge redirects, before the
 redirects_file: redirects.txt     # more rules, one a line: from to [status] [query=drop]
 storage: false                    # files, uploads, images, video (§9) · every plan
 kv: false                         # a Redis of its own (§9) · paid
+kv_evict: true                    # false for a job queue: a full cache refuses writes (§9)
 email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
 promoted: false                   # runs only as a Promoted app (§4) · paid
@@ -1600,8 +1601,13 @@ job (§7), or in parts. Write each finished PDF to storage under `WHISK_STORAGE_
 its key: serve it from there rather than rendering it again, and email it by `storage_key`.
 
 **Key-value** (`kv: true`). Any Redis client with `WHISK_KV_URL`. The instance is the app's own,
-so no prefix is needed. For counters, short caches and locks. Not durable: it empties when the
-app sleeps. Starter and above include it; the free app does not, so there the app deploys
+so no prefix is needed. Use it for counters, short caches, locks and job queues. It is not
+durable: it empties when the app sleeps, so keep anything that must survive in the database.
+When the cache is full it drops the keys used least recently. A job queue loses jobs that way,
+so an app that runs one on the cache (BullMQ, Bull, Bee-Queue, Medusa's Redis event bus or
+workflow engine, RQ, Celery, Dramatiq, arq, asynq) sets `kv_evict: false`: the cache then keeps
+every key and refuses new writes until there is room. Changing `kv_evict` restarts the cache,
+which empties it. Starter and above include it; the free app does not, so there the app deploys
 without a cache, `WHISK_KV_URL` is unset, and the push and the app's logs say so with `W080`.
 Remove `kv` or ask an owner to move to Starter. A free app that already had a cache keeps it.
 

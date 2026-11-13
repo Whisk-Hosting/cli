@@ -265,6 +265,11 @@
       "type": "boolean",
       "default": false
     },
+    "kv_evict": {
+      "description": "How the cache makes room when it is full. true drops the least recently used key, for counters, short caches and locks. false keeps every key and refuses new writes until there is room, which a job queue such as BullMQ needs. Needs kv: true. Changing it restarts the cache, which empties it.",
+      "type": "boolean",
+      "default": true
+    },
     "email": {
       "description": "true allows this app to POST to the email send API.",
       "type": "boolean",
