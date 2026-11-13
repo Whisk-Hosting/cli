@@ -139,6 +139,21 @@ type Billing struct {
 	// Licences is the monthly licences of the business's copies of priced demos that have not
 	// ended (CONTROL-PLANE.md §6.1 Demos, "A price").
 	Licences []BillingLicence `json:"licences"`
+	// Referrals is the business's referral link and where its referrals stand; absent for a
+	// business that takes no part in referrals (CONTROL-PLANE.md §6.15 "Referrals").
+	Referrals *BillingReferrals `json:"referrals,omitempty"`
+}
+
+// BillingReferrals is a business's referrals on its billing page: the link to share, the live
+// apps its referrals add now (BonusApps, at most CapApps, AppsEach for each), how many count and
+// how many wait for their business's first payment. The bonus applies on a paid plan.
+type BillingReferrals struct {
+	Link      string `json:"link"`
+	BonusApps int64  `json:"bonus_apps"`
+	Counted   int    `json:"counted"`
+	Waiting   int    `json:"waiting"`
+	AppsEach  int    `json:"apps_each"`
+	CapApps   int    `json:"cap_apps"`
 }
 
 // BillingLicence is one copy's monthly licence on the billing page: the copy's app, the
