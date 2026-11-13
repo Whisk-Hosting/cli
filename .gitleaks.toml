@@ -6,7 +6,7 @@ title = "whisk"
 useDefault = true
 
 [allowlist]
-description = "Recorded webhook fixtures carry the throwaway secret they were signed with, the commerce engine's token test holds a token Medusa signed with the public development secret, and documented example values are shaped like the real thing on purpose."
+description = "Recorded webhook fixtures carry the throwaway secret they were signed with, the commerce engine's token test holds a token Medusa signed with the public development secret, documented example values are shaped like the real thing on purpose, and an API key's id (apk_, never its pk_ or sk_ token) is not a secret."
 paths = [
   '''^contract/fixtures/webhooks/[^/]+/[^/]+\.json$''',
   '''^commerce/engine/auth/token_test\.go$''',
@@ -16,4 +16,5 @@ regexes = [
   '''signkey-test-0+''',
   '''whisk-stub-event-key''',
   '''canary-secret-value-[0-9]+''',
+  '''^apk_[0-9A-Z]{26}$''',
 ]
