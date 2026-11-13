@@ -648,6 +648,21 @@ Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 {"error":{"code":"APP_PAUSED","message":"erp-link is paused.","fix":"Resume it with whisk resume erp-link or at https://whisk.run/o/acme/apps/erp-link.","docs":"https://skill.whisk.run/errors/APP_PAUSED","details":{"app":"erp-link","paused_at":"2026-10-10T01:00:00Z"}}}
 ```
 
+## APP_UNPAID
+
+Status: 402 · Surface: api
+
+When: a deploy of an app Whisk paused because the month a Free business pays ahead for it went
+unpaid for the payment grace. The edge answers its hostnames with the plain paused page, and the
+business's other apps run on. Paying the month resumes it within a minute.
+
+Fix: Ask the billing contact to pay the open invoice at the business's billing page, then deploy
+again.
+
+```json
+{"error":{"code":"APP_UNPAID","message":"crm is paused because its month is unpaid.","fix":"Ask the billing contact to pay the open invoice at https://whisk.run/o/acme/billing, then deploy again.","docs":"https://skill.whisk.run/errors/APP_UNPAID","details":{"app":"crm"}}}
+```
+
 ## MANAGED_UNAVAILABLE
 
 Status: 409 · Surface: api
