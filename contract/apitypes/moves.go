@@ -56,8 +56,30 @@ type AppMove struct {
 	Step       AppMoveStep     `json:"step"`
 	Error      *werrors.Detail `json:"error,omitempty"`
 	SecretsURL string          `json:"secrets_url,omitempty"`
-	CreatedAt  time.Time       `json:"created_at"`
-	DoneAt     *time.Time      `json:"done_at,omitempty"`
+	// Files is how far its files step is, once it began counting.
+	Files *AppMoveFiles `json:"files,omitempty"`
+	// Steps is when each step started and ended, in the order a move goes.
+	Steps     []AppMoveStepTime `json:"steps,omitempty"`
+	CreatedAt time.Time         `json:"created_at"`
+	DoneAt    *time.Time        `json:"done_at,omitempty"`
+}
+
+// AppMoveFiles is how far a move's files step is: what it had to carry when it began or carried
+// on, what it carried since, and about how many seconds are left at the rate so far (omitted
+// until it can tell).
+type AppMoveFiles struct {
+	Total       int64  `json:"total"`
+	Done        int64  `json:"done"`
+	BytesTotal  int64  `json:"bytes_total"`
+	BytesDone   int64  `json:"bytes_done"`
+	SecondsLeft *int64 `json:"seconds_left,omitempty"`
+}
+
+// AppMoveStepTime is when one step of a move started and, once it did, ended.
+type AppMoveStepTime struct {
+	Step      AppMoveStep `json:"step"`
+	StartedAt time.Time   `json:"started_at"`
+	EndedAt   *time.Time  `json:"ended_at,omitempty"`
 }
 
 // AppMoveRequest is POST /orgs/:org/apps/:app/move: ToOrg is the business it goes to, by slug.
@@ -86,7 +108,7 @@ type AppMoveTargets struct {
 
 // The move's types join the wire types the TypeScript is written from.
 var (
-	_ = more.addWire(AppMove{}, AppMoveRequest{}, AppMoveTarget{}, AppMoveTargets{})
+	_ = more.addWire(AppMove{}, AppMoveFiles{}, AppMoveStepTime{}, AppMoveRequest{}, AppMoveTarget{}, AppMoveTargets{})
 	_ = more.addEnum(enumOf("AppMoveStatus", "APP_MOVE_STATUSES", AppMoveQueued, AppMoveRunning, AppMoveDone, AppMoveFailed, AppMoveCancelled))
 	_ = more.addEnum(enumOf("AppMoveStep", "APP_MOVE_STEPS", MoveStepApp, MoveStepSecrets, MoveStepCode, MoveStepFiles, MoveStepDatabase, MoveStepSwitch, MoveStepDone))
 )
