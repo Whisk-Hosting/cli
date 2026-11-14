@@ -193,6 +193,16 @@ Built for agents:
 - One static binary (`CGO_ENABLED=0`) for Linux, macOS and Windows on amd64 and arm64. `git` is
   the only runtime dependency.
 
+### What the CLI sends about commands it does not have
+
+When a command line fails before any command runs, such as a command or flag this version does
+not have, the CLI tells Whisk what shape it had. That is how we learn which commands agents expect
+and add them. It sends the command, the unknown word or flag names, the names of the flags given,
+how many arguments there were, the CLI version, the operating system, and the agent's name when the
+agent gives one. It never sends argument or flag values, file paths, secrets or emails, and it
+sends nothing about the commands that do run. Set `WHISK_NO_TELEMETRY=1` or `DO_NOT_TRACK=1` to turn it off.
+The code is [`cli/whisk/misses.go`](cli/whisk/misses.go).
+
 ## Signed releases
 
 Each release's `SHA256SUMS` is signed with an Ed25519 key held only on the build machine. The

@@ -14,6 +14,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strings"
 	"time"
 
@@ -141,10 +142,7 @@ var StallArgs = []string{"-c", "http.lowSpeedLimit=1000", "-c", "http.lowSpeedTi
 // Networked is the arguments of a git command that talks to the platform: the credential's -c
 // arguments, StallArgs, then the command and its arguments, in a new slice.
 func Networked(credential []string, command ...string) []string {
-	out := make([]string, 0, len(credential)+len(StallArgs)+len(command))
-	out = append(out, credential...)
-	out = append(out, StallArgs...)
-	return append(out, command...)
+	return slices.Concat(credential, StallArgs, command)
 }
 
 // Sideband is what the server said during a push: lines prefixed "whisk:" on git's sideband.
@@ -319,10 +317,7 @@ func LastLines(text string, n int) []string {
 			kept = append(kept, strings.TrimRight(l, "\r"))
 		}
 	}
-	if len(kept) > n {
-		kept = kept[len(kept)-n:]
-	}
-	return kept
+	return kept[max(0, len(kept)-n):]
 }
 
 // TraceEnv is the environment that has one git invocation write the headers of each HTTP

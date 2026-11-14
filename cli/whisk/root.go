@@ -49,6 +49,9 @@ type Env struct {
 	GOOS string
 	// Now is the clock; nil means time.Now (tests set it).
 	Now func() time.Time
+	// ReportMisses sends the shape of a command line the CLI could not run to Whisk (CLI.md §7).
+	// The binary sets it; tests and programs driving the CLI as a library leave it off.
+	ReportMisses bool
 }
 
 // session is what every command receives: flags, config, output and lazy API access.
@@ -94,6 +97,12 @@ func Run(ctx context.Context, args []string, env Env) int {
 	// have its streams, or the error itself would crash.
 	s.printer = output.Printer{Out: env.Stdout, Err: env.Stderr, Version: Version, Update: s.update}
 	root := newRoot(s)
+	markUsage(root)
+	// A word after a command that only groups others prints that command's help and succeeds;
+	// it is still a command the caller expected (CLI.md §7), so note the help being shown.
+	var helped []string
+	help := root.HelpFunc()
+	root.SetHelpFunc(func(c *cobra.Command, a []string) { helped = a; help(c, a) })
 	root.SetArgs(args)
 	root.SetIn(env.Stdin)
 	root.SetOut(env.Stdout)
@@ -104,8 +113,14 @@ func Run(ctx context.Context, args []string, env Env) int {
 			s.printer.JSON, s.printer.Quiet = true, true
 		}
 		code := s.printer.Fail(unknownInput(err))
+		if m, ok := missOf(err, root, args); ok {
+			s.reportMiss(m)
+		}
 		s.noticeUpdate()
 		return code
+	}
+	if m, ok := helpMiss(root, helped); ok {
+		s.reportMiss(m)
 	}
 	s.noticeUpdate()
 	return output.ExitOK

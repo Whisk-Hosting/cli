@@ -14,12 +14,13 @@ func main() {
 	whisk.TrustSystemStoreToo()
 	dir, _ := os.Getwd()
 	env := whisk.Env{
-		Stdin:      os.Stdin,
-		Stdout:     os.Stdout,
-		Stderr:     os.Stderr,
-		Getenv:     os.Getenv,
-		Dir:        dir,
-		IsTerminal: term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd())),
+		Stdin:        os.Stdin,
+		Stdout:       os.Stdout,
+		Stderr:       os.Stderr,
+		Getenv:       os.Getenv,
+		Dir:          dir,
+		IsTerminal:   term.IsTerminal(int(os.Stdin.Fd())) && term.IsTerminal(int(os.Stdout.Fd())),
+		ReportMisses: true,
 	}
 	os.Exit(whisk.Run(context.Background(), os.Args[1:], env))
 }
