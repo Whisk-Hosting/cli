@@ -90,6 +90,10 @@
           "type": "string",
           "pattern": "^/[^#\\s]*\\{path\\}[^#\\s]*$",
           "maxLength": 300
+        },
+        "setup": {
+          "description": "The app's setup list: a path on the app's own address answering GET, for a member of the business, with what the app still needs from them ({ready, items: [{key, label, required, done, fix, steps}]}). whisk deploy prints what is not done and the Whisk bar links the admin while something required is missing.",
+          "$ref": "#/$defs/path"
         }
       }
     },

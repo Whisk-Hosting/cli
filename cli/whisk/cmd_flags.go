@@ -9,8 +9,10 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // flagsCmd is the app's own feature flags (CLI.md §5.15, CONTRACT.md §3.3): the flags its
@@ -21,7 +23,7 @@ func flagsCmd(s *session) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		out, err := client.AppFlags(s.ctx, org, app)
+		out, err := api.Call(s.ctx, client, endpoints.AppFlags, org, app)
 		if err != nil {
 			return wrap(err)
 		}
@@ -118,7 +120,7 @@ func (s *session) setFlag(name string, change func(*apitypes.AppFlagRequest)) er
 	if err != nil {
 		return err
 	}
-	all, err := client.AppFlags(s.ctx, org, app)
+	all, err := api.Call(s.ctx, client, endpoints.AppFlags, org, app)
 	if err != nil {
 		return wrap(err)
 	}
@@ -129,7 +131,7 @@ func (s *session) setFlag(name string, change func(*apitypes.AppFlagRequest)) er
 	}
 	in := requestOfFlag(all.Items[i])
 	change(&in)
-	f, err := client.SetAppFlag(s.ctx, org, app, name, in)
+	f, err := api.Send(s.ctx, client, endpoints.SetAppFlag, in, org, app, name)
 	if err != nil {
 		return wrap(err)
 	}

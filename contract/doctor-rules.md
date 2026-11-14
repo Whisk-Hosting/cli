@@ -997,3 +997,14 @@ code: JavaScript imports of `bullmq`, `bull` and `bee-queue`, and Medusa's
 `@medusajs/medusa/event-bus-redis` and `@medusajs/medusa/workflow-engine-redis` (with or
 without `medusa/`) named as modules; Python imports of `rq`, `arq`, `celery` and `dramatiq`; Go
 imports of `github.com/hibiken/asynq`. One finding, at the first match.
+
+## W176
+
+Level: warning
+Check: a shop (commerce: medusa) names no setup list in admin.setup.
+Fix: Add admin.setup: /admin/whisk/setup to whisk.yaml, the list the shop answers of what the business still has to give before it takes orders.
+Safe fix: no
+
+Details: the shop template and Whisk's commerce engine answer `GET /admin/whisk/setup` with the
+list; `whisk deploy` prints what it says is missing and the Whisk bar shows `Finish setup` while
+something required is.

@@ -15,6 +15,9 @@ func TestAdmin(t *testing.T) {
 	if m.Admin == nil || m.Admin.Path != "/app" || m.Admin.Edit != "/app/edit?path={path}" {
 		t.Fatalf("admin = %+v", m.Admin)
 	}
+	if s, err := Parse([]byte("whisk: 1\nname: shop\nadmin:\n  path: /app\n  setup: /admin/whisk/setup\n")); err != nil || s.Admin.Setup != "/admin/whisk/setup" {
+		t.Fatalf("setup = %+v %v", s.Admin, err)
+	}
 	if none, _ := Parse([]byte("whisk: 1\nname: site\n")); none.Admin != nil {
 		t.Fatalf("no admin = %+v", none.Admin)
 	}
@@ -27,6 +30,7 @@ func TestAdmin(t *testing.T) {
 		{"edit on another host", "admin: {path: /app, edit: '//evil.example/{path}'}", "/admin/edit"},
 		{"edit twice", "admin: {path: /app, edit: '/a/{path}/{path}'}", "/admin/edit"},
 		{"something else", "admin: {path: /app, home: /}", "admin"},
+		{"setup on another host", "admin: {path: /app, setup: //evil.example}", "/admin/setup"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			_, err := Parse([]byte("whisk: 1\nname: site\n" + tc.yaml + "\n"))

@@ -938,7 +938,8 @@ func (s *session) finishDeploy(client *api.Client, org, app string, ev api.Deplo
 }
 
 // deployLive reports a deploy that went live: its address, how long it took to start, the
-// webhook addresses to paste, its warnings, and the secrets a person still has to set.
+// webhook addresses to paste, its warnings, what the app's setup list says the business still
+// has to do, and the secrets a person still has to set.
 func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployEvent, environment string) error {
 	unset := nonNilStrings(ev.Unset)
 	result := map[string]any{"deploy_id": ev.DeployID, "status": "live", "url": ev.URL, "unset_secrets": unset}
@@ -974,6 +975,11 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 	if len(hooks) > 0 {
 		result["webhooks"] = hooks
 	}
+	// What the app still needs from the business, when it keeps a setup list.
+	setup, setupText := s.setupOf(ev.URL)
+	if setup != nil {
+		result["setup"] = setup
+	}
 	s.printer.Result(result, func(w io.Writer) {
 		fmt.Fprintf(w, "%s %s\n", s.printer.Good(label), ev.URL)
 		if ev.StartMS != nil {
@@ -988,6 +994,7 @@ func (s *session) deployLive(client *api.Client, org, app string, ev api.DeployE
 		for _, wa := range warnings {
 			fmt.Fprintf(w, "%s %s\n  %s\n", s.printer.Warn(wa.Code+":"), wa.Message, wa.Fix)
 		}
+		printSetup(w, setupText)
 		if note != "" {
 			fmt.Fprintln(w, note)
 		}

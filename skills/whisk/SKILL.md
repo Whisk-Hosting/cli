@@ -740,6 +740,14 @@ A Promoted app is where an existing product brings what it already has:
   onto `migrate`. Size each library's own pool to the three direct connections. Whisk shows a
   worker's logs, restarts and memory, and does not see inside its jobs: no run history, replay
   or failure alerts. New background work is written as functions (§7) on every app.
+- **A shop's setup.** A shop made from the shop template goes live closed for orders
+  (`SHOP_NOT_READY`) until the business has given who is emailed each order and each enquiry, a
+  way to be paid, delivery options with prices and its name. Right after its first deploy, and
+  whenever its checkout is closed, read `whisk call GET /admin/whisk/setup` and walk the person
+  through each item not done, one at a time, in their words: each has a `fix` and `steps`, from
+  signing up for Stripe to pasting its keys on the secrets page. Ask for the details and send them
+  with `whisk call POST /admin/whisk/setup --data '{"orders_email": "…"}'`; recommend the rest
+  (GST number, phone, address, policy pages, own domain and email) without holding up the launch.
 - **Trade ordering.** The shop template (a Medusa shop) runs on any plan with room for it and
   keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
   account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and
@@ -783,6 +791,7 @@ toolbar, with `Admin` and `Edit page` links:
 admin:
   path: /admin                        # the admin's address on this app
   edit: "/admin/edit?path={path}"     # optional: opens the editor at the page with this path
+  setup: /admin/setup                 # optional: what the app still needs from the business
 ```
 
 `admin.path` and `admin.edit` are paths on the app's own address; `{path}` is the page's path,
@@ -792,6 +801,15 @@ guests or the public. Build the `admin.edit` route to check the person is on the
 them to `/.whisk/login?return=<this url>`), find what that path shows, and redirect to its edit
 screen, or to the list when nothing matches. An app with no admin leaves `admin` out and gets no
 bar. The site and shop templates already declare theirs.
+
+`admin.setup` names a route that answers `GET`, for a team member, with what the app still needs
+from the business before it works for its customers: `{"ready": false, "items": [{"key",
+"label", "required", "done", "fix", "steps"}]}`, `done` null for what the app cannot check
+itself. When an app needs the business's own details, accounts or choices to work (where emails
+go, how it is paid, its prices), keep them in the app, editable in its admin, and list them there
+rather than leaving a person to find them. `whisk deploy` prints each item not done once the
+deploy is live, required ones first, and the bar shows `Finish setup` beside `Admin` while a
+required one is missing. Walk the person through those items after a deploy.
 
 **An MCP server in the app.** When the person wants to use the app from Claude or ChatGPT,
 serve an MCP server (Streamable HTTP, one `POST` per JSON-RPC message) from the app and name

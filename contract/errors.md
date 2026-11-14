@@ -4082,6 +4082,20 @@ Fix: Send the request to the shop's address; the engine is not reachable directl
 {"error":{"code":"ENGINE_EDGE_ONLY","message":"The commerce engine answers only through the shop's own address.","fix":"Send the request to the shop's address; the engine is not reachable directly.","docs":"https://skill.whisk.run/errors/ENGINE_EDGE_ONLY","details":{}}}
 ```
 
+## SHOP_NOT_READY
+
+Status: 409 · Surface: shop
+
+When: a customer tried to place an order in a shop made from the shop template whose setup is
+not done: nobody is named to hear of orders or enquiries, there is no way to pay or no delivery
+option, or the business's name is missing. Checkout stays closed until each is done.
+
+Fix: The business finishes setting the shop up in its admin (/app); GET /admin/whisk/setup lists what is missing.
+
+```json
+{"error":{"code":"SHOP_NOT_READY","message":"The shop is not taking orders yet.","fix":"The business finishes setting the shop up in its admin (/app); GET /admin/whisk/setup lists what is missing.","docs":"https://skill.whisk.run/errors/SHOP_NOT_READY","details":{}}}
+```
+
 ## DATABASE_MOVE_FAILED
 
 Status: - · Surface: deploy

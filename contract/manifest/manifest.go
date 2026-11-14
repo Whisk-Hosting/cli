@@ -264,6 +264,10 @@ func (s SignIn) LogoPath() string {
 type Admin struct {
 	Path string `json:"path"`
 	Edit string `json:"edit,omitempty"`
+	// Setup is where the app answers what it still needs from the business (CONTRACT.md §3.5):
+	// whisk deploy prints it and the Whisk bar points at the admin while something required is
+	// missing. "" when the app keeps no list.
+	Setup string `json:"setup,omitempty"`
 }
 
 // MCP is the app's own MCP server: Path is where it answers, ReadTools the tools that only read.
@@ -1000,6 +1004,9 @@ func checkAdmin(m Manifest) Problems {
 	}
 	if m.Admin.Edit != "" && (!samePath(m.Admin.Edit) || strings.Count(m.Admin.Edit, "{path}") != 1) {
 		ps = append(ps, invalid("/admin/edit", m.Admin.Edit+" must be a path on the app's own address, starting with a single /, with {path} once where the page's path goes"))
+	}
+	if m.Admin.Setup != "" && !samePath(m.Admin.Setup) {
+		ps = append(ps, invalid("/admin/setup", m.Admin.Setup+" must be a path on the app's own address, starting with a single /"))
 	}
 	return ps
 }
