@@ -1431,7 +1431,9 @@ it again; the person grants the connection and the app's AI features work again.
 `WHISK_STORAGE_BUCKET`, `WHISK_STORAGE_ACCESS_KEY`, `WHISK_STORAGE_SECRET_KEY`,
 `WHISK_STORAGE_REGION`, writing under `WHISK_STORAGE_PREFIX`, which is this environment's own.
 The key reaches only that prefix: always list with the prefix, never the whole bucket, and keep
-no other app's file paths. A preview has its own prefix and key, apart from production's. Use
+no other app's file paths. Read the bucket's name from `WHISK_STORAGE_BUCKET` each time
+the app starts, never a copy of it: an app is given a bucket of its own once, with every file at
+the same key, and starts again with the new name. A preview has its own prefix and key, apart from production's. Use
 path-style addressing (`forcePathStyle: true` in the AWS SDK for JavaScript,
 `addressing_style: "path"` in boto3, `BucketLookupPath` in minio-go): the bucket goes in the
 path, not the hostname. The endpoint is reachable from your app and from browsers alike.
