@@ -24,7 +24,7 @@ var movePoll = 3 * time.Second
 // apps delete does.
 func moveCmd(s *session) *cobra.Command {
 	var to string
-	var noWait bool
+	var noWait, undo bool
 	c := &cobra.Command{
 		Use:   "move <app> --to <business>",
 		Short: "Hand an app, with its data, files, keys and address, to another business you run",
@@ -38,11 +38,14 @@ with the old business.
 A person, signed in, moves an app. An agent's login moves one only between two of Whisk's own
 businesses its person runs both of; for any other move it prints the link where the person does
 (NEEDS_HUMAN, exit 2). Otherwise it starts the move and follows it until it is done or failed;
---no-wait prints the move's page instead.`,
+--no-wait prints the move's page instead.
+
+--undo, in place of --to, moves the app back to the business its last move took it from: the
+app named in the business it is in now. Within a week of the move nothing is copied back.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if to == "" {
-				return output.New("INVALID_REQUEST", "Name the business the app moves to.", "Run whisk apps move <app> --to <business>, the business by its slug.", nil)
+			if (to == "") == !undo {
+				return output.New("INVALID_REQUEST", "Name the business the app moves to, or move it back with --undo.", "Run whisk apps move <app> --to <business>, the business by its slug, or whisk apps move <app> --undo.", nil)
 			}
 			refs, err := parseAppRefs(args, s.org)
 			if err != nil {
@@ -56,6 +59,11 @@ businesses its person runs both of; for any other move it prints the link where 
 			a, err := client.GetApp(s.ctx, org, refs[0].app)
 			if err != nil {
 				return wrap(err)
+			}
+			if undo {
+				if to, err = lastMoveFrom(s.ctx, client, org, a.ID); err != nil {
+					return err
+				}
 			}
 			m, err := client.MoveApp(s.ctx, org, a.ID, to)
 			var ae *api.Error
@@ -84,6 +92,7 @@ businesses its person runs both of; for any other move it prints the link where 
 	}
 	c.Flags().StringVar(&to, "to", "", "the business the app moves to, by slug")
 	c.Flags().BoolVar(&noWait, "no-wait", false, "print the move's page instead of following it")
+	c.Flags().BoolVar(&undo, "undo", false, "move the app back to the business its last move took it from")
 	return c
 }
 
@@ -124,6 +133,25 @@ func needsHumanMove(dash, org, app, id, to string) *output.Error {
 	}
 }
 
+// lastMoveFrom is the business the app in org goes back to with --undo (moveBackTo).
+func lastMoveFrom(ctx context.Context, client *api.Client, org, appID string) (string, error) {
+	last, err := client.GetMove(ctx, org, appID)
+	if err != nil {
+		return "", wrap(err)
+	}
+	return moveBackTo(last, org)
+}
+
+// moveBackTo is the business an app in org goes back to: the one its last move, done, took it
+// from. Pure.
+func moveBackTo(m api.AppMove, org string) (string, error) {
+	if m.Status != apitypes.AppMoveDone || m.To != org {
+		return "", output.New("INVALID_REQUEST", "The app's last move did not bring it to "+org+", so there is nothing to undo.",
+			"Name the business with --to instead.", map[string]any{"move": m.ID, "status": string(m.Status), "to": m.To})
+	}
+	return m.From, nil
+}
+
 // moveEnded reports whether a move is over or stopped for a person. Pure.
 func moveEnded(s apitypes.AppMoveStatus) bool {
 	return s == apitypes.AppMoveDone || s == apitypes.AppMoveFailed || s == apitypes.AppMoveCancelled
@@ -137,8 +165,8 @@ func followMove(ctx context.Context, client *api.Client, org, appID string, log 
 		if err != nil {
 			return m, err
 		}
-		if now := string(m.Status) + " " + string(m.Step); now != last {
-			fmt.Fprintf(log, "move: %s, %s\n", m.Status, m.Step)
+		if now := followLine(m); now != last {
+			fmt.Fprintln(log, now)
 			last = now
 		}
 		if moveEnded(m.Status) {
@@ -150,6 +178,16 @@ func followMove(ctx context.Context, client *api.Client, org, appID string, log 
 		case <-time.After(every):
 		}
 	}
+}
+
+// followLine is the line whisk apps move prints as a move goes: its status and step, and how many
+// of the app's files it carried while on its files step. Pure.
+func followLine(m api.AppMove) string {
+	line := fmt.Sprintf("move: %s, %s", m.Status, m.Step)
+	if m.Files != nil && m.Step == apitypes.MoveStepFiles && m.Files.Total > 0 {
+		line += fmt.Sprintf(", %d of %d files", m.Files.Done, m.Files.Total)
+	}
+	return line
 }
 
 // moveFailed is the error a failed move recorded, with the page where a person retries or

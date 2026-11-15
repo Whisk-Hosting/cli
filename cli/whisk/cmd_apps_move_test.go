@@ -124,3 +124,33 @@ func TestAppsMove(t *testing.T) {
 		t.Fatalf("a person, or an agent between two of Whisk's own businesses, follows the move to its end: %+v", r)
 	}
 }
+
+// --undo sends the app back where its last move, done, brought it from, and nowhere otherwise.
+func TestMoveBackTo(t *testing.T) {
+	done := api.AppMove{ID: "m1", From: "acme", To: "demo", Status: apitypes.AppMoveDone}
+	if to, err := moveBackTo(done, "demo"); err != nil || to != "acme" {
+		t.Errorf("a done move into demo = %q, %v", to, err)
+	}
+	running := api.AppMove{From: "acme", To: "demo", Status: apitypes.AppMoveRunning}
+	for name, tc := range map[string]struct {
+		m   api.AppMove
+		org string
+	}{"a move still running": {running, "demo"}, "a move into another business": {done, "other"}} {
+		var oe *output.Error
+		if _, err := moveBackTo(tc.m, tc.org); !errors.As(err, &oe) || oe.Code != "INVALID_REQUEST" {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+}
+
+// Following a move names its files carried while it is on its files step.
+func TestFollowLine(t *testing.T) {
+	m := api.AppMove{Status: apitypes.AppMoveRunning, Step: apitypes.MoveStepFiles, Files: &apitypes.AppMoveFiles{Total: 3400, Done: 120}}
+	if got := followLine(m); got != "move: running, files, 120 of 3400 files" {
+		t.Errorf("followLine = %q", got)
+	}
+	m.Step = apitypes.MoveStepSwitch
+	if got := followLine(m); got != "move: running, switch" {
+		t.Errorf("followLine = %q", got)
+	}
+}
