@@ -1,0 +1,1002 @@
+{
+ "about": "Trade price cases: which price a company pays for a product, from its own prices, its group's list and the base list. Every resolver of the trade price rule runs each case.",
+ "layers": {
+  "base": {
+   "list": {
+    "ref": "base",
+    "name": "base",
+    "scope": "base",
+    "currency": "USD",
+    "tax_inclusive": false
+   },
+   "prices": [
+    {
+     "ref": "base|p1",
+     "list_ref": "base",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "10"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "ref": "base|p2",
+     "list_ref": "base",
+     "product_ref": "p2",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "20"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "ref": "base|p3",
+     "list_ref": "base",
+     "product_ref": "p3",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "30"
+        },
+        {
+         "min_qty": "10",
+         "price": "25"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "ref": "base|p4",
+     "list_ref": "base",
+     "product_ref": "p4",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "10"
+        }
+       ]
+      },
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "7"
+        }
+       ],
+       "from": "2026-10-01",
+       "to": "2026-10-31"
+      },
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "6"
+        }
+       ],
+       "from": "2026-10-05"
+      }
+     ]
+    },
+    {
+     "ref": "base|p5",
+     "list_ref": "base",
+     "product_ref": "p5",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "5"
+        }
+       ],
+       "from": "2026-11-01"
+      }
+     ]
+    },
+    {
+     "ref": "base|p6",
+     "list_ref": "base",
+     "product_ref": "p6",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "12"
+        }
+       ]
+      },
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "22"
+        }
+       ],
+       "unit": "PACK2"
+      }
+     ]
+    },
+    {
+     "ref": "base|p7",
+     "list_ref": "base",
+     "product_ref": "p7",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "100"
+        }
+       ],
+       "line_discount_percent": "10"
+      }
+     ]
+    },
+    {
+     "ref": "base|p8",
+     "list_ref": "base",
+     "product_ref": "p8",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "10"
+        }
+       ]
+      },
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "7"
+        }
+       ],
+       "from": "2026-10-01",
+       "to": "2026-10-31"
+      }
+     ]
+    },
+    {
+     "ref": "base|p9",
+     "list_ref": "base",
+     "product_ref": "p9",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "1.005"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "trade": {
+   "list": {
+    "ref": "trade",
+    "name": "trade",
+    "scope": "group",
+    "currency": "USD",
+    "tax_inclusive": false
+   },
+   "prices": [
+    {
+     "ref": "trade|p1",
+     "list_ref": "trade",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "9"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "trade-adjust": {
+   "list": {
+    "ref": "trade-adjust",
+    "name": "trade-adjust",
+    "scope": "group",
+    "currency": "USD",
+    "tax_inclusive": false,
+    "adjust_percent": "10"
+   },
+   "prices": [
+    {
+     "ref": "trade-adjust|p1",
+     "list_ref": "trade-adjust",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "9"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "acme": {
+   "list": {
+    "ref": "acme",
+    "name": "acme",
+    "scope": "customer",
+    "currency": "USD",
+    "tax_inclusive": false,
+    "customer_ref": "c1"
+   },
+   "prices": [
+    {
+     "ref": "acme|p1",
+     "list_ref": "acme",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "8"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "ref": "acme|p3",
+     "list_ref": "acme",
+     "product_ref": "p3",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "50",
+         "price": "20"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "acme-restricts": {
+   "list": {
+    "ref": "acme-restricts",
+    "name": "acme-restricts",
+    "scope": "customer",
+    "currency": "USD",
+    "tax_inclusive": false,
+    "customer_ref": "c1",
+    "restricts": true
+   },
+   "prices": [
+    {
+     "ref": "acme-restricts|p1",
+     "list_ref": "acme-restricts",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "8"
+        }
+       ]
+      }
+     ]
+    },
+    {
+     "ref": "acme-restricts|p3",
+     "list_ref": "acme-restricts",
+     "product_ref": "p3",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "10",
+         "price": "20"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "trade-cad": {
+   "list": {
+    "ref": "trade-cad",
+    "name": "trade-cad",
+    "scope": "group",
+    "currency": "CAD",
+    "tax_inclusive": false
+   },
+   "prices": [
+    {
+     "ref": "trade-cad|p1",
+     "list_ref": "trade-cad",
+     "product_ref": "p1",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "1"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  },
+  "acme-high": {
+   "list": {
+    "ref": "acme-high",
+    "name": "acme-high",
+    "scope": "customer",
+    "currency": "USD",
+    "tax_inclusive": false,
+    "customer_ref": "c1"
+   },
+   "prices": [
+    {
+     "ref": "acme-high|p2",
+     "list_ref": "acme-high",
+     "product_ref": "p2",
+     "entries": [
+      {
+       "breaks": [
+        {
+         "min_qty": "0",
+         "price": "21"
+        }
+       ]
+      }
+     ]
+    }
+   ]
+  }
+ },
+ "cases": [
+  {
+   "name": "base only",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "10",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "group beats base",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "9",
+    "layer": "group"
+   }
+  },
+  {
+   "name": "customer beats group",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade",
+    "customer": "acme"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "8",
+    "layer": "customer"
+   }
+  },
+  {
+   "name": "group falls back to base",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "20",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "group adjust off base",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade-adjust"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "18",
+    "layer": "group_adjust"
+   }
+  },
+  {
+   "name": "group entry beats its adjust",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade-adjust"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "9",
+    "layer": "group"
+   }
+  },
+  {
+   "name": "break below",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "9",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "30",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "break at",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "10",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "25",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "customer break above qty passes over",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "10",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "25",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "customer break reached",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "50",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "20",
+    "layer": "customer"
+   }
+  },
+  {
+   "name": "discount off group",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "8.1",
+    "layer": "group"
+   }
+  },
+  {
+   "name": "discount off base",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "18",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "discount never off customer price by default",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "8",
+    "layer": "customer"
+   }
+  },
+  {
+   "name": "restricted hides the rest",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme-restricts"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "0",
+    "layer": "none"
+   }
+  },
+  {
+   "name": "unknown product",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "nope",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "0",
+    "layer": "none"
+   }
+  },
+  {
+   "name": "dated beats undated",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p4",
+    "qty": "1",
+    "on": "2026-10-03"
+   },
+   "want": {
+    "price": "7",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "latest dated start wins",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p4",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "6",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "end date is inclusive",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p8",
+    "qty": "1",
+    "on": "2026-10-31"
+   },
+   "want": {
+    "price": "7",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "after the end date",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p8",
+    "qty": "1",
+    "on": "2026-11-01"
+   },
+   "want": {
+    "price": "10",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "future special not yet",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p5",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "0",
+    "layer": "none"
+   }
+  },
+  {
+   "name": "unit of measure picks its entry",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p6",
+    "qty": "1",
+    "on": "2026-10-10",
+    "unit": "PACK2"
+   },
+   "want": {
+    "price": "22",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "own unit",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p6",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "12",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "line discount",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p7",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "90",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "other currency passed over",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade-cad"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "10",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "lowest: a dearer customer price still beats the base",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme-high"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "21",
+    "layer": "customer"
+   },
+   "rule": {
+    "pick": "lowest"
+   }
+  },
+  {
+   "name": "lowest: the discount comes off before comparing",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade-adjust",
+    "customer": "acme-high",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "16.2",
+    "layer": "group_adjust"
+   },
+   "rule": {
+    "pick": "lowest",
+    "discount": "all"
+   }
+  },
+  {
+   "name": "discount off everything",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p1",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "7.2",
+    "layer": "customer"
+   },
+   "rule": {
+    "discount": "all"
+   }
+  },
+  {
+   "name": "no discount",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "20",
+    "layer": "base"
+   },
+   "rule": {
+    "discount": "none"
+   }
+  },
+  {
+   "name": "floor",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "discount": "10"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10",
+    "min_price": "19"
+   },
+   "want": {
+    "price": "19",
+    "layer": "base",
+    "floored": true
+   }
+  },
+  {
+   "name": "rounds half away from zero",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p9",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "1.01",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "four places",
+   "prices": {
+    "base": "base",
+    "currency": "USD"
+   },
+   "query": {
+    "product": "p9",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "1.005",
+    "layer": "base"
+   },
+   "rule": {
+    "places": 4
+   }
+  },
+  {
+   "name": "restricted list with a break above qty falls through",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme-restricts"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "30",
+    "layer": "base"
+   }
+  },
+  {
+   "name": "restricted list break reached",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "customer": "acme-restricts"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "10",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "20",
+    "layer": "customer"
+   }
+  },
+  {
+   "name": "lowest: the group beats a dearer customer price",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade-adjust",
+    "customer": "acme-high"
+   },
+   "query": {
+    "product": "p2",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "18",
+    "layer": "group_adjust"
+   },
+   "rule": {
+    "pick": "lowest"
+   }
+  },
+  {
+   "name": "lowest: base only when no other layer prices it",
+   "prices": {
+    "base": "base",
+    "currency": "USD",
+    "group": "trade",
+    "customer": "acme-high"
+   },
+   "query": {
+    "product": "p3",
+    "qty": "1",
+    "on": "2026-10-10"
+   },
+   "want": {
+    "price": "30",
+    "layer": "base"
+   },
+   "rule": {
+    "pick": "lowest"
+   }
+  }
+ ]
+}
