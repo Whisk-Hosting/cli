@@ -427,6 +427,9 @@
         "name": {
           "type": "string"
         },
+        "needs_upgrade": {
+          "$ref": "#/$defs/apitypes.AppNeedsUpgrade"
+        },
         "node_id": {
           "type": "string"
         },
@@ -1263,6 +1266,22 @@
       },
       "required": [
         "items"
+      ],
+      "type": "object"
+    },
+    "apitypes.AppNeedsUpgrade": {
+      "properties": {
+        "apps": {
+          "type": "integer"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "apps",
+        "since"
       ],
       "type": "object"
     },
@@ -12555,6 +12574,11 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.Grant"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/active": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.App"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/analytics/open": {

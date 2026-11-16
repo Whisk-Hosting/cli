@@ -116,6 +116,10 @@ type App struct {
 	Fork *AppFork `json:"fork,omitempty"`
 	// PausedAt is when a person paused the app, absent while it is not paused (MANAGED-APPS.md §4).
 	PausedAt *time.Time `json:"paused_at,omitempty"`
+	// NeedsUpgrade is set while the app is paused because its business runs more live apps than
+	// its plan includes: it serves nobody, a push to it is stored and builds nothing, and room on
+	// the plan or an owner making it the active app brings it back with what was pushed.
+	NeedsUpgrade *AppNeedsUpgrade `json:"needs_upgrade,omitempty"`
 	// Listing and Access are how the business's home lists the app and who can open it
 	// (CONTRACT.md §3.4), sent on the home's apps only.
 	Listing *AppListing `json:"listing,omitempty"`
@@ -129,6 +133,15 @@ type App struct {
 	Warnings  []Warning `json:"warnings,omitempty"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// AppNeedsUpgrade is since when an app has been paused for want of room, and how many live apps
+// its business's plan includes (0 on Free when another business holds its free app). While that
+// is more than 0, an owner may make it the active app (POST /orgs/{org}/apps/{app}/active), which
+// pauses the newest app that has room in its place.
+type AppNeedsUpgrade struct {
+	Since time.Time `json:"since"`
+	Apps  int64     `json:"apps"`
 }
 
 // AppPromoted is when an app was made a Promoted app and by whom (a user id), and whether it is

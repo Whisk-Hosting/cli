@@ -324,11 +324,13 @@ business in its settings, then delete your account again.
 
 Status: 402 · Surface: api
 
-When: publishing another app would exceed the plan's app count, or a new release of an app that
-moved into the business while it had no room. A moved app keeps serving its current release.
+When: a production deploy of an app the business's plan has no room for: another app past the
+plan's app count, or an app paused because the business runs more live apps than its plan
+includes. The push is stored and nothing builds; the app is paused and serves nobody until the
+plan has room, when what was pushed goes live.
 
 Fix: Delete an unused app with `whisk apps delete`, or ask an owner to upgrade the plan at the
-billing URL.
+billing URL or make this app the active one on its page.
 
 ```json
 {"error":{"code":"PLAN_LIMIT_APPS","message":"The Team plan allows 10 apps and acme has 10.","fix":"Delete an app you no longer need with whisk apps delete <slug>, or ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_LIMIT_APPS","details":{"limit":10,"current":10,"plan":"team"}}}
@@ -342,9 +344,10 @@ When: the first production deploy of an app in a business on the Free plan that 
 Every person gets one free app, for the first business they set up, and every work email domain
 gets one, for the first business confirmed with it. A further business can be created and can
 deploy previews, but publishes only on a paid plan or during a trial it has running.
-An app moved into such a business keeps serving its current release and takes no new one until
-the business is on a paid plan. `details.held_by` names the business that has the free app. A push to the default branch that
-would be that deploy is refused at pre-receive with this error, so `whisk deploy` fails at once.
+An app moved into such a business, or pushed to it, is paused and serves nobody until the
+business is on a paid plan, when what was pushed goes live. `details.held_by` names the business
+that has the free app. A push to the default branch that would be that deploy is stored, builds
+nothing and prints this error, so `whisk deploy` fails at once.
 
 Fix: Ask an owner to choose a paid plan on the business's billing page. Preview deployments keep working meanwhile.
 
