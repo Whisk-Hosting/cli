@@ -9,11 +9,12 @@ var (
 	GetAnalytics         = New[GetAnalyticsQuery, apitypes.AppAnalytics]("GET /v1/orgs/{org}/apps/{app}/analytics")
 	GetAnalyticsVisitors = New[GetAnalyticsVisitorsQuery, apitypes.AppVisitors]("GET /v1/orgs/{org}/apps/{app}/analytics/visitors")
 	GetAnalyticsVisitor  = New[GetAnalyticsVisitorQuery, apitypes.AnalyticsVisitorSteps]("GET /v1/orgs/{org}/apps/{app}/analytics/visitors/{visitor}")
+	GetAnalyticsChart    = New[GetAnalyticsChartQuery, apitypes.AnalyticsChart]("GET /v1/orgs/{org}/apps/{app}/analytics/chart")
 	OpenAnalytics        = New[None, apitypes.AnalyticsOpen]("POST /v1/orgs/{org}/apps/{app}/analytics/open")
 	GetTraffic           = New[TrafficQuery, apitypes.AppTraffic]("GET /v1/orgs/{org}/apps/{app}/analytics/traffic")
 	GetTrafficRequests   = New[TrafficQuery, apitypes.AppTrafficRequests]("GET /v1/orgs/{org}/apps/{app}/analytics/traffic/requests")
 
-	_ = public.Add(GetAnalytics, GetAnalyticsVisitors, GetAnalyticsVisitor, OpenAnalytics, GetTraffic, GetTrafficRequests)
+	_ = public.Add(GetAnalytics, GetAnalyticsVisitors, GetAnalyticsVisitor, GetAnalyticsChart, OpenAnalytics, GetTraffic, GetTrafficRequests)
 )
 
 // GetAnalyticsQuery is what GetAnalytics reads from the query.
@@ -40,6 +41,20 @@ type GetAnalyticsVisitorsQuery struct {
 	Source string `query:"source"`
 	To     string `query:"to"`
 	Tz     string `query:"tz"`
+}
+
+// GetAnalyticsChartQuery is what GetAnalyticsChart reads from the query: the reading, the unit
+// (by: hour, day or month) and the measure (visitors or views).
+type GetAnalyticsChartQuery struct {
+	By      string `query:"by"`
+	Event   string `query:"event"`
+	From    string `query:"from"`
+	Measure string `query:"measure"`
+	Page    string `query:"page"`
+	Period  string `query:"period"`
+	Source  string `query:"source"`
+	To      string `query:"to"`
+	Tz      string `query:"tz"`
 }
 
 // GetAnalyticsVisitorQuery is what GetAnalyticsVisitor reads from the query.

@@ -178,6 +178,126 @@
       ],
       "type": "object"
     },
+    "apitypes.AnalyticsChart": {
+      "properties": {
+        "by": {
+          "type": "string"
+        },
+        "filters": {
+          "$ref": "#/$defs/apitypes.AnalyticsFilters"
+        },
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "limits": {
+          "$ref": "#/$defs/apitypes.AnalyticsChartLimits"
+        },
+        "measure": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "points": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsChartPoint"
+          },
+          "type": "array"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        },
+        "verdict": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "by",
+        "filters",
+        "from",
+        "measure",
+        "period",
+        "points",
+        "summary",
+        "to",
+        "tz",
+        "verdict"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsChartLimits": {
+      "properties": {
+        "baseline": {
+          "type": "integer"
+        },
+        "centre": {
+          "type": "number"
+        },
+        "lower": {
+          "type": "number"
+        },
+        "mr_centre": {
+          "type": "number"
+        },
+        "mr_upper": {
+          "type": "number"
+        },
+        "no_lower": {
+          "type": "boolean"
+        },
+        "since": {
+          "type": "string"
+        },
+        "upper": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "baseline",
+        "centre",
+        "lower",
+        "mr_centre",
+        "mr_upper",
+        "no_lower",
+        "since",
+        "upper"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsChartPoint": {
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "signals": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "value": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "complete",
+        "name",
+        "signals",
+        "value"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsCount": {
       "properties": {
         "count": {
@@ -574,6 +694,9 @@
         "kept_days": {
           "type": "integer"
         },
+        "opens": {
+          "type": "boolean"
+        },
         "pages": {
           "items": {
             "$ref": "#/$defs/apitypes.AnalyticsCount"
@@ -614,6 +737,7 @@
         "filters",
         "from",
         "kept_days",
+        "opens",
         "pages",
         "period",
         "sources",
@@ -11600,6 +11724,40 @@
         },
         "limit": {
           "type": "integer"
+        },
+        "page": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/chart": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AnalyticsChart"
+      },
+      "query": {
+        "by": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "measure": {
+          "type": "string"
         },
         "page": {
           "type": "string"

@@ -6,6 +6,9 @@ import "time"
 // or from and to, as its analytics recorded them, narrowed by Filters. Period is "" when the
 // reading names from and to.
 type AppAnalytics struct {
+	// Opens says the analytics also open in Umami's own screens (Open analytics); false once
+	// Whisk's own engine counts the visits and this page is where they are read.
+	Opens    bool             `json:"opens"`
 	Period   string           `json:"period"`
 	From     time.Time        `json:"from"`
 	To       time.Time        `json:"to"`
@@ -315,4 +318,46 @@ type CrawlerRequest struct {
 // opened at once and never kept.
 type AnalyticsOpen struct {
 	URL string `json:"url"`
+}
+
+// AnalyticsChart is an XmR chart (a process behaviour chart) of an app's visitors or views by
+// hour, day or month, read the way the operator's numbers are: each point, the natural process
+// limits of the chart's current stage (absent until there are enough complete points), the
+// signals a rule picks out on each point, and a verdict on the latest complete point with a
+// sentence that says it. A point inside the limits that no rule picks out is noise.
+type AnalyticsChart struct {
+	Period  string                `json:"period"`
+	From    time.Time             `json:"from"`
+	To      time.Time             `json:"to"`
+	Filters AnalyticsFilters      `json:"filters"`
+	By      string                `json:"by"`
+	TZ      string                `json:"tz"`
+	Measure string                `json:"measure"`
+	Points  []AnalyticsChartPoint `json:"points"`
+	Limits  *AnalyticsChartLimits `json:"limits,omitempty"`
+	Verdict string                `json:"verdict"`
+	Summary string                `json:"summary"`
+}
+
+// AnalyticsChartPoint is one hour, day or month of a chart, named in the chart's zone. Complete
+// is false for the one still running. Signals are the rules that pick it out: outside, run,
+// near_limit or jump.
+type AnalyticsChartPoint struct {
+	Name     string   `json:"name"`
+	Value    float64  `json:"value"`
+	Complete bool     `json:"complete"`
+	Signals  []string `json:"signals"`
+}
+
+// AnalyticsChartLimits are a chart's average and natural process limits, from Baseline complete
+// points since Since (a point's name). NoLower says the lower limit works out at or below zero.
+type AnalyticsChartLimits struct {
+	Centre   float64 `json:"centre"`
+	Upper    float64 `json:"upper"`
+	Lower    float64 `json:"lower"`
+	MRCentre float64 `json:"mr_centre"`
+	MRUpper  float64 `json:"mr_upper"`
+	Baseline int     `json:"baseline"`
+	Since    string  `json:"since"`
+	NoLower  bool    `json:"no_lower"`
 }

@@ -14,13 +14,15 @@ import (
 // which is pointed at whisk errors show rather than answered NOT_FOUND.
 func TestErrorsArgOf(t *testing.T) {
 	for arg, want := range map[string]errorsArg{
-		"BUILD_FAILED": errorsArgCode,
-		"build_failed": errorsArgCode,
-		"62":           errorsArgGroup,
-		"0":            errorsArgGroup,
-		"BUILD_FAILD":  errorsArgUnknown,
-		"6a":           errorsArgUnknown,
-		"":             errorsArgUnknown,
+		"BUILD_FAILED":                     errorsArgCode,
+		"build_failed":                     errorsArgCode,
+		"62":                               errorsArgGroup,
+		"0":                                errorsArgGroup,
+		"8b0b5c4d1e2f4a5b9c8d7e6f5a4b3c2d": errorsArgGroup,
+		"8b0b5c4d1e2f":                     errorsArgUnknown,
+		"BUILD_FAILD":                      errorsArgUnknown,
+		"6a":                               errorsArgUnknown,
+		"":                                 errorsArgUnknown,
 	} {
 		if got := errorsArgOf(arg); got != want {
 			t.Errorf("errorsArgOf(%q) = %v, want %v", arg, got, want)
