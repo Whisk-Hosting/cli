@@ -1747,17 +1747,11 @@
         "card": {
           "$ref": "#/$defs/apitypes.Card"
         },
-        "client_of": {
-          "$ref": "#/$defs/apitypes.OrgRef"
-        },
         "comp": {
           "$ref": "#/$defs/apitypes.BillingComp"
         },
         "free_app": {
           "$ref": "#/$defs/apitypes.FreeApp"
-        },
-        "handed_over": {
-          "type": "boolean"
         },
         "interval": {
           "type": "string",
@@ -2193,79 +2187,6 @@
       ],
       "type": "object"
     },
-    "apitypes.ClientAdded": {
-      "properties": {
-        "checkout_url": {
-          "type": "string"
-        },
-        "client": {
-          "$ref": "#/$defs/apitypes.Org"
-        }
-      },
-      "required": [
-        "client"
-      ],
-      "type": "object"
-    },
-    "apitypes.ClientBusiness": {
-      "properties": {
-        "billing": {
-          "type": "string",
-          "x-type": "apitypes.ClientBilling"
-        },
-        "created_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "handover": {
-          "$ref": "#/$defs/apitypes.Handover"
-        },
-        "id": {
-          "type": "string"
-        },
-        "interval": {
-          "type": "string",
-          "x-type": "apitypes.Interval"
-        },
-        "name": {
-          "type": "string"
-        },
-        "past_due_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "plan": {
-          "type": "string"
-        },
-        "price_cents": {
-          "type": "integer"
-        },
-        "slug": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "x-type": "status.Org"
-        },
-        "trial_ends_at": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "billing",
-        "created_at",
-        "handover",
-        "id",
-        "interval",
-        "name",
-        "plan",
-        "price_cents",
-        "slug",
-        "status"
-      ],
-      "type": "object"
-    },
     "apitypes.ClientErrorReceipt": {
       "properties": {
         "received": {
@@ -2297,143 +2218,6 @@
         "message",
         "page",
         "stack"
-      ],
-      "type": "object"
-    },
-    "apitypes.ClientOverview": {
-      "properties": {
-        "apps": {
-          "type": "integer"
-        },
-        "billing": {
-          "type": "string",
-          "x-type": "apitypes.ClientBilling"
-        },
-        "failed_deploys": {
-          "type": "integer"
-        },
-        "handed_over": {
-          "type": "boolean"
-        },
-        "id": {
-          "type": "string"
-        },
-        "limits": {
-          "$ref": "#/$defs/apitypes.ClientUsage"
-        },
-        "name": {
-          "type": "string"
-        },
-        "problems": {
-          "type": "integer"
-        },
-        "slug": {
-          "type": "string"
-        },
-        "status": {
-          "type": "string",
-          "x-type": "status.Org"
-        },
-        "usage": {
-          "$ref": "#/$defs/apitypes.ClientUsage"
-        }
-      },
-      "required": [
-        "apps",
-        "billing",
-        "failed_deploys",
-        "handed_over",
-        "id",
-        "limits",
-        "name",
-        "problems",
-        "slug",
-        "status",
-        "usage"
-      ],
-      "type": "object"
-    },
-    "apitypes.ClientRequest": {
-      "properties": {
-        "contact": {
-          "type": "string"
-        },
-        "interval": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "region": {
-          "type": "string"
-        },
-        "slug": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "contact",
-        "interval",
-        "name",
-        "region",
-        "slug"
-      ],
-      "type": "object"
-    },
-    "apitypes.ClientUsage": {
-      "properties": {
-        "runs": {
-          "type": "integer"
-        },
-        "storage_bytes": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "runs",
-        "storage_bytes"
-      ],
-      "type": "object"
-    },
-    "apitypes.Clients": {
-      "properties": {
-        "blocked": {
-          "type": "string",
-          "x-type": "apitypes.AgencyBlock"
-        },
-        "can_add": {
-          "type": "boolean"
-        },
-        "items": {
-          "items": {
-            "$ref": "#/$defs/apitypes.ClientBusiness"
-          },
-          "type": "array"
-        },
-        "limits": {
-          "additionalProperties": {},
-          "type": "object"
-        },
-        "monthly_cents": {
-          "type": "integer"
-        },
-        "payments": {
-          "type": "boolean"
-        },
-        "prices": {
-          "additionalProperties": {
-            "type": "integer"
-          },
-          "type": "object"
-        }
-      },
-      "required": [
-        "can_add",
-        "items",
-        "limits",
-        "monthly_cents",
-        "payments",
-        "prices"
       ],
       "type": "object"
     },
@@ -3845,25 +3629,6 @@
       ],
       "type": "object"
     },
-    "apitypes.DemoApp": {
-      "properties": {
-        "name": {
-          "type": "string"
-        },
-        "slug": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "name",
-        "slug",
-        "url"
-      ],
-      "type": "object"
-    },
     "apitypes.DemoBusiness": {
       "properties": {
         "free": {
@@ -3982,62 +3747,6 @@
       "required": [
         "data",
         "keep"
-      ],
-      "type": "object"
-    },
-    "apitypes.DemoInfo": {
-      "properties": {
-        "agency": {
-          "type": "string"
-        },
-        "apps": {
-          "items": {
-            "$ref": "#/$defs/apitypes.DemoApp"
-          },
-          "type": "array"
-        },
-        "can_claim": {
-          "type": "boolean"
-        },
-        "claimed": {
-          "type": "boolean"
-        },
-        "claimed_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "contact": {
-          "type": "string"
-        },
-        "domain": {
-          "type": "string"
-        },
-        "kind": {
-          "type": "string",
-          "x-type": "apitypes.DemoKind"
-        },
-        "made_by": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "refusal": {
-          "$ref": "#/$defs/errors.Detail"
-        },
-        "slug": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "apps",
-        "can_claim",
-        "claimed",
-        "domain",
-        "kind",
-        "made_by",
-        "name",
-        "slug"
       ],
       "type": "object"
     },
@@ -6103,44 +5812,6 @@
       ],
       "type": "object"
     },
-    "apitypes.Handover": {
-      "properties": {
-        "claim_url": {
-          "type": "string"
-        },
-        "contact": {
-          "type": "string"
-        },
-        "handed_over_at": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "apitypes.HandoverClientRequest": {
-      "properties": {
-        "contact": {
-          "type": "string"
-        }
-      },
-      "type": "object"
-    },
-    "apitypes.HandoverMade": {
-      "properties": {
-        "claim_url": {
-          "type": "string"
-        },
-        "contact": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "claim_url",
-        "contact"
-      ],
-      "type": "object"
-    },
     "apitypes.HomeApp": {
       "properties": {
         "category": {
@@ -7320,9 +6991,6 @@
     },
     "apitypes.Org": {
       "properties": {
-        "agency": {
-          "type": "boolean"
-        },
         "comp": {
           "$ref": "#/$defs/apitypes.Comp"
         },
@@ -7531,25 +7199,6 @@
         "running",
         "sleeping",
         "trust_line"
-      ],
-      "type": "object"
-    },
-    "apitypes.OrgRef": {
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "name": {
-          "type": "string"
-        },
-        "slug": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "id",
-        "name",
-        "slug"
       ],
       "type": "object"
     },
@@ -7950,24 +7599,6 @@
         "items": {
           "items": {
             "$ref": "#/$defs/apitypes.Build"
-          },
-          "type": "array"
-        },
-        "next_cursor": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "items",
-        "next_cursor"
-      ],
-      "type": "object"
-    },
-    "apitypes.Page[apitypes.ClientOverview]": {
-      "properties": {
-        "items": {
-          "items": {
-            "$ref": "#/$defs/apitypes.ClientOverview"
           },
           "type": "array"
         },
@@ -8400,9 +8031,6 @@
         "done": {
           "type": "boolean"
         },
-        "for": {
-          "type": "string"
-        },
         "id": {
           "type": "string"
         },
@@ -8439,7 +8067,6 @@
         "currency",
         "details",
         "done",
-        "for",
         "id",
         "interval",
         "invoice",
@@ -8469,21 +8096,6 @@
       },
       "required": [
         "step"
-      ],
-      "type": "object"
-    },
-    "apitypes.Payouts": {
-      "properties": {
-        "account": {
-          "type": "string",
-          "x-type": "apitypes.PayoutAccount"
-        },
-        "country": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "account"
       ],
       "type": "object"
     },
@@ -8597,19 +8209,6 @@
         "annual_usd": {
           "type": "integer"
         },
-        "client_annual_usd": {
-          "type": "integer"
-        },
-        "client_intervals": {
-          "items": {
-            "type": "string",
-            "x-type": "apitypes.Interval"
-          },
-          "type": "array"
-        },
-        "client_monthly_usd": {
-          "type": "integer"
-        },
         "id": {
           "type": "string"
         },
@@ -8640,9 +8239,6 @@
       },
       "required": [
         "annual_usd",
-        "client_annual_usd",
-        "client_intervals",
-        "client_monthly_usd",
         "id",
         "intervals",
         "limits",
@@ -8792,78 +8388,6 @@
       "required": [
         "label",
         "values"
-      ],
-      "type": "object"
-    },
-    "apitypes.RebateSettlement": {
-      "properties": {
-        "credit_cents": {
-          "type": "integer"
-        },
-        "earned_cents": {
-          "type": "integer"
-        },
-        "month": {
-          "type": "string"
-        },
-        "paid_out": {
-          "type": "boolean"
-        },
-        "payout_cents": {
-          "type": "integer"
-        },
-        "payout_currency": {
-          "type": "string"
-        },
-        "payout_local_cents": {
-          "type": "integer"
-        },
-        "settled_at": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "credit_cents",
-        "earned_cents",
-        "month",
-        "paid_out",
-        "payout_cents",
-        "settled_at"
-      ],
-      "type": "object"
-    },
-    "apitypes.Rebates": {
-      "properties": {
-        "built": {
-          "type": "integer"
-        },
-        "payments": {
-          "type": "boolean"
-        },
-        "payouts": {
-          "$ref": "#/$defs/apitypes.Payouts"
-        },
-        "percent": {
-          "type": "integer"
-        },
-        "settlements": {
-          "items": {
-            "$ref": "#/$defs/apitypes.RebateSettlement"
-          },
-          "type": "array"
-        },
-        "this_month_cents": {
-          "type": "integer"
-        }
-      },
-      "required": [
-        "built",
-        "payments",
-        "payouts",
-        "percent",
-        "settlements",
-        "this_month_cents"
       ],
       "type": "object"
     },
@@ -11856,11 +11380,6 @@
         "$ref": "#/$defs/apitypes.Org"
       }
     },
-    "DELETE /v1/orgs/{org}/clients/{client}": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Org"
-      }
-    },
     "DELETE /v1/orgs/{org}/domains/{id}": {
       "answer": {
         "type": "null"
@@ -11939,11 +11458,6 @@
     "GET /v1/billing/plans": {
       "answer": {
         "$ref": "#/$defs/apitypes.Page[apitypes.Plan]"
-      }
-    },
-    "GET /v1/demos/{code}": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.DemoInfo"
       }
     },
     "GET /v1/device/{code}": {
@@ -12700,25 +12214,10 @@
         }
       }
     },
-    "GET /v1/orgs/{org}/billing/rebates": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Rebates"
-      }
-    },
     "GET /v1/orgs/{org}/billing/usage": {
       "answer": {
         "additionalProperties": {},
         "type": "object"
-      }
-    },
-    "GET /v1/orgs/{org}/clients": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Clients"
-      }
-    },
-    "GET /v1/orgs/{org}/clients/overview": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Page[apitypes.ClientOverview]"
       }
     },
     "GET /v1/orgs/{org}/deleted-apps": {
@@ -12976,11 +12475,6 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.ClientErrorReport"
-      }
-    },
-    "POST /v1/demos/{code}/claim": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Org"
       }
     },
     "POST /v1/device/approve": {
@@ -13464,38 +12958,9 @@
         "$ref": "#/$defs/apitypes.PayDetails"
       }
     },
-    "POST /v1/orgs/{org}/billing/payouts": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.PageURL"
-      }
-    },
     "POST /v1/orgs/{org}/billing/portal": {
       "answer": {
         "$ref": "#/$defs/apitypes.PageURL"
-      }
-    },
-    "POST /v1/orgs/{org}/clients": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.ClientAdded"
-      },
-      "body": {
-        "$ref": "#/$defs/apitypes.ClientRequest"
-      }
-    },
-    "POST /v1/orgs/{org}/clients/{client}/billing": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.ClientAdded"
-      },
-      "body": {
-        "$ref": "#/$defs/apitypes.ClientRequest"
-      }
-    },
-    "POST /v1/orgs/{org}/clients/{client}/handover": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.HandoverMade"
-      },
-      "body": {
-        "$ref": "#/$defs/apitypes.HandoverClientRequest"
       }
     },
     "POST /v1/orgs/{org}/confirm": {

@@ -84,9 +84,9 @@ func TestLoginForOneBusinessKeepsTheOthers(t *testing.T) {
 	b := &boundAPI{}
 	srv := b.server(t)
 	defer srv.Close()
-	store := &memStore{m: map[string]config.Credential{"agency": {Token: "whsk_agency", API: srv.URL}}}
+	store := &memStore{m: map[string]config.Credential{"studio": {Token: "whsk_studio", API: srv.URL}}}
 	r := runCLI(t, t.TempDir(), map[string]string{"WHISK_API": srv.URL}, store, "login", "--wait", "--json")
-	if gone, _ := r.JSON["signed_out"].([]any); r.Code != 0 || len(gone) != 0 || store.m["agency"].Token != "whsk_agency" {
+	if gone, _ := r.JSON["signed_out"].([]any); r.Code != 0 || len(gone) != 0 || store.m["studio"].Token != "whsk_studio" {
 		t.Fatalf("login: %+v", r)
 	}
 }

@@ -128,7 +128,6 @@ func TestManagedWords(t *testing.T) {
 		{api.ManagedProduct{Available: true}, "yes"},
 		{api.ManagedProduct{Unavailable: "plan"}, "no: not in this plan"},
 		{api.ManagedProduct{Unavailable: "trial"}, "no: not during the free trial"},
-		{api.ManagedProduct{Unavailable: "client"}, "no: not for a business its agency pays for"},
 		{api.ManagedProduct{Unavailable: "no_release"}, "no: no release ready yet"},
 		{api.ManagedProduct{Unavailable: "frozen"}, "no: frozen"},
 		{api.ManagedProduct{Available: false, Unavailable: ""}, "no"},

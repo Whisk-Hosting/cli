@@ -43,9 +43,6 @@ type Org struct {
 	Support *Support `json:"support,omitempty"`
 	// UnderReview is set while an abuse hold waits for Whisk's review (CONTROL-PLANE.md §6.27).
 	UnderReview bool `json:"under_review,omitempty"`
-	// Agency is set on a business with client businesses (CONTROL-PLANE.md §6.15), which has the
-	// all-clients screen.
-	Agency bool `json:"agency,omitempty"`
 	// WhiskOwn is set on one of Whisk's own businesses, which is never billed
 	// (CONTROL-PLANE.md §6.15 "Whisk's own businesses").
 	WhiskOwn bool `json:"whisk_own,omitempty"`

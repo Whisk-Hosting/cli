@@ -59,17 +59,6 @@ func planLine(b api.Billing) string {
 	if b.Interval == "year" {
 		price, per = b.Plan.AnnualUSD, "year"
 	}
-	if b.ClientOf != nil && b.Plan.ClientMonthlyUSD == 0 {
-		return fmt.Sprintf("Plan: %s, a client business %s has not paid for yet. Usage for %s:", b.Plan.Name, b.ClientOf.Name, b.Period)
-	}
-	if b.ClientOf != nil {
-		// A client business is paid for by its agency at the plan's client price.
-		price = b.Plan.ClientMonthlyUSD
-		if per == "year" {
-			price = b.Plan.ClientAnnualUSD
-		}
-		return fmt.Sprintf("Plan: %s, $%d a %s, paid for by %s. Usage for %s:", b.Plan.Name, price, per, b.ClientOf.Name, b.Period)
-	}
 	if price == 0 {
 		return fmt.Sprintf("Plan: %s, one app free forever. Usage for %s:", b.Plan.Name, b.Period)
 	}

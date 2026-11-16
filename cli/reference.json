@@ -504,44 +504,6 @@
   ]
  },
  {
-  "name": "clients",
-  "short": "An agency's client businesses: standing, handed over, apps, problems and usage",
-  "commands": [
-   {
-    "usage": "whisk clients",
-    "short": "An agency's client businesses: standing, handed over, apps, problems and usage"
-   },
-   {
-    "usage": "whisk clients add \u003cname\u003e [--contact email] [--slug s] [--yearly]",
-    "short": "Add a client business, billed to the agency; prints the payment page when a card is needed",
-    "flags": [
-     {
-      "name": "--contact string",
-      "usage": "the email of the person it will be handed to"
-     },
-     {
-      "name": "--slug string",
-      "usage": "its address name; made from the name when left out"
-     },
-     {
-      "name": "--yearly",
-      "usage": "bill it yearly"
-     }
-    ]
-   },
-   {
-    "usage": "whisk clients handover \u003cclient\u003e [--contact email]",
-    "short": "Make the link the client's contact accepts the business with",
-    "flags": [
-     {
-      "name": "--contact string",
-      "usage": "who accepts it; the contact set when it was added if left out"
-     }
-    ]
-   }
-  ]
- },
- {
   "name": "clone",
   "short": "Copy an app's code from Whisk into a new directory, ready for git pull and whisk deploy",
   "commands": [

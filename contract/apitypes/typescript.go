@@ -128,13 +128,9 @@ var baseEnums = func() map[reflect.Type]enumSet {
 	add(enumOf("PayKind", "PAY_KINDS", PaySubscribe, PayCard, PayInvoice))
 	add(enumOf("PayInterval", "PAY_INTERVALS", PayMonthly, PayYearly, PayNoInterval))
 	add(enumOf("PayStepKind", "PAY_STEP_KINDS", StepSetup, StepPayment, StepDone))
-	add(enumOf("ClientBilling", "CLIENT_BILLINGS", ClientUnbilled, ClientTrialing, ClientPaying, ClientPastDue, ClientFrozen, ClientDeleting))
-	add(enumOf("AgencyBlock", "AGENCY_BLOCKS", AgencyPending, AgencyInactive, AgencyIsClient, AgencyCanary, AgencyUnpaid))
-	add(enumOf("PayoutAccount", "PAYOUT_ACCOUNTS", PayoutNone, PayoutPending, PayoutReady))
 	add(enumOf("ApprovalStatus", "APPROVAL_STATUSES", ApprovalPending, ApprovalApproved, ApprovalRejected, ApprovalExpired))
 	add(enumOf("PersonRequestStatus", "PERSON_REQUEST_STATUSES", PersonRequestPending, PersonRequestApproved, PersonRequestDeclined, PersonRequestFailed, PersonRequestExpired))
 	add(enumOf("PersonRequestAskedOf", "PERSON_REQUEST_ASKED_OF", AskedOfPerson, AskedOfOwners))
-	add(enumOf("DemoKind", "DEMO_KINDS", HandoverClient))
 	add(enumOf("DemoCopyStatus", "DEMO_COPY_STATUSES", DemoCopyPaying, DemoCopyExpired, DemoCopyQueued, DemoCopyRunning, DemoCopyDone, DemoCopyFailed))
 	add(enumOf("DemoLicence", "DEMO_LICENCES", LicenceActive, LicencePastDue, LicenceEnding, LicenceEnded))
 	add(enumOf("DemoCopyStep", "DEMO_COPY_STEPS", DemoStepApp, DemoStepCode, DemoStepSecrets, DemoStepFiles, DemoStepDatabase, DemoStepDone))
@@ -189,18 +185,17 @@ var baseWire = []any{
 	// feedback.go
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{},
 	// billing.go
-	Plan{}, PricingRow{}, Pricing{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingReferrals{}, BillingLicence{}, OrgRef{},
+	Plan{}, PricingRow{}, Pricing{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingReferrals{}, BillingLicence{},
 	PlanCheckout{}, PlanQuote{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
-	PayDetails{}, PayStep{}, ClientBusiness{}, Handover{}, Clients{}, ClientAdded{},
-	HandoverMade{}, ClientOverview{}, ClientUsage{}, RebateSettlement{}, Payouts{}, Rebates{},
+	PayDetails{}, PayStep{},
 	// workflows.go, with contract/graph's step graph
 	named{"Graph", graph.Graph{}}, named{"GraphStep", graph.Step{}},
 	Run{}, RunStep{}, Parked{}, RunsHold{}, RunList{}, WorkflowFunction{}, Trigger{}, Drift{},
 	FunctionGraph{}, Approval{},
 	// org.go
 	DeletedApp{}, Branch{}, StartPreviewRequest{}, StartedPreview{}, OrgDomain{}, OrgDomainApp{},
-	OrgDomainRequest{}, MintedToken{}, Demo{}, DemoRequest{}, DemoPeopleRequest{}, DemoPerson{}, DemoCopy{}, DemoOffer{}, DemoBusiness{}, DemoCopyRequest{}, NewDemoBusiness{}, DemoInfo{},
-	DemoApp{}, OrgSettings{}, SSOSettings{}, DNSRecord{}, OrgSettingsRequest{}, SSORequest{},
+	OrgDomainRequest{}, MintedToken{}, Demo{}, DemoRequest{}, DemoPeopleRequest{}, DemoPerson{}, DemoCopy{}, DemoOffer{}, DemoBusiness{}, DemoCopyRequest{}, NewDemoBusiness{},
+	OrgSettings{}, SSOSettings{}, DNSRecord{}, OrgSettingsRequest{}, SSORequest{},
 	Preferences{}, Trust{}, TrustBackups{}, TrustAccess{}, TrustStatus{}, Export{},
 	AccountExport{}, ExportProfile{}, ExportMembership{}, ExportSession{}, ExportPasskey{},
 	ExportToken{}, ExportAuditEvent{}, ExportFeedback{}, LastOwnerOrg{}, PersonRequest{}, PersonRequestAnswer{},

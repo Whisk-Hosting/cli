@@ -27,7 +27,6 @@ var noReplay = []string{
 	"/orgs/{org}/members",                        // an invitation's join link
 	"/orgs/{org}/members/{id}/invite",            // a fresh join link
 	"/orgs/{org}/apps/{app}/customers",           // a customer's invitation link
-	"/orgs/{org}/clients/{client}/handover",      // a handover link
 	"/orgs/{org}/apps/{app}/demo",                // a demo's link
 	"/orgs/{org}/apps/{app}/demo/people",         // an invitation's join link
 	"/orgs/{org}/github/installations",           // a GitHub install link with its state
@@ -35,7 +34,6 @@ var noReplay = []string{
 	"/orgs/{org}/billing/pay/{id}/start",         // a payment's client secret
 	"/orgs/{org}/billing/pay/{id}/finish",        // a payment's client secret
 	"/orgs/{org}/billing/invoices/{invoice}/pay", // an invoice's payment link
-	"/orgs/{org}/billing/payouts",                // a payout onboarding link
 
 	"/app-demos/{code}/copies", // a copy of a demo, made once per ask
 }

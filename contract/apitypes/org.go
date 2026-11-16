@@ -8,7 +8,7 @@ import (
 )
 
 // A business's own screens beyond its apps: deleted apps, branches and previews, its own domain,
-// settings, trust, exports, demos and handovers, agent identities and a person's own account.
+// settings, trust, exports, demos, agent identities and a person's own account.
 
 // DeletedApp is an app deleted within its grace period, with when it is released
 // (GET /orgs/:org/deleted-apps, CONTROL-PLANE.md §6.5).
@@ -236,36 +236,6 @@ type DemoCopyRequest struct {
 type NewDemoBusiness struct {
 	Name string `json:"name"`
 	Slug string `json:"slug,omitempty"`
-}
-
-// DemoKind is what a handover link hands over: a client business an agency is handing over.
-type DemoKind string
-
-const HandoverClient DemoKind = "client"
-
-// DemoInfo is what the handover link shows the person who opens it, signed in; a client
-// handover names the agency and the contact. CanClaim says whether the person may claim it;
-// Refusal says why not.
-type DemoInfo struct {
-	Kind      DemoKind        `json:"kind"`
-	Agency    string          `json:"agency,omitempty"`
-	Contact   string          `json:"contact,omitempty"`
-	Name      string          `json:"name"`
-	Slug      string          `json:"slug"`
-	Domain    string          `json:"domain"`
-	MadeBy    string          `json:"made_by"`
-	Apps      []DemoApp       `json:"apps"`
-	Claimed   bool            `json:"claimed"`
-	ClaimedAt *time.Time      `json:"claimed_at,omitempty"`
-	CanClaim  bool            `json:"can_claim"`
-	Refusal   *werrors.Detail `json:"refusal,omitempty"`
-}
-
-// DemoApp is one of a demo's apps on its handover page.
-type DemoApp struct {
-	Slug string `json:"slug"`
-	Name string `json:"name"`
-	URL  string `json:"url"`
 }
 
 // NotificationChannel is a way a notification reaches a business (CONTROL-PLANE.md §6.14).

@@ -200,12 +200,6 @@ again for it. A business `whoami` does not name is one the person is not in: ask
 or to have an owner invite them. A person adds a new business themselves at
 `https://whisk.run/new`.
 
-An agency builds for its clients with the login it already has: `whisk clients` lists its client
-businesses, `whisk clients add <name> --contact <email>` adds one, `whisk init --org <client>`
-starts an app in it, and `whisk clients handover <client>` prints the link its contact accepts it
-with. The agency's own business needs a paid plan first (`PLAN_FEATURE`); each client business
-is on Team.
-
 If you speak MCP rather than a shell, run `whisk mcp` as a stdio server: this document and
 every error code are its resources, every command is a tool.
 
@@ -1029,7 +1023,7 @@ run on the platform, need nothing installed, and are audited:
 - Do not put `begin` or `commit` in the SQL: each call is already one transaction.
 
 **Undoing a mistake.** Backups are continuous, and `whisk restore` returns the database to any
-minute in the plan's window: the last 7 days on Starter, Team and Agency, 30 on Business; Free
+minute in the plan's window: the last 7 days on Starter and Team, 30 on Business; Free
 has no self-service restore. `whisk db snapshot` marks a restore point before risky work and
 prints the command that returns to it, or says the plan cannot. `whisk restore --at <time or 2h>`
 restores into a new database beside the live one, which `whisk db query --database <name>` reads,

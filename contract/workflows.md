@@ -57,7 +57,7 @@ code you write:
 ## Limits the platform adds
 
 - **Runs in flight.** A function with more running runs than your plan's `concurrent_runs`
-  (Free 5, Team and Agency 20, Business 50) is parked with `RUN_CONCURRENCY_LIMIT`. Runs that
+  (Free 5, Team 20, Business 50) is parked with `RUN_CONCURRENCY_LIMIT`. Runs that
   are sleeping or waiting for an event count. Set `concurrency: { limit: N }` at or below your
   plan's number so a burst queues instead of parking the function.
 - **Steps per run.** A run past 1,000 steps is cancelled with `RUN_STEP_LIMIT`.

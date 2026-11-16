@@ -15,8 +15,8 @@ import (
 
 // Limits. A message larger than MaxMessageBytes is not stored; the platform keeps a record that
 // it arrived and why it was dropped.
-// PlanFeature is the plan setting that includes an inbox: Team, Agency, Business and
-// Enterprise have it, Free and Starter do not.
+// PlanFeature is the plan setting that includes an inbox: Team, Business and Enterprise have
+// it, Free and Starter do not.
 const PlanFeature = "inbox"
 
 const (

@@ -1,13 +1,8 @@
 package apitypes
 
-import (
-	"time"
+import "time"
 
-	"github.com/whisk-run/contract/status"
-)
-
-// Billing (CONTROL-PLANE.md §6.15): plans, the billing page, Whisk's own payment pages, and an
-// agency's client businesses and its rebate.
+// Billing (CONTROL-PLANE.md §6.15): plans, the billing page and Whisk's own payment pages.
 
 // Interval is how often a plan is paid for.
 type Interval string
@@ -18,21 +13,15 @@ const (
 )
 
 // Plan is one plan as a person choosing one reads it. Intervals are the ones it is sold at here;
-// empty for Free and for a plan without prices. ClientMonthlyUSD and ClientAnnualUSD are what
-// each client business an agency adds costs on the plan (Team, and Agency for the client
-// businesses already on it), and ClientIntervals the intervals client businesses are sold at
-// here; zero and empty on every other plan.
+// empty for Free and for a plan without prices.
 type Plan struct {
-	ID               string         `json:"id"`
-	Name             string         `json:"name"`
-	MonthlyUSD       int            `json:"monthly_usd"`
-	AnnualUSD        int            `json:"annual_usd"`
-	Limits           map[string]any `json:"limits"`
-	Overage          map[string]any `json:"overage"`
-	Intervals        []Interval     `json:"intervals"`
-	ClientMonthlyUSD int            `json:"client_monthly_usd"`
-	ClientAnnualUSD  int            `json:"client_annual_usd"`
-	ClientIntervals  []Interval     `json:"client_intervals"`
+	ID         string         `json:"id"`
+	Name       string         `json:"name"`
+	MonthlyUSD int            `json:"monthly_usd"`
+	AnnualUSD  int            `json:"annual_usd"`
+	Limits     map[string]any `json:"limits"`
+	Overage    map[string]any `json:"overage"`
+	Intervals  []Interval     `json:"intervals"`
 	// Public is whether the public pricing page shows the plan.
 	Public bool `json:"public"`
 }
@@ -108,9 +97,7 @@ type FreeApp struct {
 
 // Billing is GET /orgs/:org/billing. PlanEndsAt is when the plan ends and the business moves to
 // Free, while it is ending: a move to Free waits for the end of the period paid for; null when
-// the plan is not ending. ClientOf is the agency a client business is billed through; HandedOver
-// is set on a client business its agency has handed over, whose owners may choose a plan of
-// their own; Comp is set while Whisk gives the business its plan free of charge.
+// the plan is not ending. Comp is set while Whisk gives the business its plan free of charge.
 type Billing struct {
 	Plan         Plan             `json:"plan"`
 	Interval     Interval         `json:"interval"`
@@ -130,8 +117,6 @@ type Billing struct {
 	Trial      Trial           `json:"trial"`
 	PlanEndsAt *time.Time      `json:"plan_ends_at"`
 	FreeApp    FreeApp         `json:"free_app"`
-	ClientOf   *OrgRef         `json:"client_of,omitempty"`
-	HandedOver bool            `json:"handed_over,omitempty"`
 	Comp       *BillingComp    `json:"comp,omitempty"`
 	Promoted   BillingPromoted `json:"promoted"`
 	// Boosted is the business's boosted apps in force and the monthly price of Boost on each.
@@ -187,13 +172,6 @@ type BillingComp struct {
 	EndsAt *time.Time `json:"ends_at"`
 }
 
-// OrgRef names another business.
-type OrgRef struct {
-	ID   string `json:"id"`
-	Slug string `json:"slug"`
-	Name string `json:"name"`
-}
-
 // PlanCheckout answers PUT /orgs/:org/billing/plan when the card is given on Stripe's checkout
 // first (202); a change that needs no card answers with the org.
 type PlanCheckout struct {
@@ -245,7 +223,6 @@ type PayPage struct {
 	Interval       PayInterval       `json:"interval"`
 	AmountCents    int64             `json:"amount_cents"`
 	Currency       string            `json:"currency"`
-	For            string            `json:"for"`
 	Invoice        string            `json:"invoice"`
 	PublishableKey string            `json:"publishable_key"`
 	Details        CustomerDetails   `json:"details"`
@@ -303,143 +280,4 @@ type PayStep struct {
 	ClientSecret  string      `json:"client_secret,omitempty"`
 	PaymentMethod string      `json:"payment_method,omitempty"`
 	ReturnURL     string      `json:"return_url,omitempty"`
-}
-
-// ClientBilling is where a client business stands with its billing.
-type ClientBilling string
-
-const (
-	ClientUnbilled ClientBilling = "unbilled"
-	ClientTrialing ClientBilling = "trialing"
-	ClientPaying   ClientBilling = "active"
-	ClientPastDue  ClientBilling = "past_due"
-	ClientFrozen   ClientBilling = "frozen"
-	ClientDeleting ClientBilling = "shredding"
-)
-
-// ClientBusiness is one client business as its agency's billing page lists it
-// (GET /orgs/:org/clients). PriceCents is what it costs each interval once paid for; zero while
-// unbilled. Handover is who it will be handed to, the link while it has not been, and when it
-// was.
-type ClientBusiness struct {
-	ID          string        `json:"id"`
-	Slug        string        `json:"slug"`
-	Name        string        `json:"name"`
-	Status      status.Org    `json:"status"`
-	Plan        string        `json:"plan"`
-	Interval    Interval      `json:"interval"`
-	Billing     ClientBilling `json:"billing"`
-	PriceCents  int64         `json:"price_cents"`
-	TrialEndsAt *time.Time    `json:"trial_ends_at,omitempty"`
-	PastDueAt   *time.Time    `json:"past_due_at,omitempty"`
-	CreatedAt   time.Time     `json:"created_at"`
-	Handover    Handover      `json:"handover"`
-}
-
-// Handover is a client business's handover (CONTROL-PLANE.md §6.15).
-type Handover struct {
-	Contact      string     `json:"contact,omitempty"`
-	ClaimURL     string     `json:"claim_url,omitempty"`
-	HandedOverAt *time.Time `json:"handed_over_at,omitempty"`
-}
-
-// AgencyBlock is why a business may not add client businesses now.
-type AgencyBlock string
-
-const (
-	AgencyPending  AgencyBlock = "pending"
-	AgencyInactive AgencyBlock = "inactive"
-	AgencyIsClient AgencyBlock = "client"
-	AgencyCanary   AgencyBlock = "canary"
-	AgencyUnpaid   AgencyBlock = "unpaid"
-)
-
-// Clients is GET /orgs/:org/clients. Prices is what a client business costs, in cents, at each
-// interval sold here; MonthlyCents what the client businesses being paid for cost a month, a
-// yearly one counted as a twelfth. CanAdd is whether the org may add a client business now;
-// Blocked says why not when it may not.
-type Clients struct {
-	Items        []ClientBusiness `json:"items"`
-	Prices       map[string]int64 `json:"prices"`
-	MonthlyCents int64            `json:"monthly_cents"`
-	Limits       map[string]any   `json:"limits"`
-	CanAdd       bool             `json:"can_add"`
-	Blocked      AgencyBlock      `json:"blocked,omitempty"`
-	Payments     bool             `json:"payments"`
-}
-
-// ClientAdded is the answer to adding or paying for a client business: 201 (or 200) when it is
-// paid for at once on the agency's card, 202 with Stripe's checkout when the card is given first.
-type ClientAdded struct {
-	Client      Org    `json:"client"`
-	CheckoutURL string `json:"checkout_url,omitempty"`
-}
-
-// HandoverMade is the answer to making a client business's handover link.
-type HandoverMade struct {
-	ClaimURL string `json:"claim_url"`
-	Contact  string `json:"contact"`
-}
-
-// ClientOverview is one client business on the agency's all-clients screen
-// (GET /orgs/:org/clients/overview): no prices. Apps is its live apps, Problems how many of them
-// are broken or blocked, and FailedDeploys its failed deploys in the last 24 hours.
-type ClientOverview struct {
-	ID            string        `json:"id"`
-	Slug          string        `json:"slug"`
-	Name          string        `json:"name"`
-	Status        status.Org    `json:"status"`
-	Billing       ClientBilling `json:"billing"`
-	HandedOver    bool          `json:"handed_over"`
-	Apps          int           `json:"apps"`
-	Problems      int           `json:"problems"`
-	FailedDeploys int           `json:"failed_deploys"`
-	Usage         ClientUsage   `json:"usage"`
-	Limits        ClientUsage   `json:"limits"`
-}
-
-// ClientUsage is a client business's storage and this month's runs, or the plan's allowance of
-// each.
-type ClientUsage struct {
-	StorageBytes int64 `json:"storage_bytes"`
-	Runs         int64 `json:"runs"`
-}
-
-// RebateSettlement is one month's rebate settled: what came off the bill and what was paid out.
-type RebateSettlement struct {
-	Month            string    `json:"month"`
-	EarnedCents      int64     `json:"earned_cents"`
-	CreditCents      int64     `json:"credit_cents"`
-	PayoutCents      int64     `json:"payout_cents"`
-	PayoutCurrency   string    `json:"payout_currency,omitempty"`
-	PayoutLocalCents int64     `json:"payout_local_cents,omitempty"`
-	PaidOut          bool      `json:"paid_out"`
-	SettledAt        time.Time `json:"settled_at"`
-}
-
-// PayoutAccount is where the agency's payout account stands at Stripe.
-type PayoutAccount string
-
-const (
-	PayoutNone    PayoutAccount = "none"
-	PayoutPending PayoutAccount = "pending"
-	PayoutReady   PayoutAccount = "ready"
-)
-
-// Payouts is where the agency's payouts stand: the one country Stripe pays out to, and the
-// account.
-type Payouts struct {
-	Country string        `json:"country,omitempty"`
-	Account PayoutAccount `json:"account"`
-}
-
-// Rebates is GET /orgs/:org/billing/rebates: an agency's rebate, 20% of what the clients it
-// built pay for themselves, off its own bill first and the rest paid out.
-type Rebates struct {
-	Percent         int                `json:"percent"`
-	Built           int                `json:"built"`
-	ThisMonthCents  int64              `json:"this_month_cents"`
-	Settlements     []RebateSettlement `json:"settlements"`
-	Payouts         Payouts            `json:"payouts"`
-	PaymentsEnabled bool               `json:"payments"`
 }

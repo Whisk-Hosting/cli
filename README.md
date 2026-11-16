@@ -40,8 +40,7 @@ and storage supplied by the platform. Apps use these through environment variabl
 HTTP headers, not an SDK.
 
 **Who it is for:** businesses that have their AI agent build internal tools, client portals,
-approval flows, reports and integrations around their existing systems, and agencies that build
-these apps for clients.
+approval flows, reports and integrations around their existing systems.
 
 **What an app is:** one tool a team uses in a web browser, with its own web address, its own
 data and its own list of who can use it. A whole CRM with many screens is one app.
@@ -58,7 +57,7 @@ Alembic) and Go (chi, pgx, goose).
 | **Customer accounts** | `customer_identity: app` or `org` | An app's own outside users (portals) arrive in the same headers with audience `customer` |
 | **Postgres** | `DATABASE_URL` | Own database per app (`database: app`), or own schema in an org-shared database (`shared:<name>`) with SQL `GRANT`s between apps. PgBouncer in transaction mode |
 | **Migrations** | `migrate:` command in `whisk.yaml` | Run before traffic switches, after a snapshot. A failed migration restores the snapshot and keeps the previous deploy live |
-| **Backups and restore** | `whisk restore --at <time>` | Continuous backups. Point-in-time restore to any minute: 7 days on Starter, Team and Agency, 30 days on Business, not on Free |
+| **Backups and restore** | `whisk restore --at <time>` | Continuous backups. Point-in-time restore to any minute: 7 days on Starter and Team, 30 days on Business, not on Free |
 | **Queue** | `POST $WHISK_QUEUE_URL` | Events with the same `dedupe_key` within 24 hours are dropped |
 | **Durable workflows** | Inngest SDK, functions declared in `whisk.yaml` | Inngest v1.46.0. Steps are retried and memoised. Event names are scoped to the app. Failed runs are parked for `whisk runs replay` |
 | **Cron** | `cron:` and `tz:` on a function | Nothing runs on a timer in the container. A sleeping app wakes for the run. `whisk cron run` starts one now |

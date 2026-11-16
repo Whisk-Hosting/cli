@@ -121,8 +121,6 @@ func unavailableText(p api.ManagedProduct) string {
 		return "no: not in this plan"
 	case "trial":
 		return "no: not during the free trial"
-	case "client":
-		return "no: not for a business its agency pays for"
 	case "no_release":
 		return "no: no release ready yet"
 	case "retired":

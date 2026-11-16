@@ -71,12 +71,4 @@ func TestPlanLine(t *testing.T) {
 	if got := planLine(free); got != "Plan: Free, one app free forever. Usage for 2026-09:" {
 		t.Errorf("planLine = %q", got)
 	}
-	client := billingFrom(t, `{"plan":{"name":"Agency","client_monthly_usd":59,"client_annual_usd":590},"client_of":{"slug":"studio","name":"Studio"},"period":"2026-09"}`)
-	if got := planLine(client); got != "Plan: Agency, $59 a month, paid for by Studio. Usage for 2026-09:" {
-		t.Errorf("planLine = %q", got)
-	}
-	unpaid := billingFrom(t, `{"plan":{"name":"Free"},"client_of":{"slug":"studio","name":"Studio"},"period":"2026-09"}`)
-	if got := planLine(unpaid); got != "Plan: Free, a client business Studio has not paid for yet. Usage for 2026-09:" {
-		t.Errorf("planLine = %q", got)
-	}
 }

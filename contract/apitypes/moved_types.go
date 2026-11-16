@@ -10,14 +10,6 @@ type AppCDNRequest struct {
 	On bool `json:"on"`
 }
 
-type ClientRequest struct {
-	Name     string `json:"name"`
-	Slug     string `json:"slug"`
-	Contact  string `json:"contact"`
-	Region   string `json:"region"`
-	Interval string `json:"interval"`
-}
-
 // SleepRequest optionally names a preview to put to sleep instead of production.
 type SleepRequest struct {
 	Environment string `json:"environment"`
@@ -68,4 +60,4 @@ type VisitReceipt struct {
 	Reason string   `json:"reason,omitempty"`
 }
 
-var _ = more.addWire(AppCDNRequest{}, ClientRequest{}, SleepRequest{}, AppEmailDomainRequest{}, DomainRedirectRequest{}, MainAddressRequest{}, RestoreJSON{}, VisitReceipt{})
+var _ = more.addWire(AppCDNRequest{}, SleepRequest{}, AppEmailDomainRequest{}, DomainRedirectRequest{}, MainAddressRequest{}, RestoreJSON{}, VisitReceipt{})

@@ -370,7 +370,7 @@ Status: 402 · Surface: api
 
 When: an app registers a sending domain of its own for a customer (`POST
 /v1/orgs/<org>/apps/<app>/email/domains`) while the business's apps already hold as many as the
-plan's `app_email_domains` allows together: Starter 25, Team and Agency 250, Business 1,000.
+plan's `app_email_domains` allows together: Starter 25, Team 250, Business 1,000.
 
 Fix: Remove a domain no customer sends from any more, by its id, or ask an owner to upgrade.
 
@@ -485,34 +485,6 @@ a plan with Promoted apps, making the app a Promoted app also includes it.
 
 ```json
 {"error":{"code":"PLAN_FEATURE","message":"Custom domains are not included in the Free plan.","fix":"Ask an owner to upgrade at https://whisk.run/o/acme/billing.","docs":"https://skill.whisk.run/errors/PLAN_FEATURE","details":{"setting":"custom_domains","plan":"free"}}}
-```
-
-## PROMOTE_UNAVAILABLE
-
-Status: 409 · Surface: api
-
-When: an owner or billing contact asked to make an app a Promoted app for a client business its
-agency pays for (`details.reason: client`, with `details.agency` naming the agency). A Promoted
-app is charged to the business up front, and a client business does not pay its own.
-
-Fix: Hand the business over and let it choose its own plan first, then promote the app.
-
-```json
-{"error":{"code":"PROMOTE_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and only a business on its own plan can have Promoted apps.","fix":"Hand the business over and let it choose its own plan first, then promote the app.","docs":"https://skill.whisk.run/errors/PROMOTE_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
-```
-
-## BOOST_UNAVAILABLE
-
-Status: 409 · Surface: api
-
-When: an owner or billing contact asked to give an app Boost for a client business its agency
-pays for (`details.reason: client`, with `details.agency` naming the agency). Boost is charged
-to the business up front, and a client business does not pay its own.
-
-Fix: Hand the business over and let it choose its own plan first, then boost the app.
-
-```json
-{"error":{"code":"BOOST_UNAVAILABLE","message":"Acme is billed through Northwind Studio, and only a business on its own plan can boost apps.","fix":"Hand the business over and let it choose its own plan first, then boost the app.","docs":"https://skill.whisk.run/errors/BOOST_UNAVAILABLE","details":{"reason":"client","agency":"Northwind Studio"}}}
 ```
 
 ## CARD_NEEDED
@@ -668,13 +640,11 @@ again.
 Status: 409 · Surface: api
 
 When: the business cannot add this product: its plan does not include it
-(`details.reason: plan`), the product has a price and the business is billed through its
-agency (`details.reason: client`) or inside its free trial (`details.reason: trial`), or the
-product was retired (`details.reason: retired`).
+(`details.reason: plan`), the product has a price and the business is inside its free trial
+(`details.reason: trial`), or the product was retired (`details.reason: retired`).
 
 Fix: For `plan`, an owner or billing contact chooses a plan that includes it on the billing page.
-For `client`, hand the business over so it chooses its own plan first. For `trial`, end the
-trial or choose a plan first. A retired product cannot be added.
+For `trial`, end the trial or choose a plan first. A retired product cannot be added.
 
 ```json
 {"error":{"code":"MANAGED_UNAVAILABLE","message":"The ERP link is not included in the Free plan.","fix":"An owner or billing contact can choose a plan that includes it at https://whisk.run/o/acme/billing, then add it.","docs":"https://skill.whisk.run/errors/MANAGED_UNAVAILABLE","details":{"product":"erp-link","reason":"plan","plan":"free"}}}
@@ -864,26 +834,13 @@ the time given if it still holds.
 
 Status: 404 · Surface: api, dashboard
 
-When: a demo's link, or a client business's handover link, names a code nothing has. The link was
-mistyped or cut short, the demo was stopped or ended, or the business it named was deleted.
+When: a demo's link names a code nothing has. The link was mistyped or cut short, or the demo
+was stopped or ended.
 
 Fix: Ask the person who sent the link for a new one.
 
 ```json
 {"error":{"code":"DEMO_NOT_FOUND","message":"Nothing is waiting for you at this link.","fix":"Ask the person who sent the link for a new one.","docs":"https://skill.whisk.run/errors/DEMO_NOT_FOUND","details":{}}}
-```
-
-## DEMO_CLAIMED
-
-Status: 409 · Surface: api, dashboard
-
-When: someone tried to accept a client business an agency is handing over after it was handed
-over. A client business is handed over once; `details.org` is its slug.
-
-Fix: The person who accepted it is its owner and can invite anyone else from the People page.
-
-```json
-{"error":{"code":"DEMO_CLAIMED","message":"Summit Builders has already been handed over.","fix":"Ask its owner to invite you from https://whisk.run/o/summit-builders/people.","docs":"https://skill.whisk.run/errors/DEMO_CLAIMED","details":{"org":"summit-builders"}}}
 ```
 
 ## DEMO_WRONG_DOMAIN
@@ -969,36 +926,6 @@ where it was. Start a new move if you want one.
 
 ```json
 {"error":{"code":"APP_MOVE_FINISHED","message":"This move is done.","fix":"Nothing to do: a done move's app is in Demo, and a cancelled one left the app where it was. Start a new move if you want one.","docs":"https://skill.whisk.run/errors/APP_MOVE_FINISHED","details":{"move":"01JC4T2A9Q7N4ZK2X0DMB1VQ8H","status":"done"}}}
-```
-
-## HANDOVER_WRONG_EMAIL
-
-Status: 403 · Surface: api, dashboard
-
-When: a person tried to accept a client business an agency is handing over while signed in with
-an email other than the contact the agency named. Only `details.contact` can accept it, so a
-handover link cannot give the business to someone else.
-
-Fix: Sign out and sign in again with the contact's email, or ask the agency to make the link for
-your email.
-
-```json
-{"error":{"code":"HANDOVER_WRONG_EMAIL","message":"Summit Builders is being handed to sam@summit.example.","fix":"Sign out, then sign in as sam@summit.example and open the link again, or ask the agency to make the link for your email.","docs":"https://skill.whisk.run/errors/HANDOVER_WRONG_EMAIL","details":{"contact":"sam@summit.example"}}}
-```
-
-## PAYOUTS_UNAVAILABLE
-
-Status: 409 · Surface: api, dashboard
-
-When: an agency asked to set up payouts for its rebate, and Whisk cannot pay out yet: payments
-are not configured, or Stripe would not make the payout account. Nothing is lost: the whole
-rebate comes off the agency's own bill as credit until payouts work.
-
-Fix: Nothing to do now; the rebate keeps coming off your bill. Try again later, or contact
-support.
-
-```json
-{"error":{"code":"PAYOUTS_UNAVAILABLE","message":"Payouts are not available yet.","fix":"Nothing to do now: your rebate comes off your Whisk bill as credit until payouts are available. Try again later, or contact support.","docs":"https://skill.whisk.run/errors/PAYOUTS_UNAVAILABLE","details":{}}}
 ```
 
 ## DOCTOR_FAILED
@@ -2513,7 +2440,7 @@ your domain, contact support with proof of ownership.
 Status: 402 · Surface: api, cli
 
 When: adding a custom domain would give the app more than its plan allows one app
-(`custom_domains_per_app`: Starter 25, Team and Agency 100, Business 500), counting every custom
+(`custom_domains_per_app`: Starter 25, Team 100, Business 500), counting every custom
 domain of the app, verified or not, whoever added it. `details.limit` is the plan's number and
 `details.current` how many the app holds.
 
@@ -2842,8 +2769,7 @@ add the destination again.
 Status: 402 · Surface: api
 
 When: the org's storage is at its plan limit on a plan that does not bill storage past it (the
-free app, an Agency client business, a business with no card on file, or a paid plan during its
-free trial); new uploads are refused, reads continue.
+free app, a business with no card on file, or a paid plan during its free trial); new uploads are refused, reads continue.
 
 Fix: Delete objects you no longer need, or ask an owner to upgrade.
 
@@ -3169,7 +3095,7 @@ Fix: Check the effect is what you meant, then run `whisk db query --confirm <cod
 minutes. A restore point is taken first, and the SQL commits only if it does the same again.
 Whether that restore point can be returned to depends on the plan: the fix says so, and
 `details.restorable` is `true` where `whisk restore` reaches it (within the plan's restore window,
-7 days on Starter, Team and Agency and 30 on Business) and `false` on Free, where nothing undoes
+7 days on Starter and Team and 30 on Business) and `false` on Free, where nothing undoes
 the change and the rows it touches should be copied first with `whisk db query "select ..." --json`.
 
 ```json

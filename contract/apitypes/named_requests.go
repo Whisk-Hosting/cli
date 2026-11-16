@@ -13,11 +13,6 @@ type ChangePlanRequest struct {
 	QuotedAt time.Time `json:"quoted_at"`
 }
 
-// HandoverClientRequest is the body of POST /v1/orgs/{org}/clients/{client}/handover.
-type HandoverClientRequest struct {
-	Contact string `json:"contact,omitempty"`
-}
-
 // DeviceTokenRequest is the body of POST /v1/device/token.
 type DeviceTokenRequest struct {
 	DeviceCode string `json:"device_code"`
@@ -143,4 +138,4 @@ type UploadPartsRequest struct {
 	UploadID string `json:"upload_id"`
 }
 
-var _ = more.addWire(DbEnvironmentRequest{}, UploadPartsRequest{}, ChangePlanRequest{}, HandoverClientRequest{}, DeviceTokenRequest{}, StartRestoreRequest{}, AuthoriseImportRequest{}, DbQueryRequest{}, DbSchemaRequest{}, CreateAgentTokenRequest{}, GithubInstallRequest{}, GithubLinkAppRequest{}, DecideApprovalRequest{}, SetErrorStatusRequest{}, AuthoriseUploadRequest{}, LinkUploadsRequest{}, RotateLinkKeyRequest{}, PatchUploadRequest{}, InviteCustomerRequest{}, SetCustomerSignupRequest{}, PatchCustomerRequest{}, AddEmailDomainRequest{}, CreateDeployKeyRequest{})
+var _ = more.addWire(DbEnvironmentRequest{}, UploadPartsRequest{}, ChangePlanRequest{}, DeviceTokenRequest{}, StartRestoreRequest{}, AuthoriseImportRequest{}, DbQueryRequest{}, DbSchemaRequest{}, CreateAgentTokenRequest{}, GithubInstallRequest{}, GithubLinkAppRequest{}, DecideApprovalRequest{}, SetErrorStatusRequest{}, AuthoriseUploadRequest{}, LinkUploadsRequest{}, RotateLinkKeyRequest{}, PatchUploadRequest{}, InviteCustomerRequest{}, SetCustomerSignupRequest{}, PatchCustomerRequest{}, AddEmailDomainRequest{}, CreateDeployKeyRequest{})
