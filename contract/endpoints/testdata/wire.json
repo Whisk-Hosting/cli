@@ -10742,17 +10742,6 @@
         "calls": {
           "$ref": "#/$defs/apitypes.CallConsent"
         },
-        "limits": {
-          "properties": {
-            "repo_bytes": {
-              "type": "integer"
-            }
-          },
-          "required": [
-            "repo_bytes"
-          ],
-          "type": "object"
-        },
         "listing": {
           "$ref": "#/$defs/apitypes.ValidationListing"
         },
@@ -10805,7 +10794,6 @@
       },
       "required": [
         "calls",
-        "limits",
         "plan",
         "problems",
         "promoted",

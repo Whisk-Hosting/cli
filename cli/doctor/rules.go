@@ -42,13 +42,12 @@ type Context struct {
 	// BoundGitURL is the git_url of the app .whisk/app.json names, when the platform was
 	// asked (W006).
 	BoundGitURL string
-	RepoLimit   int64 // bytes in force for W070
 	Ctx         context.Context
 }
 
-// FreeRepoLimit is the repository size the Free plan allows, assumed when the directory is
-// not bound to an app or the platform cannot be reached.
-const FreeRepoLimit = 100 << 20
+// RepoWarnBytes is the history past which W070 warns, the same the platform warns at on a push
+// (REPO_LARGE). No plan limits a repository's size: it counts towards the storage allowance.
+const RepoWarnBytes = 500 << 20
 
 type outcome struct {
 	findings []Finding
@@ -931,14 +930,10 @@ func w070(r Repo, c Context) outcome {
 	if err != nil {
 		return skip("W070", err.Error())
 	}
-	limit := c.RepoLimit
-	if limit <= 0 {
-		limit = FreeRepoLimit
-	}
-	if size <= limit {
+	if size <= RepoWarnBytes {
 		return outcome{}
 	}
-	msg := fmt.Sprintf("The repository is %s packed; the plan allows %s.", human(size), human(limit))
+	msg := fmt.Sprintf("The repository is %s packed. It counts towards the storage allowance, and every build clones it, which slows each deploy.", human(size))
 	if blobs := largestBlobs(ctx, r.Dir, 5); len(blobs) > 0 {
 		parts := make([]string, len(blobs))
 		for i, b := range blobs {

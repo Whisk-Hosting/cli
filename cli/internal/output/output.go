@@ -73,7 +73,6 @@ var exitByCode = map[string]int{
 	"CONVENTIONS_VERSION_UNSUPPORTED": ExitValidation,
 	"DOCTOR_FAILED":                   ExitValidation,
 	"SECRET_IN_COMMIT":                ExitValidation,
-	"REPO_TOO_LARGE":                  ExitValidation,
 	"PLAN_LIMIT_PREVIEWS":             ExitValidation,
 	"PRODUCTION_NEEDS_MAIN":           ExitValidation,
 	"PUSH_BEHIND":                     ExitValidation,

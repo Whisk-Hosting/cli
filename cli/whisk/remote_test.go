@@ -196,7 +196,7 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 		writeJSON(w, 200, map[string]any{"items": st.deploys, "next_cursor": ""})
 	}))
 	mux.HandleFunc("POST /v1/orgs/acme/apps/crm/validate", auth(func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, 200, map[string]any{"valid": true, "problems": []any{}, "plan": "free", "limits": map[string]any{"repo_bytes": 100 << 20}, "unavailable": []string{}})
+		writeJSON(w, 200, map[string]any{"valid": true, "problems": []any{}, "plan": "free", "unavailable": []string{}})
 	}))
 	mux.HandleFunc("GET /v1/orgs/acme/apps/crm/deploys/{id}", auth(func(w http.ResponseWriter, r *http.Request) {
 		id := r.PathValue("id")

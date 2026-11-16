@@ -254,7 +254,7 @@ func TestW063PackageFindings(t *testing.T) {
 	}
 	for _, c := range cases {
 		var got []string
-		for _, x := range Check(r, Context{Packages: c.pkgs, LockCheck: c.check, RepoLimit: FreeRepoLimit}).Findings {
+		for _, x := range Check(r, Context{Packages: c.pkgs, LockCheck: c.check}).Findings {
 			if x.Rule == "W063" {
 				got = append(got, x.File+": "+x.Message)
 			}

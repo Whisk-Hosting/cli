@@ -412,14 +412,14 @@ secrets itself.
 
 ## W070
 
-Level: error
-Check: the repository exceeds the plan size limit.
-Fix: Remove build output, media and archives from the repository and its history; use storage for files.
+Level: warning
+Check: the repository's history is over 500 MB.
+Fix: Move media, downloads and other large files into the app's storage, then squash or clean up the history that holds them.
 Safe fix: no
 
-Details: measured as the packed size of all tracked history (`git count-objects`). The limit
-comes from `/apps/:app/validate` when the directory is bound to an app and a token is available;
-otherwise the Free plan's 100 MB is assumed. The five largest blobs are listed. Skipped when the
+Details: measured as the packed size of all tracked history (`git count-objects`), against the
+same 500 MB the platform warns at on a push (REPO_LARGE). No plan limits a repository's size: it
+counts towards the storage allowance. The five largest blobs are listed. Skipped when the
 directory is not a git repository yet.
 
 ## W080

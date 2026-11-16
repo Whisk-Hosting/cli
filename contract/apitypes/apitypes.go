@@ -534,10 +534,7 @@ type Validation struct {
 		Message string `json:"message"`
 		Code    string `json:"code"`
 	} `json:"problems"`
-	Plan   string `json:"plan"`
-	Limits struct {
-		RepoBytes int64 `json:"repo_bytes"`
-	} `json:"limits"`
+	Plan        string   `json:"plan"`
 	Unavailable []string `json:"unavailable"`
 	// Start is the app's typical start, for doctor's W100; absent until one is recorded.
 	Start *AppStart `json:"start,omitempty"`

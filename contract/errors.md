@@ -3252,17 +3252,19 @@ image.
 {"error":{"code":"PACKAGE_CHECK_OFF","message":"This platform does not send lockfiles to osv.dev, so they cannot be checked before a deploy.","fix":"Deploy as usual: once the app is live the platform's registry checks the packages in its image. The platform's team can turn the lockfile check on with WHISK_OSV=on.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_OFF","details":{"setting":"WHISK_OSV"}}}
 ```
 
-## REPO_TOO_LARGE
+## REPO_LARGE
 
-Status: 422 · Surface: git, cli
+Status: - · Surface: git (a warning), cli
 
-When: the repository exceeds the plan's size limit after the push.
+When: the history a push leaves is over 500 MB. The push is accepted: a repository counts towards
+the business's storage allowance like its files and databases, and no plan limits its size. Every
+build clones it, so a large one slows each deploy. `whisk doctor` reports the same as W070.
 
-Fix: Remove large files from history (build output, media, archives) and use storage for
-files. `whisk doctor` reports the size before pushing.
+Fix: Move media, downloads and other large files into the app's storage, then squash or clean up
+the history that holds them (`git filter-repo`) and force push.
 
 ```json
-{"error":{"code":"REPO_TOO_LARGE","message":"The repository would be 1.4 GB; the Team plan allows 500 MB.","fix":"Remove build output and media from the repository and its history, ignore them in .gitignore, and use storage for files. Then push again.","docs":"https://skill.whisk.run/errors/REPO_TOO_LARGE","details":{"limit_bytes":524288000,"size_bytes":1503238553,"largest":[{"path":"assets/video.mp4","bytes":812000000}]}}}
+{"error":{"code":"REPO_LARGE","message":"The repository is 640 MB. It counts towards the storage allowance, and every build clones it, which slows each deploy.","fix":"Move media, downloads and other large files into the app's storage, then squash or clean up the history that holds them (git filter-repo) and force push.","docs":"https://skill.whisk.run/errors/REPO_LARGE"}}
 ```
 
 ## SOURCE_CHANGED

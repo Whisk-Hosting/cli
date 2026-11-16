@@ -64,7 +64,7 @@ func Run(ctx context.Context, opts Options) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	c := Context{Ctx: ctx, RepoLimit: FreeRepoLimit}
+	c := Context{Ctx: ctx}
 	var skipped []string
 	if opts.Validate != nil && repo.HasManifest && repo.ManifestErr == nil {
 		v, err := opts.Validate(ctx, repo.ManifestSrc)
@@ -72,9 +72,6 @@ func Run(ctx context.Context, opts Options) (Report, error) {
 			skipped = append(skipped, "validate: the platform could not be asked ("+err.Error()+"); plan checks skipped")
 		} else {
 			c.Validation = &v
-			if v.Limits.RepoBytes > 0 {
-				c.RepoLimit = v.Limits.RepoBytes
-			}
 		}
 	}
 	if opts.Packages != nil {
