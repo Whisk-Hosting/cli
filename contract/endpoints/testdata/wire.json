@@ -1452,6 +1452,25 @@
       ],
       "type": "object"
     },
+    "apitypes.AppPackages": {
+      "properties": {
+        "app": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "scan": {
+          "$ref": "#/$defs/apitypes.PackageScan"
+        }
+      },
+      "required": [
+        "app",
+        "name",
+        "scan"
+      ],
+      "type": "object"
+    },
     "apitypes.AppProblem": {
       "properties": {
         "at": {
@@ -7388,6 +7407,24 @@
       ],
       "type": "object"
     },
+    "apitypes.OrgPackages": {
+      "properties": {
+        "apps": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AppPackages"
+          },
+          "type": "array"
+        },
+        "included": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "apps",
+        "included"
+      ],
+      "type": "object"
+    },
     "apitypes.OrgSettings": {
       "properties": {
         "db_access": {
@@ -12542,6 +12579,11 @@
     "GET /v1/orgs/{org}/notifications": {
       "answer": {
         "$ref": "#/$defs/apitypes.List[apitypes.Notification]"
+      }
+    },
+    "GET /v1/orgs/{org}/packages": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.OrgPackages"
       }
     },
     "GET /v1/orgs/{org}/requests/{id}": {

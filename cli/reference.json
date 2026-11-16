@@ -1720,6 +1720,10 @@
     "short": "Known vulnerabilities in the live app's packages and the versions that fix them (Business plan)",
     "flags": [
      {
+      "name": "--all",
+      "usage": "list the packages to upgrade in every app you can deploy, in every business"
+     },
+     {
       "name": "--now",
       "usage": "check the live build again now and wait for the result"
      }

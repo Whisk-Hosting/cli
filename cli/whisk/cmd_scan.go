@@ -18,12 +18,19 @@ import (
 // scanCmd is whisk scan (CLI.md §5, CONTROL-PLANE.md §6.28): the app's packages checked against
 // public vulnerability lists, with the version that fixes each finding.
 func scanCmd(s *session) *cobra.Command {
-	var now bool
+	var now, all bool
 	c := &cobra.Command{
 		Use:   "scan",
 		Short: "Known vulnerabilities in the live app's packages and the versions that fix them (Business plan)",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if all && now {
+				return output.New("INVALID_REQUEST", "--all and --now cannot be used together.",
+					"Run whisk scan --now in one app's directory, or whisk scan --all to list every app's findings.", nil)
+			}
+			if all {
+				return scanAll(s)
+			}
 			org, app, err := s.target()
 			if err != nil {
 				return err
@@ -60,6 +67,7 @@ func scanCmd(s *session) *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&now, "now", false, "check the live build again now and wait for the result")
+	c.Flags().BoolVar(&all, "all", false, "list the packages to upgrade in every app you can deploy, in every business")
 	return c
 }
 

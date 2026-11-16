@@ -392,6 +392,28 @@ type Packages struct {
 	Pending  *PackageScan `json:"pending,omitempty"`
 }
 
+// Serious reports whether a finding wants acting on now: critical or high, with a fixed version
+// to move to, and not set aside as not called by the app's code. These are what the security
+// update email names, what whisk doctor warns of (W063) and what PackageCounts.Attention counts.
+func (f PackageFinding) Serious() bool {
+	return (f.Severity == SeverityCritical || f.Severity == SeverityHigh) && f.Fixed != "" && !f.Reach.NotCalled()
+}
+
+// OrgPackages is GET /orgs/:org/packages: whether the plan includes scanning and, for each app
+// the caller reaches that has a finished scan, its newest one with only the serious findings, so
+// an agent working on one app hears what wants fixing in the others.
+type OrgPackages struct {
+	Included bool          `json:"included"`
+	Apps     []AppPackages `json:"apps"`
+}
+
+// AppPackages is one app's newest finished scan in OrgPackages.
+type AppPackages struct {
+	App  string      `json:"app"`
+	Name string      `json:"name"`
+	Scan PackageScan `json:"scan"`
+}
+
 // LogDestinationKind is the kind of service a business forwards its logs to.
 type LogDestinationKind string
 

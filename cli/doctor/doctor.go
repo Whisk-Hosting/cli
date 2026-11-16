@@ -35,6 +35,11 @@ type Options struct {
 	// only when the binding is tracked and a remote whisk exists; nil skips the check. An
 	// error from it is reported as a skip.
 	BoundGitURL func(ctx context.Context) (string, error)
+	// OtherApps asks the platform for the serious package findings of every app the person can
+	// deploy; nil skips it. Org and App name the app being checked, which the summary leaves
+	// out. An error from it is reported as a skip, and the apps it did return are still summarised.
+	OtherApps func(ctx context.Context) ([]OtherApp, error)
+	Org, App  string
 }
 
 // Report is the outcome: findings, what --fix changed, and what could not be checked.
@@ -45,6 +50,8 @@ type Report struct {
 	Errors   int       `json:"errors"`
 	Warnings int       `json:"warnings"`
 	Plan     string    `json:"plan,omitempty"`
+	// OtherApps is the person's other apps with packages to upgrade, when there are any.
+	OtherApps *OtherApps `json:"other_apps,omitempty"`
 }
 
 // OK is true when no finding is an error.
@@ -96,8 +103,11 @@ func Run(ctx context.Context, opts Options) (Report, error) {
 			c.BoundGitURL = u
 		}
 	}
+	others, notes := askOtherApps(ctx, opts)
+	skipped = append(skipped, notes...)
 	report := Check(repo, c)
 	report.Skipped = append(skipped, report.Skipped...)
+	report.OtherApps = others
 	if !opts.Fix {
 		return report, nil
 	}
@@ -118,9 +128,24 @@ func Run(ctx context.Context, opts Options) (Report, error) {
 		}
 		report = Check(repo, c)
 		report.Skipped = append(skipped, report.Skipped...)
+		report.OtherApps = others
 	}
 	report.Fixed = fixed
 	return report, nil
+}
+
+// askOtherApps asks for the person's other apps and sums them up, with the skip note when some
+// business could not be asked. The businesses that answered are summarised even then.
+func askOtherApps(ctx context.Context, opts Options) (*OtherApps, []string) {
+	if opts.OtherApps == nil {
+		return nil, nil
+	}
+	apps, err := opts.OtherApps(ctx)
+	var notes []string
+	if err != nil {
+		notes = append(notes, "other apps: the platform could not be asked about every business ("+err.Error()+"); their package findings may be incomplete")
+	}
+	return SummariseOtherApps(apps, opts.Org, opts.App), notes
 }
 
 func appendNew(list []string, more []string) []string {

@@ -608,7 +608,10 @@ each one with its severity, the installed version, the version that fixes it (`f
 was found (a lockfile, or a path in the image). Fix the critical and high ones that have a fix: move
 the package to that version or newer in the lockfile (a base image package by moving to a newer base
 image), deploy, then `whisk scan --now` to check again. A finding with no `fixed` has no fix yet;
-leave it. For Go, Whisk also checks whether the app's code calls the vulnerable part: a finding
+leave it. `whisk doctor` also sums up the person's other apps (where they are an owner, admin or
+developer) that have packages to upgrade, under `other_apps`; `whisk scan --all` lists each of those
+apps with its packages and fixed versions. Tell your human about them, and fix them in each app's own
+repository. For Go, Whisk also checks whether the app's code calls the vulnerable part: a finding
 with `reach: not_called` is listed apart under "Not called by your code" and is not counted as
 one to fix now; update it when convenient, never ahead of the ones to fix. Every other language
 is `unknown` and counts as called. Python's slim image ships pip, which bundles its own copies of urllib3, msgpack and setuptools that the scan reports; the Python template uninstalls pip after `uv sync`, since the app runs from uv's virtualenv, and an app with its own Dockerfile does the same. Most image findings come from the operating system in a full base image: the TypeScript

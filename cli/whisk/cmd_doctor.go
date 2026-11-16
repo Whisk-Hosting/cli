@@ -32,11 +32,21 @@ Exit 3 when any error remains.
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts := doctor.Options{Dir: s.env.Dir, Fix: fix}
-			if b, ok, _ := config.LoadBinding(s.env.Dir); ok || (s.orgFlag != "" && s.appFlag != "") {
-				org, app := b.Org, b.App
-				if s.orgFlag != "" && s.appFlag != "" {
-					org, app = s.orgFlag, s.appFlag
+			b, bound, _ := config.LoadBinding(s.env.Dir)
+			org, app := b.Org, b.App
+			if s.orgFlag != "" && s.appFlag != "" {
+				org, app = s.orgFlag, s.appFlag
+			}
+			if client, _, err := s.client(); err == nil {
+				// Every app the person can deploy is asked about, bound or not, so an agent in any
+				// of them hears what wants upgrading in the others.
+				opts.Org, opts.App = org, app
+				opts.OtherApps = func(ctx context.Context) ([]doctor.OtherApp, error) {
+					orgs, err := packagesEverywhere(ctx, client)
+					return otherApps(orgs), doctorPlatformErr(err)
 				}
+			}
+			if ok := bound; ok || (s.orgFlag != "" && s.appFlag != "") {
 				if client, _, err := s.client(); err == nil {
 					opts.Validate = func(ctx context.Context, m []byte) (api.Validation, error) {
 						v, err := client.Validate(ctx, org, app, m)
@@ -66,6 +76,9 @@ Exit 3 when any error remains.
 			result := map[string]any{"ok": rep.OK(), "errors": rep.Errors, "warnings": rep.Warnings, "findings": nonNil(rep.Findings), "fixed": nonNilStrings(rep.Fixed), "skipped": nonNilStrings(rep.Skipped)}
 			if rep.Plan != "" {
 				result["plan"] = rep.Plan
+			}
+			if rep.OtherApps != nil {
+				result["other_apps"] = rep.OtherApps
 			}
 			if rep.OK() {
 				s.printer.Result(result, func(w io.Writer) { printReport(s.printer, w, rep) })
@@ -134,7 +147,12 @@ func printReport(p output.Printer, w io.Writer, rep doctor.Report) {
 	for _, sk := range rep.Skipped {
 		fmt.Fprintln(w, p.Dim(sk))
 	}
+	if o := rep.OtherApps; o != nil {
+		fmt.Fprintf(w, "%s %s\n    %s\n    %s\n", p.Bold("other apps"), p.Warn("security"), o.Sentence(), p.Dim("fix: "+o.Fix))
+	}
 	switch {
+	case rep.Errors == 0 && rep.Warnings == 0 && rep.OtherApps != nil:
+		fmt.Fprintln(w, p.Good("Doctor found nothing to fix in this app."))
 	case rep.Errors == 0 && rep.Warnings == 0:
 		fmt.Fprintln(w, p.Good("Doctor found nothing to fix."))
 	default:
