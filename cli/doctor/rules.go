@@ -1057,8 +1057,8 @@ func w090(r Repo, c Context) outcome {
 	if r.Manifest.Promoted {
 		return skip("W090", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
 	}
-	if medusaShop(r) {
-		return skip("W090", "the app is a Medusa shop, which keeps its customers' sign-in")
+	if isShop(r) {
+		return skip("W090", "the app is a shop, which keeps its customers' sign-in")
 	}
 	var out outcome
 	for _, h := range passwordFields(r) {
@@ -1067,9 +1067,9 @@ func w090(r Repo, c Context) outcome {
 	return out
 }
 
-// medusaShop is whether the app is a Medusa shop (the shop template, CONTRACT.md §11): its
-// customers sign in to the shop itself, on any plan.
-func medusaShop(r Repo) bool { return ownsignin.MedusaShop(r.Read("package.json")) }
+// isShop is whether the app is a shop (the shop template, CONTRACT.md §11): its customers sign in
+// to the shop itself, on any plan.
+func isShop(r Repo) bool { return ownsignin.Shop(r.Manifest.Commerce) }
 
 // w106 warns when every route is public and the app asks for a password, so it runs its own
 // sign-in, and it is neither a Promoted app nor a shop (ownsignin.Warn). A warning only: the app
@@ -1083,8 +1083,8 @@ func w106(r Repo, c Context) outcome {
 		return skip("W106", "the app is a Promoted app, which may keep its own sign-in")
 	case r.Manifest.Promoted:
 		return skip("W106", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
-	case medusaShop(r):
-		return skip("W106", "the app is a Medusa shop, which keeps its customers' sign-in")
+	case isShop(r):
+		return skip("W106", "the app is a shop, which keeps its customers' sign-in")
 	}
 	return one("W106", manifestFile, yamlLine(r.ManifestNode, catchAllPointer(public)), ownsignin.Message(r.Manifest.Name))
 }

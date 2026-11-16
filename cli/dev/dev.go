@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"runtime"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -38,7 +39,9 @@ type Options struct {
 	}
 	// Flags are the feature flags on for every request (CONTRACT.md §3.3).
 	Flags []string
-	Log   io.Writer
+	// Env is more environment for the app, such as WHISK_COMMERCE_ENGINE for a shop.
+	Env []string
+	Log io.Writer
 }
 
 // Stack is a running local stack.
@@ -351,7 +354,7 @@ func RunStub(ctx context.Context, o Options, s Stack, appCmd []string) error {
 		DirectURL:    s.Plan.DirectURL,
 		SecretsFile:  filepath.Join(o.AppDir, filepath.FromSlash(Dir), "secrets.env"),
 		InngestURL:   s.Plan.InngestURL,
-		ExtraEnv:     s.Plan.ExtraEnv,
+		ExtraEnv:     append(slices.Clone(s.Plan.ExtraEnv), o.Env...),
 		Flags:        o.Flags,
 		Migrate:      true,
 		Log:          o.Log,

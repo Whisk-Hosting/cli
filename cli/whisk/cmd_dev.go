@@ -50,6 +50,14 @@ with the compose plugin.
 			o.Identity.As, o.Identity.Name, o.Identity.Audience = as, name, audience
 			o.Identity.Groups, o.Identity.Roles = stub.SplitList(groups), stub.SplitList(roles)
 			o.Flags = stub.SplitList(flags)
+			// A shop runs on Whisk's commerce engine here as it does on Whisk.
+			if m.Commerce == "medusa" && !down && !status {
+				engine, err := s.devEngine()
+				if err != nil {
+					return err
+				}
+				o.Env = append(o.Env, "WHISK_COMMERCE_ENGINE="+engine)
+			}
 			st, err := dev.Up(s.ctx, o, log)
 			if err != nil {
 				return output.New("DEV_STACK_FAILED", err.Error(), "Check that Docker is running and the ports in .whisk/dev/compose.yaml are free, then run whisk dev again; whisk dev --down resets the stack.", nil)

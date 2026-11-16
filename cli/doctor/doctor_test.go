@@ -605,7 +605,8 @@ func TestW106(t *testing.T) {
 		{"some routes public", "/blog/**", "", "", nil, 0, "", false},
 		{"a Promoted app", "/**", "", "", &api.Validation{Promoted: true}, 0, "W106: skipped, the app is a Promoted app, which may keep its own sign-in", false},
 		{"whisk.yaml says promoted", "/**", "promoted: true\n", "", nil, 0, "W106: skipped, whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in", false},
-		{"a Medusa shop", "/**", "", `{"dependencies":{"@medusajs/medusa":"2.21.2"}}`, nil, 0, "W106: skipped, the app is a Medusa shop, which keeps its customers' sign-in", false},
+		{"a shop", "/**", "commerce: medusa\n", "", nil, 0, "W106: skipped, the app is a shop, which keeps its customers' sign-in", false},
+		{"Medusa's package alone is no shop", "/**", "", `{"dependencies":{"@medusajs/medusa":"2.21.2"}}`, nil, 6, "", false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -714,7 +715,7 @@ health:
   timeout: 90
 database: app
 promoted: %s
-`
+%s`
 	files := map[string]string{
 		"package.json":                  `{"name":"shop","dependencies":{"@medusajs/medusa":"2.21.2"}}`,
 		"package-lock.json":             `{"name":"shop","lockfileVersion":3}`,
@@ -725,19 +726,20 @@ promoted: %s
 		"Dockerfile":                    "FROM node:22-slim\nWORKDIR /app\nCOPY . .\nUSER node\nEXPOSE 8080\nCMD [\"node\",\"index.js\"]\n",
 		".gitignore":                    ".env\n",
 	}
-	// A Medusa shop keeps its customers' sign-in on any plan; another app only as a Promoted app.
+	// A shop (commerce: medusa) keeps its customers' sign-in on any plan; another app only as a
+	// Promoted app.
 	const other = `{"name":"shop","dependencies":{"express":"5.1.0"}}`
 	for _, tc := range []struct {
-		name, promoted, pkg string
-		want                []string
+		name, promoted, commerce, pkg string
+		want                          []string
 	}{
-		{"promoted", "true", files["package.json"], nil},
-		{"medusa", "false", files["package.json"], []string{"W005"}},
-		{"promoted other", "true", other, nil},
-		{"other", "false", other, []string{"W005", "W090", "W099", "W106"}},
+		{"promoted", "true", "", files["package.json"], nil},
+		{"shop", "false", "commerce: medusa\n", files["package.json"], []string{"W005"}},
+		{"promoted other", "true", "", other, nil},
+		{"other", "false", "", other, []string{"W005", "W090", "W099", "W106"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rep := runDoctor(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.promoted), "package.json": tc.pkg}), false)
+			rep := runDoctor(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.promoted, tc.commerce), "package.json": tc.pkg}), false)
 			for _, id := range []string{"W005", "W022", "W052", "W090", "W099", "W106"} {
 				want := false
 				for _, w := range tc.want {

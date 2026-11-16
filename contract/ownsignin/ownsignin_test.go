@@ -32,26 +32,10 @@ func TestWarn(t *testing.T) {
 	}
 }
 
-func TestMedusaShop(t *testing.T) {
-	cases := []struct {
-		name string
-		pkg  string
-		want bool
-	}{
-		{"the shop template", `{"dependencies":{"@medusajs/medusa":"2.8.0","astro":"5.0.0"}}`, true},
-		{"medusa only as a dev dependency", `{"devDependencies":{"@medusajs/medusa":"2.8.0"}}`, false},
-		{"another app", `{"dependencies":{"express":"5.0.0"}}`, false},
-		{"no dependencies", `{"name":"x"}`, false},
-		{"not JSON", `{"dependencies":`, false},
-		{"no package.json", "", false},
-	}
-	for _, c := range cases {
-		var raw []byte
-		if c.pkg != "" {
-			raw = []byte(c.pkg)
-		}
-		if got := MedusaShop(raw); got != c.want {
-			t.Errorf("%s: MedusaShop = %v, want %v", c.name, got, c.want)
+func TestShop(t *testing.T) {
+	for commerce, want := range map[string]bool{"medusa": true, "": false, "Medusa": false, "shopify": false} {
+		if got := Shop(commerce); got != want {
+			t.Errorf("Shop(%q) = %v, want %v", commerce, got, want)
 		}
 	}
 }

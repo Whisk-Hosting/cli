@@ -154,7 +154,7 @@ whisk login --agent "<your name>"
                          The token works only from this computer: use it through whisk,
                          never copy it elsewhere
 whisk init --template ts|py|go|next|astro|shop writes whisk.yaml, .whisk/app.json, and
-                         the template; next and astro are Next.js and Astro; shop is a whole online shop (Medusa) for a business selling
+                         the template; next and astro are Next.js and Astro; shop is a whole online shop (on Whisk's commerce engine) for a business selling
                          to the public, and runs only as a Promoted app
 whisk doctor             checks the repository; exit 3 means fix the listed problems
 whisk deploy -m "…"      commits, pushes, builds, migrates, health-checks, switches traffic
@@ -743,12 +743,12 @@ A Promoted app is where an existing product brings what it already has:
   signing up for Stripe to pasting its keys on the secrets page. Ask for the details and send them
   with `whisk call POST /admin/whisk/setup --data '{"orders_email": "…"}'`; recommend the rest
   (GST number, phone, address, policy pages, own domain and email) without holding up the launch.
-- **Trade ordering.** The shop template (a Medusa shop) runs on any plan with room for it and
+- **Trade ordering.** The shop template runs on any plan with room for it and
   keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
   account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and
   a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
-  `commerce: medusa`: keep it, and leave its API (`/store`, `/admin`, `/auth`, `/hooks`) to the
-  template's server, since Whisk may answer that API itself with the same answers.
+  `commerce: medusa`: keep it, since Whisk's commerce engine answers its API (`/store`,
+  `/admin`, `/auth`, `/hooks`, in Medusa's shape) and the app serves only its pages.
 
 Who may open the app (groups, people, everyone in the business) and who is in the business are
 an owner's or admin's choice. Everyone in the business means its members. A guest, someone from

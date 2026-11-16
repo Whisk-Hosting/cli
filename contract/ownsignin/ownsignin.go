@@ -8,7 +8,6 @@
 package ownsignin
 
 import (
-	"encoding/json"
 	"path"
 	"regexp"
 	"strings"
@@ -85,19 +84,10 @@ func Page(p string) bool {
 	return true
 }
 
-// MedusaShop reports whether a package.json (nil when the app has none) lists @medusajs/medusa
-// among its dependencies, as the shop template (CONTRACT.md §11) does. That is how doctor and
-// the platform tell a shop, whose customers sign in to the shop itself on any plan.
-func MedusaShop(packageJSON []byte) bool {
-	var pkg struct {
-		Dependencies map[string]any `json:"dependencies"`
-	}
-	if packageJSON == nil || json.Unmarshal(packageJSON, &pkg) != nil {
-		return false
-	}
-	_, ok := pkg.Dependencies["@medusajs/medusa"]
-	return ok
-}
+// Shop reports whether whisk.yaml's commerce (CONTRACT.md §3) makes the app a shop, as the shop
+// template's does: Whisk's commerce engine answers its API, and its customers sign in to the shop
+// itself on any plan. That is how doctor and the platform tell a shop.
+func Shop(commerce string) bool { return commerce == "medusa" }
 
 // Message is what doctor and the deploy say of app.
 func Message(app string) string {

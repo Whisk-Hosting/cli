@@ -553,7 +553,7 @@ Status: - · Surface: deploy (a warning), cli
 
 When: the deploy went live, but every route of the app is public (`routes.public` covers `/**`)
 and its code or pages ask for a password, so it runs its own sign-in, which only a Promoted app
-may do. The app is neither a Promoted app in force nor a Medusa shop, and its
+may do. The app is neither a Promoted app in force nor a shop (`commerce: medusa`), and its
 whisk.yaml does not say `promoted: true`. It is a warning on the deploy (`warnings`), not a
 failure: the app serves. `details.dashboard` is the app's page, where an owner or billing
 contact makes it a Promoted app; `details.rule` is doctor's matching rule, W106.
