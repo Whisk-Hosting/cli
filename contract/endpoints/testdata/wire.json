@@ -346,6 +346,49 @@
       },
       "type": "object"
     },
+    "apitypes.AnalyticsFunnel": {
+      "properties": {
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "steps": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsFunnelStep"
+          },
+          "type": "array"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "period",
+        "steps",
+        "to"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsFunnelStep": {
+      "properties": {
+        "step": {
+          "type": "string"
+        },
+        "visitors": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "step",
+        "visitors"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsOpen": {
       "properties": {
         "url": {
@@ -11795,6 +11838,40 @@
     "GET /v1/orgs/{org}/apps/{app}/analytics/crawlers/journeys/{journey}": {
       "answer": {
         "$ref": "#/$defs/apitypes.CrawlerJourneyDetail"
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/funnel": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AnalyticsFunnel"
+      },
+      "query": {
+        "event": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "step": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
       }
     },
     "GET /v1/orgs/{org}/apps/{app}/analytics/traffic": {

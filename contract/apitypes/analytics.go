@@ -361,3 +361,18 @@ type AnalyticsChartLimits struct {
 	Since    string  `json:"since"`
 	NoLower  bool    `json:"no_lower"`
 }
+
+// AnalyticsFunnel is how many of an app's visitors took each step of a funnel in order over a
+// span: Steps[0] took the first step, Steps[1] the first and then the second, and so on.
+type AnalyticsFunnel struct {
+	Period string                `json:"period"`
+	From   time.Time             `json:"from"`
+	To     time.Time             `json:"to"`
+	Steps  []AnalyticsFunnelStep `json:"steps"`
+}
+
+// AnalyticsFunnelStep is one step, a path or event:name, and the visitors who reached it.
+type AnalyticsFunnelStep struct {
+	Step     string `json:"step"`
+	Visitors int    `json:"visitors"`
+}

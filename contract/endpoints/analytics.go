@@ -10,11 +10,12 @@ var (
 	GetAnalyticsVisitors = New[GetAnalyticsVisitorsQuery, apitypes.AppVisitors]("GET /v1/orgs/{org}/apps/{app}/analytics/visitors")
 	GetAnalyticsVisitor  = New[GetAnalyticsVisitorQuery, apitypes.AnalyticsVisitorSteps]("GET /v1/orgs/{org}/apps/{app}/analytics/visitors/{visitor}")
 	GetAnalyticsChart    = New[GetAnalyticsChartQuery, apitypes.AnalyticsChart]("GET /v1/orgs/{org}/apps/{app}/analytics/chart")
+	GetAnalyticsFunnel   = New[GetAnalyticsFunnelQuery, apitypes.AnalyticsFunnel]("GET /v1/orgs/{org}/apps/{app}/analytics/funnel")
 	OpenAnalytics        = New[None, apitypes.AnalyticsOpen]("POST /v1/orgs/{org}/apps/{app}/analytics/open")
 	GetTraffic           = New[TrafficQuery, apitypes.AppTraffic]("GET /v1/orgs/{org}/apps/{app}/analytics/traffic")
 	GetTrafficRequests   = New[TrafficQuery, apitypes.AppTrafficRequests]("GET /v1/orgs/{org}/apps/{app}/analytics/traffic/requests")
 
-	_ = public.Add(GetAnalytics, GetAnalyticsVisitors, GetAnalyticsVisitor, GetAnalyticsChart, OpenAnalytics, GetTraffic, GetTrafficRequests)
+	_ = public.Add(GetAnalytics, GetAnalyticsVisitors, GetAnalyticsVisitor, GetAnalyticsChart, GetAnalyticsFunnel, OpenAnalytics, GetTraffic, GetTrafficRequests)
 )
 
 // GetAnalyticsQuery is what GetAnalytics reads from the query.
@@ -55,6 +56,20 @@ type GetAnalyticsChartQuery struct {
 	Source  string `query:"source"`
 	To      string `query:"to"`
 	Tz      string `query:"tz"`
+}
+
+// GetAnalyticsFunnelQuery is what GetAnalyticsFunnel reads from the query: the span and the
+// steps in order, each a path (/pricing) or an event (event:signup), sent as step once each. A
+// funnel reads every visitor of the span: a filter (source, page, event) is refused.
+type GetAnalyticsFunnelQuery struct {
+	Event  string   `query:"event"`
+	From   string   `query:"from"`
+	Page   string   `query:"page"`
+	Period string   `query:"period"`
+	Source string   `query:"source"`
+	Step   []string `query:"step"`
+	To     string   `query:"to"`
+	Tz     string   `query:"tz"`
 }
 
 // GetAnalyticsVisitorQuery is what GetAnalyticsVisitor reads from the query.
