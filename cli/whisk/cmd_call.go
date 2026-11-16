@@ -16,6 +16,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/whisk-run/contract/endpoints"
 	werrors "github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/run/runhttp"
 	"github.com/whisk-run/contract/tokensig"
@@ -184,13 +185,13 @@ func (s *session) callCredential() (string, ed25519.PrivateKey, error) {
 // appAddress is the address of the app's environment: production unless --env names another.
 func (s *session) appAddress(client *api.Client, org, app, env string) (string, string, error) {
 	if env == "" || env == "production" {
-		a, err := client.GetApp(s.ctx, org, app)
+		a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 		if err != nil {
 			return "", "", wrap(err)
 		}
 		return a.URL, "production", nil
 	}
-	envs, err := client.ListEnvironments(s.ctx, org, app)
+	envs, err := api.All(s.ctx, client, endpoints.ListEnvironments, org, app)
 	if err != nil {
 		return "", "", wrap(err)
 	}

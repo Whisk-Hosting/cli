@@ -19,6 +19,7 @@ var (
 	ListOrgs        = New[None, apitypes.Page[apitypes.Org]]("GET /v1/orgs")
 	CreateOrg       = New[apitypes.CreateOrgRequest, apitypes.Org]("POST /v1/orgs")
 	MarkOrgOpened   = New[None, None]("PUT /v1/orgs/{org}/opened")
+	DeviceToken     = New[apitypes.DeviceTokenRequest, apitypes.DeviceToken]("POST /v1/device/token")
 
-	_ = public.Add(Whoami, RevokeSelf, GitPassword, DeviceCode, DeviceInfo, DeviceApprove, MySessions, RevokeMySession, MyTokens, RevokeMyToken, ListOrgs, CreateOrg, MarkOrgOpened)
+	_ = public.Add(Whoami, RevokeSelf, GitPassword, DeviceCode, DeviceInfo, DeviceApprove, MySessions, RevokeMySession, MyTokens, RevokeMyToken, ListOrgs, CreateOrg, MarkOrgOpened, DeviceToken)
 )

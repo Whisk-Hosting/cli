@@ -7,12 +7,14 @@ import (
 // The email routes.
 var (
 	GetEmail          = New[None, apitypes.EmailStatus]("GET /v1/orgs/{org}/email")
-	ListEmailDomains  = New[None, map[string]any]("GET /v1/orgs/{org}/email/domains")
+	ListEmailDomains  = New[None, apitypes.List[apitypes.EmailDomain]]("GET /v1/orgs/{org}/email/domains")
 	VerifyEmailDomain = New[None, apitypes.EmailDomain]("POST /v1/orgs/{org}/email/domains/{id}/verify")
 	ResumeEmailDomain = New[None, apitypes.EmailDomain]("POST /v1/orgs/{org}/email/domains/{id}/resume")
 	DeleteEmailDomain = New[None, None]("DELETE /v1/orgs/{org}/email/domains/{id}")
 	SetEmailProvider  = New[apitypes.EmailProviderRequest, apitypes.EmailProviderSet]("PUT /v1/orgs/{org}/email/provider")
 	GetEmailSend      = New[None, apitypes.EmailSend]("GET /v1/orgs/{org}/apps/{app}/email/sends/{id}")
+	AddEmailDomain    = New[apitypes.AddEmailDomainRequest, apitypes.EmailDomain]("POST /v1/orgs/{org}/email/domains")
+	SendEmail         = New[apitypes.SendEmailRequest, apitypes.EmailSent]("POST /v1/orgs/{org}/apps/{app}/email/send")
 
-	_ = public.Add(GetEmail, ListEmailDomains, VerifyEmailDomain, ResumeEmailDomain, DeleteEmailDomain, SetEmailProvider, GetEmailSend)
+	_ = public.Add(GetEmail, ListEmailDomains, VerifyEmailDomain, ResumeEmailDomain, DeleteEmailDomain, SetEmailProvider, GetEmailSend, AddEmailDomain, SendEmail)
 )

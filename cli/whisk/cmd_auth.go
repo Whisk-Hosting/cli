@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/tokensig"
 
 	"github.com/whisk-run/cli/internal/api"
@@ -234,15 +235,15 @@ func replacedBy(allOrgs bool, current, api string, held map[string]config.Creden
 // signOut revokes a stored sign-in on the platform that issued it, signed with its key, and
 // answers whether the platform revoked it. A token it cannot revoke expires on its own.
 func (s *session) signOut(c config.Credential) bool {
-	api := c.API
-	if api == "" {
-		api = s.cfg.API
+	base := c.API
+	if base == "" {
+		base = s.cfg.API
 	}
-	client := s.newClient(api, c.Token)
+	client := s.newClient(base, c.Token)
 	if key, err := tokensig.ParsePrivate(c.PrivateKey); err == nil && c.PrivateKey != "" {
 		client.Key = key
 	}
-	return client.RevokeSelf(s.ctx) == nil
+	return api.Exec(s.ctx, client, endpoints.RevokeSelf) == nil
 }
 
 // loginContext is what this directory says it is working on, for the approval page's default:
@@ -373,7 +374,7 @@ func whoamiCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			me, err := client.Whoami(s.ctx)
+			me, err := api.Call(s.ctx, client, endpoints.Whoami)
 			if err != nil {
 				return wrap(err)
 			}
@@ -425,7 +426,7 @@ func orgsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			me, err := client.Whoami(s.ctx)
+			me, err := api.Call(s.ctx, client, endpoints.Whoami)
 			if err != nil {
 				return wrap(err)
 			}
@@ -470,7 +471,7 @@ func useCmd(s *session) *cobra.Command {
 			}
 			verified, gitURL := false, ""
 			if client, _, err := s.client(); err == nil {
-				if a, err := client.GetApp(s.ctx, org, app); err != nil {
+				if a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app); err != nil {
 					if api.IsCode(err, "NOT_FOUND") {
 						return wrap(err)
 					}

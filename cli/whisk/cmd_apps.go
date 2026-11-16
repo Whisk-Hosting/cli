@@ -22,6 +22,7 @@ import (
 	"github.com/whisk-run/cli/internal/stack"
 	"github.com/whisk-run/cli/scaffold"
 	"github.com/whisk-run/cli/templates"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/manifest"
 	"github.com/whisk-run/contract/run/runhttp"
 )
@@ -243,7 +244,7 @@ func createApp(s *session, slug string) (createdApp, error) {
 	if err != nil {
 		return createdApp{}, err
 	}
-	app, err := client.CreateApp(s.ctx, org, api.CreateAppRequest{Slug: slug, Name: slug})
+	app, err := api.Send(s.ctx, client, endpoints.CreateApp, api.CreateAppRequest{Slug: slug, Name: slug}, org)
 	if err != nil {
 		return createdApp{}, wrap(err)
 	}
@@ -289,7 +290,7 @@ func appsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListApps(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListApps, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -316,7 +317,7 @@ func appsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			a, err := client.GetApp(s.ctx, org, app)
+			a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -324,7 +325,7 @@ func appsCmd(s *session) *cobra.Command {
 			if !s.printer.JSON && a.Managed != nil && len(a.Managed.Links) > 0 {
 				// The links name apps by id; the list gives a person their slugs, and the ids
 				// stand when it cannot be read.
-				linked, _ = client.ListApps(s.ctx, org)
+				linked, _ = api.All(s.ctx, client, endpoints.ListApps, org)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": a}, func(w io.Writer) {
 				fmt.Fprintf(w, "%s/%s  %s  %s\n  https://%s\n  git %s\n  created %s\n", org, a.Slug, a.Status, a.Region, a.Hostname, a.GitURL, a.CreatedAt.Local().Format("2006-01-02 15:04"))
@@ -359,7 +360,7 @@ for 7 days with whisk apps restore <id>.`,
 			}
 			found := make([]deleteTarget, 0, len(refs))
 			for _, r := range refs {
-				a, err := client.GetApp(s.ctx, r.org, r.app)
+				a, err := api.Call(s.ctx, client, endpoints.GetApp, r.org, r.app)
 				if err != nil {
 					return wrap(err)
 				}
@@ -380,7 +381,7 @@ for 7 days with whisk apps restore <id>.`,
 			if err != nil {
 				return err
 			}
-			all, err := client.ListDeletedApps(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListDeletedApps, org)
 			if err != nil {
 				return wrap(err)
 			}

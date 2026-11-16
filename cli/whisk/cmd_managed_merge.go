@@ -10,6 +10,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/whisk-run/cli/internal/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/doctor"
@@ -17,6 +19,7 @@ import (
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/custom"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // whisk managed merge (FORKS.md §4, §10): a checkout of a fork with changes of the business's own
@@ -241,7 +244,7 @@ func runManagedMerge(s *session) error {
 	if err != nil {
 		return err
 	}
-	a, err := client.GetApp(s.ctx, org, app)
+	a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 	if err != nil {
 		return wrap(err)
 	}
@@ -303,7 +306,7 @@ func runManagedMerge(s *session) error {
 	}
 	returned := []returnedChange{}
 	if len(before.Changes) > 0 {
-		list, err := client.ForkSuggestions(s.ctx, org, app)
+		list, err := api.Call(s.ctx, client, endpoints.ForkSuggestions, org, app)
 		if err != nil {
 			return wrap(err)
 		}

@@ -13,8 +13,9 @@ var (
 	OrgRuns          = New[OrgRunsQuery, apitypes.RunList]("GET /v1/orgs/{org}/runs")
 	ListFunctions    = New[None, apitypes.List[apitypes.WorkflowFunction]]("GET /v1/orgs/{org}/apps/{app}/functions")
 	GetFunctionGraph = New[None, apitypes.FunctionGraph]("GET /v1/orgs/{org}/apps/{app}/functions/{name}/graph")
+	EnqueueEvent     = New[apitypes.EventRequest, apitypes.EventQueued]("POST /v1/orgs/{org}/apps/{app}/events")
 
-	_ = public.Add(GetRun, ReplayRun, CancelRun, RunCron, OrgRuns, ListFunctions, GetFunctionGraph)
+	_ = public.Add(GetRun, ReplayRun, CancelRun, RunCron, OrgRuns, ListFunctions, GetFunctionGraph, EnqueueEvent)
 )
 
 // OrgRunsQuery is what OrgRuns reads from the query.

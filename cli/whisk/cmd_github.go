@@ -11,6 +11,8 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // githubStatusText is a link's status in plain words.
@@ -95,7 +97,7 @@ func githubCmd(s *session) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		link, err := client.GitHubLink(s.ctx, org, app)
+		link, err := api.Call(s.ctx, client, endpoints.GithubLink, org, app)
 		if isNotFound(err) {
 			settings := appPage(s.dashboard(), org, app, "/settings")
 			s.printer.Result(map[string]any{"org": org, "app": app, "linked": false, "settings_url": settings}, func(w io.Writer) {
@@ -142,7 +144,7 @@ With no subcommand, whisk github prints the link's status.`,
 			if err != nil {
 				return err
 			}
-			ov, err := client.GitHubOverview(s.ctx, org)
+			ov, err := api.Call(s.ctx, client, endpoints.GithubOverview, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -203,7 +205,7 @@ page where a person does it.`,
 			if err != nil {
 				return err
 			}
-			l, err := client.LinkGitHub(s.ctx, org, app, repo)
+			l, err := api.Send(s.ctx, client, endpoints.GithubLinkApp, apitypes.GithubLinkAppRequest{Repo: repo}, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -243,7 +245,7 @@ page where a person does it.`,
 			if err != nil {
 				return err
 			}
-			if err := client.UnlinkGitHub(s.ctx, org, app); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.GithubUnlink, org, app); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "unlinked": true}, func(w io.Writer) {

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/tokensig"
 )
 
@@ -38,7 +39,7 @@ func TestRequestsAreSignedWithTheKey(t *testing.T) {
 	c.Key = priv
 	ctx := context.Background()
 	_ = c.Do(ctx, http.MethodPost, "/orgs/acme/apps", CreateAppRequest{Slug: "crm", Name: "CRM"}, nil)
-	_, _ = c.ListApps(ctx, "acme")
+	_, _ = All(ctx, c, endpoints.ListApps, "acme")
 	resp, err := c.open(ctx, "/orgs/acme/apps/crm/logs?follow=1", "text/event-stream")
 	if err == nil {
 		resp.Body.Close()

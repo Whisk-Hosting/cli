@@ -15,6 +15,8 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/run"
 )
 
@@ -130,7 +132,7 @@ func addInParts(s *session, client *api.Client, org, app string, f uploadFile, v
 				"Run the same whisk uploads add again; it carries on from the parts already stored.", map[string]any{"file": f.path, "upload": id})
 		}
 	}
-	u, err := client.CompleteUpload(s.ctx, org, app, id, parts.UploadID)
+	u, err := api.Send(s.ctx, client, endpoints.CompleteUpload, apitypes.UploadPartsRequest{UploadID: parts.UploadID}, org, app, id)
 	if err != nil {
 		return api.Upload{}, wrap(err)
 	}

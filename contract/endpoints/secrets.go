@@ -15,8 +15,9 @@ var (
 	SetSecretPreviews = New[apitypes.SecretPreviewsRequest, apitypes.Secret]("PUT /v1/orgs/{org}/secrets/{name}/previews")
 	ShareSecret       = New[apitypes.ShareSecretRequest, apitypes.SharedSecret]("POST /v1/orgs/{org}/secrets/{name}/share")
 	SecretReads       = New[SecretReadsQuery, apitypes.Page[apitypes.SecretRead]]("GET /v1/orgs/{org}/secrets/{name}/reads")
+	DeleteSecret      = New[DeleteSecretQuery, None]("DELETE /v1/orgs/{org}/secrets/{name}")
 
-	_ = public.Add(ListOrgSecrets, ListAppSecrets, DeclareSecret, SetSecretValue, SecretVersions, RollbackSecret, SetSecretPreviews, ShareSecret, SecretReads)
+	_ = public.Add(ListOrgSecrets, ListAppSecrets, DeclareSecret, SetSecretValue, SecretVersions, RollbackSecret, SetSecretPreviews, ShareSecret, SecretReads, DeleteSecret)
 )
 
 // SecretVersionsQuery is what SecretVersions reads from the query.
@@ -29,4 +30,9 @@ type SecretReadsQuery struct {
 	App   string `query:"app"`
 	Limit int    `query:"limit"`
 	Since string `query:"since"`
+}
+
+// DeleteSecretQuery is what DeleteSecret reads from the query.
+type DeleteSecretQuery struct {
+	App string `query:"app"`
 }

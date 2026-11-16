@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
+
 	"github.com/whisk-run/cli/internal/config"
 	"github.com/whisk-run/cli/internal/output"
 )
@@ -113,7 +116,7 @@ func (s *session) onlyOrg() (string, error) {
 	if err != nil {
 		return "", err
 	}
-	me, err := client.Whoami(s.ctx)
+	me, err := api.Call(s.ctx, client, endpoints.Whoami)
 	if err != nil {
 		return "", wrap(err)
 	}

@@ -8,8 +8,9 @@ import (
 var (
 	OwnFeedback  = New[OwnFeedbackQuery, apitypes.OwnFeedbackPage]("GET /v1/feedback")
 	ShowFeedback = New[None, apitypes.OwnFeedback]("GET /v1/feedback/{id}")
+	PostFeedback = New[apitypes.FeedbackInput, apitypes.FeedbackReceipt]("POST /v1/feedback")
 
-	_ = public.Add(OwnFeedback, ShowFeedback)
+	_ = public.Add(OwnFeedback, ShowFeedback, PostFeedback)
 )
 
 // OwnFeedbackQuery is what OwnFeedback reads from the query.

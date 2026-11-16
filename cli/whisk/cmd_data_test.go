@@ -60,8 +60,8 @@ func dataAPI(t *testing.T, st *dataState) *httptest.Server {
 		switch {
 		case body["confirm"] == "wq_abc":
 			writeJSON(w, 200, map[string]any{"environment": "production", "database": "app_a1", "columns": []any{}, "rows": []any{}, "row_count": 0, "command": "DELETE 2", "effect": deleted,
-				"restore_point": map[string]any{"id": "rp1", "environment": "production", "created_at": "2026-09-16T10:00:00Z"}})
-		case body["confirm"] != nil:
+				"restore_point": map[string]any{"id": "rp1", "environment": "production", "created_at": "2026-09-16T10:00:00Z", "restorable": true}})
+		case body["confirm"] != nil && body["confirm"] != "":
 			writeJSON(w, 409, map[string]any{"error": map[string]any{"code": "CONFIRM_INVALID", "message": "That code is unknown, used, expired or someone else's.", "fix": "Run the SQL again."}})
 		case strings.HasPrefix(body["sql"].(string), "delete"):
 			writeJSON(w, 409, map[string]any{"error": map[string]any{"code": "CONFIRM_REQUIRED", "message": "Nothing was changed yet. This would delete 2 rows in public.notes in the production database.",
@@ -79,12 +79,12 @@ func dataAPI(t *testing.T, st *dataState) *httptest.Server {
 	}))
 	mux.HandleFunc("POST "+app+"/db/snapshot", auth(func(w http.ResponseWriter, r *http.Request) {
 		st.record(r)
-		writeJSON(w, 201, map[string]any{"id": "snap1", "environment": "production", "lsn": "0/16B6C50", "created_at": "2026-09-16T10:00:00Z"})
+		writeJSON(w, 201, map[string]any{"id": "snap1", "environment": "production", "lsn": "0/16B6C50", "created_at": "2026-09-16T10:00:00Z", "restorable": true, "restore_days": 7})
 	}))
 	mux.HandleFunc("POST "+app+"/restore", auth(func(w http.ResponseWriter, r *http.Request) {
 		body := st.record(r)
-		if before, ok := body["before"]; ok {
-			if before != "d1" || body["at"] != nil {
+		if before, _ := body["before"].(string); before != "" {
+			if before != "d1" || (body["at"] != nil && body["at"] != "0001-01-01T00:00:00Z") {
 				t.Errorf("restore before %v at %v", before, body["at"])
 			}
 			writeJSON(w, 202, map[string]any{"id": "r2", "environment": "production", "at": "2026-09-07T14:12:58Z", "before": "d1", "swap": body["swap"], "status": "queued", "target_database": "app_a1_restore_20260907141258", "created_at": "2026-09-16T10:00:00Z"})

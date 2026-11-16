@@ -14,6 +14,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/manifest"
 )
@@ -220,7 +221,7 @@ func cronCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := client.RunCron(s.ctx, org, app, args[0])
+			r, err := api.Call(s.ctx, client, endpoints.RunCron, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}

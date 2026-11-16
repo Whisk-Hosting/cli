@@ -2,9 +2,9 @@ package api
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // Connections: outside systems an app reaches through Whisk's broker (CONTROL-PLANE.md §6.8).
@@ -17,35 +17,8 @@ type (
 	ConnectionsChanged = apitypes.ConnectionsChanged
 )
 
-// ListConnections returns each connection the app's active manifests declare, with Whisk's
-// summary, its grants by environment and whether a deploy waits on it.
-func (c *Client) ListConnections(ctx context.Context, org, app string) ([]Connection, error) {
-	return listAll[Connection](ctx, c, appPath(org, app)+"/connections")
-}
-
 // PauseConnection stops one connection's calls in environment, or in every environment when
 // environment is "".
 func (c *Client) PauseConnection(ctx context.Context, org, app, name string, environment apitypes.ConnectionEnvironment) (ConnectionsChanged, error) {
-	var out ConnectionsChanged
-	body := apitypes.ConnectionStateRequest{Environment: environment}
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/connections/"+pathSeg(name)+"/pause", body, &out)
-}
-
-// SetSpendCap sets an AI connection's spending limit in environment, as the person chose it.
-func (c *Client) SetSpendCap(ctx context.Context, org, app, name string, in apitypes.SpendCapRequest) (Connection, error) {
-	var out Connection
-	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/connections/"+pathSeg(name)+"/spend-cap", in, &out)
-}
-
-// SetConnectionLimits sets how many calls a minute and a day a connection may make in
-// environment; a limit left at zero keeps its value.
-func (c *Client) SetConnectionLimits(ctx context.Context, org, app, name string, in apitypes.ConnectionLimitsRequest) (Connection, error) {
-	var out Connection
-	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/connections/"+pathSeg(name)+"/limits", in, &out)
-}
-
-// PauseAllConnections stops every connection of every app in the org.
-func (c *Client) PauseAllConnections(ctx context.Context, org string) (ConnectionsChanged, error) {
-	var out ConnectionsChanged
-	return out, c.Do(ctx, http.MethodPost, orgPath(org)+"/connections/pause", map[string]any{}, &out)
+	return Send(ctx, c, endpoints.PauseConnection, apitypes.ConnectionStateRequest{Environment: environment}, org, app, name)
 }

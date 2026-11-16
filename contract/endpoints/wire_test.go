@@ -17,7 +17,7 @@ var update = flag.Bool("update", false, "rewrite testdata/wire.json from the dec
 // input or answer, or to a type either uses, changes the document, so it is made on purpose:
 // go test ./endpoints -run TestWireIsCurrent -update rewrites it, and the diff is the change.
 func TestWireIsCurrent(t *testing.T) {
-	got, err := json.MarshalIndent(Wire(All()), "", "  ")
+	got, err := json.MarshalIndent(Wire(Public()), "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ var _ = wireBody{hidden: "never sent"}
 
 func TestSchemaOf(t *testing.T) {
 	defs := map[string]any{}
-	got := schemaOf(reflect.TypeFor[wireBody](), defs)
+	got := (&schemas{defs: defs, ref: "#/$defs/"}).of(reflect.TypeFor[wireBody]())
 	if got["$ref"] != "#/$defs/endpoints.wireBody" {
 		t.Fatalf("a named struct is a reference: %v", got)
 	}
@@ -93,5 +93,29 @@ func TestSchemaOf(t *testing.T) {
 	}
 	if _, ok := defs["endpoints.inner"]; !ok {
 		t.Errorf("a nested struct is its own definition")
+	}
+}
+
+type shadowedBase struct {
+	Public bool   `json:"public"`
+	Name   string `json:"name"`
+}
+
+type shadowing struct {
+	Public string `json:"public,omitempty"`
+	shadowedBase
+}
+
+// A field of a struct's own hides an embedded one of the same name, as encoding/json writes it.
+func TestSchemaOwnFieldHidesEmbedded(t *testing.T) {
+	defs := map[string]any{}
+	(&schemas{defs: defs, ref: "#/$defs/"}).of(reflect.TypeFor[shadowing]())
+	body := defs["endpoints.shadowing"].(map[string]any)
+	public := body["properties"].(map[string]any)["public"].(map[string]any)
+	if public["type"] != "string" {
+		t.Errorf("public is the embedded field's: %v", public)
+	}
+	if r := body["required"].([]string); len(r) != 1 || r[0] != "name" {
+		t.Errorf("only the embedded name is required, public being optional: %v", r)
 	}
 }

@@ -10,6 +10,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // secretScope resolves where a secrets command acts: the org and, for app scope, the app.
@@ -52,9 +53,9 @@ func secretsCmd(s *session) *cobra.Command {
 			}
 			var all []api.Secret
 			if app == "" {
-				all, err = client.ListOrgSecrets(s.ctx, org)
+				all, err = api.All(s.ctx, client, endpoints.ListOrgSecrets, org)
 			} else {
-				all, err = client.ListAppSecrets(s.ctx, org, app)
+				all, err = api.All(s.ctx, client, endpoints.ListAppSecrets, org, app)
 			}
 			if err != nil {
 				return wrap(err)

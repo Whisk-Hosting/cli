@@ -2,11 +2,10 @@ package api
 
 import (
 	"context"
-	"net/http"
-	"net/url"
 	"strconv"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // AppAnalytics is an app's visits over a period, from the pages that load the analytics script.
@@ -46,60 +45,58 @@ type AnalyticsQuery struct {
 	Limit                int
 }
 
-// values is a reading as the API's query values, the last 7 days when it names no period, from
-// or to. Pure.
-func (q AnalyticsQuery) values() url.Values {
+// reading is q with the last 7 days when it names no period, from or to. Pure.
+func (q AnalyticsQuery) reading() AnalyticsQuery {
 	if q.Period == "" && q.From == "" && q.To == "" {
 		q.Period = "7d"
 	}
-	v := url.Values{}
-	for k, s := range map[string]string{"period": q.Period, "from": q.From, "to": q.To, "tz": q.TZ,
-		"source": q.Source, "page": q.Page, "event": q.Event, "by": q.By} {
-		if s != "" {
-			v.Set(k, s)
-		}
-	}
-	if q.Limit > 0 {
-		v.Set("limit", strconv.Itoa(q.Limit))
-	}
-	return v
+	return q
 }
 
-func withQuery(path string, v url.Values) string {
-	if len(v) == 0 {
-		return path
+// declared is q as the declared traffic query; a filter the API does not take is left out. Pure.
+func (q TrafficQuery) declared() endpoints.TrafficQuery {
+	r := q.Reading.reading()
+	out := endpoints.TrafficQuery{Period: r.Period, From: r.From, To: r.To, Tz: r.TZ, By: q.By, Cached: q.Cached,
+		Status: q.Status, Limit: max(q.Limit, 0)}
+	filters := map[string]*string{"address": &out.Address, "agent": &out.Agent, "country": &out.Country,
+		"edge_cache": &out.EdgeCache, "host": &out.Host, "kind": &out.Kind, "method": &out.Method, "network": &out.Network,
+		"path": &out.Path, "query": &out.Query, "referer": &out.Referer, "source": &out.Source,
+		"user_agent": &out.UserAgent, "user_id": &out.UserId}
+	for k, v := range q.Filters {
+		if f := filters[k]; f != nil {
+			*f = v
+		}
 	}
-	return path + "?" + v.Encode()
+	return out
 }
 
 // Analytics reads an app's visits over a reading, broken down as it asks.
 func (c *Client) Analytics(ctx context.Context, org, app string, q AnalyticsQuery) (AppAnalytics, error) {
-	var out AppAnalytics
-	return out, c.Do(ctx, http.MethodGet, withQuery(appPath(org, app)+"/analytics", q.values()), nil, &out)
+	r := q.reading()
+	return Send(ctx, c, endpoints.GetAnalytics, endpoints.GetAnalyticsQuery{Period: r.Period, From: r.From, To: r.To, Tz: r.TZ,
+		Source: r.Source, Page: r.Page, Event: r.Event, By: r.By, Limit: max(r.Limit, 0)}, org, app)
 }
 
 // Visitors reads a page of an app's visitors over a reading, latest first, from the page cursor
 // names ("" for the first).
 func (c *Client) Visitors(ctx context.Context, org, app string, q AnalyticsQuery, cursor string) (AppVisitors, error) {
-	var out AppVisitors
-	v := q.values()
-	v.Del("by")
+	r := q.reading()
+	at := 0
 	if cursor != "" {
-		v.Set("cursor", cursor)
+		n, err := strconv.Atoi(cursor)
+		if err != nil {
+			return AppVisitors{}, &Error{Code: "INVALID_REQUEST", Message: "The visitors cursor " + strconv.Quote(cursor) + " is not one the API gave.", Fix: "Send the next_cursor of the page before, or none for the first."}
+		}
+		at = n
 	}
-	return out, c.Do(ctx, http.MethodGet, withQuery(appPath(org, app)+"/analytics/visitors", v), nil, &out)
+	return Send(ctx, c, endpoints.GetAnalyticsVisitors, endpoints.GetAnalyticsVisitorsQuery{Period: r.Period, From: r.From, To: r.To, Tz: r.TZ,
+		Source: r.Source, Page: r.Page, Event: r.Event, Limit: max(r.Limit, 0), Cursor: at}, org, app)
 }
 
 // VisitorSteps reads what one visitor did over a reading, earliest first.
 func (c *Client) VisitorSteps(ctx context.Context, org, app, id string, q AnalyticsQuery) (AnalyticsVisitorSteps, error) {
-	var out AnalyticsVisitorSteps
-	v := url.Values{}
-	for _, k := range []string{"period", "from", "to", "tz"} {
-		if s := q.values().Get(k); s != "" {
-			v.Set(k, s)
-		}
-	}
-	return out, c.Do(ctx, http.MethodGet, withQuery(appPath(org, app)+"/analytics/visitors/"+pathSeg(id), v), nil, &out)
+	r := q.reading()
+	return Send(ctx, c, endpoints.GetAnalyticsVisitor, endpoints.GetAnalyticsVisitorQuery{Period: r.Period, From: r.From, To: r.To, Tz: r.TZ}, org, app, id)
 }
 
 // AppCrawlers is what robots asked an app for over a period: each robot, the pages, the answers
@@ -121,24 +118,7 @@ type CrawlerJourneyDetail = apitypes.CrawlerJourneyDetail
 // Crawlers reads what robots asked an app for over a period (24h, 7d, 30d or 90d, empty for 7d),
 // every robot's or the one crawler names, every answer or those status names (404, 5xx).
 func (c *Client) Crawlers(ctx context.Context, org, app, period, crawler, status string) (AppCrawlers, error) {
-	var out AppCrawlers
-	q := url.Values{}
-	for k, v := range map[string]string{"period": period, "crawler": crawler, "status": status} {
-		if v != "" {
-			q.Set(k, v)
-		}
-	}
-	path := appPath(org, app) + "/analytics/crawlers"
-	if len(q) > 0 {
-		path += "?" + q.Encode()
-	}
-	return out, c.Do(ctx, http.MethodGet, path, nil, &out)
-}
-
-// CrawlerJourney reads one robot's journey and its requests.
-func (c *Client) CrawlerJourney(ctx context.Context, org, app, id string) (CrawlerJourneyDetail, error) {
-	var out CrawlerJourneyDetail
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/analytics/crawlers/journeys/"+pathSeg(id), nil, &out)
+	return Send(ctx, c, endpoints.GetCrawlers, endpoints.GetCrawlersQuery{Period: period, Crawler: crawler, Status: status}, org, app)
 }
 
 // AppTraffic is every request to an app, counted and grouped.
@@ -164,44 +144,14 @@ type TrafficQuery struct {
 	Status, Limit int
 }
 
-// values are q as the API's query values. Pure.
-func (q TrafficQuery) values() url.Values {
-	v := url.Values{}
-	for _, k := range []string{"period", "from", "to", "tz"} {
-		if s := q.Reading.values().Get(k); s != "" {
-			v.Set(k, s)
-		}
-	}
-	for k, s := range q.Filters {
-		if s != "" {
-			v.Set(k, s)
-		}
-	}
-	if q.By != "" {
-		v.Set("by", q.By)
-	}
-	if q.Cached != "" {
-		v.Set("cached", q.Cached)
-	}
-	if q.Status != 0 {
-		v.Set("status", strconv.Itoa(q.Status))
-	}
-	if q.Limit > 0 {
-		v.Set("limit", strconv.Itoa(q.Limit))
-	}
-	return v
-}
-
 // Traffic reads an app's traffic, grouped and narrowed as q says.
 func (c *Client) Traffic(ctx context.Context, org, app string, q TrafficQuery) (AppTraffic, error) {
-	var out AppTraffic
-	return out, c.Do(ctx, http.MethodGet, withQuery(appPath(org, app)+"/analytics/traffic", q.values()), nil, &out)
+	return Send(ctx, c, endpoints.GetTraffic, q.declared(), org, app)
 }
 
 // TrafficRequests reads an app's latest requests one by one, narrowed as q says; By is ignored.
 func (c *Client) TrafficRequests(ctx context.Context, org, app string, q TrafficQuery) (AppTrafficRequests, error) {
-	v := q.values()
-	v.Del("by")
-	var out AppTrafficRequests
-	return out, c.Do(ctx, http.MethodGet, withQuery(appPath(org, app)+"/analytics/traffic/requests", v), nil, &out)
+	d := q.declared()
+	d.By = ""
+	return Send(ctx, c, endpoints.GetTrafficRequests, d, org, app)
 }

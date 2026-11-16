@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+
 	// nosemgrep: go.lang.security.audit.crypto.math_random.math-random-used -- retry jitter, not a secret
 	mathrand "math/rand/v2"
 	"net/http"
@@ -25,6 +26,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/run/runhttp"
 	"github.com/whisk-run/contract/tokensig"
 )
@@ -297,8 +299,7 @@ func IsCode(err error, code string) bool {
 
 // RequestDeviceCode starts the flow.
 func (c *Client) RequestDeviceCode(ctx context.Context, in DeviceCodeRequest) (DeviceCode, error) {
-	var out DeviceCode
-	err := c.Do(ctx, http.MethodPost, "/device/code", in, &out)
+	out, err := Send(ctx, c, endpoints.DeviceCode, in)
 	if out.Interval <= 0 {
 		out.Interval = 5
 	}
@@ -318,30 +319,6 @@ func (c *Client) PollDeviceToken(ctx context.Context, deviceCode string) (Device
 		out.Status = "approved"
 	}
 	return out, nil
-}
-
-// Whoami describes the current token.
-func (c *Client) Whoami(ctx context.Context) (Whoami, error) {
-	var out Whoami
-	return out, c.Do(ctx, http.MethodGet, "/whoami", nil, &out)
-}
-
-// GitPassword trades the bound token for a short git password (CONTROL-PLANE.md §6.3): git
-// cannot sign a request, so it is handed this instead of the token.
-func (c *Client) GitPassword(ctx context.Context) (GitPassword, error) {
-	var out GitPassword
-	return out, c.Do(ctx, http.MethodPost, "/tokens/git", nil, &out)
-}
-
-// RevokeSelf revokes the token in use (DELETE /tokens/self).
-func (c *Client) RevokeSelf(ctx context.Context) error {
-	return c.Do(ctx, http.MethodDelete, "/tokens/self", nil, nil)
-}
-
-// CreateApp creates an app: its repository and hostname come back.
-func (c *Client) CreateApp(ctx context.Context, org string, req CreateAppRequest) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps", req, &out)
 }
 
 // getPage fetches one page of a list. path may already carry a query string.
@@ -413,28 +390,15 @@ func (c *Client) open(ctx context.Context, path, accept string) (*http.Response,
 	return resp, nil
 }
 
-// ListApps lists every app in the org, following pagination.
-func (c *Client) ListApps(ctx context.Context, org string) ([]App, error) {
-	return listAll[App](ctx, c, "/orgs/"+pathSeg(org)+"/apps")
-}
-
-// GetApp fetches one app.
-func (c *Client) GetApp(ctx context.Context, org, app string) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodGet, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), nil, &out)
-}
-
 // PatchApp sets the name an app is shown by; its slug and address stay (CONTROL-PLANE.md §4.6).
 func (c *Client) PatchApp(ctx context.Context, org, app, name string) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPatch, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), apitypes.PatchAppRequest{Name: &name}, &out)
+	return Send(ctx, c, endpoints.PatchApp, apitypes.PatchAppRequest{Name: &name}, org, app)
 }
 
 // RenameApp gives an app a new slug, and so a new address; the platform keeps the old address
 // sending visitors on (CONTROL-PLANE.md §6.11).
 func (c *Client) RenameApp(ctx context.Context, org, app, slug string) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/rename", apitypes.RenameAppRequest{Slug: slug}, &out)
+	return Send(ctx, c, endpoints.RenameApp, apitypes.RenameAppRequest{Slug: slug}, org, app)
 }
 
 // AppMove is an app moving to another business (CONTROL-PLANE.md §6.1 "Moving an app").
@@ -442,40 +406,25 @@ type AppMove = apitypes.AppMove
 
 // MoveApp starts moving the app to the business to; only a person, signed in, may.
 func (c *Client) MoveApp(ctx context.Context, org, app, to string) (AppMove, error) {
-	var out AppMove
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/move", apitypes.AppMoveRequest{ToOrg: to}, &out)
+	return Send(ctx, c, endpoints.MoveApp, apitypes.AppMoveRequest{ToOrg: to}, org, app)
 }
 
 // GetMove reads the app's newest move, the app named by slug or ID, moved or not.
 func (c *Client) GetMove(ctx context.Context, org, app string) (AppMove, error) {
-	var out AppMove
-	return out, c.Do(ctx, http.MethodGet, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/move", nil, &out)
-}
-
-// DeleteApp deletes an app.
-func (c *Client) DeleteApp(ctx context.Context, org, app string) error {
-	return c.Do(ctx, http.MethodDelete, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app), nil, nil)
+	return Call(ctx, c, endpoints.GetMove, org, app)
 }
 
 // DeletedApp is an app a person deleted that can still be restored, until ReleaseAt
 // (CONTROL-PLANE.md §6.5).
 type DeletedApp = apitypes.DeletedApp
 
-// ListDeletedApps lists the org's deleted apps that can still be restored.
-func (c *Client) ListDeletedApps(ctx context.Context, org string) ([]DeletedApp, error) {
-	return listAll[DeletedApp](ctx, c, "/orgs/"+pathSeg(org)+"/deleted-apps")
-}
-
 // RestoreDeletedApp brings a deleted app back, stopped, by its id, or answers the request the
 // business's owners approve when the person's role cannot restore apps (CONTROL-PLANE.md §4.10).
 func (c *Client) RestoreDeletedApp(ctx context.Context, org, id string) (App, *PersonRequest, error) {
-	var out App
-	asked, err := c.asking(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/deleted-apps/"+pathSeg(id)+"/restore", nil, &out)
-	return out, asked, err
+	return ask(ctx, c, endpoints.RestoreDeletedApp, endpoints.None{}, org, id)
 }
 
 // Validate sends the manifest for the platform's view of it.
 func (c *Client) Validate(ctx context.Context, org, app string, manifestYAML []byte) (Validation, error) {
-	var out Validation
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/apps/"+pathSeg(app)+"/validate", map[string]string{"manifest": string(manifestYAML)}, &out)
+	return Send(ctx, c, endpoints.Validate, apitypes.ValidateRequest{Manifest: string(manifestYAML)}, org, app)
 }

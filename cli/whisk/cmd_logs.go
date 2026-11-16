@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // logsCmd is what the app printed (CLI.md §5.5). --json is the global one: one object with every
@@ -103,7 +104,7 @@ removes them in the dashboard; it is on the Business plan.`,
 			if err != nil {
 				return err
 			}
-			list, err := client.ListLogDestinations(s.ctx, org)
+			list, err := api.Call(s.ctx, client, endpoints.ListLogDestinations, org)
 			if err != nil {
 				return wrap(err)
 			}

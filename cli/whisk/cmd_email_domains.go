@@ -11,6 +11,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // emailDomainName is a sending domain as a person typed it: trimmed, lower case, without a
@@ -169,7 +170,7 @@ alone. Run whisk email domains verify <domain> once they are published.`,
 			if err != nil {
 				return err
 			}
-			d, err := client.AddEmailDomain(s.ctx, org, emailDomainName(args[0]))
+			d, err := api.Send(s.ctx, client, endpoints.AddEmailDomain, apitypes.AddEmailDomainRequest{Domain: emailDomainName(args[0])}, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -196,7 +197,7 @@ DOMAIN_UNVERIFIED with the records in details; DNS can take up to an hour to app
 			if err != nil {
 				return err
 			}
-			d, err = client.VerifyEmailDomain(s.ctx, org, d.ID)
+			d, err = api.Call(s.ctx, client, endpoints.VerifyEmailDomain, org, d.ID)
 			if err != nil {
 				return wrap(err)
 			}
@@ -223,7 +224,7 @@ an agent identity is refused with AGENT_CATEGORY. The DNS records can be deleted
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteEmailDomain(s.ctx, org, d.ID); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteEmailDomain, org, d.ID); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "domain": d.Domain, "removed": true}, func(w io.Writer) {

@@ -9,6 +9,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/config"
@@ -38,7 +41,7 @@ func renameCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			before, err := client.GetApp(s.ctx, org, ref)
+			before, err := api.Call(s.ctx, client, endpoints.GetApp, org, ref)
 			if err != nil {
 				return wrap(err)
 			}

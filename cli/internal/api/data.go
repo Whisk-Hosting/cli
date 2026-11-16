@@ -3,67 +3,50 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"net/http"
 	"time"
+
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // ---- data (CONTROL-PLANE.md §6.18, CLI.md §5.9) --------------------------------------------
 
 // DBURL is an environment's connection string. Reachable is "anywhere" when it points at the
 // platform's public database proxy and "platform" when it is the environment's own address,
-// which only the platform's hosts reach; an older platform leaves it empty.
-type DBURL struct {
-	URL         string    `json:"url"`
-	Environment string    `json:"environment"`
-	ExpiresAt   time.Time `json:"expires_at"`
-	Reachable   string    `json:"reachable,omitempty"`
-}
+// which only the platform's hosts reach.
+type DBURL = apitypes.DatabaseURL
 
-// Private reports whether the string works only from inside the platform.
-func (u DBURL) Private() bool { return u.Reachable == "platform" }
+// PrivateURL reports whether the string works only from inside the platform.
+func PrivateURL(u DBURL) bool { return u.Reachable == "platform" }
 
 // DatabaseURL mints a connection string for an environment's database, valid for a few
 // minutes and audited. POST /orgs/:org/apps/:app/db/url {environment}.
 func (c *Client) DatabaseURL(ctx context.Context, org, app, environment string) (DBURL, error) {
-	var out DBURL
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/db/url", envBody(environment), &out)
+	return Send(ctx, c, endpoints.DbURL, apitypes.DbEnvironmentRequest{Environment: environment}, org, app)
 }
 
-// Snapshot is a restore point marker.
-type Snapshot struct {
-	ID          string    `json:"id"`
-	Environment string    `json:"environment"`
-	LSN         string    `json:"lsn,omitempty"`
-	CreatedAt   time.Time `json:"created_at"`
-	// Restorable is whether the org's plan can return to this point with whisk restore; absent
-	// from a server that does not say.
-	Restorable  *bool `json:"restorable,omitempty"`
-	RestoreDays int64 `json:"restore_days,omitempty"`
-}
+// Snapshot is a restore point marker; Restorable is whether the org's plan can return to it with
+// whisk restore.
+type Snapshot = apitypes.DatabaseSnapshot
 
 // SnapshotDatabase records a restore point now. POST /orgs/:org/apps/:app/db/snapshot.
 func (c *Client) SnapshotDatabase(ctx context.Context, org, app, environment string) (Snapshot, error) {
-	var out Snapshot
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/db/snapshot", envBody(environment), &out)
+	return Send(ctx, c, endpoints.DbSnapshot, apitypes.DbEnvironmentRequest{Environment: environment}, org, app)
 }
 
 // Restore is a self-service point-in-time restore as the API records it.
-type Restore struct {
-	ID          string    `json:"id"`
-	Environment string    `json:"environment"`
-	At          time.Time `json:"at"`
-	Import      string    `json:"import,omitempty"` // the import whose dump it loads, instead of a time
-	// Before is the deploy whose restore point it goes back to, the moment just before that
-	// deploy's migration; At is then that point's moment.
-	Before         string `json:"before,omitempty"`
-	Swap           bool   `json:"swap"`
-	Status         string `json:"status"` // queued | running | done | failed
-	TargetDatabase string `json:"target_database,omitempty"`
-	// PreviousDatabase is the database a swap replaced, kept for 7 days.
-	PreviousDatabase string     `json:"previous_database,omitempty"`
-	Error            *ErrorBody `json:"error,omitempty"`
-	CreatedAt        time.Time  `json:"created_at"`
-	FinishedAt       *time.Time `json:"finished_at,omitempty"`
+type Restore = apitypes.RestoreJSON
+
+// RestoreError is the error a restore recorded, nil when it has none.
+func RestoreError(r Restore) *ErrorBody {
+	if len(r.Error) == 0 || string(r.Error) == "null" {
+		return nil
+	}
+	var e ErrorBody
+	if json.Unmarshal(r.Error, &e) != nil {
+		return &ErrorBody{Code: "RESTORE_FAILED", Message: "The restore recorded an error the CLI cannot read."}
+	}
+	return &e
 }
 
 // ErrorBody is the error object as it appears inside a record.
@@ -91,108 +74,46 @@ func (e *ErrorBody) UnmarshalJSON(b []byte) error {
 // RestoreDatabase starts a PITR of an environment's database into a fresh database beside it,
 // swapped in when swap is set. POST /orgs/:org/apps/:app/restore {at, swap, environment}.
 func (c *Client) RestoreDatabase(ctx context.Context, org, app, environment string, at time.Time, swap bool) (Restore, error) {
-	body := envBody(environment)
-	body["at"] = at.UTC().Format(time.RFC3339)
-	body["swap"] = swap
-	var out Restore
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", body, &out)
+	return Send(ctx, c, endpoints.StartRestore, apitypes.StartRestoreRequest{Environment: environment, At: at.UTC(), Swap: swap}, org, app)
 }
 
 // RestoreBefore starts a restore of an environment's database to the restore point a deploy took
 // just before its migration, swapped in when swap is set. POST /orgs/:org/apps/:app/restore
 // {before, swap, environment}.
 func (c *Client) RestoreBefore(ctx context.Context, org, app, environment, deploy string, swap bool) (Restore, error) {
-	body := envBody(environment)
-	body["before"] = deploy
-	body["swap"] = swap
-	var out Restore
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", body, &out)
+	return Send(ctx, c, endpoints.StartRestore, apitypes.StartRestoreRequest{Environment: environment, Before: deploy, Swap: swap}, org, app)
 }
 
 // GetRestore reads one restore. GET /orgs/:org/apps/:app/restores/:id.
 func (c *Client) GetRestore(ctx context.Context, org, app, id string) (Restore, error) {
-	var out Restore
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/restores/"+pathSeg(id), nil, &out)
+	return Call(ctx, c, endpoints.GetRestore, org, app, id)
 }
 
 // ListRestores returns the app's restores, newest first. GET /orgs/:org/apps/:app/restores.
 func (c *Client) ListRestores(ctx context.Context, org, app string) ([]Restore, error) {
-	p, err := getPage[Restore](ctx, c, appPath(org, app)+"/restores", "", 100)
-	return p.Items, err
-}
-
-func envBody(environment string) map[string]any {
-	body := map[string]any{}
-	if environment != "" {
-		body["environment"] = environment
-	}
-	return body
+	out, err := Call(ctx, c, endpoints.ListRestores, org, app)
+	return out.Items, err
 }
 
 // QueryResult is what POST /db/query answers: the last statement's rows and what the SQL did.
-type QueryResult struct {
-	Environment  string         `json:"environment"`
-	Database     string         `json:"database"`
-	Columns      []string       `json:"columns"`
-	Rows         [][]*string    `json:"rows"`
-	RowCount     int64          `json:"row_count"`
-	Truncated    bool           `json:"truncated"`
-	Command      string         `json:"command"`
-	Effect       map[string]any `json:"effect"`
-	RestorePoint *Snapshot      `json:"restore_point,omitempty"`
-	DurationMS   int64          `json:"duration_ms"`
-}
+type QueryResult = apitypes.DatabaseQueryResult
 
 // QueryRequest is one db query call; Confirm alone runs SQL a preview held back.
-type QueryRequest struct {
-	SQL         string `json:"sql,omitempty"`
-	Environment string `json:"environment,omitempty"`
-	Database    string `json:"database,omitempty"`
-	Confirm     string `json:"confirm,omitempty"`
-	Limit       int    `json:"limit,omitempty"`
-}
+type QueryRequest = apitypes.DbQueryRequest
 
 // QueryDatabase runs SQL on the platform. POST /orgs/:org/apps/:app/db/query. SQL that would
 // change or remove existing data answers CONFIRM_REQUIRED with a code in details.
 func (c *Client) QueryDatabase(ctx context.Context, org, app string, req QueryRequest) (QueryResult, error) {
-	var out QueryResult
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/db/query", req, &out)
+	return Send(ctx, c, endpoints.DbQuery, req, org, app)
 }
 
 // DBSchema is the environment's tables as POST /db/schema answers them.
-type DBSchema struct {
-	Environment string    `json:"environment"`
-	Database    string    `json:"database"`
-	Postgres    string    `json:"postgres"`
-	Tables      []DBTable `json:"tables"`
-	Truncated   bool      `json:"truncated"`
-}
+type DBSchema = apitypes.DatabaseSchema
 
 // DBTable is one table, view or materialized view.
-type DBTable struct {
-	Schema      string `json:"schema"`
-	Name        string `json:"name"`
-	Kind        string `json:"kind"`
-	RowEstimate *int64 `json:"rows_estimate"`
-	Columns     []struct {
-		Name     string  `json:"name"`
-		Type     string  `json:"type"`
-		Nullable bool    `json:"nullable"`
-		Default  *string `json:"default"`
-	} `json:"columns"`
-	Constraints []struct {
-		Name       string `json:"name"`
-		Kind       string `json:"kind"`
-		Definition string `json:"definition"`
-	} `json:"constraints"`
-}
+type DBTable = apitypes.DatabaseTable
 
 // DatabaseSchema reads the tables. POST /orgs/:org/apps/:app/db/schema {environment, database}.
 func (c *Client) DatabaseSchema(ctx context.Context, org, app, environment, database string) (DBSchema, error) {
-	body := envBody(environment)
-	if database != "" {
-		body["database"] = database
-	}
-	var out DBSchema
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/db/schema", body, &out)
+	return Send(ctx, c, endpoints.DbSchema, apitypes.DbSchemaRequest{Environment: environment, Database: database}, org, app)
 }

@@ -93,8 +93,8 @@ func TestRestoreErrorReadsWrapped(t *testing.T) {
 		if err := json.Unmarshal([]byte(raw), &r); err != nil {
 			t.Fatal(err)
 		}
-		if r.Error == nil || r.Error.Code != "RESTORE_FAILED" || r.Error.Fix != "f" || r.Error.Details["step"] != "loading" {
-			t.Errorf("%s read as %+v", raw, r.Error)
+		if e := RestoreError(r); e == nil || e.Code != "RESTORE_FAILED" || e.Fix != "f" || e.Details["step"] != "loading" {
+			t.Errorf("%s read as %+v", raw, e)
 		}
 	}
 }

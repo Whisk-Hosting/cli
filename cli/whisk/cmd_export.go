@@ -12,6 +12,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // exportPoll is how often --wait asks how an export is going.
@@ -39,7 +40,7 @@ admin. Owners and admins.`,
 			if err != nil {
 				return err
 			}
-			e, err := client.StartExport(s.ctx, org)
+			e, err := api.Call(s.ctx, client, endpoints.StartExport, org)
 			if err != nil {
 				id, running := runningExport(err)
 				if !wait || !running {
@@ -81,7 +82,7 @@ func exportShowCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			e, err := client.GetExport(s.ctx, org, args[0])
+			e, err := api.Call(s.ctx, client, endpoints.GetExport, org, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -146,7 +147,7 @@ func runningExport(err error) (string, bool) {
 func followExport(ctx context.Context, client *api.Client, org, id string, log io.Writer, every time.Duration) (api.Export, error) {
 	var last apitypes.ExportStatus
 	for {
-		e, err := client.GetExport(ctx, org, id)
+		e, err := api.Call(ctx, client, endpoints.GetExport, org, id)
 		if err != nil {
 			return e, err
 		}

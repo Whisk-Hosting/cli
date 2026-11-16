@@ -16,6 +16,7 @@ import (
 	"github.com/whisk-run/cli/internal/config"
 	"github.com/whisk-run/cli/internal/output"
 	rules "github.com/whisk-run/contract/doctor"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 func doctorCmd(s *session) *cobra.Command {
@@ -42,7 +43,7 @@ Exit 3 when any error remains.
 						return v, doctorPlatformErr(err)
 					}
 					opts.Packages = func(ctx context.Context) (api.Packages, error) {
-						p, err := client.GetPackages(ctx, org, app)
+						p, err := api.Call(ctx, client, endpoints.GetPackages, org, app)
 						return p, doctorPlatformErr(err)
 					}
 					opts.CheckLockfiles = func(ctx context.Context, files []api.Lockfile) (api.PackageCheck, error) {
@@ -52,7 +53,7 @@ Exit 3 when any error remains.
 					if ok {
 						// W006 checks the binding itself, whatever --org and --app say.
 						opts.BoundGitURL = func(ctx context.Context) (string, error) {
-							a, err := client.GetApp(ctx, b.Org, b.App)
+							a, err := api.Call(ctx, client, endpoints.GetApp, b.Org, b.App)
 							return a.GitURL, doctorPlatformErr(err)
 						}
 					}

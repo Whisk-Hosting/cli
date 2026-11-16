@@ -9,6 +9,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 func statusCmd(s *session) *cobra.Command {
@@ -21,13 +22,13 @@ func statusCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			a, err := client.GetApp(s.ctx, org, app)
+			a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 			if err != nil {
 				return wrap(err)
 			}
 			var current *api.Deploy
 			if a.CurrentDeployID != "" {
-				if d, err := client.GetDeploy(s.ctx, org, app, a.CurrentDeployID); err == nil {
+				if d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, a.CurrentDeployID); err == nil {
 					current = &d
 				} else if !api.IsCode(err, "NOT_FOUND") {
 					return wrap(err)
@@ -38,7 +39,7 @@ func statusCmd(s *session) *cobra.Command {
 			// The newest package check, on a plan with scanning (CONTROL-PLANE.md §6.28). It is
 			// a summary; whisk scan lists the findings.
 			var packages api.Packages
-			if pk, err := client.GetPackages(s.ctx, org, app); err == nil && pk.Included {
+			if pk, err := api.Call(s.ctx, client, endpoints.GetPackages, org, app); err == nil && pk.Included {
 				packages = pk
 				summary := map[string]any{"checked_at": nil, "counts": nil, "pending": pk.Pending != nil}
 				if pk.Scan != nil {
@@ -115,7 +116,7 @@ func openCmd(s *session) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				a, err := client.GetApp(s.ctx, org, app)
+				a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 				if err != nil {
 					return wrap(err)
 				}

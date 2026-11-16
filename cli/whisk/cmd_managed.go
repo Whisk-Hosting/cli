@@ -12,6 +12,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // Managed apps (MANAGED-APPS.md §11, CLI.md §5.2): apps in the business whose code and releases
@@ -423,7 +424,7 @@ code already holds the newest release, the command follows the deploy that carri
 			if err != nil {
 				return err
 			}
-			u, err := client.UpdateFork(s.ctx, org, app)
+			u, err := api.Call(s.ctx, client, endpoints.UpdateFork, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -490,7 +491,7 @@ clone, change and deploy.`,
 			ids := map[string]string{}
 			var apps []api.App
 			if len(links) > 0 {
-				if apps, err = client.ListApps(s.ctx, org); err != nil {
+				if apps, err = api.All(s.ctx, client, endpoints.ListApps, org); err != nil {
 					return wrap(err)
 				}
 				if ids, err = resolveLinks(org, links, apps); err != nil {
@@ -501,7 +502,7 @@ clone, change and deploy.`,
 			if len(settings) > 0 {
 				req.Settings = settings
 			}
-			a, err := client.AddManaged(s.ctx, org, req)
+			a, err := api.Send(s.ctx, client, endpoints.AddManaged, req, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -579,7 +580,7 @@ is running; a sleeping one reads it at its next start.`,
 			if err != nil {
 				return err
 			}
-			apps, err := client.ListApps(s.ctx, org)
+			apps, err := api.All(s.ctx, client, endpoints.ListApps, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -664,7 +665,7 @@ func (s *session) managedList() error {
 	if err != nil {
 		return err
 	}
-	m, err := client.ListManaged(s.ctx, org)
+	m, err := api.Call(s.ctx, client, endpoints.ListManaged, org)
 	if err != nil {
 		return wrap(err)
 	}
@@ -681,7 +682,7 @@ func (s *session) managedList() error {
 	if !s.printer.JSON && slices.ContainsFunc(m.Copies, func(a api.App) bool { return a.Managed != nil && len(a.Managed.Links) > 0 }) {
 		// The links name apps by id; the list puts their slugs in a person's table. Without
 		// it the ids are shown, so a failure here does not fail the command.
-		apps, _ = client.ListApps(s.ctx, org)
+		apps, _ = api.All(s.ctx, client, endpoints.ListApps, org)
 	}
 	s.printer.Result(map[string]any{"org": org, "products": m.Products, "copies": m.Copies, "forks": m.Forks}, func(w io.Writer) { s.managedTables(w, m, apps) })
 	return nil

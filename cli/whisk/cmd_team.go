@@ -10,6 +10,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 func findMember(members []api.Member, email string) (api.Member, bool) {
@@ -42,7 +43,7 @@ func membersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListMembers(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListMembers, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -70,7 +71,7 @@ func membersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			req := api.Invite{Email: strings.TrimSpace(args[0]), Name: name, Role: role, Apps: apps}
+			req := api.Invite{Email: strings.TrimSpace(args[0]), Name: name, Role: apitypes.Role(role), Apps: apps}
 			if guest {
 				req.Kind = "guest"
 				if len(apps) == 0 {
@@ -114,7 +115,7 @@ func membersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListMembers(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListMembers, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -198,7 +199,7 @@ func (s *session) resolveSubject(client *api.Client, org string, f subjectFlags)
 	case f.Everyone:
 		return api.Grant{SubjectKind: apitypes.SubjectEveryone, Audience: apitypes.Audience(f.Audience), Label: "Everyone in the org"}, nil
 	case f.Group != "":
-		groups, err := client.ListGroups(s.ctx, org)
+		groups, err := api.All(s.ctx, client, endpoints.ListGroups, org)
 		if err != nil {
 			return api.Grant{}, wrap(err)
 		}
@@ -208,7 +209,7 @@ func (s *session) resolveSubject(client *api.Client, org string, f subjectFlags)
 		}
 		return api.Grant{SubjectKind: apitypes.SubjectGroup, SubjectID: g.ID, Audience: apitypes.Audience(f.Audience), Label: g.Name}, nil
 	default:
-		members, err := client.ListMembers(s.ctx, org)
+		members, err := api.All(s.ctx, client, endpoints.ListMembers, org)
 		if err != nil {
 			return api.Grant{}, wrap(err)
 		}

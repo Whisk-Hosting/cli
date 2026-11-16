@@ -12,6 +12,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // tracesCmd is where the app's time went, request by request (CLI.md §5.5): the traces its
@@ -99,7 +100,7 @@ id or the request's 26 character X-Whisk-Request-Id, as a log line's request_id 
 			if err != nil {
 				return err
 			}
-			t, err := client.Trace(s.ctx, org, app, id)
+			t, err := api.Call(s.ctx, client, endpoints.GetTrace, org, app, id)
 			if err != nil {
 				return wrap(err)
 			}

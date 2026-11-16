@@ -17,6 +17,8 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/whisk-run/contract/apitypes"
 )
 
 // None is a route's input when it takes no body and no query, or its answer when it answers
@@ -24,8 +26,8 @@ import (
 type None struct{}
 
 // Route is one API route: its method and path, with the input In it takes and the answer Out it
-// gives. A GET or HEAD route sends In as its query, from the fields tagged `query:"name"`; any
-// other sends it as the JSON body. Path holds {name} for each path value, in order.
+// gives. An In whose fields are tagged `query:"name"` is sent as the query; any other as the
+// JSON body, which a GET or HEAD route never has. Path holds {name} for each path value, in order.
 type Route[In, Out any] struct {
 	Method string
 	Path   string
@@ -38,8 +40,8 @@ func New[In, Out any](pattern string) Route[In, Out] {
 	if !ok || method == "" || !strings.HasPrefix(path, "/v1/") {
 		panic("endpoints: a route's pattern is \"METHOD /v1/path\", got " + strconv.Quote(pattern))
 	}
-	if q := reflect.TypeFor[In](); hasBody(method) == hasQuery(q) && q != reflect.TypeFor[None]() {
-		panic("endpoints: " + pattern + " takes " + q.String() + ", whose fields must be tagged query on a GET or HEAD and json otherwise")
+	if q := reflect.TypeFor[In](); !hasBody(method) && !hasQuery(q) && q != reflect.TypeFor[None]() {
+		panic("endpoints: " + pattern + " takes " + q.String() + ", and a GET or HEAD sends no body: tag its fields query")
 	}
 	return Route[In, Out]{Method: method, Path: path}
 }
@@ -81,12 +83,12 @@ func Send[In, Out any](ctx context.Context, do Doer, r Route[In, Out], in In, va
 		return out, err
 	}
 	var body any
-	switch {
-	case reflect.TypeFor[In]() == reflect.TypeFor[None]():
-	case hasBody(r.Method):
-		body = in
-	default:
+	switch t := reflect.TypeFor[In](); {
+	case t == reflect.TypeFor[None]():
+	case hasQuery(t):
 		path += Query(in)
+	default:
+		body = in
 	}
 	var into any = &out
 	if reflect.TypeFor[Out]() == reflect.TypeFor[None]() {
@@ -214,5 +216,58 @@ func (t *Table) Sorted() []Spec {
 // public is every public route, each file adding its own.
 var public = &Table{}
 
-// All is every public route declared here, sorted by pattern.
-func All() []Spec { return public.Sorted() }
+// Public is every public route declared here, sorted by pattern.
+func Public() []Spec { return public.Sorted() }
+
+// Exec sends a route that takes no input and answers with no body.
+func Exec(ctx context.Context, do Doer, r Route[None, None], values ...string) error {
+	_, err := Send(ctx, do, r, None{}, values...)
+	return err
+}
+
+// All sends a list route page by page, from in's first page to the end, and returns every item.
+// in's query field "cursor" carries each next page's cursor, and its "limit", when it has one
+// and in leaves it 0, asks for 100 at a time. A list that takes no cursor is one page.
+func All[In, T any](ctx context.Context, do Doer, r Route[In, apitypes.Page[T]], in In, values ...string) ([]T, error) {
+	all := []T{}
+	q := reflect.ValueOf(&in).Elem()
+	cursor, limit := queryField(q, "cursor"), queryField(q, "limit")
+	if !cursor.IsValid() {
+		// A list that takes no cursor answers in one page.
+		page, err := Send(ctx, do, r, in, values...)
+		switch {
+		case err != nil:
+			return nil, err
+		case page.NextCursor != "":
+			return nil, fmt.Errorf("endpoints: %s answered a next page and takes no cursor to ask for it", r.Pattern())
+		}
+		return append(all, page.Items...), nil
+	}
+	if limit.IsValid() && limit.CanInt() && limit.Int() == 0 {
+		limit.SetInt(100)
+	}
+	for {
+		page, err := Send(ctx, do, r, in, values...)
+		if err != nil {
+			return nil, err
+		}
+		all = append(all, page.Items...)
+		if page.NextCursor == "" {
+			return all, nil
+		}
+		cursor.SetString(page.NextCursor)
+	}
+}
+
+// queryField is the field of a struct value tagged `query:"name"`, invalid when it has none.
+func queryField(v reflect.Value, name string) reflect.Value {
+	if v.Kind() != reflect.Struct {
+		return reflect.Value{}
+	}
+	for i := range v.NumField() {
+		if v.Type().Field(i).Tag.Get("query") == name {
+			return v.Field(i)
+		}
+	}
+	return reflect.Value{}
+}

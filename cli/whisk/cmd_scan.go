@@ -12,6 +12,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // scanCmd is whisk scan (CLI.md §5, CONTROL-PLANE.md §6.28): the app's packages checked against
@@ -32,7 +33,7 @@ func scanCmd(s *session) *cobra.Command {
 				return wrap(err)
 			}
 			if now {
-				queued, err := client.ScanPackages(s.ctx, org, app)
+				queued, err := api.Call(s.ctx, client, endpoints.ScanPackages, org, app)
 				if err != nil {
 					return wrap(err)
 				}
@@ -46,7 +47,7 @@ func scanCmd(s *session) *cobra.Command {
 						"Run whisk scan --now again later; whisk scan shows the newest check that finished.", map[string]any{"id": done.ID, "status": done.Status})
 				}
 			}
-			p, err := client.GetPackages(s.ctx, org, app)
+			p, err := api.Call(s.ctx, client, endpoints.GetPackages, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -72,7 +73,7 @@ func followScan(ctx context.Context, client *api.Client, org, app, id string, ev
 	ctx, cancel := context.WithTimeout(ctx, limit)
 	defer cancel()
 	for {
-		p, err := client.GetPackageScan(ctx, org, app, id)
+		p, err := api.Call(ctx, client, endpoints.GetPackageScan, org, app, id)
 		if err != nil {
 			return p, err
 		}

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 
 	"github.com/whisk-run/cli/internal/api"
 )
@@ -20,7 +21,7 @@ func (s *session) followed(client *api.Client, org, app, deployID string, result
 	if !s.followsData && s.forkUpdate == nil {
 		return nil
 	}
-	d, err := client.GetDeploy(s.ctx, org, app, deployID)
+	d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, deployID)
 	if err != nil {
 		return nil
 	}

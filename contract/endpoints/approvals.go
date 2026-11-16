@@ -9,8 +9,9 @@ var (
 	ListAppApprovals = New[ListAppApprovalsQuery, apitypes.List[apitypes.Approval]]("GET /v1/orgs/{org}/apps/{app}/approvals")
 	ListOrgApprovals = New[ListOrgApprovalsQuery, apitypes.List[apitypes.Approval]]("GET /v1/orgs/{org}/approvals")
 	GetApproval      = New[None, apitypes.Approval]("GET /v1/approvals/{id}")
+	DecideApproval   = New[apitypes.DecideApprovalRequest, apitypes.Approval]("POST /v1/approvals/{id}")
 
-	_ = public.Add(ListAppApprovals, ListOrgApprovals, GetApproval)
+	_ = public.Add(ListAppApprovals, ListOrgApprovals, GetApproval, DecideApproval)
 )
 
 // ListAppApprovalsQuery is what ListAppApprovals reads from the query.

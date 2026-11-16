@@ -14,6 +14,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/cli/internal/textenc"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // functionsCmd is what the app declares and what its runs have proved (CLI.md §5.8).
@@ -157,7 +158,7 @@ func runsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := client.ReplayRun(s.ctx, org, app, args[0])
+			r, err := api.Call(s.ctx, client, endpoints.ReplayRun, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -177,7 +178,7 @@ func runsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := client.CancelRun(s.ctx, org, app, args[0])
+			r, err := api.Call(s.ctx, client, endpoints.CancelRun, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -197,7 +198,7 @@ func runsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			r, err := client.GetRun(s.ctx, org, app, args[0])
+			r, err := api.Call(s.ctx, client, endpoints.GetRun, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}

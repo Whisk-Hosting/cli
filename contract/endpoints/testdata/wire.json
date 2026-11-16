@@ -138,6 +138,17 @@
       ],
       "type": "object"
     },
+    "apitypes.AddEmailDomainRequest": {
+      "properties": {
+        "domain": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
+      ],
+      "type": "object"
+    },
     "apitypes.AlwaysOnRequest": {
       "properties": {
         "always_on": {
@@ -642,6 +653,17 @@
       ],
       "type": "object"
     },
+    "apitypes.AppCDNRequest": {
+      "properties": {
+        "on": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "on"
+      ],
+      "type": "object"
+    },
     "apitypes.AppCdn": {
       "properties": {
         "allowance_bytes": {
@@ -758,6 +780,17 @@
         "period",
         "statuses",
         "to"
+      ],
+      "type": "object"
+    },
+    "apitypes.AppEmailDomainRequest": {
+      "properties": {
+        "domain": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "domain"
       ],
       "type": "object"
     },
@@ -1336,6 +1369,91 @@
       ],
       "type": "object"
     },
+    "apitypes.AppTraffic": {
+      "properties": {
+        "addresses": {
+          "type": "integer"
+        },
+        "by": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "filters": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "kept_days": {
+          "type": "integer"
+        },
+        "period": {
+          "type": "string"
+        },
+        "requests": {
+          "type": "integer"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/apitypes.TrafficRow"
+          },
+          "type": "array"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "addresses",
+        "by",
+        "filters",
+        "from",
+        "kept_days",
+        "period",
+        "requests",
+        "rows",
+        "to"
+      ],
+      "type": "object"
+    },
+    "apitypes.AppTrafficRequests": {
+      "properties": {
+        "filters": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "requests": {
+          "items": {
+            "$ref": "#/$defs/apitypes.TrafficRequest"
+          },
+          "type": "array"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "filters",
+        "from",
+        "requests",
+        "to"
+      ],
+      "type": "object"
+    },
     "apitypes.AppVisitors": {
       "properties": {
         "filters": {
@@ -1535,6 +1653,44 @@
         "id",
         "target_id",
         "target_kind"
+      ],
+      "type": "object"
+    },
+    "apitypes.AuthoriseImportRequest": {
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "bytes"
+      ],
+      "type": "object"
+    },
+    "apitypes.AuthoriseUploadRequest": {
+      "properties": {
+        "content_type": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "max_bytes": {
+          "type": "integer"
+        },
+        "parts": {
+          "type": "boolean"
+        },
+        "visibility": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content_type",
+        "filename",
+        "max_bytes",
+        "parts",
+        "visibility"
       ],
       "type": "object"
     },
@@ -2037,6 +2193,20 @@
       ],
       "type": "object"
     },
+    "apitypes.ClientAdded": {
+      "properties": {
+        "checkout_url": {
+          "type": "string"
+        },
+        "client": {
+          "$ref": "#/$defs/apitypes.Org"
+        }
+      },
+      "required": [
+        "client"
+      ],
+      "type": "object"
+    },
     "apitypes.ClientBusiness": {
       "properties": {
         "billing": {
@@ -2096,6 +2266,40 @@
       ],
       "type": "object"
     },
+    "apitypes.ClientErrorReceipt": {
+      "properties": {
+        "received": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "received"
+      ],
+      "type": "object"
+    },
+    "apitypes.ClientErrorReport": {
+      "properties": {
+        "digest": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "stack": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "digest",
+        "message",
+        "page",
+        "stack"
+      ],
+      "type": "object"
+    },
     "apitypes.ClientOverview": {
       "properties": {
         "apps": {
@@ -2146,6 +2350,33 @@
         "slug",
         "status",
         "usage"
+      ],
+      "type": "object"
+    },
+    "apitypes.ClientRequest": {
+      "properties": {
+        "contact": {
+          "type": "string"
+        },
+        "interval": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "slug": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "contact",
+        "interval",
+        "name",
+        "region",
+        "slug"
       ],
       "type": "object"
     },
@@ -2803,6 +3034,28 @@
       ],
       "type": "object"
     },
+    "apitypes.CreateAgentTokenRequest": {
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "scopes": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "app_id",
+        "label",
+        "scopes"
+      ],
+      "type": "object"
+    },
     "apitypes.CreateAppRequest": {
       "properties": {
         "name": {
@@ -2817,6 +3070,17 @@
       },
       "required": [
         "slug"
+      ],
+      "type": "object"
+    },
+    "apitypes.CreateDeployKeyRequest": {
+      "properties": {
+        "label": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "label"
       ],
       "type": "object"
     },
@@ -2936,6 +3200,17 @@
       ],
       "type": "object"
     },
+    "apitypes.CustomerSignupSet": {
+      "properties": {
+        "signup": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "signup"
+      ],
+      "type": "object"
+    },
     "apitypes.CustomerTaxID": {
       "properties": {
         "id": {
@@ -3015,6 +3290,415 @@
         "point_at",
         "started_at",
         "state"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseColumn": {
+      "properties": {
+        "default": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "nullable": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "default",
+        "name",
+        "nullable",
+        "type"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseConstraint": {
+      "properties": {
+        "definition": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "definition",
+        "kind",
+        "name"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseDefinitionChange": {
+      "properties": {
+        "change": {
+          "type": "string"
+        },
+        "object": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "change",
+        "object"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseEffect": {
+      "properties": {
+        "definitions": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseDefinitionChange"
+          },
+          "type": "array"
+        },
+        "replaces": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "statements": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseStatementResult"
+          },
+          "type": "array"
+        },
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseTableEffect"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "statements",
+        "tables"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseImportAuthorisation": {
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "max_bytes": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "expires_at",
+        "fields",
+        "id",
+        "max_bytes",
+        "method",
+        "url"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseQueryResult": {
+      "properties": {
+        "columns": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "command": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "duration_ms": {
+          "type": "integer"
+        },
+        "effect": {
+          "$ref": "#/$defs/apitypes.DatabaseEffect"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "restore_point": {
+          "$ref": "#/$defs/apitypes.DatabaseSnapshot"
+        },
+        "row_count": {
+          "type": "integer"
+        },
+        "rows": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "array"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "columns",
+        "command",
+        "database",
+        "duration_ms",
+        "effect",
+        "environment",
+        "row_count",
+        "rows",
+        "truncated"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseSchema": {
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "postgres": {
+          "type": "string"
+        },
+        "tables": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseTable"
+          },
+          "type": "array"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "database",
+        "environment",
+        "postgres",
+        "tables",
+        "truncated"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseSnapshot": {
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "lsn": {
+          "type": "string"
+        },
+        "restorable": {
+          "type": "boolean"
+        },
+        "restore_days": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "created_at",
+        "environment",
+        "id",
+        "lsn",
+        "restorable",
+        "restore_days"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseStatementResult": {
+      "properties": {
+        "command": {
+          "type": "string"
+        },
+        "rows": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "command",
+        "rows"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseTable": {
+      "properties": {
+        "columns": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseColumn"
+          },
+          "type": "array"
+        },
+        "constraints": {
+          "items": {
+            "$ref": "#/$defs/apitypes.DatabaseConstraint"
+          },
+          "type": "array"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "rows_estimate": {
+          "type": "integer"
+        },
+        "schema": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "columns",
+        "constraints",
+        "kind",
+        "name",
+        "rows_estimate",
+        "schema"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseTableEffect": {
+      "properties": {
+        "deleted": {
+          "type": "integer"
+        },
+        "inserted": {
+          "type": "integer"
+        },
+        "table": {
+          "type": "string"
+        },
+        "updated": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "deleted",
+        "inserted",
+        "table",
+        "updated"
+      ],
+      "type": "object"
+    },
+    "apitypes.DatabaseURL": {
+      "properties": {
+        "environment": {
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "reachable": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment",
+        "expires_at",
+        "reachable",
+        "url"
+      ],
+      "type": "object"
+    },
+    "apitypes.DbEnvironmentRequest": {
+      "properties": {
+        "environment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "environment"
+      ],
+      "type": "object"
+    },
+    "apitypes.DbQueryRequest": {
+      "properties": {
+        "confirm": {
+          "type": "string"
+        },
+        "database": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "sql": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "confirm",
+        "database",
+        "environment",
+        "limit",
+        "sql"
+      ],
+      "type": "object"
+    },
+    "apitypes.DbSchemaRequest": {
+      "properties": {
+        "database": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "database",
+        "environment"
+      ],
+      "type": "object"
+    },
+    "apitypes.DecideApprovalRequest": {
+      "properties": {
+        "decision": {
+          "type": "string"
+        },
+        "note": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "decision",
+        "note"
       ],
       "type": "object"
     },
@@ -3603,6 +4287,25 @@
       ],
       "type": "object"
     },
+    "apitypes.DeployKeyResponse": {
+      "properties": {
+        "git_url": {
+          "type": "string"
+        },
+        "token": {
+          "$ref": "#/$defs/apitypes.Token"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "git_url",
+        "token",
+        "value"
+      ],
+      "type": "object"
+    },
     "apitypes.DeviceApproveRequest": {
       "properties": {
         "agent": {
@@ -3787,6 +4490,17 @@
       ],
       "type": "object"
     },
+    "apitypes.DeviceTokenRequest": {
+      "properties": {
+        "device_code": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "device_code"
+      ],
+      "type": "object"
+    },
     "apitypes.Domain": {
       "properties": {
         "added_by": {
@@ -3866,6 +4580,17 @@
       ],
       "type": "object"
     },
+    "apitypes.DomainRedirectRequest": {
+      "properties": {
+        "to": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "to"
+      ],
+      "type": "object"
+    },
     "apitypes.DomainRequest": {
       "properties": {
         "hostname": {
@@ -3895,6 +4620,29 @@
       "required": [
         "never_ran",
         "unexpected"
+      ],
+      "type": "object"
+    },
+    "apitypes.EmailAttachment": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "content_id": {
+          "type": "string"
+        },
+        "content_type": {
+          "type": "string"
+        },
+        "filename": {
+          "type": "string"
+        },
+        "storage_key": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "filename"
       ],
       "type": "object"
     },
@@ -4023,6 +4771,29 @@
       "required": [
         "at",
         "status"
+      ],
+      "type": "object"
+    },
+    "apitypes.EmailSent": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "provider_id": {
+          "type": "string"
+        },
+        "recipients": {
+          "type": "integer"
+        },
+        "sent_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "recipients",
+        "sent_at"
       ],
       "type": "object"
     },
@@ -4241,6 +5012,52 @@
         "at",
         "frames",
         "id"
+      ],
+      "type": "object"
+    },
+    "apitypes.ErrorStatusSet": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "apitypes.EventQueued": {
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "apitypes.EventRequest": {
+      "properties": {
+        "data": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "dedupe_key": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "data",
+        "dedupe_key",
+        "name"
       ],
       "type": "object"
     },
@@ -4580,6 +5397,71 @@
         "org_id",
         "revoked_at",
         "scopes"
+      ],
+      "type": "object"
+    },
+    "apitypes.FeedbackInput": {
+      "properties": {
+        "app": {
+          "type": "string"
+        },
+        "context": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "app",
+        "context",
+        "kind",
+        "message",
+        "org"
+      ],
+      "type": "object"
+    },
+    "apitypes.FeedbackReceipt": {
+      "properties": {
+        "app": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string",
+          "x-type": "apitypes.FeedbackKind"
+        },
+        "message": {
+          "type": "string"
+        },
+        "org": {
+          "type": "string"
+        },
+        "redacted": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "created_at",
+        "id",
+        "kind",
+        "message",
+        "redacted"
       ],
       "type": "object"
     },
@@ -5017,6 +5899,39 @@
       ],
       "type": "object"
     },
+    "apitypes.GithubInstallRequest": {
+      "properties": {
+        "app": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "app"
+      ],
+      "type": "object"
+    },
+    "apitypes.GithubInstallURL": {
+      "properties": {
+        "install_url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "install_url"
+      ],
+      "type": "object"
+    },
+    "apitypes.GithubLinkAppRequest": {
+      "properties": {
+        "repo": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "repo"
+      ],
+      "type": "object"
+    },
     "apitypes.Grant": {
       "properties": {
         "audience": {
@@ -5201,6 +6116,29 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "apitypes.HandoverClientRequest": {
+      "properties": {
+        "contact": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "apitypes.HandoverMade": {
+      "properties": {
+        "claim_url": {
+          "type": "string"
+        },
+        "contact": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_url",
+        "contact"
+      ],
       "type": "object"
     },
     "apitypes.HomeApp": {
@@ -5390,6 +6328,21 @@
       ],
       "type": "object"
     },
+    "apitypes.InviteCustomerRequest": {
+      "properties": {
+        "email": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "name"
+      ],
+      "type": "object"
+    },
     "apitypes.InviteRequest": {
       "properties": {
         "apps": {
@@ -5492,6 +6445,24 @@
       ],
       "type": "object"
     },
+    "apitypes.LinkUploadsRequest": {
+      "properties": {
+        "expires_in": {
+          "type": "integer"
+        },
+        "paths": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "expires_in",
+        "paths"
+      ],
+      "type": "object"
+    },
     "apitypes.List[apitypes.Approval]": {
       "properties": {
         "items": {
@@ -5506,11 +6477,39 @@
       ],
       "type": "object"
     },
+    "apitypes.List[apitypes.EmailDomain]": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.EmailDomain"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "apitypes.List[apitypes.ErrorGroup]": {
       "properties": {
         "items": {
           "items": {
             "$ref": "#/$defs/apitypes.ErrorGroup"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
+    "apitypes.List[apitypes.Notification]": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.Notification"
           },
           "type": "array"
         }
@@ -5717,6 +6716,73 @@
       ],
       "type": "object"
     },
+    "apitypes.LogDestinationTest": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "sent": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "id",
+        "message",
+        "sent"
+      ],
+      "type": "object"
+    },
+    "apitypes.LogLine": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "env": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "json": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "line": {
+          "type": "string"
+        },
+        "stream": {
+          "type": "string"
+        },
+        "unit": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "at",
+        "env",
+        "line",
+        "stream"
+      ],
+      "type": "object"
+    },
+    "apitypes.LogPage": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.LogLine"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "apitypes.Login": {
       "properties": {
         "addable": {
@@ -5778,6 +6844,17 @@
       },
       "required": [
         "org"
+      ],
+      "type": "object"
+    },
+    "apitypes.MainAddressRequest": {
+      "properties": {
+        "hostname": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "hostname"
       ],
       "type": "object"
     },
@@ -5978,6 +7055,64 @@
       ],
       "type": "object"
     },
+    "apitypes.MediaLink": {
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "path"
+      ],
+      "type": "object"
+    },
+    "apitypes.MediaLinkKey": {
+      "properties": {
+        "generation": {
+          "type": "integer"
+        },
+        "previous_until": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "rotated_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "generation",
+        "previous_until",
+        "rotated_at"
+      ],
+      "type": "object"
+    },
+    "apitypes.MediaLinks": {
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/apitypes.MediaLink"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "expires_at",
+        "links"
+      ],
+      "type": "object"
+    },
     "apitypes.Member": {
       "properties": {
         "created_at": {
@@ -6031,6 +7166,21 @@
         "role",
         "status",
         "user_id"
+      ],
+      "type": "object"
+    },
+    "apitypes.MintedToken": {
+      "properties": {
+        "token": {
+          "$ref": "#/$defs/apitypes.Token"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "token",
+        "value"
       ],
       "type": "object"
     },
@@ -6130,6 +7280,41 @@
         "fix",
         "name",
         "slug"
+      ],
+      "type": "object"
+    },
+    "apitypes.Notification": {
+      "properties": {
+        "app_id": {
+          "type": "string"
+        },
+        "body": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "payload": {},
+        "title": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "body",
+        "created_at",
+        "id",
+        "kind",
+        "title"
       ],
       "type": "object"
     },
@@ -6695,6 +7880,17 @@
       ],
       "type": "object"
     },
+    "apitypes.PageURL": {
+      "properties": {
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "url"
+      ],
+      "type": "object"
+    },
     "apitypes.Page[apitypes.App]": {
       "properties": {
         "items": {
@@ -6983,6 +8179,24 @@
       ],
       "type": "object"
     },
+    "apitypes.Page[apitypes.RestoreJSON]": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.RestoreJSON"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "type": "object"
+    },
     "apitypes.Page[apitypes.SecretRead]": {
       "properties": {
         "items": {
@@ -7107,6 +8321,17 @@
       },
       "type": "object"
     },
+    "apitypes.PatchCustomerRequest": {
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "type": "object"
+    },
     "apitypes.PatchMemberRequest": {
       "properties": {
         "kind": {
@@ -7126,6 +8351,17 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "apitypes.PatchUploadRequest": {
+      "properties": {
+        "visibility": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "visibility"
+      ],
       "type": "object"
     },
     "apitypes.PayDetails": {
@@ -7846,6 +9082,59 @@
       ],
       "type": "object"
     },
+    "apitypes.RestoreJSON": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "error": {},
+        "finished_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "import": {
+          "type": "string"
+        },
+        "previous_database": {
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "swap": {
+          "type": "boolean"
+        },
+        "target_database": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "environment",
+        "id",
+        "status",
+        "swap"
+      ],
+      "type": "object"
+    },
     "apitypes.RollbackSecretRequest": {
       "properties": {
         "app_id": {
@@ -7866,6 +9155,17 @@
           "type": "string"
         }
       },
+      "type": "object"
+    },
+    "apitypes.RotateLinkKeyRequest": {
+      "properties": {
+        "immediately": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "immediately"
+      ],
       "type": "object"
     },
     "apitypes.Run": {
@@ -8257,6 +9557,42 @@
       ],
       "type": "object"
     },
+    "apitypes.SendEmailRequest": {
+      "properties": {
+        "attachments": {
+          "items": {
+            "$ref": "#/$defs/apitypes.EmailAttachment"
+          },
+          "type": "array"
+        },
+        "from": {
+          "type": "string"
+        },
+        "html": {
+          "type": "string"
+        },
+        "reply_to": {
+          "type": "string"
+        },
+        "subject": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        },
+        "to": {}
+      },
+      "required": [
+        "attachments",
+        "from",
+        "html",
+        "reply_to",
+        "subject",
+        "text",
+        "to"
+      ],
+      "type": "object"
+    },
     "apitypes.Session": {
       "properties": {
         "confirmed_until": {
@@ -8301,6 +9637,28 @@
         "last_seen_at",
         "method",
         "user_agent"
+      ],
+      "type": "object"
+    },
+    "apitypes.SetCustomerSignupRequest": {
+      "properties": {
+        "signup": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "signup"
+      ],
+      "type": "object"
+    },
+    "apitypes.SetErrorStatusRequest": {
+      "properties": {
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "status"
       ],
       "type": "object"
     },
@@ -8356,6 +9714,121 @@
       ],
       "type": "object"
     },
+    "apitypes.SourceCommit": {
+      "properties": {
+        "changed": {
+          "type": "boolean"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "deploy_id": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "changed",
+        "commit"
+      ],
+      "type": "object"
+    },
+    "apitypes.SourceFile": {
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "content",
+        "path"
+      ],
+      "type": "object"
+    },
+    "apitypes.SourceListing": {
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "commit": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "encoding": {
+          "type": "string"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/apitypes.SourceTreeEntry"
+          },
+          "type": "array"
+        },
+        "path": {
+          "type": "string"
+        },
+        "truncated": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "commit"
+      ],
+      "type": "object"
+    },
+    "apitypes.SourceRequest": {
+      "properties": {
+        "base_commit": {
+          "type": "string"
+        },
+        "delete": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "files": {
+          "items": {
+            "$ref": "#/$defs/apitypes.SourceFile"
+          },
+          "type": "array"
+        },
+        "message": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "base_commit",
+        "delete",
+        "files",
+        "message"
+      ],
+      "type": "object"
+    },
+    "apitypes.SourceTreeEntry": {
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bytes",
+        "path"
+      ],
+      "type": "object"
+    },
     "apitypes.SpendCapRequest": {
       "properties": {
         "environment": {
@@ -8380,6 +9853,31 @@
       },
       "required": [
         "branch"
+      ],
+      "type": "object"
+    },
+    "apitypes.StartRestoreRequest": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "before": {
+          "type": "string"
+        },
+        "environment": {
+          "type": "string"
+        },
+        "import": {
+          "type": "string"
+        },
+        "swap": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "environment",
+        "swap"
       ],
       "type": "object"
     },
@@ -8593,6 +10091,17 @@
       ],
       "type": "object"
     },
+    "apitypes.SyncQueued": {
+      "properties": {
+        "queued": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "queued"
+      ],
+      "type": "object"
+    },
     "apitypes.Timeline": {
       "properties": {
         "frozen_at": {
@@ -8746,6 +10255,28 @@
       ],
       "type": "object"
     },
+    "apitypes.TraceList": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.TraceSummary"
+          },
+          "type": "array"
+        },
+        "retention_days": {
+          "type": "integer"
+        },
+        "usage": {
+          "$ref": "#/$defs/apitypes.TraceUsage"
+        }
+      },
+      "required": [
+        "items",
+        "retention_days",
+        "usage"
+      ],
+      "type": "object"
+    },
     "apitypes.TraceSpan": {
       "properties": {
         "attributes": {
@@ -8803,6 +10334,183 @@
         "started_at",
         "status",
         "status_message"
+      ],
+      "type": "object"
+    },
+    "apitypes.TraceSummary": {
+      "properties": {
+        "duration_ms": {
+          "type": "number"
+        },
+        "env": {
+          "type": "string"
+        },
+        "errors": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "request_id": {
+          "type": "string"
+        },
+        "spans": {
+          "type": "integer"
+        },
+        "started_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "status_code": {
+          "type": "integer"
+        },
+        "trace_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "duration_ms",
+        "env",
+        "errors",
+        "name",
+        "request_id",
+        "spans",
+        "started_at",
+        "trace_id"
+      ],
+      "type": "object"
+    },
+    "apitypes.TraceUsage": {
+      "properties": {
+        "limit": {
+          "type": "integer"
+        },
+        "spans_today": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "limit",
+        "spans_today"
+      ],
+      "type": "object"
+    },
+    "apitypes.TrafficRequest": {
+      "properties": {
+        "address": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "app_millis": {
+          "type": "integer"
+        },
+        "asn": {
+          "type": "integer"
+        },
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer"
+        },
+        "cached": {
+          "type": "boolean"
+        },
+        "country": {
+          "type": "string"
+        },
+        "edge_cache": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "method": {
+          "type": "string"
+        },
+        "millis": {
+          "type": "integer"
+        },
+        "network": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "received": {
+          "type": "integer"
+        },
+        "referer": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        },
+        "wake_millis": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "address",
+        "agent",
+        "at",
+        "bytes",
+        "cached",
+        "host",
+        "kind",
+        "method",
+        "millis",
+        "path",
+        "received",
+        "source",
+        "status",
+        "user_agent"
+      ],
+      "type": "object"
+    },
+    "apitypes.TrafficRow": {
+      "properties": {
+        "addresses": {
+          "type": "integer"
+        },
+        "group": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "requests": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "addresses",
+        "group",
+        "requests"
       ],
       "type": "object"
     },
@@ -8987,6 +10695,49 @@
       ],
       "type": "object"
     },
+    "apitypes.UploadAuthorisation": {
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "fields": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "key": {
+          "type": "string"
+        },
+        "max_bytes": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "parts": {
+          "$ref": "#/$defs/apitypes.UploadParts"
+        },
+        "scan_max_bytes": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "expires_at",
+        "id",
+        "key",
+        "max_bytes",
+        "scan_max_bytes"
+      ],
+      "type": "object"
+    },
     "apitypes.UploadImage": {
       "properties": {
         "detail": {
@@ -9051,6 +10802,71 @@
         "outputs",
         "path",
         "status"
+      ],
+      "type": "object"
+    },
+    "apitypes.UploadPartState": {
+      "properties": {
+        "bytes": {
+          "type": "integer"
+        },
+        "etag": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "bytes",
+        "number"
+      ],
+      "type": "object"
+    },
+    "apitypes.UploadParts": {
+      "properties": {
+        "complete": {
+          "type": "boolean"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "part_size": {
+          "type": "integer"
+        },
+        "parts": {
+          "items": {
+            "$ref": "#/$defs/apitypes.UploadPartState"
+          },
+          "type": "array"
+        },
+        "upload_id": {
+          "type": "string"
+        },
+        "urls_expire_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "count",
+        "part_size",
+        "parts",
+        "upload_id"
+      ],
+      "type": "object"
+    },
+    "apitypes.UploadPartsRequest": {
+      "properties": {
+        "upload_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "upload_id"
       ],
       "type": "object"
     },
@@ -9272,6 +11088,80 @@
       "required": [
         "categories",
         "owned"
+      ],
+      "type": "object"
+    },
+    "apitypes.VisitBeacon": {
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "automated": {
+          "type": "boolean"
+        },
+        "campaign": {
+          "type": "string"
+        },
+        "entry": {
+          "type": "boolean"
+        },
+        "language": {
+          "type": "string"
+        },
+        "leave": {
+          "type": "boolean"
+        },
+        "load_ms": {
+          "type": "integer"
+        },
+        "path": {
+          "type": "string"
+        },
+        "referrer": {
+          "type": "string"
+        },
+        "screen": {
+          "type": "integer"
+        },
+        "screen_height": {
+          "type": "integer"
+        },
+        "scroll": {
+          "type": "integer"
+        },
+        "seconds": {
+          "type": "integer"
+        },
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
+    },
+    "apitypes.VisitReceipt": {
+      "properties": {
+        "counted": {
+          "type": "boolean"
+        },
+        "flags": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "reason": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "counted",
+        "flags"
       ],
       "type": "object"
     },
@@ -9996,9 +11886,29 @@
         "type": "null"
       }
     },
+    "DELETE /v1/orgs/{org}/secrets/{name}": {
+      "answer": {
+        "type": "null"
+      },
+      "query": {
+        "app": {
+          "type": "string"
+        }
+      }
+    },
     "DELETE /v1/orgs/{org}/secrets/{name}/apps/{app}": {
       "answer": {
         "$ref": "#/$defs/apitypes.Secret"
+      }
+    },
+    "DELETE /v1/orgs/{org}/secrets/{name}/hold": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Secret"
+      },
+      "query": {
+        "app": {
+          "type": "string"
+        }
       }
     },
     "DELETE /v1/orgs/{org}/tokens/{id}": {
@@ -10196,6 +12106,152 @@
         "$ref": "#/$defs/apitypes.CrawlerJourneyDetail"
       }
     },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/traffic": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AppTraffic"
+      },
+      "query": {
+        "address": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "by": {
+          "type": "string"
+        },
+        "cached": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "edge_cache": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "referer": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/traffic/requests": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AppTrafficRequests"
+      },
+      "query": {
+        "address": {
+          "type": "string"
+        },
+        "agent": {
+          "type": "string"
+        },
+        "by": {
+          "type": "string"
+        },
+        "cached": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "edge_cache": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "host": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "method": {
+          "type": "string"
+        },
+        "network": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "query": {
+          "type": "string"
+        },
+        "referer": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "status": {
+          "type": "integer"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        },
+        "user_agent": {
+          "type": "string"
+        },
+        "user_id": {
+          "type": "string"
+        }
+      }
+    },
     "GET /v1/orgs/{org}/apps/{app}/analytics/visitors": {
       "answer": {
         "$ref": "#/$defs/apitypes.AppVisitors"
@@ -10341,8 +12397,7 @@
     },
     "GET /v1/orgs/{org}/apps/{app}/email/domains": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.List[apitypes.EmailDomain]"
       }
     },
     "GET /v1/orgs/{org}/apps/{app}/email/domains/{id}": {
@@ -10429,6 +12484,34 @@
         "$ref": "#/$defs/apitypes.Inbox"
       }
     },
+    "GET /v1/orgs/{org}/apps/{app}/logs": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.LogPage"
+      },
+      "query": {
+        "env": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "q": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "stream": {
+          "type": "string"
+        },
+        "stream_name": {
+          "type": "string"
+        },
+        "until": {
+          "type": "string"
+        }
+      }
+    },
     "GET /v1/orgs/{org}/apps/{app}/manifest": {
       "answer": {
         "$ref": "#/$defs/apitypes.Manifest"
@@ -10464,6 +12547,16 @@
         "$ref": "#/$defs/apitypes.PackageScan"
       }
     },
+    "GET /v1/orgs/{org}/apps/{app}/restores": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Page[apitypes.RestoreJSON]"
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/restores/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.RestoreJSON"
+      }
+    },
     "GET /v1/orgs/{org}/apps/{app}/runs/{id}": {
       "answer": {
         "$ref": "#/$defs/apitypes.Run"
@@ -10474,6 +12567,16 @@
         "$ref": "#/$defs/apitypes.Page[apitypes.Secret]"
       }
     },
+    "GET /v1/orgs/{org}/apps/{app}/source": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.SourceListing"
+      },
+      "query": {
+        "path": {
+          "type": "string"
+        }
+      }
+    },
     "GET /v1/orgs/{org}/apps/{app}/status-page": {
       "answer": {
         "$ref": "#/$defs/apitypes.StatusPageAnswer"
@@ -10482,6 +12585,34 @@
     "GET /v1/orgs/{org}/apps/{app}/storage": {
       "answer": {
         "$ref": "#/$defs/apitypes.AppStorage"
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/traces": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.TraceList"
+      },
+      "query": {
+        "env": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "min_ms": {
+          "type": "integer"
+        },
+        "q": {
+          "type": "string"
+        },
+        "since": {
+          "type": "string"
+        },
+        "sort": {
+          "type": "string"
+        },
+        "until": {
+          "type": "string"
+        }
       }
     },
     "GET /v1/orgs/{org}/apps/{app}/traces/{id}": {
@@ -10607,8 +12738,7 @@
     },
     "GET /v1/orgs/{org}/email/domains": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.List[apitypes.EmailDomain]"
       }
     },
     "GET /v1/orgs/{org}/export/{id}": {
@@ -10658,8 +12788,7 @@
     },
     "GET /v1/orgs/{org}/notifications": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.List[apitypes.Notification]"
       }
     },
     "GET /v1/orgs/{org}/requests/{id}": {
@@ -10772,12 +12901,28 @@
         "$ref": "#/$defs/apitypes.PatchAppRequest"
       }
     },
+    "PATCH /v1/orgs/{org}/apps/{app}/customers/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Customer"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.PatchCustomerRequest"
+      }
+    },
     "PATCH /v1/orgs/{org}/apps/{app}/managed": {
       "answer": {
         "$ref": "#/$defs/apitypes.App"
       },
       "body": {
         "$ref": "#/$defs/apitypes.ManagedSettingsRequest"
+      }
+    },
+    "PATCH /v1/orgs/{org}/apps/{app}/uploads/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Upload"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.PatchUploadRequest"
       }
     },
     "PATCH /v1/orgs/{org}/groups/{id}": {
@@ -10809,12 +12954,28 @@
         "$ref": "#/$defs/apitypes.DemoCopy"
       }
     },
+    "POST /v1/approvals/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Approval"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DecideApprovalRequest"
+      }
+    },
     "POST /v1/cli/misses": {
       "answer": {
         "$ref": "#/$defs/apitypes.CLIMissReceipt"
       },
       "body": {
         "$ref": "#/$defs/apitypes.CLIMiss"
+      }
+    },
+    "POST /v1/client-errors": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.ClientErrorReceipt"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.ClientErrorReport"
       }
     },
     "POST /v1/demos/{code}/claim": {
@@ -10836,6 +12997,22 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.DeviceCodeRequest"
+      }
+    },
+    "POST /v1/device/token": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DeviceToken"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DeviceTokenRequest"
+      }
+    },
+    "POST /v1/feedback": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.FeedbackReceipt"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.FeedbackInput"
       }
     },
     "POST /v1/me/confirm": {
@@ -10949,9 +13126,57 @@
         "$ref": "#/$defs/apitypes.Run"
       }
     },
+    "POST /v1/orgs/{org}/apps/{app}/customers": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Customer"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.InviteCustomerRequest"
+      }
+    },
     "POST /v1/orgs/{org}/apps/{app}/customers/{id}/invite": {
       "answer": {
         "$ref": "#/$defs/apitypes.Customer"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/imports": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseImportAuthorisation"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AuthoriseImportRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/query": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseQueryResult"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DbQueryRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/schema": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseSchema"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DbSchemaRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/snapshot": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseSnapshot"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DbEnvironmentRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/url": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseURL"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DbEnvironmentRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/demo/people": {
@@ -10960,6 +13185,14 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.DemoPeopleRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/deploy-keys": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DeployKeyResponse"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.CreateDeployKeyRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/deploys": {
@@ -10996,9 +13229,41 @@
         "$ref": "#/$defs/apitypes.Domain"
       }
     },
+    "POST /v1/orgs/{org}/apps/{app}/email/domains": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.EmailDomain"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AppEmailDomainRequest"
+      }
+    },
     "POST /v1/orgs/{org}/apps/{app}/email/domains/{id}/verify": {
       "answer": {
         "$ref": "#/$defs/apitypes.EmailDomain"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/email/send": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.EmailSent"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.SendEmailRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/errors/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.ErrorStatusSet"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.SetErrorStatusRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/events": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.EventQueued"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.EventRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/fork/suggestions": {
@@ -11016,8 +13281,7 @@
     },
     "POST /v1/orgs/{org}/apps/{app}/github/sync": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.SyncQueued"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/inbox/domains": {
@@ -11085,6 +13349,14 @@
         "$ref": "#/$defs/apitypes.App"
       }
     },
+    "POST /v1/orgs/{org}/apps/{app}/restore": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.RestoreJSON"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.StartRestoreRequest"
+      }
+    },
     "POST /v1/orgs/{org}/apps/{app}/resume": {
       "answer": {
         "$ref": "#/$defs/apitypes.App"
@@ -11108,9 +13380,57 @@
         "$ref": "#/$defs/apitypes.Run"
       }
     },
+    "POST /v1/orgs/{org}/apps/{app}/source": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.SourceCommit"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.SourceRequest"
+      }
+    },
     "POST /v1/orgs/{org}/apps/{app}/status-page/verify": {
       "answer": {
         "$ref": "#/$defs/apitypes.StatusPage"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/uploads": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.UploadAuthorisation"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AuthoriseUploadRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/uploads/links": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.MediaLinks"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.LinkUploadsRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/uploads/links/rotate": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.MediaLinkKey"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.RotateLinkKeyRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/uploads/{id}/complete": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Upload"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.UploadPartsRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/uploads/{id}/parts": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.UploadParts"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.UploadPartsRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/validate": {
@@ -11128,8 +13448,7 @@
     },
     "POST /v1/orgs/{org}/billing/invoices/{invoice}/pay": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.PageURL"
       }
     },
     "POST /v1/orgs/{org}/billing/pay/{id}/finish": {
@@ -11147,14 +13466,36 @@
     },
     "POST /v1/orgs/{org}/billing/payouts": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.PageURL"
       }
     },
     "POST /v1/orgs/{org}/billing/portal": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.PageURL"
+      }
+    },
+    "POST /v1/orgs/{org}/clients": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.ClientAdded"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.ClientRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/clients/{client}/billing": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.ClientAdded"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.ClientRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/clients/{client}/handover": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.HandoverMade"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.HandoverClientRequest"
       }
     },
     "POST /v1/orgs/{org}/confirm": {
@@ -11188,6 +13529,14 @@
         "$ref": "#/$defs/apitypes.OrgDomain"
       }
     },
+    "POST /v1/orgs/{org}/email/domains": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.EmailDomain"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AddEmailDomainRequest"
+      }
+    },
     "POST /v1/orgs/{org}/email/domains/{id}/resume": {
       "answer": {
         "$ref": "#/$defs/apitypes.EmailDomain"
@@ -11201,6 +13550,14 @@
     "POST /v1/orgs/{org}/export": {
       "answer": {
         "$ref": "#/$defs/apitypes.Export"
+      }
+    },
+    "POST /v1/orgs/{org}/github/installations": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.GithubInstallURL"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.GithubInstallRequest"
       }
     },
     "POST /v1/orgs/{org}/groups": {
@@ -11221,8 +13578,7 @@
     },
     "POST /v1/orgs/{org}/logs/destinations/{id}/test": {
       "answer": {
-        "additionalProperties": {},
-        "type": "object"
+        "$ref": "#/$defs/apitypes.LogDestinationTest"
       }
     },
     "POST /v1/orgs/{org}/managed": {
@@ -11290,9 +13646,25 @@
         "$ref": "#/$defs/apitypes.ShareSecretRequest"
       }
     },
+    "POST /v1/orgs/{org}/tokens": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.MintedToken"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.CreateAgentTokenRequest"
+      }
+    },
     "POST /v1/tokens/git": {
       "answer": {
         "$ref": "#/$defs/apitypes.GitPassword"
+      }
+    },
+    "POST /v1/visits": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.VisitReceipt"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.VisitBeacon"
       }
     },
     "PUT /v1/me/preferences": {
@@ -11324,6 +13696,14 @@
         "$ref": "#/$defs/apitypes.App"
       }
     },
+    "PUT /v1/orgs/{org}/apps/{app}/cdn": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AppCdn"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AppCDNRequest"
+      }
+    },
     "PUT /v1/orgs/{org}/apps/{app}/connections/{name}/limits": {
       "answer": {
         "$ref": "#/$defs/apitypes.Connection"
@@ -11340,12 +13720,28 @@
         "$ref": "#/$defs/apitypes.SpendCapRequest"
       }
     },
+    "PUT /v1/orgs/{org}/apps/{app}/customers/signup": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.CustomerSignupSet"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.SetCustomerSignupRequest"
+      }
+    },
     "PUT /v1/orgs/{org}/apps/{app}/demo": {
       "answer": {
         "$ref": "#/$defs/apitypes.Demo"
       },
       "body": {
         "$ref": "#/$defs/apitypes.DemoRequest"
+      }
+    },
+    "PUT /v1/orgs/{org}/apps/{app}/domains/{id}/redirect": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Domain"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DomainRedirectRequest"
       }
     },
     "PUT /v1/orgs/{org}/apps/{app}/flags/{name}": {
@@ -11356,12 +13752,28 @@
         "$ref": "#/$defs/apitypes.AppFlagRequest"
       }
     },
+    "PUT /v1/orgs/{org}/apps/{app}/github": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.GitHubLink"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.GithubLinkAppRequest"
+      }
+    },
     "PUT /v1/orgs/{org}/apps/{app}/links/{role}": {
       "answer": {
         "$ref": "#/$defs/apitypes.App"
       },
       "body": {
         "$ref": "#/$defs/apitypes.LinkRequest"
+      }
+    },
+    "PUT /v1/orgs/{org}/apps/{app}/main-address": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.Page[apitypes.Domain]"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.MainAddressRequest"
       }
     },
     "PUT /v1/orgs/{org}/apps/{app}/promoted": {

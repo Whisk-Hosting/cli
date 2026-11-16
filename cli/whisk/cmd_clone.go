@@ -16,6 +16,7 @@ import (
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/cli/internal/safefile"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 func cloneCmd(s *session) *cobra.Command {
@@ -46,7 +47,7 @@ func runClone(s *session, org, app, dir string) error {
 	if err != nil {
 		return err
 	}
-	a, err := client.GetApp(s.ctx, org, app)
+	a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 	if err != nil {
 		return wrap(err)
 	}
@@ -257,7 +258,7 @@ func (s *session) gitSecret(client *api.Client, cred config.Credential) (string,
 	if client.Key == nil {
 		return cred.Token, nil
 	}
-	pw, err := client.GitPassword(s.ctx)
+	pw, err := api.Call(s.ctx, client, endpoints.GitPassword)
 	if err != nil {
 		return "", wrap(err)
 	}

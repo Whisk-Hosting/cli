@@ -5,6 +5,9 @@ import (
 	"io"
 	"strings"
 
+	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/output"
@@ -58,7 +61,7 @@ func tokensCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListTokens(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListTokens, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -86,7 +89,7 @@ func tokensCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.RevokeToken(s.ctx, org, args[0]); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.RevokeToken, org, args[0]); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "id": args[0], "revoked": true}, func(w io.Writer) {

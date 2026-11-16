@@ -5,6 +5,10 @@ import (
 	"io"
 	"time"
 
+	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
+
 	"github.com/spf13/cobra"
 )
 
@@ -24,7 +28,7 @@ func uploadsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			out, err := client.SignMedia(s.ctx, org, app, args, int64(expires/time.Second))
+			out, err := api.Send(s.ctx, client, endpoints.LinkUploads, apitypes.LinkUploadsRequest{Paths: args, ExpiresIn: int64(expires / time.Second)}, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -53,7 +57,7 @@ func uploadsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			k, err := client.RotateMediaLinkKey(s.ctx, org, app, now)
+			k, err := api.Send(s.ctx, client, endpoints.RotateLinkKey, apitypes.RotateLinkKeyRequest{Immediately: now}, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -79,7 +83,7 @@ func uploadsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteUpload(s.ctx, org, app, args[0]); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteUpload, org, app, args[0]); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "deleted": args[0]}, func(w io.Writer) {

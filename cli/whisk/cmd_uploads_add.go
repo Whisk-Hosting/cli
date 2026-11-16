@@ -16,6 +16,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // maxUploadBytes is the most one upload form takes (CONTROL-PLANE.md §6.13).
@@ -203,7 +204,7 @@ func addUpload(s *session, client *api.Client, org, app string, f uploadFile, vi
 		return api.Upload{}, output.New("PLATFORM_UNAVAILABLE", f.name+" did not upload: "+err.Error()+".",
 			"Run the same whisk uploads add again; the file was not stored.", map[string]any{"file": f.path, "upload": auth.ID})
 	}
-	u, err := client.GetUpload(s.ctx, org, app, auth.ID)
+	u, err := api.Call(s.ctx, client, endpoints.GetUpload, org, app, auth.ID)
 	if err != nil {
 		return api.Upload{}, wrap(err)
 	}
@@ -251,7 +252,7 @@ func uploadsShowCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			u, err := client.GetUpload(s.ctx, org, app, args[0])
+			u, err := api.Call(s.ctx, client, endpoints.GetUpload, org, app, args[0])
 			if err == nil && wait && !uploadSettled(u) {
 				log := s.env.Stderr
 				if s.quiet || s.json {
@@ -283,7 +284,7 @@ func uploadsShowCmd(s *session) *cobra.Command {
 func followUpload(ctx context.Context, client *api.Client, org, app, id string, log io.Writer, every time.Duration) (api.Upload, error) {
 	last := ""
 	for {
-		u, err := client.GetUpload(ctx, org, app, id)
+		u, err := api.Call(ctx, client, endpoints.GetUpload, org, app, id)
 		if err != nil {
 			return u, err
 		}

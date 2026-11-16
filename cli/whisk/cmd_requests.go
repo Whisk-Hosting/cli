@@ -12,6 +12,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // Changes an agent asks a person to approve (CLI.md §5.11, CONTROL-PLANE.md §4.9): an invite,
@@ -75,7 +76,7 @@ func requestOutcome(p api.PersonRequest) error {
 // waitRequest reads a request until a person has decided it, or it expires.
 func (s *session) waitRequest(client *api.Client, org, id string) (api.PersonRequest, error) {
 	for {
-		p, err := client.GetPersonRequest(s.ctx, org, id)
+		p, err := api.Call(s.ctx, client, endpoints.GetPersonRequest, org, id)
 		if err != nil {
 			return p, wrap(err)
 		}
@@ -129,7 +130,7 @@ func requestsCmd(s *session) *cobra.Command {
 			if wait {
 				p, err = s.waitRequest(client, org, args[0])
 			} else {
-				if p, err = client.GetPersonRequest(s.ctx, org, args[0]); err != nil {
+				if p, err = api.Call(s.ctx, client, endpoints.GetPersonRequest, org, args[0]); err != nil {
 					return wrap(err)
 				}
 				err = requestOutcome(p)

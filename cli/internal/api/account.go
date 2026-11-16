@@ -24,8 +24,3 @@ func (c *Client) ExportAccount(ctx context.Context) (AccountExport, []byte, erro
 	}
 	return out, raw, nil
 }
-
-// DeleteAccount is DELETE /me: the person deletes their own account.
-func (c *Client) DeleteAccount(ctx context.Context) error {
-	return c.Do(ctx, http.MethodDelete, "/me", nil, nil)
-}

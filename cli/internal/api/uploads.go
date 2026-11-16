@@ -8,9 +8,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/whisk-run/contract/run/runhttp"
-
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
+	"github.com/whisk-run/contract/run/runhttp"
 )
 
 // Upload is one file the app authorised into its business's storage, and what the scan and the
@@ -19,62 +19,27 @@ type Upload = apitypes.Upload
 
 // UploadAuthorisation is the form a file is posted to the store with (CONTROL-PLANE.md §6.13
 // "Authorising an upload").
-type UploadAuthorisation struct {
-	ID        string            `json:"id"`
-	Key       string            `json:"key"`
-	URL       string            `json:"url"`
-	Method    string            `json:"method"`
-	Fields    map[string]string `json:"fields"`
-	MaxBytes  int64             `json:"max_bytes"`
-	ExpiresAt time.Time         `json:"expires_at"`
-	// ScanMaxBytes is the largest object the platform's virus scan reads now; 0 from a platform
-	// that does not say.
-	ScanMaxBytes int64 `json:"scan_max_bytes,omitempty"`
-	// Parts is set instead of the form for an upload in parts.
-	Parts *UploadParts `json:"parts,omitempty"`
-}
+type UploadAuthorisation = apitypes.UploadAuthorisation
 
 // UploadParts is where an upload in parts stands (CONTROL-PLANE.md §6.13 "Uploading in parts"):
 // the store's id for it, the size of every part but the last, and each part, stored (ETag) or
 // still to send (URL). Complete is set once the store has joined them.
-type UploadParts struct {
-	UploadID     string       `json:"upload_id"`
-	PartSize     int64        `json:"part_size"`
-	Count        int          `json:"count"`
-	Parts        []UploadPart `json:"parts"`
-	URLsExpireAt time.Time    `json:"urls_expire_at"`
-	Complete     bool         `json:"complete"`
-}
+type UploadParts = apitypes.UploadParts
 
 // UploadPart is one part of an upload in parts.
-type UploadPart struct {
-	Number int    `json:"number"`
-	Bytes  int64  `json:"bytes"`
-	ETag   string `json:"etag,omitempty"`
-	URL    string `json:"url,omitempty"`
-}
+type UploadPart = apitypes.UploadPartState
 
 // AuthoriseUpload asks for a form for one file of size bytes, or with parts to upload it in
 // parts. POST /orgs/:org/apps/:app/uploads {filename, content_type, max_bytes, visibility, parts}.
 func (c *Client) AuthoriseUpload(ctx context.Context, org, app, filename, contentType, visibility string, size int64, parts bool) (UploadAuthorisation, error) {
-	var out UploadAuthorisation
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/uploads", map[string]any{
-		"filename": filename, "content_type": contentType, "max_bytes": size, "visibility": visibility, "parts": parts,
-	}, &out)
+	return Send(ctx, c, endpoints.AuthoriseUpload, apitypes.AuthoriseUploadRequest{Filename: filename, ContentType: contentType,
+		MaxBytes: size, Visibility: visibility, Parts: parts}, org, app)
 }
 
 // UploadPartsOf reads where an upload in parts stands, with fresh URLs for the parts still to
 // send. POST /orgs/:org/apps/:app/uploads/:id/parts {upload_id}.
 func (c *Client) UploadPartsOf(ctx context.Context, org, app, id, storeID string) (UploadParts, error) {
-	var out UploadParts
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/uploads/"+pathSeg(id)+"/parts", map[string]string{"upload_id": storeID}, &out)
-}
-
-// CompleteUpload has the store join an upload's parts into the file.
-// POST /orgs/:org/apps/:app/uploads/:id/complete {upload_id}.
-func (c *Client) CompleteUpload(ctx context.Context, org, app, id, storeID string) (Upload, error) {
-	var out Upload
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/uploads/"+pathSeg(id)+"/complete", map[string]string{"upload_id": storeID}, &out)
+	return Send(ctx, c, endpoints.UploadParts, apitypes.UploadPartsRequest{UploadID: storeID}, org, app, id)
 }
 
 // partWindow bounds one part's PUT: a part of 16 MB over a slow line.
@@ -119,19 +84,8 @@ func (c *Client) PostUpload(ctx context.Context, auth UploadAuthorisation, filen
 	return c.postForm(ctx, auth.URL, auth.Fields, filename, contentType, r, size, progress)
 }
 
-// GetUpload reads one upload. GET /orgs/:org/apps/:app/uploads/:id.
-func (c *Client) GetUpload(ctx context.Context, org, app, id string) (Upload, error) {
-	var out Upload
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/uploads/"+pathSeg(id), nil, &out)
-}
-
-// DeleteUpload removes an upload's object, its converted copies and its record.
-// DELETE /orgs/:org/apps/:app/uploads/:id.
-func (c *Client) DeleteUpload(ctx context.Context, org, app, id string) error {
-	return c.Do(ctx, http.MethodDelete, appPath(org, app)+"/uploads/"+pathSeg(id), nil, nil)
-}
-
 // ListUploads lists what the app has authorised, newest first. GET /orgs/:org/apps/:app/uploads.
 func (c *Client) ListUploads(ctx context.Context, org, app string) ([]Upload, error) {
-	return listAll[Upload](ctx, c, appPath(org, app)+"/uploads")
+	out, err := Call(ctx, c, endpoints.ListUploads, org, app)
+	return out.Items, err
 }

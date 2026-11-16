@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // crawlersCmd is what robots asked the app for (CLI.md §5): each crawler, the pages, the answers
@@ -145,7 +146,7 @@ agent, address, host and referrer.`,
 			if err != nil {
 				return err
 			}
-			d, err := client.CrawlerJourney(s.ctx, org, app, args[0])
+			d, err := api.Call(s.ctx, client, endpoints.GetCrawlerJourney, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}

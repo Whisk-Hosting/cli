@@ -20,6 +20,7 @@ import (
 	"github.com/whisk-run/cli/internal/gitcmd"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 	werrors "github.com/whisk-run/contract/errors"
 	"github.com/whisk-run/contract/status"
 )
@@ -76,7 +77,7 @@ func runDeploy(s *session, opts deployOptions) error {
 			return err
 		}
 	}
-	a, err := client.GetApp(s.ctx, org, app)
+	a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 	if err != nil {
 		return wrap(err)
 	}
@@ -140,7 +141,7 @@ func runDeploy(s *session, opts deployOptions) error {
 	if strings.HasPrefix(plan.Environment, "preview:") {
 		// A push only stores a branch; the preview starts on request, or answers the deploy
 		// already following the branch (CONTROL-PLANE.md §6.3).
-		started, err := client.StartPreview(s.ctx, org, app, plan.Dst)
+		started, err := api.Send(s.ctx, client, endpoints.StartPreview, apitypes.StartPreviewRequest{Branch: plan.Dst}, org, app)
 		if err != nil {
 			return wrap(err)
 		}
@@ -722,7 +723,7 @@ func hookError(d *werrors.Detail) *output.Error {
 // again; one that has sat queued or building past deployStallLimit is DEPLOY_IN_PROGRESS.
 func (s *session) locateDeploy(client *api.Client, org, app string, sb gitcmd.Sideband, outcome gitcmd.PushOutcome, sha, environment string) (api.Deploy, error) {
 	if sb.DeployID != "" {
-		d, err := client.GetDeploy(s.ctx, org, app, sb.DeployID)
+		d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, sb.DeployID)
 		if err == nil {
 			return d, nil
 		}
@@ -763,7 +764,7 @@ func (s *session) locateDeploy(client *api.Client, org, app string, sb gitcmd.Si
 			return d, nil
 		}
 		s.printer.Progress("Nothing new to push; deploying %s again.", short(sha))
-		d, err = client.CreateDeploy(s.ctx, org, app, api.CreateDeployRequest{CommitSHA: sha, Environment: environment})
+		d, err = api.Send(s.ctx, client, endpoints.CreateDeploy, api.CreateDeployRequest{CommitSHA: sha, Environment: environment}, org, app)
 		return d, wrap(err)
 	}
 	deadline := time.Now().Add(30 * time.Second)
@@ -856,7 +857,7 @@ func (s *session) followDeploy(client *api.Client, org, app, id string) (api.Dep
 				return last, wrap(err)
 			}
 		}
-		d, derr := client.GetDeploy(s.ctx, org, app, id)
+		d, derr := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, id)
 		if derr == nil && api.Terminal(d.Status) {
 			ev, err := s.eventFromDeploy(client, org, app, d)
 			if err != nil {
@@ -885,7 +886,7 @@ func (s *session) eventFromDeploy(client *api.Client, org, app string, d api.Dep
 	if d.Status != status.DeployLive {
 		return ev, nil
 	}
-	a, err := client.GetApp(s.ctx, org, app)
+	a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 	if err != nil {
 		return ev, wrap(err)
 	}
@@ -893,7 +894,7 @@ func (s *session) eventFromDeploy(client *api.Client, org, app string, d api.Dep
 	ev.Unset = a.UnsetSecrets
 	ev.StartMS = d.StartMS
 	if d.Environment != "" && d.Environment != "production" {
-		envs, err := client.ListEnvironments(s.ctx, org, app)
+		envs, err := api.All(s.ctx, client, endpoints.ListEnvironments, org, app)
 		if err != nil {
 			return ev, wrap(err)
 		}
@@ -1041,7 +1042,7 @@ func (s *session) deployBlocked(client *api.Client, org, app string, ev api.Depl
 	if len(unset) == 0 {
 		// Best effort: the deploy is blocked either way, and that is the error to report,
 		// so a failed lookup only leaves the secret names out of it.
-		if a, err := client.GetApp(s.ctx, org, app); err == nil {
+		if a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app); err == nil {
 			unset = a.UnsetSecrets
 		} else {
 			s.printer.Progress("Could not list the unset secrets: %v", err)
@@ -1063,7 +1064,7 @@ func (s *session) blockedOnPromotion(client *api.Client, org, app string, ev api
 	code, message, fix, details := "", "", "", map[string]any{}
 	if ev.Error != nil {
 		code, message, fix, details = ev.Error.Code, ev.Error.Message, ev.Error.Fix, ev.Error.Details
-	} else if d, err := client.GetDeploy(s.ctx, org, app, ev.DeployID); err == nil && d.Error != nil {
+	} else if d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, ev.DeployID); err == nil && d.Error != nil {
 		code, message, fix, details = d.Error.Code, d.Error.Message, d.Error.Fix, d.Error.Details
 	}
 	if code != "PROMOTED_APP_REQUIRED" {
@@ -1087,7 +1088,7 @@ func (s *session) blockedOnPromotion(client *api.Client, org, app string, ev api
 // its event did not carry it. Best effort, as the unset secrets are: a failed read leaves the
 // deploy reported as waiting on secrets.
 func (s *session) grantsNeeded(client *api.Client, org, app, id string) []api.GrantNeeded {
-	d, err := client.GetDeploy(s.ctx, org, app, id)
+	d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, id)
 	if err != nil {
 		s.printer.Progress("Could not read what the deploy waits on: %v", err)
 		return nil
@@ -1098,7 +1099,7 @@ func (s *session) grantsNeeded(client *api.Client, org, app, id string) []api.Gr
 // rehearsalOf is what a blocked deploy's rehearsal found, read from the deploy. Best effort: the
 // deploy waits either way, so a failed read only leaves out where to look first.
 func (s *session) rehearsalOf(client *api.Client, org, app, id string) *apitypes.Rehearsal {
-	d, err := client.GetDeploy(s.ctx, org, app, id)
+	d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, id)
 	if err != nil {
 		s.printer.Progress("Could not read the deploy's rehearsal: %v", err)
 		return nil
@@ -1150,7 +1151,7 @@ func rehearsalLines(r *apitypes.Rehearsal) []string {
 // deployFailure is exit 6: the code and fix from the deploy record, with the last 40 lines
 // of the build log when the build is what failed.
 func (s *session) deployFailure(client *api.Client, org, app string, ev api.DeployEvent) error {
-	d, _ := client.GetDeploy(s.ctx, org, app, ev.DeployID)
+	d, _ := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, ev.DeployID)
 	d = s.dataSettled(client, org, app, d)
 	detail := ev.Error
 	if detail == nil {
@@ -1283,7 +1284,7 @@ func deploysCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			d, err := client.GetDeploy(s.ctx, org, app, args[0])
+			d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -1301,7 +1302,7 @@ func deploysCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			d, err := client.CancelDeploy(s.ctx, org, app, args[0])
+			d, err := api.Call(s.ctx, client, endpoints.CancelDeploy, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -1323,7 +1324,7 @@ error carries. --json gives {"deploy_id", "build_id", "build_log", "app_log"}.`,
 			if err != nil {
 				return err
 			}
-			d, err := client.GetDeploy(s.ctx, org, app, args[0])
+			d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -1418,13 +1419,13 @@ before.`,
 			}
 			var d api.Deploy
 			if withData {
-				d, err = client.RollbackWithData(s.ctx, org, app, api.RollbackWithData{Environment: envName})
+				d, err = api.Send(s.ctx, client, endpoints.RollbackWithData, api.RollbackWithData{Environment: envName}, org, app)
 			} else {
 				req := api.CreateDeployRequest{Environment: envName}
 				if len(args) == 1 {
 					req.DeployID = args[0]
 				}
-				d, err = client.CreateDeploy(s.ctx, org, app, req)
+				d, err = api.Send(s.ctx, client, endpoints.CreateDeploy, req, org, app)
 			}
 			if err != nil {
 				return wrap(err)
@@ -1466,7 +1467,7 @@ func (s *session) dataSettled(client *api.Client, org, app string, d api.Deploy)
 			return d
 		case <-time.After(2 * time.Second):
 		}
-		next, err := client.GetDeploy(s.ctx, org, app, d.ID)
+		next, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, d.ID)
 		if err != nil {
 			return d
 		}

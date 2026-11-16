@@ -1,6 +1,7 @@
 package whisk
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -13,14 +14,12 @@ import (
 
 func TestUndoLine(t *testing.T) {
 	at := time.Date(2026, 10, 6, 9, 0, 0, 0, time.UTC)
-	yes, no := true, false
 	cases := []struct {
-		restorable *bool
+		restorable bool
 		want       string
 	}{
-		{nil, "whisk restore --at 2026-10-06T09:00:00Z"},
-		{&yes, "whisk restore --at 2026-10-06T09:00:00Z"},
-		{&no, "no self-service restore"},
+		{true, "whisk restore --at 2026-10-06T09:00:00Z"},
+		{false, "no self-service restore"},
 	}
 	for _, c := range cases {
 		if got := undoLine(api.Snapshot{CreatedAt: at, Restorable: c.restorable}); !strings.Contains(got, c.want) {
@@ -35,11 +34,11 @@ func TestRestoreEndedAndRow(t *testing.T) {
 			t.Errorf("%s: want %v", status, want)
 		}
 	}
-	row := restoreRow(api.Restore{ID: "r1", Status: "failed", Environment: "production", At: time.Date(2026, 9, 7, 14, 13, 0, 0, time.UTC), Error: &api.ErrorBody{Code: "RESTORE_FAILED"}})
+	row := restoreRow(api.Restore{ID: "r1", Status: "failed", Environment: "production", At: ptr(time.Date(2026, 9, 7, 14, 13, 0, 0, time.UTC)), Error: json.RawMessage(`{"code":"RESTORE_FAILED"}`)})
 	if !strings.Contains(row, "r1") || !strings.Contains(row, "2026-09-07T14:13:00Z") || !strings.Contains(row, "RESTORE_FAILED") {
 		t.Errorf("row %q", row)
 	}
-	if row := restoreRow(api.Restore{ID: "r2", Status: "done", Environment: "production", Before: "d1", At: time.Date(2026, 9, 7, 14, 12, 58, 0, time.UTC), TargetDatabase: "app_a1"}); row != "r2  done     production to before deploy d1 (2026-09-07T14:12:58Z) into app_a1" {
+	if row := restoreRow(api.Restore{ID: "r2", Status: "done", Environment: "production", Before: "d1", At: ptr(time.Date(2026, 9, 7, 14, 12, 58, 0, time.UTC)), TargetDatabase: "app_a1"}); row != "r2  done     production to before deploy d1 (2026-09-07T14:12:58Z) into app_a1" {
 		t.Errorf("row before a deploy %q", row)
 	}
 }
@@ -94,3 +93,5 @@ func TestRestoreWaitShowList(t *testing.T) {
 		t.Fatalf("restore list: %+v", r)
 	}
 }
+
+func ptr[T any](v T) *T { return &v }

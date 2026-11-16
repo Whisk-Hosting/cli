@@ -13,6 +13,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // movePoll is how often whisk apps move reads how the move is going.
@@ -56,7 +57,7 @@ app named in the business it is in now. Within a week of the move nothing is cop
 			if err != nil {
 				return err
 			}
-			a, err := client.GetApp(s.ctx, org, refs[0].app)
+			a, err := api.Call(s.ctx, client, endpoints.GetApp, org, refs[0].app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -161,7 +162,7 @@ func moveEnded(s apitypes.AppMoveStatus) bool {
 func followMove(ctx context.Context, client *api.Client, org, appID string, log io.Writer, every time.Duration) (api.AppMove, error) {
 	last := ""
 	for {
-		m, err := client.GetMove(ctx, org, appID)
+		m, err := api.Call(ctx, client, endpoints.GetMove, org, appID)
 		if err != nil {
 			return m, err
 		}

@@ -10,6 +10,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // findDomain resolves a hostname to the app's domain record.
@@ -86,7 +87,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListDomains(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -115,7 +116,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			d, err := client.AddDomain(s.ctx, org, app, strings.ToLower(strings.TrimSpace(args[0])))
+			d, err := api.Send(s.ctx, client, endpoints.AddDomain, apitypes.DomainRequest{Hostname: strings.ToLower(strings.TrimSpace(args[0]))}, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -133,7 +134,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListDomains(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -141,7 +142,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if !ok {
 				return output.New("NOT_FOUND", fmt.Sprintf("%s is not a hostname of %s/%s.", args[0], org, app), "Run whisk domains add "+args[0]+" first; whisk domains list shows the hostnames.", map[string]any{"hostname": args[0]})
 			}
-			d, err = client.VerifyDomain(s.ctx, org, app, d.ID)
+			d, err = api.Call(s.ctx, client, endpoints.VerifyDomain, org, app, d.ID)
 			if err != nil {
 				return wrap(err)
 			}
@@ -159,7 +160,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListDomains(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -167,7 +168,7 @@ func domainsCmd(s *session) *cobra.Command {
 			if !ok {
 				return output.New("NOT_FOUND", fmt.Sprintf("%s is not a hostname of %s/%s.", args[0], org, app), "whisk domains list shows the hostnames.", map[string]any{"hostname": args[0]})
 			}
-			if err := client.DeleteDomain(s.ctx, org, app, d.ID); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteDomain, org, app, d.ID); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "hostname": d.Hostname, "removed": true}, func(w io.Writer) {
@@ -200,7 +201,7 @@ www.example.com to example.com. --off serves the app on the domain again.`,
 			if err != nil {
 				return err
 			}
-			all, err := client.ListDomains(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -208,7 +209,7 @@ www.example.com to example.com. --off serves the app on the domain again.`,
 			if !ok {
 				return output.New("NOT_FOUND", fmt.Sprintf("%s is not a hostname of %s/%s.", args[0], org, app), "Run whisk domains add "+args[0]+" first; whisk domains list shows the hostnames.", map[string]any{"hostname": args[0]})
 			}
-			d, err = client.SetDomainRedirect(s.ctx, org, app, d.ID, to)
+			d, err = api.Send(s.ctx, client, endpoints.SetDomainRedirect, apitypes.DomainRedirectRequest{To: to}, org, app, d.ID)
 			if err != nil {
 				return wrap(err)
 			}
@@ -257,7 +258,7 @@ With no argument, it prints the main address.`,
 			case len(args) == 1:
 				all, err = client.SetMainAddress(s.ctx, org, app, strings.ToLower(strings.TrimSpace(args[0])))
 			default:
-				all, err = client.ListDomains(s.ctx, org, app)
+				all, err = api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			}
 			if err != nil {
 				return wrap(err)
@@ -336,7 +337,7 @@ func envsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListEnvironments(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListEnvironments, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -368,7 +369,7 @@ func envsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteEnvironment(s.ctx, org, app, name); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteEnvironment, org, app, name); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "environment": name, "deleted": true}, func(w io.Writer) {
@@ -390,7 +391,7 @@ func envsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			started, err := client.StartPreview(s.ctx, org, app, branch)
+			started, err := api.Send(s.ctx, client, endpoints.StartPreview, apitypes.StartPreviewRequest{Branch: branch}, org, app)
 			if err != nil {
 				return wrap(err)
 			}

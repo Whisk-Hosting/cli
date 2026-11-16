@@ -240,3 +240,24 @@ func TestTypeScriptWith(t *testing.T) {
 		t.Errorf("EnumOf gives %v %v", e.Type(), e.Values())
 	}
 }
+
+type ShadowedBase struct {
+	Public bool   `json:"public"`
+	Name   string `json:"name"`
+}
+
+type shadowing struct {
+	ShadowedBase
+	Public *bool `json:"public"`
+}
+
+// A field of a struct's own hides an embedded one of the same name, as encoding/json writes it.
+func TestRenderOwnFieldHidesEmbedded(t *testing.T) {
+	got, err := render([]any{shadowing{}}, nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := "export type shadowing = {\n  name: string;\n  public: boolean | null;\n};"; !strings.Contains(got, want) {
+		t.Errorf("render:\n%s\nwant:\n%s", got, want)
+	}
+}

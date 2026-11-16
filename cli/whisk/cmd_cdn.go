@@ -9,6 +9,8 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // cdnStatusText is where the app's CDN switch has got to, in plain words.
@@ -68,7 +70,7 @@ func cdnAddress(s *session, client *api.Client, org, app string, c api.CDN) stri
 	if cdnBareText(c.Hostnames, "") == "" {
 		return ""
 	}
-	a, err := client.GetApp(s.ctx, org, app)
+	a, err := api.Call(s.ctx, client, endpoints.GetApp, org, app)
 	if err != nil {
 		return ""
 	}
@@ -136,7 +138,7 @@ func cdnCmd(s *session) *cobra.Command {
 		if err != nil {
 			return err
 		}
-		c, err := client.GetCDN(s.ctx, org, app)
+		c, err := api.Call(s.ctx, client, endpoints.AppCDN, org, app)
 		if err != nil {
 			return wrap(err)
 		}
@@ -150,7 +152,7 @@ func cdnCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			c, err := client.SetCDN(s.ctx, org, app, on)
+			c, err := api.Send(s.ctx, client, endpoints.SetAppCDN, apitypes.AppCDNRequest{On: on}, org, app)
 			if err != nil {
 				return wrap(err)
 			}

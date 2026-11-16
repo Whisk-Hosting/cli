@@ -12,6 +12,7 @@ import (
 	"time"
 	"unicode/utf8"
 
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/naughty"
 )
 
@@ -37,26 +38,29 @@ func TestNaughtyPaths(t *testing.T) {
 		query map[string]string
 		call  func(s string) error
 	}{
-		{"/v1/orgs/S/apps/S", nil, func(s string) error { _, err := c.GetApp(ctx, s, s); return err }},
-		{"/v1/orgs/S/apps/S", nil, func(s string) error { return c.DeleteApp(ctx, s, s) }},
-		{"/v1/orgs/S/apps", nil, func(s string) error { _, err := c.CreateApp(ctx, s, CreateAppRequest{Slug: s}); return err }},
-		{"/v1/orgs/S/apps/S/deploys/S", nil, func(s string) error { _, err := c.GetDeploy(ctx, s, s, s); return err }},
+		{"/v1/orgs/S/apps/S", nil, func(s string) error { _, err := Call(ctx, c, endpoints.GetApp, s, s); return err }},
+		{"/v1/orgs/S/apps/S", nil, func(s string) error { return Exec(ctx, c, endpoints.DeleteApp, s, s) }},
+		{"/v1/orgs/S/apps", nil, func(s string) error {
+			_, err := Send(ctx, c, endpoints.CreateApp, CreateAppRequest{Slug: s}, s)
+			return err
+		}},
+		{"/v1/orgs/S/apps/S/deploys/S", nil, func(s string) error { _, err := Call(ctx, c, endpoints.GetDeploy, s, s, s); return err }},
 		{"/v1/orgs/S/apps/S/functions/S/graph", nil, func(s string) error { _, err := c.FunctionGraph(ctx, s, s, s); return err }},
-		{"/v1/orgs/S/apps/S/runs/S", nil, func(s string) error { _, err := c.GetRun(ctx, s, s, s); return err }},
-		{"/v1/orgs/S/apps/S/runs/S/replay", nil, func(s string) error { _, err := c.ReplayRun(ctx, s, s, s); return err }},
-		{"/v1/orgs/S/apps/S/cron/S/run", nil, func(s string) error { _, err := c.RunCron(ctx, s, s, s); return err }},
+		{"/v1/orgs/S/apps/S/runs/S", nil, func(s string) error { _, err := Call(ctx, c, endpoints.GetRun, s, s, s); return err }},
+		{"/v1/orgs/S/apps/S/runs/S/replay", nil, func(s string) error { _, err := Call(ctx, c, endpoints.ReplayRun, s, s, s); return err }},
+		{"/v1/orgs/S/apps/S/cron/S/run", nil, func(s string) error { _, err := Call(ctx, c, endpoints.RunCron, s, s, s); return err }},
 		{"/v1/orgs/S/apps/S/runs", map[string]string{"event": S}, func(s string) error { _, err := c.RunsOfEvent(ctx, s, s, s); return err }},
 		{"/v1/orgs/S/apps/S/approvals", map[string]string{"status": S}, func(s string) error { _, err := c.ListApprovals(ctx, s, s, s); return err }},
-		{"/v1/orgs/S/secrets/S/versions", map[string]string{"app": S, "limit": "100"}, func(s string) error { _, err := c.SecretVersions(ctx, s, s, s); return err }},
+		{"/v1/orgs/S/secrets/S/versions", map[string]string{"app": S}, func(s string) error { _, err := c.SecretVersions(ctx, s, s, s); return err }},
 		{"/v1/orgs/S/secrets/S", map[string]string{"app": S}, func(s string) error { return c.DeleteSecret(ctx, s, s, s) }},
 		{"/v1/orgs/S/apps/S/webhooks/S/events/S/replay", nil, func(s string) error { _, err := c.ReplayWebhookEvent(ctx, s, s, s, s); return err }},
-		{"/v1/orgs/S/apps/S/domains/S", nil, func(s string) error { return c.DeleteDomain(ctx, s, s, s) }},
+		{"/v1/orgs/S/apps/S/domains/S", nil, func(s string) error { return Exec(ctx, c, endpoints.DeleteDomain, s, s, s) }},
 		{"/v1/orgs/S/members/S", nil, func(s string) error { _, err := c.RemoveMember(ctx, s, s); return err }},
-		{"/v1/orgs/S/tokens/S", nil, func(s string) error { return c.RevokeToken(ctx, s, s) }},
-		{"/v1/orgs/S/export/S", nil, func(s string) error { _, err := c.GetExport(ctx, s, s); return err }},
-		{"/v1/feedback/S", nil, func(s string) error { _, err := c.ShowFeedback(ctx, s); return err }},
-		{"/v1/orgs/S/apps/S/environments/S", nil, func(s string) error { return c.DeleteEnvironment(ctx, s, s, s) }},
-		{"/v1/orgs/S/apps/S/customers/S", nil, func(s string) error { return c.RemoveCustomer(ctx, s, s, s) }},
+		{"/v1/orgs/S/tokens/S", nil, func(s string) error { return Exec(ctx, c, endpoints.RevokeToken, s, s) }},
+		{"/v1/orgs/S/export/S", nil, func(s string) error { _, err := Call(ctx, c, endpoints.GetExport, s, s); return err }},
+		{"/v1/feedback/S", nil, func(s string) error { _, err := Call(ctx, c, endpoints.ShowFeedback, s); return err }},
+		{"/v1/orgs/S/apps/S/environments/S", nil, func(s string) error { return Exec(ctx, c, endpoints.DeleteEnvironment, s, s, s) }},
+		{"/v1/orgs/S/apps/S/customers/S", nil, func(s string) error { return Exec(ctx, c, endpoints.DeleteCustomer, s, s, s) }},
 	}
 	for _, s := range naughty.Strings() {
 		if len(s) > 4096 {

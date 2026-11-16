@@ -9,6 +9,8 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // findCustomer resolves an email to the customer record, case-insensitively.
@@ -69,12 +71,12 @@ func customersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			c, err := client.InviteCustomer(s.ctx, org, app, strings.TrimSpace(args[0]), name)
+			c, err := api.Send(s.ctx, client, endpoints.InviteCustomer, apitypes.InviteCustomerRequest{Email: strings.TrimSpace(args[0]), Name: name}, org, app)
 			if err != nil {
 				return wrap(err)
 			}
 			if sendEmail {
-				if _, err := client.EmailCustomerInvite(s.ctx, org, app, c.ID); err != nil {
+				if _, err := api.Call(s.ctx, client, endpoints.EmailCustomerInvite, org, app, c.ID); err != nil {
 					return wrap(err)
 				}
 			}
@@ -103,7 +105,7 @@ func customersCmd(s *session) *cobra.Command {
 				if err != nil {
 					return err
 				}
-				c, err = client.SetCustomerStatus(s.ctx, org, app, c.ID, status)
+				c, err = api.Send(s.ctx, client, endpoints.PatchCustomer, apitypes.PatchCustomerRequest{Status: status}, org, app, c.ID)
 				if err != nil {
 					return wrap(err)
 				}
@@ -124,7 +126,7 @@ func customersCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.RemoveCustomer(s.ctx, org, app, c.ID); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteCustomer, org, app, c.ID); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "email": c.Email, "removed": true}, func(w io.Writer) {

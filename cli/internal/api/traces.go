@@ -2,11 +2,9 @@ package api
 
 import (
 	"context"
-	"fmt"
-	"net/http"
-	"net/url"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // ---- traces (CLI.md §5.5) -----------------------------------------------------------------------
@@ -40,35 +38,8 @@ type TraceQuery struct {
 	Limit int
 }
 
-func (q TraceQuery) values() url.Values {
-	v := url.Values{}
-	set := func(k, val string) {
-		if val != "" {
-			v.Set(k, val)
-		}
-	}
-	set("env", q.Env)
-	set("since", q.Since)
-	set("until", q.Until)
-	set("q", q.Q)
-	set("sort", q.Sort)
-	if q.MinMS > 0 {
-		v.Set("min_ms", fmt.Sprint(q.MinMS))
-	}
-	if q.Limit > 0 {
-		v.Set("limit", fmt.Sprint(q.Limit))
-	}
-	return v
-}
-
 // Traces lists the app's traces in a window.
 func (c *Client) Traces(ctx context.Context, org, app string, q TraceQuery) (TraceList, error) {
-	var out TraceList
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/traces?"+q.values().Encode(), nil, &out)
-}
-
-// Trace reads one trace by its 32 hex trace id or its 26 character request id.
-func (c *Client) Trace(ctx context.Context, org, app, id string) (Trace, error) {
-	var out Trace
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/traces/"+pathSeg(id), nil, &out)
+	return Send(ctx, c, endpoints.ListTraces, endpoints.ListTracesQuery{Env: q.Env, Since: q.Since, Until: q.Until, Q: q.Q,
+		MinMS: int(max(q.MinMS, 0)), Sort: q.Sort, Limit: max(q.Limit, 0)}, org, app)
 }

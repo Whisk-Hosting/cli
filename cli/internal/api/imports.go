@@ -12,32 +12,25 @@ import (
 	"strings"
 	"time"
 
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/run/runhttp"
 )
 
 // ImportAuthorisation is the form a dump for an import is posted with (CONTROL-PLANE.md §6.18
 // "db import").
-type ImportAuthorisation struct {
-	ID        string            `json:"id"`
-	URL       string            `json:"url"`
-	Method    string            `json:"method"`
-	Fields    map[string]string `json:"fields"`
-	MaxBytes  int64             `json:"max_bytes"`
-	ExpiresAt time.Time         `json:"expires_at"`
-}
+type ImportAuthorisation = apitypes.DatabaseImportAuthorisation
 
 // AuthoriseImport asks for a form to upload a dump of size bytes for the app's database.
 // POST /orgs/:org/apps/:app/db/imports {bytes}.
 func (c *Client) AuthoriseImport(ctx context.Context, org, app string, size int64) (ImportAuthorisation, error) {
-	var out ImportAuthorisation
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/db/imports", map[string]any{"bytes": size}, &out)
+	return Send(ctx, c, endpoints.AuthoriseImport, apitypes.AuthoriseImportRequest{Bytes: size}, org, app)
 }
 
 // ImportDatabase loads an uploaded dump into a fresh database beside the live one, swapped in
 // when swap is set. POST /orgs/:org/apps/:app/restore {import, swap}.
 func (c *Client) ImportDatabase(ctx context.Context, org, app, id string, swap bool) (Restore, error) {
-	var out Restore
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/restore", map[string]any{"import": id, "swap": swap}, &out)
+	return Send(ctx, c, endpoints.StartRestore, apitypes.StartRestoreRequest{Import: id, Swap: swap}, org, app)
 }
 
 // uploadWindow bounds one form post: the largest file a form takes (5 GB), over a slow line.

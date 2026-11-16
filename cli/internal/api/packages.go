@@ -33,24 +33,6 @@ type Packages = apitypes.Packages
 
 func packagesPath(org, app string) string { return appPath(org, app) + "/packages" }
 
-// GetPackages reads the app's newest package scan.
-func (c *Client) GetPackages(ctx context.Context, org, app string) (Packages, error) {
-	var out Packages
-	return out, c.Do(ctx, http.MethodGet, packagesPath(org, app), nil, &out)
-}
-
-// ScanPackages asks for a check of the live production build now.
-func (c *Client) ScanPackages(ctx context.Context, org, app string) (PackageScan, error) {
-	var out PackageScan
-	return out, c.Do(ctx, http.MethodPost, packagesPath(org, app)+"/scan", nil, &out)
-}
-
-// GetPackageScan reads one check.
-func (c *Client) GetPackageScan(ctx context.Context, org, app, id string) (PackageScan, error) {
-	var out PackageScan
-	return out, c.Do(ctx, http.MethodGet, packagesPath(org, app)+"/scans/"+pathSeg(id), nil, &out)
-}
-
 // Lockfile is one lockfile sent for a check: its path from the app's root and its text.
 type Lockfile struct {
 	Path    string `json:"path"`

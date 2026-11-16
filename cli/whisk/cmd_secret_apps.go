@@ -10,6 +10,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // secretAppsCmd is `whisk secrets apps NAME`: the apps a business secret is granted to
@@ -28,11 +29,11 @@ without it. This lists the apps and prints where an owner or admin changes the l
 			if err != nil {
 				return err
 			}
-			all, err := client.ListOrgSecrets(s.ctx, org)
+			all, err := api.All(s.ctx, client, endpoints.ListOrgSecrets, org)
 			if err != nil {
 				return wrap(err)
 			}
-			apps, err := client.ListApps(s.ctx, org)
+			apps, err := api.All(s.ctx, client, endpoints.ListApps, org)
 			if err != nil {
 				return wrap(err)
 			}

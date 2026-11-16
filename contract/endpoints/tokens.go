@@ -6,11 +6,12 @@ import (
 
 // The tokens routes.
 var (
-	ListTokens  = New[None, apitypes.Page[apitypes.Token]]("GET /v1/orgs/{org}/tokens")
-	RevokeToken = New[None, None]("DELETE /v1/orgs/{org}/tokens/{id}")
-	ListAudit   = New[ListAuditQuery, apitypes.Page[apitypes.AuditEvent]]("GET /v1/orgs/{org}/audit")
+	ListTokens      = New[None, apitypes.Page[apitypes.Token]]("GET /v1/orgs/{org}/tokens")
+	RevokeToken     = New[None, None]("DELETE /v1/orgs/{org}/tokens/{id}")
+	ListAudit       = New[ListAuditQuery, apitypes.Page[apitypes.AuditEvent]]("GET /v1/orgs/{org}/audit")
+	CreateDeployKey = New[apitypes.CreateDeployKeyRequest, apitypes.DeployKeyResponse]("POST /v1/orgs/{org}/apps/{app}/deploy-keys")
 
-	_ = public.Add(ListTokens, RevokeToken, ListAudit)
+	_ = public.Add(ListTokens, RevokeToken, ListAudit, CreateDeployKey)
 )
 
 // ListAuditQuery is what ListAudit reads from the query.

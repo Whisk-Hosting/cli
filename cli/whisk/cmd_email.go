@@ -5,10 +5,13 @@ import (
 	"io"
 	"time"
 
+	"github.com/whisk-run/cli/internal/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // emailCmd is the app's sent mail (CLI.md §5.8, CONTROL-PLANE.md §6.12 "Delivery"): what became
@@ -29,7 +32,7 @@ reported. A message's delivery is kept 30 days.`,
 			if err != nil {
 				return err
 			}
-			send, err := client.EmailSend(s.ctx, org, app, args[0])
+			send, err := api.Call(s.ctx, client, endpoints.GetEmailSend, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}

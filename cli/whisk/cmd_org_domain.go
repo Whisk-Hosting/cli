@@ -9,6 +9,8 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // printOrgDomain shows the records to create, or the apps' addresses once verified.
@@ -54,7 +56,7 @@ func orgDomainCmd(s *session) *cobra.Command {
 		if err != nil {
 			return "", nil, api.OrgDomain{}, false, err
 		}
-		all, err := client.OrgDomains(s.ctx, org)
+		all, err := api.All(s.ctx, client, endpoints.ListOrgDomains, org)
 		if err != nil {
 			return "", nil, api.OrgDomain{}, false, wrap(err)
 		}
@@ -93,7 +95,7 @@ func orgDomainCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			d, err := client.AddOrgDomain(s.ctx, org, strings.ToLower(strings.TrimSpace(args[0])))
+			d, err := api.Send(s.ctx, client, endpoints.AddOrgDomain, apitypes.OrgDomainRequest{Domain: strings.ToLower(strings.TrimSpace(args[0]))}, org)
 			if err != nil {
 				return wrap(err)
 			}
@@ -114,7 +116,7 @@ func orgDomainCmd(s *session) *cobra.Command {
 			if !ok {
 				return none(org)
 			}
-			d, err = client.VerifyOrgDomain(s.ctx, org, d.ID)
+			d, err = api.Call(s.ctx, client, endpoints.VerifyOrgDomain, org, d.ID)
 			if err != nil {
 				return wrap(err)
 			}
@@ -135,7 +137,7 @@ func orgDomainCmd(s *session) *cobra.Command {
 			if !ok {
 				return none(org)
 			}
-			if err := client.DeleteOrgDomain(s.ctx, org, d.ID); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteOrgDomain, org, d.ID); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "domain": d.Domain, "removed": true}, func(w io.Writer) {

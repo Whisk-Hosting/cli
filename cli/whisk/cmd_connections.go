@@ -13,6 +13,7 @@ import (
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/connect"
+	"github.com/whisk-run/contract/endpoints"
 	werrors "github.com/whisk-run/contract/errors"
 )
 
@@ -32,7 +33,7 @@ func connectionsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListConnections(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListConnections, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -58,7 +59,7 @@ func connectionsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			all, err := client.ListConnections(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListConnections, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -152,7 +153,7 @@ business. Resuming is a person's, in the dashboard.`,
 				if err != nil {
 					return err
 				}
-				out, err := client.PauseAllConnections(s.ctx, org)
+				out, err := api.Call(s.ctx, client, endpoints.PauseOrgConnections, org)
 				if err != nil {
 					return wrap(err)
 				}
@@ -216,7 +217,7 @@ Without --env it is production's.`,
 			var sentences []string
 			if calls.LimitPerMinute != 0 || calls.LimitPerDay != 0 {
 				calls.Environment = environment
-				out, err := client.SetConnectionLimits(s.ctx, org, app, args[0], calls)
+				out, err := api.Send(s.ctx, client, endpoints.SetConnectionLimits, calls, org, app, args[0])
 				if err != nil {
 					return wrap(err)
 				}
@@ -225,7 +226,7 @@ Without --env it is production's.`,
 				sentences = append(sentences, callsSentence(args[0], environment, g))
 			}
 			if spend {
-				out, err := client.SetSpendCap(s.ctx, org, app, args[0], apitypes.SpendCapRequest{Environment: environment, SpendCap: lim})
+				out, err := api.Send(s.ctx, client, endpoints.SetSpendCap, apitypes.SpendCapRequest{Environment: environment, SpendCap: lim}, org, app, args[0])
 				if err != nil {
 					return wrap(err)
 				}

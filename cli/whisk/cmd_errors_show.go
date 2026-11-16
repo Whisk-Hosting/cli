@@ -10,6 +10,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 	werrors "github.com/whisk-run/contract/errors"
 )
 
@@ -60,7 +61,7 @@ often it happened, its newest occurrence with the stack that threw, the request 
 				return err
 			}
 			id := args[0]
-			sample, err := client.ErrorGroupSample(s.ctx, org, app, id)
+			sample, err := api.Call(s.ctx, client, endpoints.GetError, org, app, id)
 			if err != nil {
 				return wrap(err)
 			}

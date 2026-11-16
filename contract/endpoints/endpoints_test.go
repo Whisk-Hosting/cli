@@ -4,7 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
+	"strings"
 	"testing"
+
+	"github.com/whisk-run/contract/apitypes"
 )
 
 func TestURL(t *testing.T) {
@@ -116,7 +119,6 @@ func TestNewRefusesAMalformedRoute(t *testing.T) {
 	for name, declare := range map[string]func(){
 		"no method":        func() { New[None, None]("/v1/x") },
 		"not below /v1":    func() { New[None, None]("GET /x") },
-		"query on a POST":  func() { New[query, None]("POST /v1/x") },
 		"a body on a GET":  func() { New[body, None]("GET /v1/x") },
 		"a body on a HEAD": func() { New[body, None]("HEAD /v1/x") },
 	} {
@@ -134,7 +136,7 @@ func TestNewRefusesAMalformedRoute(t *testing.T) {
 // Every public route is declared once.
 func TestTable(t *testing.T) {
 	seen := map[string]bool{}
-	for _, s := range All() {
+	for _, s := range Public() {
 		p := s.Pattern()
 		if seen[p] {
 			t.Errorf("%s is declared twice", p)
@@ -143,5 +145,43 @@ func TestTable(t *testing.T) {
 	}
 	if len(seen) == 0 {
 		t.Fatal("no routes are declared")
+	}
+}
+
+func TestExecAndAll(t *testing.T) {
+	ctx := context.Background()
+	var got sent
+	del := New[None, None]("DELETE /v1/things/{id}")
+	if err := Exec(ctx, record(&got, ``), del, "t1"); err != nil || got.path != "/v1/things/t1" {
+		t.Errorf("Exec sent %+v: %v", got, err)
+	}
+
+	type listQuery struct {
+		Cursor string `query:"cursor"`
+		Limit  int    `query:"limit"`
+	}
+	list := New[listQuery, apitypes.Page[string]]("GET /v1/things")
+	var paths []string
+	pages := map[string]string{
+		"/v1/things?limit=100":           `{"items":["a","b"],"next_cursor":"c2"}`,
+		"/v1/things?cursor=c2&limit=100": `{"items":["c"],"next_cursor":""}`,
+	}
+	do := func(_ context.Context, _, path string, _, out any) error {
+		paths = append(paths, path)
+		return json.Unmarshal([]byte(pages[path]), out)
+	}
+	items, err := All(ctx, do, list, listQuery{})
+	if err != nil || strings.Join(items, ",") != "a,b,c" || len(paths) != 2 {
+		t.Errorf("All = %v, %v after %v", items, err, paths)
+	}
+
+	once := New[None, apitypes.Page[string]]("GET /v1/once")
+	pages["/v1/once"] = `{"items":["x"],"next_cursor":""}`
+	if items, err := All(ctx, do, once, None{}); err != nil || strings.Join(items, ",") != "x" {
+		t.Errorf("a list with no cursor is one page: %v, %v", items, err)
+	}
+	pages["/v1/once"] = `{"items":["x"],"next_cursor":"c2"}`
+	if _, err := All(ctx, do, once, None{}); err == nil {
+		t.Errorf("a list with no cursor that answers a next page is an error, not a short list")
 	}
 }

@@ -16,6 +16,7 @@ import (
 
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/inbound"
 	"github.com/whisk-run/contract/run/runhttp"
 )
@@ -44,7 +45,7 @@ sends one again.`,
 			if err != nil {
 				return err
 			}
-			in, err := client.GetInbox(s.ctx, org, app)
+			in, err := api.Call(s.ctx, client, endpoints.GetInbox, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -83,7 +84,7 @@ this app. Run whisk inbox domains verify <id> once the record is published.`,
 			if err != nil {
 				return err
 			}
-			d, err := client.VerifyInboxDomain(s.ctx, org, app, args[0])
+			d, err := api.Call(s.ctx, client, endpoints.VerifyInboxDomain, org, app, args[0])
 			if err != nil {
 				return wrap(err)
 			}
@@ -100,7 +101,7 @@ this app. Run whisk inbox domains verify <id> once the record is published.`,
 			if err != nil {
 				return err
 			}
-			if err := client.RemoveInboxDomain(s.ctx, org, app, args[0]); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteInboxDomain, org, app, args[0]); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "removed": args[0]}, func(w io.Writer) {

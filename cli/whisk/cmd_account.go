@@ -8,6 +8,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/output"
@@ -79,7 +82,7 @@ func accountCmd(s *session) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := client.DeleteAccount(s.ctx); err != nil {
+			if err := api.Exec(s.ctx, client, endpoints.DeleteMe); err != nil {
 				return wrap(err)
 			}
 			s.printer.Result(map[string]any{"deleted": true}, func(w io.Writer) {

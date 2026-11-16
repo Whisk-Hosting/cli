@@ -8,10 +8,13 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/whisk-run/cli/internal/api"
+
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/doctor"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/redirects"
 )
 
@@ -103,7 +106,7 @@ rule straight at the final address.`,
 			if err != nil {
 				return err
 			}
-			m, err := client.LiveManifest(s.ctx, org, app)
+			m, err := api.Call(s.ctx, client, endpoints.GetManifest, org, app)
 			if err != nil {
 				return wrap(err)
 			}
@@ -114,7 +117,7 @@ rule straight at the final address.`,
 			if live == nil {
 				live = []redirects.Rule{}
 			}
-			all, err := client.ListDomains(s.ctx, org, app)
+			all, err := api.All(s.ctx, client, endpoints.ListDomains, org, app)
 			if err != nil {
 				return wrap(err)
 			}

@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/cli/internal/api"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/status"
 )
 
@@ -27,7 +28,7 @@ billing contacts.`,
 			if err != nil {
 				return err
 			}
-			b, err := client.GetBilling(s.ctx, org)
+			b, err := api.Call(s.ctx, client, endpoints.GetBilling, org)
 			if err != nil {
 				return wrap(err)
 			}

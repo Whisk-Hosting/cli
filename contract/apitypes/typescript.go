@@ -353,6 +353,7 @@ func (r renderer) object(t reflect.Type, param string) (string, error) {
 
 func (r renderer) fields(t reflect.Type, param string) ([]string, error) {
 	var out []string
+	own := ownJSONNames(t)
 	for i := range t.NumField() {
 		f := t.Field(i)
 		if !f.IsExported() {
@@ -367,7 +368,8 @@ func (r renderer) fields(t reflect.Type, param string) ([]string, error) {
 			if err != nil {
 				return nil, err
 			}
-			out = append(out, inner...)
+			// A field of t's own hides the embedded one of the same name, as encoding/json does.
+			out = append(out, slices.DeleteFunc(inner, func(line string) bool { return own[fieldName(line)] })...)
 			continue
 		}
 		if name == "" {
@@ -508,4 +510,27 @@ func enumSets() map[reflect.Type]enumSet {
 	all := maps.Clone(baseEnums)
 	maps.Copy(all, more.enums)
 	return all
+}
+
+// ownJSONNames are the JSON names of t's own fields, not those of a struct it embeds. Pure.
+func ownJSONNames(t reflect.Type) map[string]bool {
+	out := map[string]bool{}
+	for i := range t.NumField() {
+		f := t.Field(i)
+		name, opts, _ := strings.Cut(f.Tag.Get("json"), ",")
+		switch {
+		case !f.IsExported(), name == "-" && opts == "", f.Anonymous && name == "":
+		case name == "":
+			out[f.Name] = true
+		default:
+			out[name] = true
+		}
+	}
+	return out
+}
+
+// fieldName is the name a rendered field line declares: "  name?: string;" is name. Pure.
+func fieldName(line string) string {
+	name, _, _ := strings.Cut(strings.TrimSpace(line), ":")
+	return strings.TrimSuffix(name, "?")
 }

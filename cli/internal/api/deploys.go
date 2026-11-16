@@ -5,9 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"io"
-	"net/http"
 	"strings"
 
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/status"
 )
 
@@ -20,39 +20,18 @@ func appPath(org, app string) string {
 
 // ListDeploys returns one page of the app's deploys, newest first.
 func (c *Client) ListDeploys(ctx context.Context, org, app string, limit int) ([]Deploy, error) {
-	p, err := getPage[Deploy](ctx, c, appPath(org, app)+"/deploys", "", limit)
-	return p.Items, err
-}
-
-// GetDeploy fetches one deploy.
-func (c *Client) GetDeploy(ctx context.Context, org, app, id string) (Deploy, error) {
-	var out Deploy
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/deploys/"+pathSeg(id), nil, &out)
-}
-
-// CreateDeploy queues a redeploy or a rollback; the answer is the new deploy.
-func (c *Client) CreateDeploy(ctx context.Context, org, app string, req CreateDeployRequest) (Deploy, error) {
-	var out Deploy
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/deploys", req, &out)
-}
-
-// RollbackWithData queues production's rollback to the version before the live one with the
-// database as it was just before the live version's migration; the answer is the new deploy.
-func (c *Client) RollbackWithData(ctx context.Context, org, app string, req RollbackWithData) (Deploy, error) {
-	var out Deploy
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/rollback-with-data", req, &out)
+	out, err := Send(ctx, c, endpoints.ListDeploys, endpoints.ListDeploysQuery{Limit: max(limit, 0)}, org, app)
+	if out.Items == nil {
+		out.Items = []Deploy{}
+	}
+	return out.Items, err
 }
 
 // RestartApp starts the app's live production build again in a new container; the old one
 // stops once the new one is healthy. The deploy it queued is the newest production deploy.
 func (c *Client) RestartApp(ctx context.Context, org, app string) error {
-	return c.Do(ctx, http.MethodPost, appPath(org, app)+"/restart", nil, nil)
-}
-
-// CancelDeploy cancels a deploy that has not finished.
-func (c *Client) CancelDeploy(ctx context.Context, org, app, id string) (Deploy, error) {
-	var out Deploy
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/deploys/"+pathSeg(id)+"/cancel", map[string]any{}, &out)
+	_, err := Call(ctx, c, endpoints.RestartOwnApp, org, app)
+	return err
 }
 
 // DeployEvents streams the deploy's events, calling fn for each until the stream ends. done is

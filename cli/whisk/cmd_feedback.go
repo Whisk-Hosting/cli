@@ -11,6 +11,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/config"
 	"github.com/whisk-run/cli/internal/output"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // feedbackCmd tells Whisk what got in the way (CLI.md §5.12, CONTROL-PLANE.md §6.23). Sending is
@@ -102,9 +103,9 @@ func showFeedback(s *session, id string) error {
 	if err != nil {
 		client = s.anonymousClient()
 	}
-	f, err := client.ShowFeedback(s.ctx, id)
+	f, err := api.Call(s.ctx, client, endpoints.ShowFeedback, id)
 	if err != nil && client.Token != "" && isAuthFailure(err) {
-		f, err = s.anonymousClient().ShowFeedback(s.ctx, id)
+		f, err = api.Call(s.ctx, s.anonymousClient(), endpoints.ShowFeedback, id)
 	}
 	if err != nil {
 		return wrap(err)

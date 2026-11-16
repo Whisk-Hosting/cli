@@ -2,9 +2,9 @@ package api
 
 import (
 	"context"
-	"net/http"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 )
 
 // Managed apps (MANAGED-APPS.md §10): the products a business may add, its copies of them, and
@@ -25,53 +25,21 @@ type (
 // ProductForks is the kind of a product whose copies are the business's own code.
 const ProductForks = apitypes.ProductForks
 
-// ListManaged reads GET /orgs/:org/managed: the products and the business's copies.
-func (c *Client) ListManaged(ctx context.Context, org string) (Managed, error) {
-	var out Managed
-	return out, c.Do(ctx, http.MethodGet, "/orgs/"+pathSeg(org)+"/managed", nil, &out)
-}
-
-// AddManaged adds a copy of a product, or a fork of one whose copies are the business's own code;
-// the app comes back, deploying the newest release.
-func (c *Client) AddManaged(ctx context.Context, org string, req ManagedAddRequest) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPost, "/orgs/"+pathSeg(org)+"/managed", req, &out)
-}
-
 // SetManagedSettings changes a copy's settings; a value of "" removes that setting.
 func (c *Client) SetManagedSettings(ctx context.Context, org, app string, settings map[string]string) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPatch, appPath(org, app)+"/managed", apitypes.ManagedSettingsRequest{Settings: settings}, &out)
+	return Send(ctx, c, endpoints.SetManagedSettings, apitypes.ManagedSettingsRequest{Settings: settings}, org, app)
 }
 
 // LinkManaged links a copy, under one of its product's roles, to an app of the business by id
 // (PUT /orgs/:org/apps/:app/links/:role).
 func (c *Client) LinkManaged(ctx context.Context, org, app, role, appID string) (App, error) {
-	var out App
-	return out, c.Do(ctx, http.MethodPut, appPath(org, app)+"/links/"+pathSeg(role), apitypes.LinkRequest{App: appID}, &out)
+	return Send(ctx, c, endpoints.PutLink, apitypes.LinkRequest{App: appID}, org, app, role)
 }
 
 // SetPaused pauses a copy (POST .../pause) or resumes it (POST .../resume).
 func (c *Client) SetPaused(ctx context.Context, org, app string, paused bool) (App, error) {
-	verb := "/resume"
 	if paused {
-		verb = "/pause"
+		return Call(ctx, c, endpoints.PauseApp, org, app)
 	}
-	var out App
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+verb, nil, &out)
-}
-
-// UpdateFork brings a fork to its product's newest release (POST .../fork/update): the app as it
-// stands, the deploy that carries its code when there is one, and whether its code moved. Code the
-// business changed is never moved: that answers FORK_CHANGED.
-func (c *Client) UpdateFork(ctx context.Context, org, app string) (ForkUpdate, error) {
-	var out ForkUpdate
-	return out, c.Do(ctx, http.MethodPost, appPath(org, app)+"/fork/update", nil, &out)
-}
-
-// ForkSuggestions reads GET .../fork/suggestions: the business's suggestions of the fork's changes
-// to Whisk, newest first, with what became of each (FORKS.md §10).
-func (c *Client) ForkSuggestions(ctx context.Context, org, app string) (ForkSuggestions, error) {
-	var out ForkSuggestions
-	return out, c.Do(ctx, http.MethodGet, appPath(org, app)+"/fork/suggestions", nil, &out)
+	return Call(ctx, c, endpoints.ResumeApp, org, app)
 }

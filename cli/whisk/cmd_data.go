@@ -36,7 +36,7 @@ schema, which run on the platform. --private prints the inside address anyway.`,
 			if err != nil {
 				return wrap(err)
 			}
-			if u.Private() && !private {
+			if api.PrivateURL(u) && !private {
 				return output.New("DB_URL_PRIVATE", "The "+u.Environment+" database's address is inside the platform, so it does not answer from this machine.",
 					"Use whisk db query \"<sql>\" for rows as JSON or whisk db schema for the tables; both run on the platform.",
 					map[string]any{"environment": u.Environment})
@@ -250,15 +250,16 @@ func followRestore(ctx context.Context, client *api.Client, org, app, id string,
 // restoreFailed is the error a failed restore recorded, with its id, so an agent branches on what
 // stopped it. Pure.
 func restoreFailed(r api.Restore) error {
-	if r.Error == nil {
+	e := api.RestoreError(r)
+	if e == nil {
 		return output.New("RESTORE_FAILED", "Restore "+r.ID+" failed without saying why.",
 			"Run whisk restore show "+r.ID+" again; if it still says nothing, report it with whisk feedback --kind bug --code RESTORE_FAILED.", map[string]any{"restore": r.ID})
 	}
 	details := map[string]any{"restore": r.ID}
-	for k, v := range r.Error.Details {
+	for k, v := range e.Details {
 		details[k] = v
 	}
-	return &output.Error{Code: r.Error.Code, Message: r.Error.Message, Fix: r.Error.Fix, Details: details}
+	return &output.Error{Code: e.Code, Message: e.Message, Fix: e.Fix, Details: details}
 }
 
 // restoreSource is what a restore loads: a point in the app's history, or an imported dump.
@@ -267,6 +268,8 @@ func restoreSource(r api.Restore) string {
 	switch {
 	case r.Import != "":
 		return "from import " + r.Import
+	case r.At == nil:
+		return "to a point it does not name"
 	case r.Before != "":
 		return "to before deploy " + r.Before + " (" + r.At.UTC().Format(time.RFC3339) + ")"
 	}
@@ -279,8 +282,8 @@ func restoreRow(r api.Restore) string {
 	if r.TargetDatabase != "" {
 		line += " into " + r.TargetDatabase
 	}
-	if r.Error != nil {
-		line += "  " + r.Error.Code
+	if e := api.RestoreError(r); e != nil {
+		line += "  " + e.Code
 	}
 	return line
 }
@@ -301,10 +304,9 @@ func printRestore(w io.Writer, r api.Restore) {
 	}
 }
 
-// undoLine says how to return to a restore point, or that this plan cannot: a server that does
-// not say is taken to allow it, as before plans were reported. Pure.
+// undoLine says how to return to a restore point, or that this plan cannot. Pure.
 func undoLine(snap api.Snapshot) string {
-	if snap.Restorable != nil && !*snap.Restorable {
+	if !snap.Restorable {
 		return "This plan has no self-service restore, so this point cannot be returned to with whisk restore; copy rows you may need first with whisk db query \"select ...\" --json."
 	}
 	return "Return to it with: whisk restore --at " + snap.CreatedAt.UTC().Format(time.RFC3339)
