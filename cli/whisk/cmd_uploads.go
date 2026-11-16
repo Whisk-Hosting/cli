@@ -21,7 +21,7 @@ func uploadsCmd(s *session) *cobra.Command {
 	var expires time.Duration
 	link := &cobra.Command{
 		Use:   "link <path>... [--expires 1h]",
-		Short: "Sign /.whisk/img/<id>?w=… or /.whisk/media/<id> so it opens without a sign-in until it expires",
+		Short: "Sign /.whisk/img/<id>?w=…, /.whisk/media/<id> or /.whisk/file/<id> so it opens without a sign-in until it expires",
 		Args:  cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, org, app, err := s.appClient()

@@ -205,6 +205,11 @@ type Upload struct {
 	Media        *UploadMedia `json:"media,omitempty"`
 	Image        *UploadImage `json:"image,omitempty"`
 	URL          string       `json:"url,omitempty"`
+	// FilePath is the lasting address the upload opens at on the app's hostname, whatever its
+	// type: for anyone when public, else for people the app lets in or through a signed link.
+	FilePath string `json:"file_path"`
+	// FileURL is FilePath on the app's production hostname, when it has one.
+	FileURL string `json:"file_url,omitempty"`
 }
 
 // MediaStatus is where a video or audio upload's conversion stands.

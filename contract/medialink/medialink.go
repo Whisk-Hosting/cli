@@ -13,8 +13,9 @@
 // The message is the lines "whisk-media-link-v1", the app id, the resource, exp and kid,
 // joined by "\n". The resource is what the link shows: for an image the upload and every
 // parameter that changes the picture, normalised ("img/<id>?w=800&h=0&fit=contain&format=auto"),
-// and for video or audio the upload as a whole ("media/<id>"), which covers its description,
-// its embed page and each of its files, because the player reads several of them.
+// for video or audio the upload as a whole ("media/<id>"), which covers its description,
+// its embed page and each of its files, because the player reads several of them, and for any
+// other file the file itself ("file/<id>").
 package medialink
 
 import (
@@ -169,10 +170,16 @@ func ImageResource(id string, q url.Values) string {
 // MediaResource is what a link to video or audio shows: the upload as a whole.
 func MediaResource(id string) string { return "media/" + id }
 
+// FileResource is what a link to an uploaded file of any type shows: the file.
+func FileResource(id string) string { return "file/" + id }
+
 // Resource is what a request path names, from the path as a browser sends it:
-// /.whisk/img/<id> with its query, or /.whisk/media/<id> and anything under it. ok is false
-// for any other path.
+// /.whisk/img/<id> with its query, /.whisk/media/<id> and anything under it, or
+// /.whisk/file/<id>. ok is false for any other path.
 func Resource(path string, q url.Values) (resource string, ok bool) {
+	if id, found := strings.CutPrefix(path, "/.whisk/file/"); found && id != "" && !strings.Contains(id, "/") {
+		return FileResource(id), true
+	}
 	if id, found := strings.CutPrefix(path, "/.whisk/img/"); found && id != "" && !strings.Contains(id, "/") {
 		return ImageResource(id, q), true
 	}
@@ -189,11 +196,13 @@ func Resource(path string, q url.Values) (resource string, ok bool) {
 const (
 	KindImage = "img"
 	KindMedia = "media"
+	KindFile  = "file"
 )
 
 // Address reads a path an app asks to have signed, written as the page would write it for
 // someone signed in: /.whisk/img/<id> with the size it asks for, or /.whisk/media/<id> or a
-// file under it (720.mp4, poster.jpg, original, embed), with no query. It answers the kind of
+// file under it (720.mp4, poster.jpg, original, embed), with no query, or /.whisk/file/<id> for
+// an upload of any type, with no query. It answers the kind of
 // address, the upload id and the query. A path that already carries exp, kid or sig, names a
 // host, or is anything else is refused with the reason in words.
 func Address(raw string) (kind, id string, q url.Values, err error) {
@@ -212,6 +221,12 @@ func Address(raw string) (kind, id string, q url.Values, err error) {
 	if rest, ok := strings.CutPrefix(u.Path, "/.whisk/img/"); ok && rest != "" && !strings.Contains(rest, "/") {
 		return KindImage, rest, q, nil
 	}
+	if rest, ok := strings.CutPrefix(u.Path, "/.whisk/file/"); ok && rest != "" && !strings.Contains(rest, "/") {
+		if u.RawQuery != "" {
+			return "", "", nil, fmt.Errorf("%q has a query; a file takes none", raw)
+		}
+		return KindFile, rest, q, nil
+	}
 	if rest, ok := strings.CutPrefix(u.Path, "/.whisk/media/"); ok {
 		id, file, nested := strings.Cut(rest, "/")
 		switch {
@@ -222,7 +237,7 @@ func Address(raw string) (kind, id string, q url.Values, err error) {
 			return KindMedia, id, q, nil
 		}
 	}
-	return "", "", nil, fmt.Errorf("%q is not an image or media address; sign /.whisk/img/<id>?w=… or /.whisk/media/<id>", raw)
+	return "", "", nil, fmt.Errorf("%q is not an upload's address; sign /.whisk/img/<id>?w=…, /.whisk/media/<id> or /.whisk/file/<id>", raw)
 }
 
 // SignedPath is the path a page uses: the address asked for with the link's query added.

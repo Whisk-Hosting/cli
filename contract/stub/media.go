@@ -21,8 +21,8 @@ import (
 
 // The stub's stand-in for the platform's image and media addresses and its signed links
 // (CONTROL-PLANE.md §6.13, CONTRACT.md §13). The stub keeps no uploads, so /.whisk/img/<id>
-// answers a plain grey picture of the size asked for and /.whisk/media/<id> answers that no
-// file is kept. What it does as the platform does is decide who may have them: a link signed by
+// answers a plain grey picture of the size asked for, and /.whisk/media/<id> and
+// /.whisk/file/<id> answer that no file is kept. What it does as the platform does is decide who may have them: a link signed by
 // POST …/uploads/links (under a key of the run's own, generation 1) is let in until it expires
 // and refused when changed, and an address without a signature needs a sign-in.
 
@@ -30,10 +30,10 @@ const stubKeyGeneration = 1
 
 // mediaPath reports whether a path is one of the addresses the platform answers itself.
 func mediaPath(path string) bool {
-	return strings.HasPrefix(path, "/.whisk/img/") || strings.HasPrefix(path, "/.whisk/media/")
+	return strings.HasPrefix(path, "/.whisk/img/") || strings.HasPrefix(path, "/.whisk/media/") || strings.HasPrefix(path, "/.whisk/file/")
 }
 
-// media answers /.whisk/img/… and /.whisk/media/… on the edge.
+// media answers /.whisk/img/…, /.whisk/media/… and /.whisk/file/… on the edge.
 func (e *edge) media(w http.ResponseWriter, r *http.Request) {
 	s := e.stub
 	path := r.URL.Path
@@ -65,6 +65,12 @@ func (e *edge) media(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "no-store")
 		writeError(w, r, http.StatusNotFound, werrors.New("NOT_FOUND", "The stub keeps no uploads, so there is no video or audio to play here.",
 			"Play uploads on the platform; the stub only checks who may have them.", nil))
+		return
+	}
+	if strings.HasPrefix(path, "/.whisk/file/") {
+		w.Header().Set("Cache-Control", "no-store")
+		writeError(w, r, http.StatusNotFound, werrors.New("NOT_FOUND", "The stub keeps no uploads, so there is no file to give here.",
+			"Open uploads on the platform; the stub only checks who may have them.", nil))
 		return
 	}
 	wide, high, err := stubImageSize(q)

@@ -1943,7 +1943,7 @@
    },
    {
     "usage": "whisk uploads link \u003cpath\u003e... [--expires 1h]",
-    "short": "Sign /.whisk/img/\u003cid\u003e?w=… or /.whisk/media/\u003cid\u003e so it opens without a sign-in until it expires",
+    "short": "Sign /.whisk/img/\u003cid\u003e?w=…, /.whisk/media/\u003cid\u003e or /.whisk/file/\u003cid\u003e so it opens without a sign-in until it expires",
     "flags": [
      {
       "name": "--expires duration",

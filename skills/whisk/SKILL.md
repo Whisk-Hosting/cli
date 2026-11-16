@@ -1509,6 +1509,18 @@ upload has not finished; retry), `IMAGE_UNREADABLE` (not a picture it can read, 
 megapixels), `NOT_AN_IMAGE` (the upload is not `image/*`). `GET …/uploads/<id>` gives the address
 as `image.path`.
 
+**Documents and other files.** Every upload, whatever its type, opens at `/.whisk/file/<id>` on
+the app's own hostname: a PDF, a spec sheet, a CAD or 3D model file, a zip. Upload it `public`
+(`whisk uploads add <file> --public`, or `"visibility": "public"`) when anyone may open it, such as
+a download on a website, and link the address; it never expires, needs no server code, and opens
+under the file's own name. A `private` one opens for people signed in to the app, or through a
+signed link. `GET …/uploads/<id>` gives the address as `file_path` (and `file_url` on the app's
+hostname). Error: `FILE_NOT_READY` (the upload has not finished or its scan; retry).
+
+```html
+<a href="/.whisk/file/UPLOAD_ID">Installation guide (PDF)</a>
+```
+
 **Signed links (an app with its own sign-in).** A `private` upload's addresses answer only
 people signed in through Whisk. If the app keeps its own accounts (an app moved onto Whisk with
 its own login), do not keep your own image resizing (sharp, Pillow) or stream private photos
@@ -1517,7 +1529,7 @@ may see the file, ask with the service token, server side only, and put the answ
 the page:
 
 ```ts
-const { links } = await signMedia(["/.whisk/img/UPLOAD_ID?w=800", "/.whisk/media/VIDEO_ID"], 3600);
+const { links } = await signMedia(["/.whisk/img/UPLOAD_ID?w=800", "/.whisk/media/VIDEO_ID", "/.whisk/file/DOC_ID"], 3600);
 // Python: sign_media([...], expires_in=3600); Go: signMedia(ctx, []string{...}, time.Hour)
 // = POST /v1/orgs/<org>/apps/<app>/uploads/links {"paths": [...], "expires_in": 3600}
 ```

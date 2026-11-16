@@ -2854,6 +2854,19 @@ dashboard.
 ```
 
 
+## FILE_NOT_READY
+
+Status: 409 · Surface: edge
+
+When: an uploaded file was asked for at `/.whisk/file/<id>` before its upload to the store
+finished or its virus scan let it through. `details.status` is where the upload stands.
+
+Fix: Ask again in a few seconds; the address is right.
+
+```json
+{"error":{"code":"FILE_NOT_READY","message":"spec-sheet.pdf has not finished uploading or its scan.","fix":"Ask again in a few seconds; the address is right.","docs":"https://skill.whisk.run/errors/FILE_NOT_READY","details":{"id":"01J9ABC","status":"authorised"}}}
+```
+
 ## MEDIA_NOT_READY
 
 Status: 409 · Surface: api, edge

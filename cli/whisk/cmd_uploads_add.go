@@ -42,7 +42,8 @@ func uploadsAddCmd(s *session) *cobra.Command {
 		Long: `Uploads files from this computer into the app's storage, the way a visitor's upload through the
 app arrives: straight to the store, then virus-scanned, and video and audio converted for every
 browser. Each prints its id and the address it shows or plays at. Put a video in a page with
-<whisk-video media="<id>"> and a picture with <img src="/.whisk/img/<id>?w=800">.
+<whisk-video media="<id>">, a picture with <img src="/.whisk/img/<id>?w=800">, and link any other
+file, such as a PDF, at /.whisk/file/<id>.
 
 Uploads are private (people signed in to the app) unless --public (anyone, embeddable, such as a
 product video on a website). The type comes from the file's name and contents; --content-type
@@ -376,6 +377,9 @@ func printUpload(w io.Writer, u api.Upload) {
 		} else {
 			fmt.Fprintf(w, "  shows at %s?w=800\n", firstOf(im.URL, im.Path))
 		}
+	}
+	if u.Media == nil && u.Image == nil && u.Status != "infected" && firstOf(u.FileURL, u.FilePath) != "" {
+		fmt.Fprintf(w, "  opens at %s\n", firstOf(u.FileURL, u.FilePath))
 	}
 }
 

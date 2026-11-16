@@ -62,6 +62,9 @@ func TestResource(t *testing.T) {
 		{"/.whisk/media/U/720.mp4", "", "media/U", true},
 		{"/.whisk/media/U/embed", "", "media/U", true},
 		{"/.whisk/media/", "", "", false},
+		{"/.whisk/file/U", "", "file/U", true},
+		{"/.whisk/file/U/x", "", "", false},
+		{"/.whisk/file/", "", "", false},
 		{"/.whisk/player.js", "", "", false},
 		{"/notes", "", "", false},
 	} {
@@ -225,6 +228,7 @@ func TestAddress(t *testing.T) {
 		{"/.whisk/media/U", KindMedia, "U"},
 		{"/.whisk/media/U/720.mp4", KindMedia, "U"},
 		{"/.whisk/media/U/embed", KindMedia, "U"},
+		{"/.whisk/file/U", KindFile, "U"},
 	} {
 		kind, id, _, err := Address(tc.raw)
 		if err != nil || kind != tc.kind || id != tc.id {
@@ -235,6 +239,7 @@ func TestAddress(t *testing.T) {
 		"", "U", ".whisk/img/U", "/.whisk/img/", "/.whisk/img/U/x", "/.whisk/media/", "/.whisk/media/U/", "/.whisk/media/U/a/b",
 		"/.whisk/media/U?w=1", "/.whisk/player.js", "/notes", "https://app.example/.whisk/img/U", "//evil.example/.whisk/img/U",
 		"/.whisk/img/U?w=1&sig=x", "/.whisk/img/U?exp=1", "/.whisk/img/U?kid=1", "/.whisk/img/U#x", "/.whisk/img/U?%zz",
+		"/.whisk/file/", "/.whisk/file/U/x", "/.whisk/file/U?v=1",
 	} {
 		if _, _, _, err := Address(raw); err == nil {
 			t.Errorf("Address(%q) was accepted", raw)

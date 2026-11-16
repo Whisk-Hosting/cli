@@ -88,4 +88,10 @@ func TestMediaLinks(t *testing.T) {
 	if rec, _ := get(t, e, "GET", links.Links[1].Path, nil, ""); rec.Code != 404 || !strings.Contains(rec.Body.String(), "keeps no uploads") {
 		t.Errorf("a signed media link verifies and finds nothing kept: %d %s", rec.Code, rec.Body.String())
 	}
+	if rec, _ := get(t, e, "GET", "/.whisk/file/01DOC", nil, ""); rec.Code != 401 || !strings.Contains(rec.Body.String(), "AUTH_REQUIRED") {
+		t.Errorf("a file, signed out: %d", rec.Code)
+	}
+	if rec, _ := get(t, e, "GET", "/.whisk/file/01DOC", map[string]string{"Cookie": sessionCookie + "=sess"}, ""); rec.Code != 404 || !strings.Contains(rec.Body.String(), "keeps no uploads") {
+		t.Errorf("a file, signed in: %d %s", rec.Code, rec.Body.String())
+	}
 }

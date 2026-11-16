@@ -10398,6 +10398,12 @@
         "detail": {
           "type": "string"
         },
+        "file_path": {
+          "type": "string"
+        },
+        "file_url": {
+          "type": "string"
+        },
         "filename": {
           "type": "string"
         },
@@ -10434,6 +10440,7 @@
         "authorised_by",
         "bytes",
         "content_type",
+        "file_path",
         "filename",
         "id",
         "key",
