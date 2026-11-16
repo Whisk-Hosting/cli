@@ -709,7 +709,7 @@ app's own design, keep text and background readable (W131), and leave the
 
 **Promoted apps.** An app a business sells to its own customers can be made a Promoted app by an
 owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`): it never
-sleeps, has more memory (1 GB guaranteed, up to 4 GB) and at least two processor cores (the
+sleeps, has 4 GB of memory that is always there for it and at least two processor cores (the
 plan's, when it gives more), and is served first when its server is busy. Never ask for promotion to get round
 anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
 choice. An app that cannot run any other way says `promoted: true` in whisk.yaml: its

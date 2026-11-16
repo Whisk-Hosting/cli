@@ -3643,10 +3643,10 @@ first kill of an app, and then at most once per app per 24 hours.
 
 Fix: Reduce the app's peak memory: stream large downloads and uploads instead of buffering them,
 keep less in `/tmp` (hydrate only what a run needs, or read it from storage on demand), and
-process work in smaller batches. Otherwise give the app Boost (2 GiB more memory, on any paid plan).
+process work in smaller batches. Otherwise give the app Boost (2 GiB of memory, on any plan).
 
 ```json
-{"error":{"code":"APP_OUT_OF_MEMORY","message":"whisk-init: the previous run was killed with SIGKILL without a stop request, which means it used more than its memory limit of 256 MiB (files in /tmp count as memory).","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB more memory, on any paid plan).","docs":"https://skill.whisk.run/errors/APP_OUT_OF_MEMORY","details":{}}}
+{"error":{"code":"APP_OUT_OF_MEMORY","message":"whisk-init: the previous run was killed with SIGKILL without a stop request, which means it used more than its memory limit of 256 MiB (files in /tmp count as memory).","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB of memory, on any plan).","docs":"https://skill.whisk.run/errors/APP_OUT_OF_MEMORY","details":{}}}
 ```
 
 ## APP_CPU_SLEEP
@@ -3683,7 +3683,7 @@ from storage on demand), and process work in smaller batches. Otherwise move the
 with more memory.
 
 ```json
-{"error":{"code":"APP_MEMORY_HIGH","message":"whisk-init: the app is using 230 MiB (peak 240 MiB, 93%) of its memory limit of 256 MiB, and files in /tmp count as memory.","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB more memory, on any paid plan).","docs":"https://skill.whisk.run/errors/APP_MEMORY_HIGH","details":{}}}
+{"error":{"code":"APP_MEMORY_HIGH","message":"whisk-init: the app is using 230 MiB (peak 240 MiB, 93%) of its memory limit of 256 MiB, and files in /tmp count as memory.","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB of memory, on any plan).","docs":"https://skill.whisk.run/errors/APP_MEMORY_HIGH","details":{}}}
 ```
 
 ## INIT_CONFIG
