@@ -66,7 +66,7 @@ type Invoice struct {
 	CreatedAt   time.Time     `json:"created_at"`
 }
 
-// NextInvoice is Stripe's preview of the next invoice.
+// NextInvoice is the next invoice the business can expect: its amount and its day.
 type NextInvoice struct {
 	AmountCents int64      `json:"amount_cents"`
 	Currency    string     `json:"currency"`
