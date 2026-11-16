@@ -526,6 +526,15 @@ type Manifest struct {
 	CreatedAt time.Time        `json:"created_at"`
 }
 
+// NewValidation is a validation with what older CLIs read already set: a repository size more
+// than any plan ever allowed, so a CLI that still checks a limit never refuses a repository the
+// platform takes (no plan limits a repository's size; CONTROL-PLANE.md §6.3).
+func NewValidation() Validation {
+	var v Validation
+	v.Limits.RepoBytes = 1 << 50
+	return v
+}
+
 // Validation is the platform's view of a manifest (POST /validate).
 type Validation struct {
 	Valid    bool `json:"valid"`
@@ -534,7 +543,12 @@ type Validation struct {
 		Message string `json:"message"`
 		Code    string `json:"code"`
 	} `json:"problems"`
-	Plan        string   `json:"plan"`
+	Plan string `json:"plan"`
+	// Limits is for CLIs from before repositories had no size limit, whose doctor reads
+	// limits.repo_bytes and assumes 100 MB without it (NewValidation).
+	Limits struct {
+		RepoBytes int64 `json:"repo_bytes"`
+	} `json:"limits"`
 	Unavailable []string `json:"unavailable"`
 	// Start is the app's typical start, for doctor's W100; absent until one is recorded.
 	Start *AppStart `json:"start,omitempty"`
