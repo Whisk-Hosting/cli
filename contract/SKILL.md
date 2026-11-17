@@ -1508,9 +1508,15 @@ as `image.path`.
 the app's own hostname: a PDF, a spec sheet, a CAD or 3D model file, a zip. Upload it `public`
 (`whisk uploads add <file> --public`, or `"visibility": "public"`) when anyone may open it, such as
 a download on a website, and link the address; it never expires, needs no server code, and opens
-under the file's own name. A `private` one opens for people signed in to the app, or through a
-signed link. `GET …/uploads/<id>` gives the address as `file_path` (and `file_url` on the app's
-hostname). Error: `FILE_NOT_READY` (the upload has not finished or its scan; retry).
+under the file's own name on the app's own domain. Whisk sets its type from the file's name (STEP,
+GLB, STL, DWG and the rest, from the open mime-db list) and compresses what compresses, so do not
+set a content type or zip files yourself. When a file moved from an old address that search
+engines know, name that address as canonical: `whisk uploads set <id> --canonical
+https://example.com/old/spec-sheet.pdf` (or `PATCH …/uploads/<id> {"canonical": "…"}`), and the
+file answers with `Link: <…>; rel="canonical"`. A `private` one opens for people signed in to the
+app, or through a signed link. `GET …/uploads/<id>` gives the address as `file_path` (and
+`file_url` on the app's hostname). Error: `FILE_NOT_READY` (the upload has not finished or its
+scan; retry).
 
 ```html
 <a href="/.whisk/file/UPLOAD_ID">Installation guide (PDF)</a>

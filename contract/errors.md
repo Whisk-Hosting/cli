@@ -627,7 +627,7 @@ Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 
 Status: 402 · Surface: api
 
-When: a deploy of an app Whisk paused because the month a Free business pays ahead for it went
+When: a deploy of an app Whisk paused because the month its business pays ahead for it went
 unpaid for the payment grace. The edge answers its hostnames with the plain paused page, and the
 business's other apps run on. Paying the month resumes it within a minute.
 
@@ -1546,6 +1546,20 @@ app locally with `whisk dev` and fetch the health path.
 
 ```json
 {"error":{"code":"HEALTH_CHECK_FAILED","message":"GET /health did not answer 200 within 90 seconds; nothing answered.","fix":"Check the app listens on PORT (8080) on 0.0.0.0 and that GET /health returns 200. The log excerpt shows the last lines before the timeout. Redeploy after fixing.","docs":"https://skill.whisk.run/errors/HEALTH_CHECK_FAILED","details":{"path":"/health","timeout_seconds":90,"last_status":0,"log":["Listening on 127.0.0.1:3000"],"fault":"app"}}}
+```
+
+
+## HOSTING_INCLUDED
+
+Status: 409 · Surface: api
+
+When: Boost or Promoted was asked for on a copy of one of Whisk's apps whose price includes its
+hosting. It is already hosted as a Promoted app is, but for the status page and its own sign-in.
+
+Fix: Nothing to buy. Leave the app as it is.
+
+```json
+{"error":{"code":"HOSTING_INCLUDED","message":"crm's hosting comes with its price, so it is not sold Boost.","fix":"Nothing to buy: it is already always on, may use up to 4 GB of memory when it needs it, is served through the CDN and has hourly backups.","docs":"https://skill.whisk.run/errors/HOSTING_INCLUDED","details":{"app":"crm","product":"crm"}}}
 ```
 
 ## CONTAINER_CRASHED
@@ -3355,7 +3369,9 @@ visible to this token. On the edge: the hostname belongs to no app (a removed pr
 app, a typo under the apps domain); every name under a wildcard certificate reaches the edge, so
 the edge answers this rather than an empty response. `details.kind` is `hostname`. Also on the
 edge: a path only an attacker's scanner asks for (WordPress, PHP, secrets or version control files such as
-`/.env` and `.git`), which nothing on Whisk serves; `details.kind` is `path`. Also on the edge: a static file
+`/.env` and `.git`); `details.kind` is `path`. An app whose live deploy holds files at WordPress or
+PHP paths (`wp-content/`, a `.php` file) is passed those addresses; secrets and version control
+files are never served. Also on the edge: a static file
 of an app whose business brought its bucket that the bucket does not have, or a request for one
 that is not a GET or HEAD. Also from `db query`: the copy `--database` names is no longer there,
 since a copy from a restore or from an update's rehearsal is kept only for a while;

@@ -96,8 +96,12 @@ type RotateLinkKeyRequest struct {
 }
 
 // PatchUploadRequest is the body of PATCH /v1/orgs/{org}/apps/{app}/uploads/{id}.
+// Each field left out is left as it is.
 type PatchUploadRequest struct {
-	Visibility string `json:"visibility"`
+	Visibility string `json:"visibility,omitempty"`
+	// Canonical is the address /.whisk/file/<id> names in Link: <…>; rel="canonical"; "" names
+	// none.
+	Canonical *string `json:"canonical,omitempty"`
 }
 
 // InviteCustomerRequest is the body of POST /v1/orgs/{org}/apps/{app}/customers.

@@ -1007,3 +1007,14 @@ Safe fix: no
 Details: the shop template and Whisk's commerce engine answer `GET /admin/whisk/setup` with the
 list; `whisk deploy` prints what it says is missing and the Whisk bar shows `Finish setup` while
 something required is.
+
+## W177
+
+Level: warning
+Check: a page or code links to a WordPress or PHP address of the app's own site (/wp-content/, /wp-includes/, /wp-admin/, /cgi-bin/, a .php page) that no file in the repository holds and no redirect sends on.
+Fix: Copy the file into the repository at that path (public/wp-content/uploads/... for an image), or add a redirect from the old address to where the file is now.
+Safe fix: no
+
+Details: Whisk's edge answers these addresses 404 before any app, since scanners ask for them all
+day. An app whose live deploy holds files at such paths is passed them instead, so a site rebuilt
+with its old WordPress addresses keeps working once the files are in the repository.

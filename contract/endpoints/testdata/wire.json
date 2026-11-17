@@ -1082,6 +1082,12 @@
         "changed": {
           "type": "boolean"
         },
+        "hosting_included": {
+          "type": "boolean"
+        },
+        "included_memory_bytes": {
+          "type": "integer"
+        },
         "name": {
           "type": "string"
         },
@@ -6794,6 +6800,9 @@
         "available": {
           "type": "boolean"
         },
+        "free_month": {
+          "type": "boolean"
+        },
         "kind": {
           "type": "string",
           "x-type": "apitypes.ProductKind"
@@ -8209,13 +8218,13 @@
     },
     "apitypes.PatchUploadRequest": {
       "properties": {
+        "canonical": {
+          "type": "string"
+        },
         "visibility": {
           "type": "string"
         }
       },
-      "required": [
-        "visibility"
-      ],
       "type": "object"
     },
     "apitypes.PayDetails": {
@@ -10391,6 +10400,9 @@
         },
         "bytes": {
           "type": "integer"
+        },
+        "canonical": {
+          "type": "string"
         },
         "content_type": {
           "type": "string"

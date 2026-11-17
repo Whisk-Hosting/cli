@@ -1966,6 +1966,24 @@
     ]
    },
    {
+    "usage": "whisk uploads set \u003cid\u003e [--public | --private] [--canonical \u003curl\u003e]",
+    "short": "Make an upload public or private, or name the canonical address its file address sends",
+    "flags": [
+     {
+      "name": "--canonical string",
+      "usage": "the address its file address names as canonical; \"\" for none"
+     },
+     {
+      "name": "--private",
+      "usage": "only people signed in to the app, or a signed link"
+     },
+     {
+      "name": "--public",
+      "usage": "anyone may open it, and other websites may link or embed it"
+     }
+    ]
+   },
+   {
     "usage": "whisk uploads show \u003cid\u003e [--wait]",
     "short": "One upload: its scan, its conversion and where it shows or plays",
     "flags": [

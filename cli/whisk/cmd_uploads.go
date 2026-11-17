@@ -93,6 +93,6 @@ func uploadsCmd(s *session) *cobra.Command {
 		},
 	}
 
-	uploads.AddCommand(uploadsAddCmd(s), uploadsListCmd(s), uploadsShowCmd(s), remove, link, rotate)
+	uploads.AddCommand(uploadsAddCmd(s), uploadsListCmd(s), uploadsShowCmd(s), uploadsSetCmd(s), remove, link, rotate)
 	return uploads
 }

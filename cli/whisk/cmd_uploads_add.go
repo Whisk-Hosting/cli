@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -17,6 +16,7 @@ import (
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/endpoints"
+	"github.com/whisk-run/contract/mimetypes"
 )
 
 // maxUploadBytes is the most one upload form takes (CONTROL-PLANE.md §6.13).
@@ -383,29 +383,10 @@ func printUpload(w io.Writer, u api.Upload) {
 	}
 }
 
-// uploadTypes are the types of files a website brings that Go's own table leaves out or names
-// differently from one system to the next; the store keeps the type it was given and the platform
-// converts only video/*, audio/* and image/* (CONTROL-PLANE.md §6.13).
-var uploadTypes = map[string]string{
-	".mp4": "video/mp4", ".m4v": "video/mp4", ".mov": "video/quicktime", ".webm": "video/webm",
-	".mkv": "video/x-matroska", ".avi": "video/x-msvideo", ".mpeg": "video/mpeg", ".mpg": "video/mpeg",
-	".ogv": "video/ogg", ".3gp": "video/3gpp",
-	".mp3": "audio/mpeg", ".m4a": "audio/mp4", ".aac": "audio/aac", ".wav": "audio/wav",
-	".ogg": "audio/ogg", ".oga": "audio/ogg", ".opus": "audio/opus", ".flac": "audio/flac",
-	".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".gif": "image/gif",
-	".webp": "image/webp", ".avif": "image/avif", ".heic": "image/heic", ".heif": "image/heif",
-	".svg": "image/svg+xml", ".tif": "image/tiff", ".tiff": "image/tiff", ".bmp": "image/bmp",
-	".ico": "image/x-icon", ".pdf": "application/pdf",
-}
-
-// uploadType is a file's content type from its name, or failing that from its first bytes.
-// Pure but for the system's own type table.
+// uploadType is a file's content type from its name, by mime-db's list (contract/mimetypes), or
+// failing that from its first bytes. Pure.
 func uploadType(name string, head []byte) string {
-	ext := strings.ToLower(filepath.Ext(name))
-	if t, ok := uploadTypes[ext]; ok {
-		return t
-	}
-	if t := mime.TypeByExtension(ext); ext != "" && t != "" {
+	if t := mimetypes.ByName(name); t != "" {
 		return t
 	}
 	return http.DetectContentType(head)

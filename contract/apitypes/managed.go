@@ -31,6 +31,11 @@ type AppFork struct {
 	Behind  int `json:"behind"`
 	// Changed is whether the app's code is anything but release Release as Whisk made it.
 	Changed bool `json:"changed"`
+	// HostingIncluded is whether the fork's price includes its hosting: memory up to
+	// IncludedMemoryBytes when it needs it, none of it set aside, and the CDN. Such an app is
+	// never sold Boost or Promoted (FORKS.md §3).
+	HostingIncluded     bool  `json:"hosting_included,omitempty"`
+	IncludedMemoryBytes int64 `json:"included_memory_bytes,omitempty"`
 }
 
 // ForkUpdate is POST /orgs/:org/apps/:app/fork/update: the app as it stands now, the deploy that
@@ -178,8 +183,11 @@ type ManagedProduct struct {
 	Links    []string         `json:"links"`
 	// LinkKey is the setting that tells apart the copies linked to one app, when the product
 	// has one: an app may then have a copy for each value of it (MANAGED-APPS.md §4).
-	LinkKey     string `json:"link_key,omitempty"`
-	MonthCents  *int64 `json:"month_cents,omitempty"`
+	LinkKey    string `json:"link_key,omitempty"`
+	MonthCents *int64 `json:"month_cents,omitempty"`
+	// FreeMonth is whether the business's next copy of a priced product starts with a free month:
+	// it is its first copy of the product (FORKS.md §3). The month is charged when it ends.
+	FreeMonth   bool   `json:"free_month,omitempty"`
 	Available   bool   `json:"available"`
 	Unavailable string `json:"unavailable,omitempty"` // plan | trial | no_release
 }

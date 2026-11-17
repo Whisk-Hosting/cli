@@ -140,6 +140,7 @@ var ruleTable = []rule{
 	{"W174", false, w174},
 	{"W175", true, w175},
 	{"W176", true, w176},
+	{"W177", false, w177},
 }
 
 const manifestFile = "whisk.yaml"

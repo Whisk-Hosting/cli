@@ -210,6 +210,8 @@ type Upload struct {
 	FilePath string `json:"file_path"`
 	// FileURL is FilePath on the app's production hostname, when it has one.
 	FileURL string `json:"file_url,omitempty"`
+	// Canonical is the address the file address names as canonical, when the upload has one.
+	Canonical string `json:"canonical,omitempty"`
 }
 
 // MediaStatus is where a video or audio upload's conversion stands.
