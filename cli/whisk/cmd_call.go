@@ -13,10 +13,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/pflag"
 
 	"github.com/whisk-run/contract/endpoints"
 	werrors "github.com/whisk-run/contract/errors"
@@ -208,7 +211,7 @@ func (s *session) appAddress(client *api.Client, org, app, env string) (string, 
 }
 
 func callCmd(s *session) *cobra.Command {
-	var data, environment, batch string
+	var data, environment, batch, outFile string
 	var headers []string
 	var timeout time.Duration
 	var parallel int
@@ -284,19 +287,13 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, TOKEN_SIGNATUR
 			if err := callOutcome(method, u, a); err != nil {
 				return err
 			}
-			res := map[string]any{"org": org, "app": app, "environment": envName, "method": method, "url": u.String(), "status": a.Status,
-				"content_type": a.ContentType, "body": a.bodyValue(), "truncated": a.Truncated}
-			if a.RequestID != "" {
-				res["request_id"] = a.RequestID
-			}
-			s.printer.Result(res, func(w io.Writer) { printCallBody(w, a) })
-			if !s.printer.Quiet {
-				fmt.Fprintf(s.env.Stderr, "%d %s from %s %s\n", a.Status, http.StatusText(a.Status), method, u.String())
-			}
-			return nil
+			return s.callAnswered(outFile, org, app, envName, method, u.String(), a)
 		},
 	}
-	c.Flags().StringVar(&data, "data", "", "the body: JSON text, @file to read a file, or - for stdin")
+	c.Flags().StringVar(&data, "data", "", "the body: JSON text, @file to read a file, or - for stdin (or --body)")
+	c.Flags().StringVarP(&outFile, "output", "o", "", "save the answer's body to this file instead of printing it")
+	// --body is --data by another name, the word other HTTP tools use.
+	c.Flags().SetNormalizeFunc(bodyIsData)
 	c.Flags().StringArrayVar(&headers, "header", nil, `a header to send, "Name: value"; repeatable`)
 	c.Flags().StringVar(&environment, "env", "", "the environment; production when omitted")
 	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "how long to wait for each answer, a sleeping app's wake included")
@@ -433,4 +430,56 @@ func printCallBody(w io.Writer, a callAnswer) {
 	if a.Truncated {
 		fmt.Fprintf(w, "(answer cut at %d MB)\n", callAnswerLimit>>20)
 	}
+}
+
+// saveCallAnswer writes the answer's body to path (relative to the working directory), readable by
+// this user alone since it is the business's data, and prints where it went. An answer past
+// callAnswerLimit is saved cut and fails, so a partial file is never taken for the whole.
+func (s *session) saveCallAnswer(path, org, app, envName, method, url string, a callAnswer) error {
+	full := path
+	if !filepath.IsAbs(full) {
+		full = filepath.Join(s.env.Dir, full)
+	}
+	if err := os.WriteFile(full, a.Body, 0o600); err != nil {
+		return output.New("CLI_ERROR", "The answer could not be saved: "+err.Error(), "Check the folder in --output exists and can be written.", map[string]any{"output": path})
+	}
+	if a.Truncated {
+		return output.New("CLI_ERROR", fmt.Sprintf("The answer was over %d MB; %s holds only its first %d MB.", callAnswerLimit>>20, path, callAnswerLimit>>20),
+			"Ask the app for less at a time, such as a page of the list.", map[string]any{"output": path, "bytes": len(a.Body)})
+	}
+	res := map[string]any{"org": org, "app": app, "environment": envName, "method": method, "url": url, "status": a.Status,
+		"content_type": a.ContentType, "output": path, "bytes": len(a.Body)}
+	if a.RequestID != "" {
+		res["request_id"] = a.RequestID
+	}
+	s.printer.Result(res, func(w io.Writer) { fmt.Fprintf(w, "Saved %d bytes to %s.\n", len(a.Body), path) })
+	if !s.printer.Quiet {
+		fmt.Fprintf(s.env.Stderr, "%d %s from %s %s\n", a.Status, http.StatusText(a.Status), method, url)
+	}
+	return nil
+}
+
+// bodyIsData reads --body as --data.
+func bodyIsData(_ *pflag.FlagSet, name string) pflag.NormalizedName {
+	if name == "body" {
+		name = "data"
+	}
+	return pflag.NormalizedName(name)
+}
+
+// callAnswered prints a 2xx answer, or saves its body to outFile when one is given.
+func (s *session) callAnswered(outFile, org, app, envName, method, url string, a callAnswer) error {
+	if outFile != "" {
+		return s.saveCallAnswer(outFile, org, app, envName, method, url, a)
+	}
+	res := map[string]any{"org": org, "app": app, "environment": envName, "method": method, "url": url, "status": a.Status,
+		"content_type": a.ContentType, "body": a.bodyValue(), "truncated": a.Truncated}
+	if a.RequestID != "" {
+		res["request_id"] = a.RequestID
+	}
+	s.printer.Result(res, func(w io.Writer) { printCallBody(w, a) })
+	if !s.printer.Quiet {
+		fmt.Fprintf(s.env.Stderr, "%d %s from %s %s\n", a.Status, http.StatusText(a.Status), method, url)
+	}
+	return nil
 }

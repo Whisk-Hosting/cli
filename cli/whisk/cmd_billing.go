@@ -16,8 +16,9 @@ import (
 // billingCmd shows the org's plan, this month's usage and the next invoice (CLI.md §5.9).
 func billingCmd(s *session) *cobra.Command {
 	return &cobra.Command{
-		Use:   "billing",
-		Short: "The org's plan, this month's usage against it, and the next invoice",
+		Use:     "billing",
+		Aliases: []string{"usage"},
+		Short:   "The org's plan, this month's usage against it, and the next invoice",
 		Long: `Shows the org's plan, what it has used this month against each allowance, the overage so far,
 the next invoice, and whether a payment has failed and when the apps would stop. Changing the
 plan is done from the dashboard's billing page, because a card may be needed. Owners and

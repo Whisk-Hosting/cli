@@ -433,7 +433,7 @@
      },
      {
       "name": "--data string",
-      "usage": "the body: JSON text, @file to read a file, or - for stdin"
+      "usage": "the body: JSON text, @file to read a file, or - for stdin (or --body)"
      },
      {
       "name": "--env string",
@@ -442,6 +442,10 @@
      {
       "name": "--header stringArray",
       "usage": "a header to send, \"Name: value\"; repeatable"
+     },
+     {
+      "name": "--output string",
+      "usage": "save the answer's body to this file instead of printing it"
      },
      {
       "name": "--parallel int",
@@ -1594,6 +1598,22 @@
      {
       "name": "--wait",
       "usage": "wait until a person approves or declines it"
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "name": "restart",
+  "short": "Start the live version again in a new container, without building",
+  "commands": [
+   {
+    "usage": "whisk restart [\u003capp\u003e]",
+    "short": "Start the live version again in a new container, without building",
+    "flags": [
+     {
+      "name": "--no-wait",
+      "usage": "print the deploy id and exit"
      }
     ]
    }

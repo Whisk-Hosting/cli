@@ -180,7 +180,7 @@ func newRoot(s *session) *cobra.Command {
 	}
 	pf := root.PersistentFlags()
 	pf.BoolVar(&s.json, "json", false, "machine output: one JSON object on stdout")
-	pf.BoolVar(&s.quiet, "quiet", false, "no progress on stderr")
+	pf.BoolVarP(&s.quiet, "quiet", "q", false, "no progress on stderr")
 	pf.StringVar(&s.profile, "profile", "", "credential profile (or WHISK_PROFILE)")
 	pf.StringVar(&s.orgFlag, "org", "", "org slug, instead of .whisk/app.json")
 	pf.StringVar(&s.appFlag, "app", "", "app slug, instead of .whisk/app.json")
@@ -197,7 +197,10 @@ func newRoot(s *session) *cobra.Command {
 		functionsCmd(s), runsCmd(s), eventsCmd(s), approvalsCmd(s),
 		dbCmd(s), restoreCmd(s), exportCmd(s), billingCmd(s),
 	)
+	// whisk restart is whisk apps restart, beside whisk pause and whisk resume.
+	root.AddCommand(restartCmd(s))
 	root.AddCommand(privateCmds(s)...)
+	aliasLookups(root)
 	root.CompletionOptions.HiddenDefaultCmd = false
 	// whisk --version answers what whisk version does, since agents reach for the flag first.
 	root.Version = Version
