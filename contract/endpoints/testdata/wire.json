@@ -8432,6 +8432,9 @@
         "canonical": {
           "type": "string"
         },
+        "path": {
+          "type": "string"
+        },
         "visibility": {
           "type": "string"
         }
@@ -10641,6 +10644,9 @@
         },
         "media": {
           "$ref": "#/$defs/apitypes.UploadMedia"
+        },
+        "path": {
+          "type": "string"
         },
         "scanned_at": {
           "format": "date-time",

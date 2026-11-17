@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -34,10 +35,10 @@ var uploadPoll = 5 * time.Second
 // authorised with this sign-in, posted straight to the store and then scanned and, for video,
 // audio and pictures, made ready to show, exactly as a file a visitor uploads through the app.
 func uploadsAddCmd(s *session) *cobra.Command {
-	var public, wait bool
-	var contentType string
+	var public, wait, keepPaths bool
+	var contentType, sitePath string
 	c := &cobra.Command{
-		Use:   "add <file>... [--public] [--content-type <type>] [--wait]",
+		Use:   "add <file|folder>... [--public] [--keep-paths | --path <path>] [--content-type <type>] [--wait]",
 		Short: "Upload files from this computer to the app's storage, up to 5 GB each",
 		Long: `Uploads files from this computer into the app's storage, the way a visitor's upload through the
 app arrives: straight to the store, then virus-scanned, and video and audio converted for every
@@ -46,7 +47,13 @@ browser. Each prints its id and the address it shows or plays at. Put a video in
 file, such as a PDF, at /.whisk/file/<id>.
 
 Uploads are private (people signed in to the app) unless --public (anyone, embeddable, such as a
-product video on a website). The type comes from the file's name and contents; --content-type
+product video on a website).
+
+--keep-paths gives each file a path on the app's site: every file in a folder given keeps its
+place under it, so whisk uploads add public/ --public --keep-paths makes public/posters/a.jpg
+answer at /posters/a.jpg, whenever the app itself has nothing there. A website links its files
+by those paths, and old links to them keep working. Uploading to a path again replaces the file
+there once the new one is scanned. --path names the path of a single file. The type comes from the file's name and contents; --content-type
 sets it for every file given. --wait follows each until its scan and conversion are done;
 whisk uploads show <id> --wait does it later.
 
@@ -56,15 +63,11 @@ unscanned): the app can still use it, and a file that must be scanned is split i
 are left out.`,
 		Args: cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			files, err := openUploads(s.env.Dir, args, contentType)
+			files, err := uploadsToAdd(s.env.Dir, args, contentType, keepPaths, sitePath)
 			if err != nil {
 				return err
 			}
-			defer func() {
-				for _, f := range files {
-					f.file.Close()
-				}
-			}()
+			defer closeUploads(files)
 			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
@@ -73,24 +76,15 @@ are left out.`,
 			if public {
 				visibility = "public"
 			}
-			quiet := s.quiet || s.json
 			log := s.env.Stderr
-			if quiet {
+			if s.quiet || s.json {
 				log = io.Discard
 			}
 			out := make([]api.Upload, 0, len(files))
-			for _, f := range files {
-				u, err := addUpload(s, client, org, app, f, visibility, log)
+			for i := range files {
+				u, err := addOne(s, client, org, app, &files[i], visibility, wait, log)
 				if err != nil {
 					return err
-				}
-				if wait && !uploadSettled(u) {
-					if u, err = followUpload(s.ctx, client, org, app, u.ID, log, uploadPoll); err != nil {
-						return wrap(err)
-					}
-				}
-				if u.Status == "infected" {
-					return uploadQuarantined(u)
 				}
 				out = append(out, u)
 			}
@@ -109,33 +103,105 @@ are left out.`,
 		},
 	}
 	c.Flags().BoolVar(&public, "public", false, "anyone may see or play it, and other websites may embed it")
+	c.Flags().BoolVar(&keepPaths, "keep-paths", false, "give each file a path on the site: its place under the folder given")
+	c.Flags().StringVar(&sitePath, "path", "", "the path on the site of the one file given, such as /posters/install.jpg")
+	c.MarkFlagsMutuallyExclusive("keep-paths", "path")
 	c.Flags().StringVar(&contentType, "content-type", "", "the type of every file given, such as video/mp4 (default: from each file's name and contents)")
 	c.Flags().BoolVar(&wait, "wait", false, "follow each upload until its scan and conversion are done")
 	return c
 }
 
+// uploadsToAdd opens the files given, a folder's with keepPaths, giving the one file sitePath
+// when it is named.
+func uploadsToAdd(dir string, args []string, contentType string, keepPaths bool, sitePath string) ([]uploadFile, error) {
+	if sitePath != "" && len(args) != 1 {
+		return nil, output.New("INVALID_REQUEST", "--path names the path of one file.",
+			"Pass one file with --path, or a folder with --keep-paths to keep each file's place under it.", nil)
+	}
+	files, err := openUploads(dir, args, contentType, keepPaths)
+	if err != nil {
+		return nil, err
+	}
+	if sitePath != "" {
+		if len(files) != 1 || files[0].file == nil {
+			closeUploads(files)
+			return nil, output.New("INVALID_REQUEST", "--path names the path of one file, and "+args[0]+" is a folder.",
+				"Pass one file with --path, or the folder with --keep-paths.", nil)
+		}
+		files[0].sitePath = sitePath
+	}
+	return files, nil
+}
+
+func closeUploads(files []uploadFile) {
+	for _, f := range files {
+		if f.file != nil {
+			f.file.Close()
+		}
+	}
+}
+
+// addOne uploads one file, names its site path, and follows it with wait.
+func addOne(s *session, client *api.Client, org, app string, f *uploadFile, visibility string, wait bool, log io.Writer) (api.Upload, error) {
+	if f.file == nil {
+		var err error
+		if f.file, err = os.Open(f.path); err != nil {
+			return api.Upload{}, output.New("INVALID_REQUEST", "Cannot upload "+f.path+": "+err.Error()+".", "Pass the path of a file on this computer.", map[string]any{"file": f.path})
+		}
+	}
+	u, err := addUpload(s, client, org, app, *f, visibility, log)
+	f.file.Close()
+	f.file = nil
+	if err != nil {
+		return api.Upload{}, err
+	}
+	if f.sitePath != "" {
+		p := f.sitePath
+		if u, err = api.Send(s.ctx, client, endpoints.PatchUpload, apitypes.PatchUploadRequest{Path: &p}, org, app, u.ID); err != nil {
+			return api.Upload{}, wrap(err)
+		}
+	}
+	if wait && !uploadSettled(u) {
+		if u, err = followUpload(s.ctx, client, org, app, u.ID, log, uploadPoll); err != nil {
+			return api.Upload{}, wrap(err)
+		}
+	}
+	if u.Status == "infected" {
+		return api.Upload{}, uploadQuarantined(u)
+	}
+	return u, nil
+}
+
 // uploadFile is one file to upload, opened and measured before anything is authorised.
 type uploadFile struct {
-	file        *os.File
-	path, name  string
+	// file is open while the file is inspected and uploaded; a file of a folder is opened again
+	// when its turn comes, so a large folder never holds every file open.
+	file       *os.File
+	path, name string
+	// sitePath is the path on the app's site the file answers at, "" for none.
+	sitePath    string
 	size        int64
 	contentType string
 }
 
 // openUploads opens every file given and works out its type, refusing the lot before anything
 // is uploaded when one cannot be read, is a folder, is empty or is over 5 GB.
-func openUploads(dir string, args []string, contentType string) ([]uploadFile, error) {
+func openUploads(dir string, args []string, contentType string, keepPaths bool) ([]uploadFile, error) {
 	files := make([]uploadFile, 0, len(args))
 	fail := func(path, why, fix string) ([]uploadFile, error) {
 		for _, f := range files {
-			f.file.Close()
+			if f.file != nil {
+				f.file.Close()
+			}
 		}
 		return nil, output.New("INVALID_REQUEST", "Cannot upload "+path+": "+why+".", fix, map[string]any{"file": path})
 	}
-	for _, path := range args {
-		if !filepath.IsAbs(path) && dir != "" {
-			path = filepath.Join(dir, path)
-		}
+	each, folder, err := uploadTargets(dir, args, keepPaths)
+	if err != nil {
+		return fail(err.path, err.why, err.fix)
+	}
+	for _, w := range each {
+		path := w.path
 		f, err := os.Open(path)
 		if err != nil {
 			return fail(path, err.Error(), "Pass the path of a file on this computer.")
@@ -147,7 +213,7 @@ func openUploads(dir string, args []string, contentType string) ([]uploadFile, e
 			return fail(path, err.Error(), "Pass the path of a file on this computer.")
 		case info.IsDir():
 			f.Close()
-			return fail(path, "it is a folder", "Pass each file in it, such as whisk uploads add media/*.mp4.")
+			return fail(path, "it is a folder", "Pass each file in it, such as whisk uploads add media/*.mp4, or the folder with --keep-paths to give each file its path on the site.")
 		case info.Size() == 0:
 			f.Close()
 			return fail(path, "it is empty", "Pass a file with something in it.")
@@ -166,9 +232,80 @@ func openUploads(dir string, args []string, contentType string) ([]uploadFile, e
 		if t == "" {
 			t = uploadType(filepath.Base(path), head[:n])
 		}
-		files = append(files, uploadFile{file: f, path: path, name: filepath.Base(path), size: info.Size(), contentType: t})
+		u := uploadFile{file: f, path: path, name: filepath.Base(path), size: info.Size(), contentType: t, sitePath: w.sitePath}
+		if folder {
+			f.Close()
+			u.file = nil
+		}
+		files = append(files, u)
 	}
 	return files, nil
+}
+
+// uploadTarget is one file to upload and its site path.
+type uploadTarget struct{ path, sitePath string }
+
+// targetError is why a path given cannot be uploaded.
+type targetError struct{ path, why, fix string }
+
+// uploadTargets is every file the paths given name, a folder's files with keepPaths, and whether
+// any came from a folder.
+func uploadTargets(dir string, args []string, keepPaths bool) ([]uploadTarget, bool, *targetError) {
+	var each []uploadTarget
+	folder := false
+	for _, path := range args {
+		if !filepath.IsAbs(path) && dir != "" {
+			path = filepath.Join(dir, path)
+		}
+		info, err := os.Stat(path)
+		if err != nil || !info.IsDir() || !keepPaths {
+			site := ""
+			if keepPaths {
+				site = "/" + filepath.Base(path)
+			}
+			each = append(each, uploadTarget{path, site})
+			continue
+		}
+		found, err := folderFiles(path)
+		if err != nil {
+			return nil, false, &targetError{path, err.Error(), "Pass a folder this computer can read."}
+		}
+		if len(found) == 0 {
+			return nil, false, &targetError{path, "it holds no files", "Pass a folder with the files to upload in it."}
+		}
+		folder = true
+		for _, rel := range found {
+			each = append(each, uploadTarget{filepath.Join(path, rel), "/" + filepath.ToSlash(rel)})
+		}
+	}
+	return each, folder, nil
+}
+
+// folderFiles is every file under root, by its path relative to root, leaving out hidden files
+// and folders (.DS_Store, .git) and anything that is not a regular file.
+func folderFiles(root string) ([]string, error) {
+	var out []string
+	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if path != root && strings.HasPrefix(d.Name(), ".") {
+			if d.IsDir() {
+				return filepath.SkipDir
+			}
+			return nil
+		}
+		if !d.Type().IsRegular() {
+			return nil
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		out = append(out, rel)
+		return nil
+	})
+	return out, err
 }
 
 // uploadScanNote is the line said before a file the virus scan will not read goes up, "" for
@@ -380,6 +517,9 @@ func printUpload(w io.Writer, u api.Upload) {
 	}
 	if u.Media == nil && u.Image == nil && u.Status != "infected" && firstOf(u.FileURL, u.FilePath) != "" {
 		fmt.Fprintf(w, "  opens at %s\n", firstOf(u.FileURL, u.FilePath))
+	}
+	if u.Path != "" && u.Status != "infected" {
+		fmt.Fprintf(w, "  on the site at %s\n", u.Path)
 	}
 }
 

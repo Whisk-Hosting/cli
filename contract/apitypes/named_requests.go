@@ -102,6 +102,9 @@ type PatchUploadRequest struct {
 	// Canonical is the address /.whisk/file/<id> names in Link: <…>; rel="canonical"; "" names
 	// none.
 	Canonical *string `json:"canonical,omitempty"`
+	// Path is the path on the app's site, such as /posters/install.jpg, that answers with the
+	// file when the app has nothing there; "" names none.
+	Path *string `json:"path,omitempty"`
 }
 
 // InviteCustomerRequest is the body of POST /v1/orgs/{org}/apps/{app}/customers.

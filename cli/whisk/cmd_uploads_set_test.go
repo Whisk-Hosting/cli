@@ -36,7 +36,13 @@ func TestUploadsSet(t *testing.T) {
 	if body := st.bodies[route][1]; body["canonical"] != "" || body["visibility"] != "public" {
 		t.Errorf("sent %v", body)
 	}
-	if r := runRemote(t, dir, srv.URL, nil, "uploads", "set", "01PDF", "--json"); r.Code == 0 || errCode(r) != "INVALID_REQUEST" || len(st.bodies[route]) != 2 {
+	if r := runRemote(t, dir, srv.URL, nil, "uploads", "set", "01PDF", "--path", "/specs/spec.pdf"); r.Code != 0 {
+		t.Fatalf("path: %+v", r)
+	}
+	if body := st.bodies[route][2]; body["path"] != "/specs/spec.pdf" || body["canonical"] != nil {
+		t.Errorf("sent %v", body)
+	}
+	if r := runRemote(t, dir, srv.URL, nil, "uploads", "set", "01PDF", "--json"); r.Code == 0 || errCode(r) != "INVALID_REQUEST" || len(st.bodies[route]) != 3 {
 		t.Errorf("nothing to change: %+v", r)
 	}
 }

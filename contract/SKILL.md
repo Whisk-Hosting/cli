@@ -1460,7 +1460,7 @@ storage, not in git. Files you bring yourself, such as the videos and photos of 
 moving to Whisk, go up with `whisk uploads add <file>... [--public] [--wait]`, which prints each
 upload's id and the element that shows it; if it stops part way, run the same command again and
 it carries on; `whisk uploads list` and `whisk uploads show <id>` read them back, and
-your person removes one with `whisk uploads delete <id>`. The virus scan reads files up to 100 MB: a larger one
+`whisk uploads delete <id>` removes one you uploaded yourself (your person removes any other). The virus scan reads files up to 100 MB: a larger one
 is stored without a scan, with status `unscanned`, and your app can still use it. If a file must
 be scanned before it is used, split it into pieces under 100 MB before uploading.
 
@@ -1527,6 +1527,18 @@ scan; retry).
 ```html
 <a href="/.whisk/file/UPLOAD_ID">Installation guide (PDF)</a>
 ```
+
+**A website's own files at their own paths.** A static site's downloads, drawings, posters and
+other large files belong in storage, not in the repository, and they can keep their ordinary
+paths: put them in a folder laid out as the site links them and run `whisk uploads add <folder>
+--public --keep-paths`, so `<folder>/posters/install.jpg` answers at `/posters/install.jpg` on
+every hostname of the app wherever the app itself has nothing at that path. Link them by those
+paths; there is no id to keep in the site, no manifest and no redirect list, and old links to a
+moved site's files keep working. The app's own pages always win, and a path nothing names gets the
+app's 404. Upload the folder again after a change: a file uploaded to a path again replaces the
+one there once it is scanned. One file: `whisk uploads add <file> --public --path /specs/a.pdf`,
+or `whisk uploads set <id> --path /specs/a.pdf` (`PATCH …/uploads/<id> {"path": "…"}`; `""`
+removes it). `GET …/uploads/<id>` gives it as `path`.
 
 **Signed links (an app with its own sign-in).** A `private` upload's addresses answer only
 people signed in through Whisk. If the app keeps its own accounts (an app moved onto Whisk with

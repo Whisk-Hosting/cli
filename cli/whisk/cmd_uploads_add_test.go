@@ -67,6 +67,14 @@ func uploadsAPI(t *testing.T, authorised *map[string]any, stored *string, stored
 	mux.HandleFunc("GET "+app+"/uploads", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"items": []any{record(1)}})
 	})
+	mux.HandleFunc("PATCH "+app+"/uploads/01UP", func(w http.ResponseWriter, r *http.Request) {
+		var in map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&in)
+		u := record(1)
+		u["path"] = in["path"]
+		(*authorised)["patched_path"] = in["path"]
+		writeJSON(w, 200, u)
+	})
 	srv = httptest.NewServer(mux)
 	return srv
 }
@@ -122,7 +130,7 @@ func TestUploadsAddOverTheScanLimit(t *testing.T) {
 	must(t, err)
 	must(t, f.Truncate(180<<20))
 	must(t, f.Close())
-	files, err := openUploads(dir, []string{"archive.tar"}, "")
+	files, err := openUploads(dir, []string{"archive.tar"}, "", false)
 	must(t, err)
 	defer files[0].file.Close()
 	if files[0].size <= scanMaxBytes {
@@ -258,5 +266,60 @@ func TestUploadSettled(t *testing.T) {
 		if got := uploadSettled(c.u); got != c.want {
 			t.Errorf("uploadSettled(%s, %+v) = %v", c.u.Status, c.u.Media, got)
 		}
+	}
+}
+
+// --path names the site path of the one file given, sent once the file is stored.
+func TestUploadsAddWithAPath(t *testing.T) {
+	var authorised map[string]any
+	var stored, storedType string
+	srv := uploadsAPI(t, &authorised, &stored, &storedType, "clean")
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+	must(t, os.WriteFile(filepath.Join(dir, "hero.mp4"), []byte("video-bit"), 0o600))
+	r := runRemote(t, dir, srv.URL, nil, "uploads", "add", "hero.mp4", "--public", "--path", "/videos/hero.mp4", "--json")
+	if r.Code != 0 || authorised["patched_path"] != "/videos/hero.mp4" || stored != "video-bit" {
+		t.Fatalf("uploads add --path: %+v %v", r, authorised)
+	}
+	if got := r.JSON["uploads"].([]any)[0].(map[string]any)["path"]; got != "/videos/hero.mp4" {
+		t.Errorf("result path %v", got)
+	}
+	must(t, os.MkdirAll(filepath.Join(dir, "media"), 0o700))
+	if r := runRemote(t, dir, srv.URL, nil, "uploads", "add", "media", "--path", "/x", "--json"); r.Code == 0 || errCode(r) != "INVALID_REQUEST" {
+		t.Errorf("--path with a folder: %+v", r)
+	}
+}
+
+// --keep-paths gives every file of a folder its place under it on the site, leaving out hidden
+// files, and opens each only when its turn comes.
+func TestOpenUploadsKeepsPaths(t *testing.T) {
+	dir := t.TempDir()
+	for name, body := range map[string]string{
+		"public/posters/vlock install.jpg": "jpeg", "public/specs/bracket.step": "ISO-10303-21;",
+		"public/.DS_Store": "x", "public/.git/HEAD": "ref", "loose.pdf": "%PDF",
+	} {
+		must(t, os.MkdirAll(filepath.Dir(filepath.Join(dir, name)), 0o700))
+		must(t, os.WriteFile(filepath.Join(dir, name), []byte(body), 0o600))
+	}
+	files, err := openUploads(dir, []string{"public", "loose.pdf"}, "", true)
+	must(t, err)
+	got := map[string]string{}
+	for _, f := range files {
+		got[f.sitePath] = f.contentType
+		if f.file != nil {
+			t.Errorf("%s is held open", f.path)
+		}
+	}
+	want := map[string]string{"/posters/vlock install.jpg": "image/jpeg", "/specs/bracket.step": "model/step", "/loose.pdf": "application/pdf"}
+	if len(got) != len(want) {
+		t.Errorf("site paths %v, want %v", got, want)
+	}
+	for p, ct := range want {
+		if got[p] != ct {
+			t.Errorf("%s: %q, want %q (all: %v)", p, got[p], ct, got)
+		}
+	}
+	if _, err := openUploads(dir, []string{"public"}, "", false); err == nil {
+		t.Error("a folder without --keep-paths was taken")
 	}
 }

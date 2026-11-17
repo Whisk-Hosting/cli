@@ -1928,12 +1928,20 @@
   "short": "Add files to an app's storage, see them, and sign links to private ones",
   "commands": [
    {
-    "usage": "whisk uploads add \u003cfile\u003e... [--public] [--content-type \u003ctype\u003e] [--wait]",
+    "usage": "whisk uploads add \u003cfile|folder\u003e... [--public] [--keep-paths | --path \u003cpath\u003e] [--content-type \u003ctype\u003e] [--wait]",
     "short": "Upload files from this computer to the app's storage, up to 5 GB each",
     "flags": [
      {
       "name": "--content-type string",
       "usage": "the type of every file given, such as video/mp4 (default: from each file's name and contents)"
+     },
+     {
+      "name": "--keep-paths",
+      "usage": "give each file a path on the site: its place under the folder given"
+     },
+     {
+      "name": "--path string",
+      "usage": "the path on the site of the one file given, such as /posters/install.jpg"
      },
      {
       "name": "--public",
@@ -1974,12 +1982,16 @@
     ]
    },
    {
-    "usage": "whisk uploads set \u003cid\u003e [--public | --private] [--canonical \u003curl\u003e]",
-    "short": "Make an upload public or private, or name the canonical address its file address sends",
+    "usage": "whisk uploads set \u003cid\u003e [--public | --private] [--path \u003cpath\u003e] [--canonical \u003curl\u003e]",
+    "short": "Make an upload public or private, give it a path on the site, or name its canonical address",
     "flags": [
      {
       "name": "--canonical string",
       "usage": "the address its file address names as canonical; \"\" for none"
+     },
+     {
+      "name": "--path string",
+      "usage": "the path on the site it answers at, such as /posters/install.jpg; \"\" for none"
      },
      {
       "name": "--private",
