@@ -16,8 +16,7 @@ func TestErrorsArgOf(t *testing.T) {
 	for arg, want := range map[string]errorsArg{
 		"BUILD_FAILED":                     errorsArgCode,
 		"build_failed":                     errorsArgCode,
-		"62":                               errorsArgGroup,
-		"0":                                errorsArgGroup,
+		"62":                               errorsArgUnknown,
 		"8b0b5c4d1e2f4a5b9c8d7e6f5a4b3c2d": errorsArgGroup,
 		"8b0b5c4d1e2f":                     errorsArgUnknown,
 		"BUILD_FAILD":                      errorsArgUnknown,
@@ -134,13 +133,14 @@ func TestErrorsShow(t *testing.T) {
 	}
 
 	before := len(seen)
-	r = runRemote(t, dir, srv.URL, nil, "errors", "62", "--json")
+	const id = "8b0b5c4d1e2f4a5b9c8d7e6f5a4b3c2d"
+	r = runRemote(t, dir, srv.URL, nil, "errors", id, "--json")
 	e, _ := r.JSON["error"].(map[string]any)
-	if r.Code == 0 || e["code"] != "NOT_AN_ERROR_CODE" || !strings.Contains(e["fix"].(string), "whisk errors show 62") {
-		t.Fatalf("errors 62: %+v", r)
+	if r.Code == 0 || e["code"] != "NOT_AN_ERROR_CODE" || !strings.Contains(e["fix"].(string), "whisk errors show "+id) {
+		t.Fatalf("errors %s: %+v", id, r)
 	}
 	if len(seen) != before {
-		t.Errorf("errors 62 asked the platform: %v", seen[before:])
+		t.Errorf("errors %s asked the platform: %v", id, seen[before:])
 	}
 
 	r = runRemote(t, dir, srv.URL, nil, "errors", "BUILD_FAILED", "--json")

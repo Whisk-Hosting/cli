@@ -26,15 +26,11 @@ const (
 	errorsArgUnknown
 )
 
-// errorsArgOf reads the argument of whisk errors: a code from errors.md, a group id (a whole
-// number as GlitchTip counts its groups, or 32 hex as Whisk's own error store names them), or
-// neither. Pure.
+// errorsArgOf reads the argument of whisk errors: a code from errors.md, a group id (32 hex, as
+// Whisk's error store names them), or neither. Pure.
 func errorsArgOf(arg string) errorsArg {
 	if _, ok := werrors.Lookup(strings.ToUpper(arg)); ok {
 		return errorsArgCode
-	}
-	if arg != "" && strings.Trim(arg, "0123456789") == "" {
-		return errorsArgGroup
 	}
 	if len(arg) == 32 && strings.Trim(strings.ToLower(arg), "0123456789abcdef") == "" {
 		return errorsArgGroup
