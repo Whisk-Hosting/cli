@@ -1469,7 +1469,8 @@ storage, not in git. Files you bring yourself, such as the videos and photos of 
 moving to Whisk, go up with `whisk uploads add <file>... [--public] [--wait]`, which prints each
 upload's id and the element that shows it; if it stops part way, run the same command again and
 it carries on; `whisk uploads list` and `whisk uploads show <id>` read them back, and
-`whisk uploads delete <id>` removes one you uploaded yourself (your person removes any other). The virus scan reads files up to 100 MB: a larger one
+`whisk uploads delete <id>` removes one you uploaded yourself (your person removes any other). Your app removes one of its own with
+`DELETE /v1/orgs/<org>/apps/<app>/uploads/<id>` and `WHISK_SERVICE_TOKEN`: the file, its converted copies and its record go together. The virus scan reads files up to 100 MB: a larger one
 is stored without a scan, with status `unscanned`, and your app can still use it. If a file must
 be scanned before it is used, split it into pieces under 100 MB before uploading.
 
