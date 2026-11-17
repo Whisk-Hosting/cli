@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"crypto/ed25519"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -206,11 +208,12 @@ func (s *session) appAddress(client *api.Client, org, app, env string) (string, 
 }
 
 func callCmd(s *session) *cobra.Command {
-	var data, environment string
+	var data, environment, batch string
 	var headers []string
 	var timeout time.Duration
+	var parallel int
 	c := &cobra.Command{
-		Use:   "call <METHOD> <path> [--data '<json>' | --data @file.json | --data -] [--header 'Name: value'] [--env name]",
+		Use:   "call <METHOD> <path> [--data '<json>' | --data @file.json | --data -] [--header 'Name: value'] [--env name] | call --batch <file.ndjson | -> [--parallel n]",
 		Short: "Send a request to the app's own API as the person you act for",
 		Long: `Sends one request to the app's own address with your Whisk credential, so you use the app's
 API exactly as the person you act for may: read and change its pages, records and settings
@@ -222,15 +225,33 @@ signed on this computer, when the person is an owner of the app's business; othe
 agent's credential (WHISK_TOKEN from an agent identity, or from whisk agent-token create). An
 agent identity needs read for GET and change for anything else. --data sends a body: JSON text,
 @file to read a file, or - for stdin; JSON goes as application/json unless --header sets a
-Content-Type. Redirects are not followed.
+Content-Type. Redirects are not followed. The app's address is remembered on this computer for
+an hour, so each call is one request to the app.
+
+--batch sends many requests in one run over one connection, much faster than one whisk call
+each: a file (or - for stdin) with one JSON request per line, {"method", "path", "data",
+"headers"}, where data is the JSON body. It prints one JSON line per request, in the order
+given: {line, method, path, status, body, request_id}, or {line, method, path, error} for one
+that failed, then the summary. --parallel sends up to 8 at once; leave it at 1 when a later
+request needs an earlier one made first.
 
 Prints the app's answer. --json prints {status, url, body, request_id}, with body as JSON when
 the app answered JSON. An answer outside 2xx is CALL_FAILED with the answer in details; the
 edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, TOKEN_SIGNATURE, FORBIDDEN_ROLE).`,
 		Example: `  whisk call GET /cms/api/product-pages?limit=5
-  whisk call PATCH /cms/api/product-pages/4 --data @page.json`,
-		Args: cobra.ExactArgs(2),
+  whisk call PATCH /cms/api/product-pages/4 --data @page.json
+  whisk call --batch contacts.ndjson --parallel 4`,
+		Args: cobra.RangeArgs(0, 2),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if batch != "" {
+				if len(args) != 0 || data != "" || len(headers) != 0 {
+					return output.New("INVALID_REQUEST", "--batch takes its requests from its file, not from the command line.", "Put each request's method, path, data and headers on its own line of the file, or drop --batch to send one.", nil)
+				}
+				return s.callBatch(batch, environment, timeout, parallel)
+			}
+			if len(args) != 2 {
+				return output.New("INVALID_REQUEST", "whisk call needs a method and a path.", "Pass them as whisk call GET /path, or send many with --batch file.ndjson.", map[string]any{"args": args})
+			}
 			method := strings.ToUpper(args[0])
 			if !callMethods[method] {
 				return output.New("INVALID_REQUEST", fmt.Sprintf("%q is not a method whisk call sends.", args[0]), "Pass GET, POST, PUT, PATCH, DELETE, HEAD or OPTIONS.", map[string]any{"method": args[0]})
@@ -254,15 +275,9 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, TOKEN_SIGNATUR
 			if err != nil {
 				return err
 			}
-			base, envName, err := s.appAddress(client, org, app, environment)
-			if err != nil {
-				return err
-			}
-			u, err := callTarget(base, args[1])
-			if err != nil {
-				return err
-			}
-			a, err := s.sendCall(method, u, header, body, token, key, timeout)
+			addr := s.callResolver(client, org, app, environment)
+			hc := callHTTPClient(timeout)
+			u, envName, a, err := s.callOnce(addr, hc, method, args[1], header, body, token, key, timeout)
 			if err != nil {
 				return err
 			}
@@ -284,7 +299,9 @@ edge's own refusals keep their code (AGENT_CATEGORY, TOKEN_SCOPE, TOKEN_SIGNATUR
 	c.Flags().StringVar(&data, "data", "", "the body: JSON text, @file to read a file, or - for stdin")
 	c.Flags().StringArrayVar(&headers, "header", nil, `a header to send, "Name: value"; repeatable`)
 	c.Flags().StringVar(&environment, "env", "", "the environment; production when omitted")
-	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "how long to wait for the answer, a sleeping app's wake included")
+	c.Flags().DurationVar(&timeout, "timeout", 60*time.Second, "how long to wait for each answer, a sleeping app's wake included")
+	c.Flags().StringVar(&batch, "batch", "", "a file of requests, one JSON object per line, or - for stdin")
+	c.Flags().IntVar(&parallel, "parallel", 1, "with --batch, how many requests to send at once, 1 to 8")
 	return c
 }
 
@@ -315,12 +332,12 @@ func (s *session) callBody(data string, header http.Header) ([]byte, error) {
 
 // sendCall sends the request with the credential, signed with key for a whisk login, and reads
 // the answer, within the deadline.
-func (s *session) sendCall(method string, u *url.URL, header http.Header, body []byte, token string, key ed25519.PrivateKey, timeout time.Duration) (callAnswer, error) {
+func (s *session) sendCall(hc *http.Client, method string, u *url.URL, header http.Header, body []byte, token string, key ed25519.PrivateKey, timeout time.Duration) (callAnswer, bool, error) {
 	ctx, cancel := context.WithTimeout(s.ctx, timeout)
 	defer cancel()
 	req, err := http.NewRequestWithContext(ctx, method, u.String(), bytes.NewReader(body))
 	if err != nil {
-		return callAnswer{}, output.New("INVALID_REQUEST", "The request could not be made: "+err.Error(), "Check the path.", nil)
+		return callAnswer{}, false, output.New("INVALID_REQUEST", "The request could not be made: "+err.Error(), "Check the path.", nil)
 	}
 	req.Header = header.Clone()
 	if req.Header.Get("Accept") == "" {
@@ -331,27 +348,72 @@ func (s *session) sendCall(method string, u *url.URL, header http.Header, body [
 		req.Header.Set(tokensig.Header, tokensig.Sign(key, method, req.URL.RequestURI(), time.Now(), body, token))
 	}
 	req.Header.Set("User-Agent", "whisk-cli/"+Version)
-	hc := runhttp.Client(timeout)
-	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
 	resp, err := hc.Do(req)
 	if err != nil {
 		var ne net.Error
 		if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &ne) && ne.Timeout()) {
-			return callAnswer{}, output.New("PLATFORM_UNAVAILABLE", fmt.Sprintf("%s %s had no answer within %s.", method, u.Path, timeout),
+			return callAnswer{}, false, output.New("PLATFORM_UNAVAILABLE", fmt.Sprintf("%s %s had no answer within %s.", method, u.Path, timeout),
 				"Check whether it was made before sending it again (a GET of the same record); raise --timeout for a slow route, or read whisk logs --since 10m.", map[string]any{"url": u.String(), "timeout": timeout.String()})
 		}
-		return callAnswer{}, output.New("PLATFORM_UNAVAILABLE", "The app's address could not be reached: "+err.Error(), "Retry with backoff; run whisk status to see the app.", map[string]any{"url": u.String()})
+		return callAnswer{}, unreached(err), output.New("PLATFORM_UNAVAILABLE", "The app's address could not be reached: "+err.Error(), "Retry with backoff; run whisk status to see the app.", map[string]any{"url": u.String()})
 	}
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(io.LimitReader(resp.Body, callAnswerLimit+1))
 	if err != nil {
-		return callAnswer{}, output.New("PLATFORM_UNAVAILABLE", "The app's answer was cut off: "+err.Error(), "Send the request again; check first whether a change was made.", map[string]any{"url": u.String(), "status": resp.StatusCode})
+		return callAnswer{}, false, output.New("PLATFORM_UNAVAILABLE", "The app's answer was cut off: "+err.Error(), "Send the request again; check first whether a change was made.", map[string]any{"url": u.String(), "status": resp.StatusCode})
 	}
 	a := callAnswer{Status: resp.StatusCode, ContentType: resp.Header.Get("Content-Type"), RequestID: resp.Header.Get("X-Whisk-Request-Id"), Location: resp.Header.Get("Location"), Body: raw}
 	if len(raw) > callAnswerLimit {
 		a.Body, a.Truncated = raw[:callAnswerLimit], true
 	}
-	return a, nil
+	return a, false, nil
+}
+
+// callHTTPClient is the client every request of one run goes through, so a batch keeps one
+// connection to the app (two requests at once share it over HTTP/2). Redirects are not followed.
+func callHTTPClient(timeout time.Duration) *http.Client {
+	hc := runhttp.Client(timeout)
+	hc.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	return hc
+}
+
+// unreached reports whether a request failed before anything reached the address: its name did
+// not resolve, nothing accepted the connection, or the certificate was for another name. Pure.
+func unreached(err error) bool {
+	var dns *net.DNSError
+	var op *net.OpError
+	var host x509.HostnameError
+	var unknown x509.UnknownAuthorityError
+	var verify *tls.CertificateVerificationError
+	return errors.As(err, &dns) || (errors.As(err, &op) && op.Op == "dial") ||
+		errors.As(err, &host) || errors.As(err, &unknown) || errors.As(err, &verify)
+}
+
+// callOnce sends one request to the app's address, remembered or asked for. When a remembered
+// address seems stale (callAddressStale) it asks the platform again and, only if the address
+// has changed, sends the request there.
+func (s *session) callOnce(res *callAddressResolver, hc *http.Client, method, path string, header http.Header, body []byte, token string, key ed25519.PrivateKey, timeout time.Duration) (*url.URL, string, callAnswer, error) {
+	base, envName, cached, err := res.address()
+	if err != nil {
+		return nil, "", callAnswer{}, err
+	}
+	u, err := callTarget(base, path)
+	if err != nil {
+		return nil, "", callAnswer{}, err
+	}
+	a, gone, err := s.sendCall(hc, method, u, header, body, token, key, timeout)
+	if !cached || !callAddressStale(a, gone, err) {
+		return u, envName, a, err
+	}
+	fresh, freshEnv, changed := res.refresh(base)
+	if !changed {
+		return u, envName, a, err
+	}
+	if u, err = callTarget(fresh, path); err != nil {
+		return nil, "", callAnswer{}, err
+	}
+	a, _, err = s.sendCall(hc, method, u, header, body, token, key, timeout)
+	return u, freshEnv, a, err
 }
 
 // printCallBody prints the answer for a person: JSON indented, anything else as it came.

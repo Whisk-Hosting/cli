@@ -424,9 +424,13 @@
   "short": "Send a request to the app's own API as the person you act for",
   "commands": [
    {
-    "usage": "whisk call \u003cMETHOD\u003e \u003cpath\u003e [--data '\u003cjson\u003e' | --data @file.json | --data -] [--header 'Name: value'] [--env name]",
+    "usage": "whisk call \u003cMETHOD\u003e \u003cpath\u003e [--data '\u003cjson\u003e' | --data @file.json | --data -] [--header 'Name: value'] [--env name] | call --batch \u003cfile.ndjson | -\u003e [--parallel n]",
     "short": "Send a request to the app's own API as the person you act for",
     "flags": [
+     {
+      "name": "--batch string",
+      "usage": "a file of requests, one JSON object per line, or - for stdin"
+     },
      {
       "name": "--data string",
       "usage": "the body: JSON text, @file to read a file, or - for stdin"
@@ -440,8 +444,12 @@
       "usage": "a header to send, \"Name: value\"; repeatable"
      },
      {
+      "name": "--parallel int",
+      "usage": "with --batch, how many requests to send at once, 1 to 8"
+     },
+     {
       "name": "--timeout duration",
-      "usage": "how long to wait for the answer, a sleeping app's wake included"
+      "usage": "how long to wait for each answer, a sleeping app's wake included"
      }
     ]
    }

@@ -1018,3 +1018,14 @@ Safe fix: no
 Details: Whisk's edge answers these addresses 404 before any app, since scanners ask for them all
 day. An app whose live deploy holds files at such paths is passed them instead, so a site rebuilt
 with its old WordPress addresses keeps working once the files are in the repository.
+
+## W178
+
+Level: warning
+Check: a Content-Security-Policy, in whisk.yaml's routes.headers or in the app's code, blocks an analytics tool the app loads (Google Analytics, PostHog, Plausible, Fathom, Microsoft Clarity, Hotjar).
+Fix: Add the sources the finding names to the directives it names, in the policy where the finding points.
+Safe fix: no
+
+Details: the browser refuses the tool's script or its pings, so the tool records no visits and
+nothing in the app's logs says so. A directive the policy leaves out falls back to `default-src`,
+as a browser reads it. Whisk's own analytics are on the app's own address and need nothing added.

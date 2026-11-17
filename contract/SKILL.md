@@ -673,7 +673,10 @@ login` works as it is: `whisk call` signs each request on this computer, and the
 recorded in the business's audit log like any agent's. For anyone else (an admin, a member) the
 edge refuses a login with `TOKEN_SCOPE`, and you need an agent token: an agent identity's
 credential, which needs `change` to write, or one from `whisk agent-token create`, which needs
-`deploy`, as `WHISK_TOKEN`. In the site and shop templates the pages are at `/cms/api`.
+`deploy`, as `WHISK_TOKEN`. In the site and shop templates the pages are at `/cms/api`. For
+many requests (an import, a bulk change), write one JSON request per line, `{"method", "path",
+"data"}`, and send them with `whisk call --batch file.ndjson --parallel 4`: one run, one
+connection, an answer per line. Keep `--parallel 1` when a line needs an earlier one made first.
 
 `customer` identities are the app's own users (portals, public apps), enabled with
 `customer_identity: app | org`. They arrive in the same headers without roles or groups, and

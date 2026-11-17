@@ -94,7 +94,7 @@ func (s *session) setupOf(appURL string) (map[string]any, []string) {
 	if err != nil {
 		return nil, nil
 	}
-	a, err := s.sendCall(http.MethodGet, u, http.Header{}, nil, token, key, 30*time.Second)
+	a, _, err := s.sendCall(callHTTPClient(30*time.Second), http.MethodGet, u, http.Header{}, nil, token, key, 30*time.Second)
 	if err != nil || a.Status != http.StatusOK || a.Truncated {
 		return nil, nil
 	}
