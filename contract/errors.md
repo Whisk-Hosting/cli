@@ -3991,6 +3991,22 @@ report the deploy id with `whisk feedback`.
 {"error":{"code":"ENGINE_UNAVAILABLE","message":"The shop's API could not be answered on the machine this deploy was placed on, so the deploy stopped. The version that was live is still live.","fix":"Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/ENGINE_UNAVAILABLE","details":{"step":"start"}}}
 ```
 
+## CONTENT_ENGINE_UNAVAILABLE
+
+Status: - · Surface: deploy, node
+
+When: a site's deploy (`content: payload`) was to have its site editor answered by Whisk's
+content server, and the machine it was placed on could not answer it there. It arrives as
+`PLATFORM_DEPLOY_FAILED` with this code as `details.cause_code`. Nothing of the site changed, and
+the version that was live is still live.
+
+Fix: Nothing in the app causes this. Run `whisk deploy` again later; if it fails the same way,
+report the deploy id with `whisk feedback`.
+
+```json
+{"error":{"code":"CONTENT_ENGINE_UNAVAILABLE","message":"The site's editor could not be answered on the machine this deploy was placed on, so the deploy stopped. The version that was live is still live.","fix":"Run whisk deploy again later; if it fails the same way, report the deploy id with whisk feedback.","docs":"https://skill.whisk.run/errors/CONTENT_ENGINE_UNAVAILABLE","details":{"step":"start"}}}
+```
+
 ## ENGINE_SHOP_BUSY
 
 Status: 503 · Surface: edge
@@ -4040,6 +4056,235 @@ Fix: Send the request to the shop's address; the engine is not reachable directl
 
 ```json
 {"error":{"code":"ENGINE_EDGE_ONLY","message":"The commerce engine answers only through the shop's own address.","fix":"Send the request to the shop's address; the engine is not reachable directly.","docs":"https://skill.whisk.run/errors/ENGINE_EDGE_ONLY","details":{}}}
+```
+
+## CONTENT_NOT_FOUND
+
+Status: 404 · Surface: api
+
+When: a read or change of a site's content named a collection, document, version or file the site
+does not have, or a draft asked for by someone outside the business's team.
+
+Fix: Check the collection and id; a draft is found only by the site's team asking with draft=true.
+
+```json
+{"error":{"code":"CONTENT_NOT_FOUND","message":"Not Found","fix":"Check the collection and id; a draft is found only by the site's team asking with draft=true.","docs":"https://skill.whisk.run/errors/CONTENT_NOT_FOUND","details":{}}}
+```
+
+## CONTENT_FORBIDDEN
+
+Status: 403 · Surface: api
+
+When: someone outside the business's team, or a guest, asked to change a site's content or read
+what only the team reads, such as its editors or a document's history.
+
+Fix: Sign in as a member of the business's team; guests and visitors read published content only.
+
+```json
+{"error":{"code":"CONTENT_FORBIDDEN","message":"You are not allowed to perform this action.","fix":"Sign in as a member of the business's team; guests and visitors read published content only.","docs":"https://skill.whisk.run/errors/CONTENT_FORBIDDEN","details":{}}}
+```
+
+## CONTENT_BAD_QUERY
+
+Status: 400 · Surface: api
+
+When: a read of a site's content sent a query its content API cannot read: a limit, page or depth
+that is not a whole number, or a where that names no comparison.
+
+Fix: Write the query as Payload's REST API takes it, such as ?where[path][equals]=/about&depth=2&limit=10.
+
+```json
+{"error":{"code":"CONTENT_BAD_QUERY","message":"limit: \"-1\" is not a whole number of 0 or more.","fix":"Write the query as Payload's REST API takes it, such as ?where[path][equals]=/about&depth=2&limit=10.","docs":"https://skill.whisk.run/errors/CONTENT_BAD_QUERY","details":{}}}
+```
+
+## CONTENT_INVALID
+
+Status: 400 · Surface: api
+
+When: a change to a site's content left a field that will not do: a required field empty, an
+address another page has or the site answers itself, a handle in the wrong shape. `details` names
+each field. Nothing was saved.
+
+Fix: Correct each field named in data.errors and save again.
+
+```json
+{"error":{"code":"CONTENT_INVALID","message":"The following field is invalid: path","fix":"Correct each field named in data.errors and save again.","docs":"https://skill.whisk.run/errors/CONTENT_INVALID","details":{}}}
+```
+
+## CONTENT_UNAVAILABLE
+
+Status: 503 · Surface: api
+
+When: a site's content could not be read or saved just now. Pages keep showing what they last
+read. `Retry-After` says when to try again.
+
+Fix: Try again in a few seconds; pages keep showing what they last read meanwhile.
+
+```json
+{"error":{"code":"CONTENT_UNAVAILABLE","message":"The site's content cannot be read just now.","fix":"Try again in a few seconds; pages keep showing what they last read meanwhile.","docs":"https://skill.whisk.run/errors/CONTENT_UNAVAILABLE","details":{}}}
+```
+
+## CONTENT_TOO_LARGE
+
+Status: 413 · Surface: api
+
+When: a change to a site's content sent more than 4 MB of fields, or a file larger than 100 MB.
+
+Fix: Send a smaller file; pictures are resized by the edge, so send them at their largest useful size.
+
+```json
+{"error":{"code":"CONTENT_TOO_LARGE","message":"The file is larger than 100 MB.","fix":"Send a smaller file; pictures are resized by the edge, so send them at their largest useful size.","docs":"https://skill.whisk.run/errors/CONTENT_TOO_LARGE","details":{}}}
+```
+
+## CONTENT_BAD_BODY
+
+Status: 400 · Surface: api
+
+When: a change to a site's content was not a JSON object, or a file was sent without its fields as
+JSON in _payload.
+
+Fix: Send the document's fields as a JSON object, or a file with its fields as JSON in _payload.
+
+```json
+{"error":{"code":"CONTENT_BAD_BODY","message":"The change is not a JSON object.","fix":"Send the document's fields as a JSON object, or a file with its fields as JSON in _payload.","docs":"https://skill.whisk.run/errors/CONTENT_BAD_BODY","details":{}}}
+```
+
+## CONTENT_FILE_TYPE
+
+Status: 400 · Surface: api
+
+When: a file sent to a site's media library is not a picture, a PDF or MP4 or WebM video. Nothing
+was kept.
+
+Fix: Send the file as one of those.
+
+```json
+{"error":{"code":"CONTENT_FILE_TYPE","message":"The media library keeps pictures, PDFs and MP4 or WebM video.","fix":"Send the file as one of those.","docs":"https://skill.whisk.run/errors/CONTENT_FILE_TYPE","details":{}}}
+```
+
+## CONTENT_UPLOAD_FAILED
+
+Status: 502 · Surface: api
+
+When: a file sent to a site's media library could not be kept, or the upload's scan refused it. No
+document was made for it.
+
+Fix: Try again; a file the platform's scan refuses is not kept.
+
+```json
+{"error":{"code":"CONTENT_UPLOAD_FAILED","message":"The file could not be kept.","fix":"Try again; a file the platform's scan refuses is not kept.","docs":"https://skill.whisk.run/errors/CONTENT_UPLOAD_FAILED","details":{}}}
+```
+
+## CONTENT_NO_UPLOADS
+
+Status: 503 · Surface: api
+
+When: a file was sent to the media library of a site that is not running on Whisk, so it has
+nowhere to keep files.
+
+Fix: Deploy the site on Whisk; its files go through the platform's uploads.
+
+```json
+{"error":{"code":"CONTENT_NO_UPLOADS","message":"This site has no way to keep files.","fix":"Deploy the site on Whisk; its files go through the platform's uploads.","docs":"https://skill.whisk.run/errors/CONTENT_NO_UPLOADS","details":{}}}
+```
+
+## CONTENT_VERSIONS_PARENT
+
+Status: 400 · Surface: api
+
+When: a read of a collection's versions did not name the one document whose history it is.
+
+Fix: Name it: ?where[parent][equals]=<id>.
+
+```json
+{"error":{"code":"CONTENT_VERSIONS_PARENT","message":"Versions are read for one document.","fix":"Name it: ?where[parent][equals]=<id>.","docs":"https://skill.whisk.run/errors/CONTENT_VERSIONS_PARENT","details":{}}}
+```
+
+## CONTENT_NOT_ORDERED
+
+Status: 400 · Surface: api
+
+When: a move was asked of a collection that is not kept in an order the team drags it to, such as
+pages.
+
+Fix: Move entries of a shared list, such as testimonials.
+
+```json
+{"error":{"code":"CONTENT_NOT_ORDERED","message":"This collection is not kept in an order of its own.","fix":"Move entries of a shared list, such as testimonials.","docs":"https://skill.whisk.run/errors/CONTENT_NOT_ORDERED","details":{}}}
+```
+
+## CONTENT_MOVE_TARGET
+
+Status: 400 · Surface: api
+
+When: a move of a list's entry did not name the entry it goes before or after.
+
+Fix: Send {"before": <id>} or {"after": <id>}.
+
+```json
+{"error":{"code":"CONTENT_MOVE_TARGET","message":"A move names the entry it goes before or after.","fix":"Send {\"before\": <id>} or {\"after\": <id>}.","docs":"https://skill.whisk.run/errors/CONTENT_MOVE_TARGET","details":{}}}
+```
+
+## CONTENT_NO_SITE
+
+Status: 404 · Surface: edge
+
+When: a site's content was asked for at an address no site on Whisk's content engine answers.
+
+Fix: Check the address; a site's content answers once its app is deployed.
+
+```json
+{"error":{"code":"CONTENT_NO_SITE","message":"No site answers at this address.","fix":"Check the address; a site's content answers once its app is deployed.","docs":"https://skill.whisk.run/errors/CONTENT_NO_SITE","details":{}}}
+```
+
+## CONTENT_EDGE_ONLY
+
+Status: 403 · Surface: edge
+
+When: Whisk's content engine was reached other than through a site's own address.
+
+Fix: Send the request to the site's address; the engine is not reachable directly.
+
+```json
+{"error":{"code":"CONTENT_EDGE_ONLY","message":"The content engine answers only through the site's own address.","fix":"Send the request to the site's address; the engine is not reachable directly.","docs":"https://skill.whisk.run/errors/CONTENT_EDGE_ONLY","details":{}}}
+```
+
+## CONTENT_CROSS_SITE
+
+Status: 403 · Surface: api
+
+When: a browser on another site sent a change to a site's content, such as a form on another
+page posting to its editor's API while a member of the team was signed in.
+
+Fix: Change the site's content from its own editor at /cms, or from an agent; browsers on other sites cannot.
+
+```json
+{"error":{"code":"CONTENT_CROSS_SITE","message":"Changes to the site's content are taken only from the site itself.","fix":"Change the site's content from its own editor at /cms, or from an agent; browsers on other sites cannot.","docs":"https://skill.whisk.run/errors/CONTENT_CROSS_SITE","details":{}}}
+```
+
+## CONTENT_SITE_BUSY
+
+Status: 503 · Surface: edge
+
+When: a site is answering as many content requests as it may at once. Other sites are not slowed
+by it. `Retry-After` says when to try again.
+
+Fix: Try again in a second.
+
+```json
+{"error":{"code":"CONTENT_SITE_BUSY","message":"The site is answering as many requests as it can at once.","fix":"Try again in a second.","docs":"https://skill.whisk.run/errors/CONTENT_SITE_BUSY","details":{}}}
+```
+
+## CONTENT_SITE_NOT_READY
+
+Status: 503 · Surface: edge
+
+When: a site's content could not be opened just now. `Retry-After` says when to try again.
+
+Fix: Try again shortly; if it keeps failing, the engine's log names the cause.
+
+```json
+{"error":{"code":"CONTENT_SITE_NOT_READY","message":"The site's content cannot be opened just now.","fix":"Try again shortly; if it keeps failing, the engine's log names the cause.","docs":"https://skill.whisk.run/errors/CONTENT_SITE_NOT_READY","details":{}}}
 ```
 
 ## SHOP_NOT_READY

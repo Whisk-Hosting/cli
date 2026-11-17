@@ -79,6 +79,9 @@ type Manifest struct {
 	// Commerce is "medusa" when the app's API is the shop template's Medusa server, which Whisk
 	// may answer with its own commerce server (CONTRACT.md §11).
 	Commerce string `json:"commerce,omitempty"`
+	// Content is "payload" when the app's site editor API (/cms/api) is the site template's
+	// Payload server, which Whisk may answer with its own content server (CONTRACT.md §11).
+	Content string `json:"content,omitempty"`
 	// Workers are long-running processes a Promoted app runs beside its web process, in the
 	// same container (CONTRACT.md §3.2).
 	Workers []Worker `json:"workers"`
