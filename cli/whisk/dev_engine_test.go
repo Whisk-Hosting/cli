@@ -102,3 +102,33 @@ func TestDevEngine(t *testing.T) {
 		t.Errorf("without a sign-in or a kept engine: %v", err)
 	}
 }
+
+// A site's content engine comes from its own route and is kept in a folder of its own, so the
+// two engines never take each other's place.
+func TestDevContentEngine(t *testing.T) {
+	program := "\x7fELF content engine"
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/v1/content-engine/"+runtime.GOOS+"/"+runtime.GOARCH {
+			w.WriteHeader(http.StatusNotFound)
+			return
+		}
+		sum := sha256.Sum256([]byte(program))
+		w.Header().Set("X-Whisk-Sha256", hex.EncodeToString(sum[:]))
+		_, _ = io.WriteString(w, program)
+	}))
+	defer srv.Close()
+	dir := t.TempDir()
+	env := map[string]string{"WHISK_TOKEN": "whsk_agent_test"}
+	s := &session{ctx: context.Background(), cfgDir: dir, cfg: config.Config{API: srv.URL},
+		env: Env{Getenv: func(k string) string { return env[k] }}, printer: output.Printer{Err: io.Discard}}
+	path, err := s.devContentEngine()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if b, _ := os.ReadFile(path); string(b) != program || !strings.Contains(path, "content-engine") || !strings.HasSuffix(strings.TrimSuffix(path, ".exe"), "content") {
+		t.Fatalf("kept %q at %s", b, path)
+	}
+	if _, err := s.devEngine(); err == nil {
+		t.Error("the commerce engine was taken from the content engine's route")
+	}
+}

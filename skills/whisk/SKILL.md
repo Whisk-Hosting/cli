@@ -756,7 +756,11 @@ A Promoted app is where an existing product brings what it already has:
   `commerce: medusa`: keep it, since Whisk's commerce engine answers its API (`/store`,
   `/admin`, `/auth`, `/hooks`, in Medusa's shape) and the app serves only its pages. The site
   and shop templates' whisk.yaml say `content: payload`: keep it, since Whisk's content engine
-  answers their site editor (`/cms`) and its API (`/cms/api`, in Payload's shape).
+  answers their site editor (`/cms`) and its API (`/cms/api`, in Payload's shape). A page block
+  of the site's own is a file, `content/blocks/<slug>.json`: `{"label": ..., "fields": [{"name",
+  "type", "label", "default", ...}]}`, its types text, textarea, words, picture, check, number,
+  select (with options), link, group and rows (with fields); `CONTENT_BLOCK_INVALID` says what is
+  wrong with one.
 
 Who may open the app (groups, people, everyone in the business) and who is in the business are
 an owner's or admin's choice. Everyone in the business means its members. A guest, someone from

@@ -4262,6 +4262,20 @@ Fix: Change the site's content from its own editor at /cms, or from an agent; br
 {"error":{"code":"CONTENT_CROSS_SITE","message":"Changes to the site's content are taken only from the site itself.","fix":"Change the site's content from its own editor at /cms, or from an agent; browsers on other sites cannot.","docs":"https://skill.whisk.run/errors/CONTENT_CROSS_SITE","details":{}}}
 ```
 
+## CONTENT_BLOCK_INVALID
+
+Status: 503 · Surface: api
+
+When: a file under the site's content/blocks, where a copy of the site adds page blocks of its
+own, is not a block: its JSON, its label, or one of its fields' names or types is wrong. The site's
+content answers nothing until the file is put right, so no page holds a block its editor cannot show.
+
+Fix: Correct the file under content/blocks as the message says, then deploy again (or restart whisk dev).
+
+```json
+{"error":{"code":"CONTENT_BLOCK_INVALID","message":"The site's own blocks cannot be read: blocks/pricing.json: fields[0]: type \"video\" is not one of check, group, link, number, picture, rows, select, text, textarea, words","fix":"Correct the file under content/blocks as the message says, then deploy again (or restart whisk dev).","docs":"https://skill.whisk.run/errors/CONTENT_BLOCK_INVALID","details":{}}}
+```
+
 ## CONTENT_SITE_BUSY
 
 Status: 503 · Surface: edge

@@ -8,7 +8,7 @@ import (
 	"github.com/whisk-run/contract/run/runhttp"
 )
 
-// EngineDigestHeader carries the commerce engine's SHA-256 (control-plane api.EngineDigestHeader).
+// EngineDigestHeader carries an engine's SHA-256 (control-plane api.EngineDigestHeader).
 const EngineDigestHeader = "X-Whisk-Sha256"
 
 // Engine is a download of the commerce engine: its body to read, or Current when the one whose
@@ -22,7 +22,13 @@ type Engine struct {
 // DownloadEngine asks for the commerce engine for a platform, which whisk dev runs beside a
 // shop; have is the digest of the one already kept, "" for none.
 func (c *Client) DownloadEngine(ctx context.Context, goos, goarch, have string) (Engine, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.Base+"/v1/commerce-engine/"+pathSeg(goos)+"/"+pathSeg(goarch), nil)
+	return c.DownloadEngineAt(ctx, "commerce-engine", goos, goarch, have)
+}
+
+// DownloadEngineAt asks for one of Whisk's engines (commerce-engine, content-engine) for a
+// platform, as DownloadEngine does.
+func (c *Client) DownloadEngineAt(ctx context.Context, which, goos, goarch, have string) (Engine, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.Base+"/v1/"+pathSeg(which)+"/"+pathSeg(goos)+"/"+pathSeg(goarch), nil)
 	if err != nil {
 		return Engine{}, err
 	}

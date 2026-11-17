@@ -58,6 +58,14 @@ with the compose plugin.
 				}
 				o.Env = append(o.Env, "WHISK_COMMERCE_ENGINE="+engine)
 			}
+			// A site's editor runs on Whisk's content engine here as its previews do.
+			if m.Content == "payload" && !down && !status {
+				engine, err := s.devContentEngine()
+				if err != nil {
+					return err
+				}
+				o.Env = append(o.Env, "WHISK_CONTENT_ENGINE="+engine)
+			}
 			st, err := dev.Up(s.ctx, o, log)
 			if err != nil {
 				return output.New("DEV_STACK_FAILED", err.Error(), "Check that Docker is running and the ports in .whisk/dev/compose.yaml are free, then run whisk dev again; whisk dev --down resets the stack.", nil)
