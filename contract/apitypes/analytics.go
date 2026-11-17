@@ -36,29 +36,112 @@ type AppAnalytics struct {
 	Breakdown []AnalyticsRow `json:"breakdown,omitempty"`
 	// TZ is the time zone a breakdown by hour, day or month starts its hours and days in.
 	TZ string `json:"tz,omitempty"`
+	// Compare is what the reading is compared with, "" for nothing: previous (the span just
+	// before, as long) or year (the same span a year earlier). Previous is that span's numbers,
+	// and each breakdown row's Previous its count there.
+	Compare  string             `json:"compare,omitempty"`
+	Previous *AnalyticsPrevious `json:"previous,omitempty"`
+}
+
+// AnalyticsPrevious is the span a reading is compared with and its numbers.
+type AnalyticsPrevious struct {
+	From   time.Time       `json:"from"`
+	To     time.Time       `json:"to"`
+	Totals AnalyticsTotals `json:"totals"`
+}
+
+// AnalyticsTotals are the numbers of some visits: the pages they viewed, the visitors who made
+// them, how many, the share that viewed one page or none (0 to 1) and how long one lasted on
+// average.
+type AnalyticsTotals struct {
+	Views          int     `json:"views"`
+	Visitors       int     `json:"visitors"`
+	Visits         int     `json:"visits"`
+	BounceRate     float64 `json:"bounce_rate"`
+	AverageSeconds int     `json:"average_seconds"`
 }
 
 // AnalyticsFilters narrow a reading to the visits that came from a site (Source, its domain),
-// viewed a page (Page, its path) or sent an event (Event, its name). "" leaves one out, and a
-// comma in one means any of its values.
+// viewed a page (Page, its path) or sent an event (Event, its name), and to those whose first page
+// was viewed in a country (two letters), region or city, or with a browser, operating system or
+// device. "" leaves one out, and a comma in one means any of its values.
 type AnalyticsFilters struct {
-	Source string `json:"source,omitempty"`
-	Page   string `json:"page,omitempty"`
-	Event  string `json:"event,omitempty"`
+	Source  string `json:"source,omitempty"`
+	Page    string `json:"page,omitempty"`
+	Event   string `json:"event,omitempty"`
+	Country string `json:"country,omitempty"`
+	Region  string `json:"region,omitempty"`
+	City    string `json:"city,omitempty"`
+	Browser string `json:"browser,omitempty"`
+	OS      string `json:"os,omitempty"`
+	Device  string `json:"device,omitempty"`
 }
 
 // AnalyticsRow is one row of a breakdown. A breakdown by hour, day or month has the views and
 // visitors of each, named 2026-11-06 14:00, 2026-11-06 or 2026-11, every one in the reading
 // included. Every other breakdown counts one thing in Count, most first: the views of a page,
 // the visits that entered or left by it, came from a source or a country or used a browser, os
-// or device, the times an event was sent, or for event-property the times an event carried a
-// property's value, named property=value. By source, the row named "" is the visitors no other
-// site sent: typed in, bookmarked, or under a page filter reaching that page from the app's own.
+// or device, the times an event was sent, the visitors who sent it for goal, or for
+// event-property the times an event carried a property's value, named property=value. By source,
+// the row named "" is the visitors no other site sent: typed in, bookmarked, or under a page
+// filter reaching that page from the app's own. Under a comparison, Previous is the row's count
+// in the span compared with, 0 when it had none.
 type AnalyticsRow struct {
 	Name     string `json:"name"`
 	Views    int    `json:"views,omitempty"`
 	Visitors int    `json:"visitors,omitempty"`
 	Count    int    `json:"count,omitempty"`
+	Previous *int   `json:"previous,omitempty"`
+}
+
+// AnalyticsTable is GET /orgs/:org/apps/:app/analytics/table: a reading's numbers row by row. By
+// is each hour, day, week (from Monday) or month, every one of the reading in its zone (TZ),
+// earliest first; or each page (the visits that viewed it, with that page's views), entry or exit
+// page, source, country, region, city, browser, os or device of a visit, most visitors first, the
+// top limit. Total is the whole reading's. Under a comparison (Compare, Previous as in
+// AppAnalytics), each row's Previous is the same row of the span compared with: by name, or by
+// time the hour, day, week or month at the same place in it.
+type AnalyticsTable struct {
+	Period   string              `json:"period"`
+	From     time.Time           `json:"from"`
+	To       time.Time           `json:"to"`
+	Filters  AnalyticsFilters    `json:"filters"`
+	By       string              `json:"by"`
+	TZ       string              `json:"tz"`
+	Total    AnalyticsTotals     `json:"total"`
+	Rows     []AnalyticsTableRow `json:"rows"`
+	Compare  string              `json:"compare,omitempty"`
+	Previous *AnalyticsPrevious  `json:"previous,omitempty"`
+}
+
+// AnalyticsTableRow is one row of a table: its name (2026-11-06, 2026-11-06 14:00, 2026-11, a
+// path, a domain, "" for none) and its numbers, and under a comparison those of its row there.
+type AnalyticsTableRow struct {
+	Name     string           `json:"name"`
+	Totals   AnalyticsTotals  `json:"totals"`
+	Previous *AnalyticsTotals `json:"previous,omitempty"`
+}
+
+// AnalyticsChanges is GET /orgs/:org/apps/:app/analytics/changes: the sources, pages and cities
+// whose visitors (views, for a page) moved most against the span compared with, the biggest
+// change first.
+type AnalyticsChanges struct {
+	Period   string             `json:"period"`
+	From     time.Time          `json:"from"`
+	To       time.Time          `json:"to"`
+	Filters  AnalyticsFilters   `json:"filters"`
+	Compare  string             `json:"compare"`
+	Previous *AnalyticsPrevious `json:"previous,omitempty"`
+	Changes  []AnalyticsChange  `json:"changes"`
+}
+
+// AnalyticsChange is one source, page or city (By) and its count in the reading and in the span
+// compared with.
+type AnalyticsChange struct {
+	By       string `json:"by"`
+	Name     string `json:"name"`
+	Count    int    `json:"count"`
+	Previous int    `json:"previous"`
 }
 
 // AppVisitors is GET /orgs/:org/apps/:app/analytics/visitors: a page of the visitors of a
@@ -320,8 +403,8 @@ type AnalyticsOpen struct {
 	URL string `json:"url"`
 }
 
-// AnalyticsChart is an XmR chart (a process behaviour chart) of an app's visitors or views by
-// hour, day or month, read the way the operator's numbers are: each point, the natural process
+// AnalyticsChart is an XmR chart (a process behaviour chart) of an app's visitors, visits, views,
+// bounce rate (a percentage) or average visit (seconds) by hour, day, week or month, read the way the operator's numbers are: each point, the natural process
 // limits of the chart's current stage (absent until there are enough complete points), the
 // signals a rule picks out on each point, and a verdict on the latest complete point with a
 // sentence that says it. A point inside the limits that no rule picks out is noise.
@@ -337,16 +420,20 @@ type AnalyticsChart struct {
 	Limits  *AnalyticsChartLimits `json:"limits,omitempty"`
 	Verdict string                `json:"verdict"`
 	Summary string                `json:"summary"`
+	// Compare is what the chart is compared with, as in AppAnalytics, and each point's Previous
+	// the value at the same place in that span.
+	Compare string `json:"compare,omitempty"`
 }
 
-// AnalyticsChartPoint is one hour, day or month of a chart, named in the chart's zone. Complete
-// is false for the one still running. Signals are the rules that pick it out: outside, run,
-// near_limit or jump.
+// AnalyticsChartPoint is one hour, day, week or month of a chart, named in the chart's zone.
+// Complete is false for the one still running. Signals are the rules that pick it out: outside,
+// run, near_limit or jump.
 type AnalyticsChartPoint struct {
 	Name     string   `json:"name"`
 	Value    float64  `json:"value"`
 	Complete bool     `json:"complete"`
 	Signals  []string `json:"signals"`
+	Previous *float64 `json:"previous,omitempty"`
 }
 
 // AnalyticsChartLimits are a chart's average and natural process limits, from Baseline complete

@@ -206,7 +206,7 @@ var baseWire = []any{
 	PackageCounts{}, PackageScan{}, Packages{}, OrgPackages{}, AppPackages{}, LogDestination{}, LogDestinationList{},
 	LogDestinationRequest{}, LogLine{}, LogPage{}, ErrorGroup{}, ErrorSample{}, ErrorOccurrence{}, ErrorFrame{},
 	AppAnalytics{}, AnalyticsCount{}, AnalyticsCrawler{}, AnalyticsOpen{}, AnalyticsFilters{}, AnalyticsRow{},
-	AppVisitors{}, AnalyticsVisitor{}, AnalyticsVisitorSteps{}, AnalyticsStep{}, AnalyticsChart{}, AnalyticsChartPoint{}, AnalyticsChartLimits{}, AnalyticsFunnel{}, AnalyticsFunnelStep{}, AppTraffic{}, TrafficRow{}, AppTrafficRequests{}, TrafficRequest{},
+	AppVisitors{}, AnalyticsVisitor{}, AnalyticsVisitorSteps{}, AnalyticsStep{}, AnalyticsChart{}, AnalyticsChartPoint{}, AnalyticsChartLimits{}, AnalyticsFunnel{}, AnalyticsFunnelStep{}, AnalyticsPrevious{}, AnalyticsTotals{}, AnalyticsTable{}, AnalyticsTableRow{}, AnalyticsChanges{}, AnalyticsChange{}, AppTraffic{}, TrafficRow{}, AppTrafficRequests{}, TrafficRequest{},
 	AppCrawlers{}, CrawlerSummary{}, CrawlerPage{}, CrawlerStatus{}, CrawlerJourney{}, CrawlerJourneyDetail{}, CrawlerRequest{},
 	TraceSummary{}, TraceUsage{}, TraceList{}, TraceSpan{}, TraceEvent{}, TraceDetail{}, Customer{},
 	CustomerList{}, WebhookSource{}, WebhookEvent{}, DeliveryError{},

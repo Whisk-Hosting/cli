@@ -178,9 +178,74 @@
       ],
       "type": "object"
     },
+    "apitypes.AnalyticsChange": {
+      "properties": {
+        "by": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "previous": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "by",
+        "count",
+        "name",
+        "previous"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsChanges": {
+      "properties": {
+        "changes": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsChange"
+          },
+          "type": "array"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "filters": {
+          "$ref": "#/$defs/apitypes.AnalyticsFilters"
+        },
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "previous": {
+          "$ref": "#/$defs/apitypes.AnalyticsPrevious"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "changes",
+        "compare",
+        "filters",
+        "from",
+        "period",
+        "to"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsChart": {
       "properties": {
         "by": {
+          "type": "string"
+        },
+        "compare": {
           "type": "string"
         },
         "filters": {
@@ -280,6 +345,9 @@
         "name": {
           "type": "string"
         },
+        "previous": {
+          "type": "number"
+        },
         "signals": {
           "items": {
             "type": "string"
@@ -334,10 +402,28 @@
     },
     "apitypes.AnalyticsFilters": {
       "properties": {
+        "browser": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
         "event": {
           "type": "string"
         },
+        "os": {
+          "type": "string"
+        },
         "page": {
+          "type": "string"
+        },
+        "region": {
           "type": "string"
         },
         "source": {
@@ -400,6 +486,27 @@
       ],
       "type": "object"
     },
+    "apitypes.AnalyticsPrevious": {
+      "properties": {
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "totals": {
+          "$ref": "#/$defs/apitypes.AnalyticsTotals"
+        }
+      },
+      "required": [
+        "from",
+        "to",
+        "totals"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsRow": {
       "properties": {
         "count": {
@@ -407,6 +514,9 @@
         },
         "name": {
           "type": "string"
+        },
+        "previous": {
+          "type": "integer"
         },
         "views": {
           "type": "integer"
@@ -453,6 +563,101 @@
         "kind",
         "path",
         "visit"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsTable": {
+      "properties": {
+        "by": {
+          "type": "string"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "filters": {
+          "$ref": "#/$defs/apitypes.AnalyticsFilters"
+        },
+        "from": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "previous": {
+          "$ref": "#/$defs/apitypes.AnalyticsPrevious"
+        },
+        "rows": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsTableRow"
+          },
+          "type": "array"
+        },
+        "to": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "total": {
+          "$ref": "#/$defs/apitypes.AnalyticsTotals"
+        },
+        "tz": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "by",
+        "filters",
+        "from",
+        "period",
+        "rows",
+        "to",
+        "total",
+        "tz"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsTableRow": {
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "previous": {
+          "$ref": "#/$defs/apitypes.AnalyticsTotals"
+        },
+        "totals": {
+          "$ref": "#/$defs/apitypes.AnalyticsTotals"
+        }
+      },
+      "required": [
+        "name",
+        "totals"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsTotals": {
+      "properties": {
+        "average_seconds": {
+          "type": "integer"
+        },
+        "bounce_rate": {
+          "type": "number"
+        },
+        "views": {
+          "type": "integer"
+        },
+        "visitors": {
+          "type": "integer"
+        },
+        "visits": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "average_seconds",
+        "bounce_rate",
+        "views",
+        "visitors",
+        "visits"
       ],
       "type": "object"
     },
@@ -715,6 +920,9 @@
         "by": {
           "type": "string"
         },
+        "compare": {
+          "type": "string"
+        },
         "crawlers": {
           "items": {
             "$ref": "#/$defs/apitypes.AnalyticsCrawler"
@@ -748,6 +956,9 @@
         },
         "period": {
           "type": "string"
+        },
+        "previous": {
+          "$ref": "#/$defs/apitypes.AnalyticsPrevious"
         },
         "sources": {
           "items": {
@@ -11812,7 +12023,22 @@
         "$ref": "#/$defs/apitypes.AppAnalytics"
       },
       "query": {
+        "browser": {
+          "type": "string"
+        },
         "by": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
           "type": "string"
         },
         "event": {
@@ -11824,10 +12050,65 @@
         "limit": {
           "type": "integer"
         },
+        "os": {
+          "type": "string"
+        },
         "page": {
           "type": "string"
         },
         "period": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/changes": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AnalyticsChanges"
+      },
+      "query": {
+        "browser": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "os": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "region": {
           "type": "string"
         },
         "source": {
@@ -11846,7 +12127,22 @@
         "$ref": "#/$defs/apitypes.AnalyticsChart"
       },
       "query": {
+        "browser": {
+          "type": "string"
+        },
         "by": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
           "type": "string"
         },
         "event": {
@@ -11858,10 +12154,16 @@
         "measure": {
           "type": "string"
         },
+        "os": {
+          "type": "string"
+        },
         "page": {
           "type": "string"
         },
         "period": {
+          "type": "string"
+        },
+        "region": {
           "type": "string"
         },
         "source": {
@@ -11921,6 +12223,64 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "to": {
+          "type": "string"
+        },
+        "tz": {
+          "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/analytics/table": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.AnalyticsTable"
+      },
+      "query": {
+        "browser": {
+          "type": "string"
+        },
+        "by": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "compare": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "event": {
+          "type": "string"
+        },
+        "format": {
+          "type": "string"
+        },
+        "from": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "os": {
+          "type": "string"
+        },
+        "page": {
+          "type": "string"
+        },
+        "period": {
+          "type": "string"
+        },
+        "region": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
         },
         "to": {
           "type": "string"
@@ -12081,8 +12441,20 @@
         "$ref": "#/$defs/apitypes.AppVisitors"
       },
       "query": {
+        "browser": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
         "cursor": {
           "type": "integer"
+        },
+        "device": {
+          "type": "string"
         },
         "event": {
           "type": "string"
@@ -12093,10 +12465,16 @@
         "limit": {
           "type": "integer"
         },
+        "os": {
+          "type": "string"
+        },
         "page": {
           "type": "string"
         },
         "period": {
+          "type": "string"
+        },
+        "region": {
           "type": "string"
         },
         "source": {
@@ -12115,16 +12493,34 @@
         "$ref": "#/$defs/apitypes.AnalyticsVisitorSteps"
       },
       "query": {
+        "browser": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "country": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
         "event": {
           "type": "string"
         },
         "from": {
           "type": "string"
         },
+        "os": {
+          "type": "string"
+        },
         "page": {
           "type": "string"
         },
         "period": {
+          "type": "string"
+        },
+        "region": {
           "type": "string"
         },
         "source": {
