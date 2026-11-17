@@ -526,6 +526,10 @@ type ErrorSample struct {
 	Group *ErrorGroup `json:"group,omitempty"`
 	// Recent is the group's most recent occurrences, newest first.
 	Recent []ErrorOccurrence `json:"recent,omitempty"`
+	// FixPrompt is what a person pastes into their coding agent to fix the group: clone the app,
+	// open the group, fix it with a test, deploy and mark it resolved. The new-error email gives
+	// the same prompt.
+	FixPrompt string `json:"fix_prompt,omitempty"`
 }
 
 // ErrorOccurrence is one time a group happened: when, what it said, and the request it was in.

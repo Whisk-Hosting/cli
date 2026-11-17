@@ -5110,6 +5110,9 @@
           "format": "date-time",
           "type": "string"
         },
+        "fix_prompt": {
+          "type": "string"
+        },
         "frames": {
           "items": {
             "$ref": "#/$defs/apitypes.ErrorFrame"
