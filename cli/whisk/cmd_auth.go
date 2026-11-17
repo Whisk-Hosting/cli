@@ -126,6 +126,7 @@ new login.`,
 						return fmt.Errorf("storing the token: %v", err)
 					}
 					_ = s.store.Delete(config.PendingProfile(s.profile))
+					s.setupGitHelper(gitURLOf(s.cfg.API))
 					// A login for the whole account comes back with no org: it acts as the person
 					// in the businesses recorded on it, which a current platform names.
 					allOrgs := tok.Org == nil
@@ -485,6 +486,9 @@ func useCmd(s *session) *cobra.Command {
 				return err
 			}
 			repointed := verified && s.repointRemote(gitURL)
+			if verified {
+				s.setupGitHelper(gitURL)
+			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "api": s.cfg.API, "verified": verified, "file": config.BindingPath, "remote_updated": repointed}, func(w io.Writer) {
 				fmt.Fprintf(w, "Bound this directory to %s/%s in %s.\n", org, app, config.BindingPath)
 				if repointed {

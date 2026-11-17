@@ -2,6 +2,7 @@ package whisk
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
 	"io"
 	"net/url"
@@ -104,6 +105,7 @@ func runClone(s *session, org, app, dir string) error {
 			return gitFailed("git config", r)
 		}
 	}
+	s.setupGitHelper(a.GitURL)
 	if err := s.bindClone(target, org, app, a.Fork != nil); err != nil {
 		return err
 	}
@@ -191,9 +193,7 @@ func gitOrigin(raw string) string {
 // never offered) and then whisk git-credential is the one helper, by the running binary's
 // path; with schannel, git verifies TLS with the Windows certificate store from then on.
 func cloneConfig(origin, exe string, schannel bool) [][]string {
-	key := "credential." + origin + ".helper"
-	helper := `!"` + filepath.ToSlash(exe) + `" git-credential`
-	out := [][]string{{"--add", key, ""}, {"--add", key, helper}}
+	out := gitcmd.HelperPlan(gitcmd.HelperKey(origin), nil, gitcmd.HelperValues(exe))
 	if schannel {
 		out = append(out, []string{"http.sslBackend", "schannel"})
 	}
@@ -234,15 +234,18 @@ func gitCredentialCmd(s *session) *cobra.Command {
 				// Only https is answered, so nothing secret travels in clear.
 				return nil
 			}
+			// When there is no password to give, git is told to stop rather than ask anyone
+			// else: another helper (Git Credential Manager) or git itself would pop up a
+			// sign-in window that a coding agent cannot answer. The reason goes to stderr.
 			client, cred, err := s.client()
-			if err != nil {
-				// Saying nothing lets git fall through to its own failure, which names the host.
-				return nil
+			var secret string
+			if err == nil {
+				secret, err = s.gitSecret(client, cred)
 			}
-			secret, err := s.gitSecret(client, cred)
 			if err != nil {
-				fmt.Fprintf(s.env.Stderr, "whisk: %v\n", err)
-				return nil
+				fmt.Fprint(s.env.Stderr, credentialRefusal(err))
+				_, err = io.WriteString(s.env.Stdout, "quit=1\n")
+				return err
 			}
 			_, err = io.WriteString(s.env.Stdout, credentialAnswer(req, secret))
 			return err
@@ -263,6 +266,25 @@ func (s *session) gitSecret(client *api.Client, cred config.Credential) (string,
 		return "", wrap(err)
 	}
 	return pw.Password, nil
+}
+
+// credentialRefusal is what whisk git-credential says on stderr when it has no password for
+// git: the error's code, sentence and fix, each line marked as whisk's. Pure.
+func credentialRefusal(err error) string {
+	var e *output.Error
+	if !errors.As(err, &e) {
+		e = &output.Error{Code: "AUTH_REQUIRED", Message: err.Error(), Fix: "Run whisk login, then run the git command again."}
+	}
+	out := "whisk: " + e.Code + ": " + gitLine(e.Message) + "\n"
+	if e.Fix != "" {
+		out += "whisk: fix: " + gitLine(e.Fix) + "\n"
+	}
+	return out
+}
+
+// gitLine is s with its line breaks as spaces, so a message stays one line of git's output.
+func gitLine(s string) string {
+	return strings.Join(strings.Fields(s), " ")
 }
 
 // parseCredentialRequest reads git's key=value lines up to a blank line or the end.

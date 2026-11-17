@@ -161,7 +161,7 @@ func TestGitCredentialTradesABoundToken(t *testing.T) {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
 	if out.String() != "username=whisk\npassword=whsk_git_short\n" {
-		t.Fatalf("answered %q", out.String())
+		t.Fatalf("answered %q %s", out.String(), errb.String())
 	}
 
 	out.Reset()

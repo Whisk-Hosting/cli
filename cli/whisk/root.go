@@ -52,6 +52,10 @@ type Env struct {
 	// ReportMisses sends the shape of a command line the CLI could not run to Whisk (CLI.md §7).
 	// The binary sets it; tests and programs driving the CLI as a library leave it off.
 	ReportMisses bool
+	// SetupGit makes whisk git's credential helper for the platform's git host in the user's
+	// global git config (setupGitHelper). The released binary sets it; tests and programs
+	// driving the CLI as a library leave it off, so they never write the user's git config.
+	SetupGit bool
 }
 
 // session is what every command receives: flags, config, output and lazy API access.

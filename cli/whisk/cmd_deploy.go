@@ -112,6 +112,7 @@ func runDeploy(s *session, opts deployOptions) error {
 	if err := s.ensureRemote(a.GitURL); err != nil {
 		return err
 	}
+	s.setupGitHelper(a.GitURL)
 	s.printer.Progress("Pushing %s (%s) to %s/%s as %s.", plan.Src, short(sha), org, app, plan.Environment)
 	if note := previewNote(plan.Environment); note != "" {
 		s.printer.Progress("%s", note)

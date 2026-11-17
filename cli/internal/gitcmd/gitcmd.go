@@ -13,6 +13,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
@@ -114,6 +115,43 @@ func CredentialOrigin(gitURL string) (string, error) {
 		return "", fmt.Errorf("refusing to send the token to %s: the platform's git address must use https", u.Scheme+"://"+u.Host)
 	}
 	return u.Scheme + "://" + u.Host, nil
+}
+
+// HelperKey is the git config key that lists the credential helpers git asks for origin.
+func HelperKey(origin string) string { return "credential." + origin + ".helper" }
+
+// HelperValues are the values HelperKey takes so that whisk alone answers for its git host: an
+// empty value, which drops every helper configured before it (Git Credential Manager among
+// them, so it never shows its sign-in window), then whisk git-credential by exe's path.
+func HelperValues(exe string) []string {
+	return []string{"", `!"` + filepath.ToSlash(exe) + `" git-credential`}
+}
+
+// HelperPlan is the git config arguments, in order, that make key's values in one config file
+// equal want, given its current values there: none when they already are, else remove every
+// value and add want's in order. Pure.
+func HelperPlan(key string, current, want []string) [][]string {
+	if slices.Equal(current, want) {
+		return nil
+	}
+	var out [][]string
+	if len(current) > 0 {
+		out = append(out, []string{"--unset-all", key})
+	}
+	for _, v := range want {
+		out = append(out, []string{"--add", key, v})
+	}
+	return out
+}
+
+// ConfigValues splits the output of git config --get-all into its values, one per line, an
+// empty value kept as "". Pure.
+func ConfigValues(stdout string) []string {
+	trimmed := strings.TrimSuffix(strings.ReplaceAll(stdout, "\r\n", "\n"), "\n")
+	if stdout == "" {
+		return nil
+	}
+	return strings.Split(trimmed, "\n")
 }
 
 // reHost is a host name or bracketed IP address with an optional port: the origin becomes part
