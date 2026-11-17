@@ -23,7 +23,8 @@ type GrantRef struct {
 // approves, each as it was shown to them; the values of the keys it waits for, each set as the
 // app's own; and the spending limit of each AI connection it grants, by connection name. An entry
 // or a key that is no longer what the deploy waits on is 409 CONFLICT, so an approval never lands
-// on something nobody saw.
+// on something nobody saw. Keys may come one at a time: values with no grants store those keys
+// and leave the deploy waiting, answered with the same blocked deploy, until nothing else waits.
 type ApproveDeployRequest struct {
 	Grants    []GrantRef                  `json:"grants"`
 	Values    []KeyValue                  `json:"values,omitempty"`
