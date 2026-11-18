@@ -2283,16 +2283,16 @@ production's live deploy) lists the caller under `accepted_callers`. A deploy wh
 an app that does not accept it goes live with this warning, `details.targets` naming each such
 app and `details.line` the line they need; its service token does not carry those calls, and
 `whisk doctor` reports the same as `W121`. A call to such an app is refused at the edge with this
-code, as is a call made with a token issued before the target accepted the caller (the message
-says so; the caller's next start carries the call), and a call from an app the target stopped
-accepting, as soon as the target's deploy that stopped accepting it goes live.
+code, and so is a call from an app the target stopped accepting, as soon as the target's deploy
+that stopped accepting it goes live. Once the target accepts the caller, the caller's calls pass
+as soon as that deploy is live, with no restart.
 
 Fix: Add the caller under `accepted_callers` in the target app's `whisk.yaml` and deploy the
-target, then restart the caller (Restart on its page in the dashboard, or `POST /v1/orgs/<org>/apps/<caller>/restart`) so its next service token carries
-the call. If the call is not meant to happen, remove the target from the caller's `calls`.
+target; the caller's calls pass once that deploy is live. If the call is not meant to happen,
+remove the target from the caller's `calls`.
 
 ```json
-{"error":{"code":"CALLER_NOT_ACCEPTED","message":"orders does not accept calls from website, so website's calls to it are refused.","fix":"Add website under accepted_callers in the whisk.yaml of orders (accepted_callers: [website]) and deploy it, then restart website (Restart on its page in the dashboard, or POST /v1/orgs/<org>/apps/website/restart) so its next service token carries the call. If the call is not meant to happen, remove it from website's calls.","docs":"https://skill.whisk.run/errors/CALLER_NOT_ACCEPTED","details":{"caller":"website","targets":["orders"],"line":"accepted_callers: [website]"}}}
+{"error":{"code":"CALLER_NOT_ACCEPTED","message":"orders does not accept calls from website, so website's calls to it are refused.","fix":"Add website under accepted_callers in the whisk.yaml of orders (accepted_callers: [website]) and deploy it; website's calls pass once that deploy is live. If the call is not meant to happen, remove it from website's calls.","docs":"https://skill.whisk.run/errors/CALLER_NOT_ACCEPTED","details":{"caller":"website","targets":["orders"],"line":"accepted_callers: [website]"}}}
 ```
 
 ## ACCEPTED_CALLERS_MISSING

@@ -801,7 +801,7 @@ empty list.
 
 Level: warning
 Check: an app under calls does not accept calls from this app, so its calls to it are refused.
-Fix: Add this app under accepted_callers in the other app's whisk.yaml and deploy that app, then restart this app so its next service token carries the call; or remove the app from calls.
+Fix: Add this app under accepted_callers in the other app's whisk.yaml and deploy that app; this app's calls pass once that deploy is live. Or remove the app from calls.
 Safe fix: no
 
 Details: known only when the directory is bound to an app, because the answer comes from

@@ -1300,10 +1300,8 @@ accepted_callers: [website]       # the orders app accepts calls from website an
 then send ordinary HTTP to `http://<app id>.internal.whisk:8443/<path>` with
 `Authorization: Bearer $WHISK_SERVICE_TOKEN`. The
 call never leaves the platform. The other app receives it with `X-Whisk-Audience: service` and
-`X-Whisk-Service-App` naming the caller's app id, so it can also decide per route. The token
-carries the calls the other apps accepted when the caller's container started: after the
-called app adds the caller and deploys, restart the caller (`whisk apps restart <caller>`) so it
-gets a new token. A call the other app does not accept is `CALLER_NOT_ACCEPTED`, and the
+`X-Whisk-Service-App` naming the caller's app id, so it can also decide per route. Once the
+called app adds the caller and deploys, the caller's calls pass. A call the other app does not accept is `CALLER_NOT_ACCEPTED`, and the
 caller's deploy and `whisk doctor` (`W121`) say which line the other app needs. An app with no
 `accepted_callers` line accepts only the apps that called it before this rule, for one platform
 release; its deploys carry `ACCEPTED_CALLERS_MISSING` and `whisk doctor` (`W120`) names them, so
