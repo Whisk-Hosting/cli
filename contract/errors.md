@@ -1221,8 +1221,10 @@ Fix: Send the call with a plain path and its real method, and no override header
 Status: 400 · Surface: container
 
 When: the connection's recipe places values into each call's JSON body (`auth.body`), and this
-call's body is not one JSON document, or has no value at a pointer the recipe fills in. Nothing
-was sent.
+call's body is not one JSON document, or has no value at a pointer the recipe fills in. Or the
+recipe matches operations on the body, and this call's body is not one JSON document that every
+reader takes the same way: it is not valid JSON in UTF-8, or names twice a key an operation
+matches on. Nothing was sent.
 
 Fix: Send a JSON body with a placeholder (any value) at every pointer under the connection's
 `auth.body`; the broker replaces it.
@@ -1967,7 +1969,9 @@ in the message; ask an owner about a larger plan.
 Status: 413 · Surface: edge, api, hooks
 
 When: a request body exceeded the limit: 8 MB on app routes (32 MB on Business), 5 MB on the
-webhook ingress, 1 MB on the API.
+webhook ingress, 1 MB on the API. On a call to a connection: 1 MiB where the recipe signs the
+body or fills values into it, 32 MiB where it only matches operations on it (a model call with a
+picture or a document inside), and no limit where it does not read the body.
 
 Fix: For file uploads, request a signed upload URL and send the file directly to storage. For
 anything else, send less.

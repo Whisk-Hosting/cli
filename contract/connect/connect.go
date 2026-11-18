@@ -562,11 +562,39 @@ func opKey(o Operation) string {
 // path never does, matches nothing. doc is the call's decoded JSON body (DecodeBody), or nil: an
 // operation with body conditions matches only a body holding each string.
 func Match(ops []Operation, method, path string, doc any) (Operation, bool) {
+	return match(ops, method, path, func(o Operation) bool { return bodyHolds(o, doc) })
+}
+
+// MatchScanned is Match for a body read as it streamed: found is what ScanBody returned for
+// BodyPointers, the string at each pointer that holds one.
+func MatchScanned(ops []Operation, method, path string, found map[string]string) (Operation, bool) {
+	return match(ops, method, path, func(o Operation) bool {
+		for k, want := range o.Body {
+			if got, ok := found[k]; !ok || got != want {
+				return false
+			}
+		}
+		return true
+	})
+}
+
+// BodyPointers is every pointer any of ops matches on, sorted.
+func BodyPointers(ops []Operation) []string {
+	set := map[string]string{}
+	for _, o := range ops {
+		for k := range o.Body {
+			set[k] = ""
+		}
+	}
+	return sortedKeys(set)
+}
+
+func match(ops []Operation, method, path string, holds func(Operation) bool) (Operation, bool) {
 	if strings.ContainsAny(path, "?#") || routes.Ambiguous(path) || strings.Contains(strings.ToLower(path), "%2f") || strings.Contains(strings.ToLower(path), "%5c") {
 		return Operation{}, false
 	}
 	for _, o := range ops {
-		if (o.Method == "*" || o.Method == method || o.Method == "GET" && method == "HEAD") && routes.Match(o.Path, path) && bodyHolds(o, doc) {
+		if (o.Method == "*" || o.Method == method || o.Method == "GET" && method == "HEAD") && routes.Match(o.Path, path) && holds(o) {
 			return o, true
 		}
 	}
