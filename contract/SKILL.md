@@ -897,7 +897,7 @@ write.
 `DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is, with one
 exception: Node's `pg` (node-postgres, also under Prisma's `@prisma/adapter-pg`) reads
 `sslmode=require` as `verify-full` and refuses the platform's certificate with
-`UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, so in code using `pg` add `uselibpqcompat=true` to the URL
+`SELF_SIGNED_CERT_IN_CHAIN` or `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, so in code using `pg` add `uselibpqcompat=true` to the URL
 (`new URL(process.env.DATABASE_URL)` then `searchParams.set("uselibpqcompat", "true")`) wherever
 the app opens a pool or a client; `whisk doctor` reports one that does not as W107. Only `pg`
 reads that parameter; other drivers refuse it. No
