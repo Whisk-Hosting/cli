@@ -495,13 +495,14 @@ a plan with Promoted apps, making the app a Promoted app also includes it.
 Status: 402 · Surface: api
 
 When: giving an app Boost or making it a Promoted app, which is charged at once for the days to
-the business's next billing day, or making a copy of a priced product on Free, which is charged
-its first month at once (`details.product`), found no card to charge (`details.reason: none`), or
-the card was declined or wanted the bank's confirmation (`details.reason: declined`). Nothing was
-charged and the app is unchanged, or no copy was made. `details.card_url` is a page to give a
-card on, which comes back to the app, or to the product's page.
+the business's next billing day, or making a copy of a priced product, a fork or a managed copy,
+whose first month is free for the business's first copy and charged at once for any later one
+(`details.product`), found no card to charge (`details.reason: none`), or the card was declined
+or wanted the bank's confirmation (`details.reason: declined`). Nothing was charged and the app
+is unchanged, or no copy was made. `details.card_url` is a page to give a card on, which comes
+back to the app, to the product's page, or to the app the copy was being added to.
 
-Fix: Add a card at `details.card_url`, then boost or promote the app, or make the copy, again.
+Fix: Add a card at `details.card_url`, then boost or promote the app, or add the copy, again.
 
 ```json
 {"error":{"code":"CARD_NEEDED","message":"Acme has no card to charge Boost to.","fix":"Add a card at https://whisk.run/o/acme/billing/pay/pay_x8Hq2, then boost the app.","docs":"https://skill.whisk.run/errors/CARD_NEEDED","details":{"reason":"none","card_url":"https://whisk.run/o/acme/billing/pay/pay_x8Hq2"}}}
@@ -627,8 +628,8 @@ Fix: Resume it with `whisk resume <app>` or on its page in the dashboard.
 
 Status: 402 · Surface: api
 
-When: a deploy of an app Whisk paused because the month its business pays ahead for it went
-unpaid for the payment grace. The edge answers its hostnames with the plain paused page, and the
+When: a deploy or a resume of an app Whisk paused because the month its business pays ahead for
+it went unpaid for the payment grace. The edge answers its hostnames with the plain paused page, and the
 business's other apps run on. Paying the month resumes it within a minute.
 
 Fix: Ask the billing contact to pay the open invoice at the business's billing page, then deploy
