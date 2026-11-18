@@ -420,7 +420,7 @@ func (e *MissingSecretError) Error() string { return e.Name + " has no value" }
 func (p *parser) call(name string) (node, error) {
 	f, ok := functions()[name]
 	if !ok {
-		return nil, fmt.Errorf("unknown function %s; see CONTRACT.md §3.1 for the list", name)
+		return nil, fmt.Errorf("unknown function %s; one of %s", name, strings.Join(FunctionNames(), ", "))
 	}
 	p.pos++ // (
 	var args []node
@@ -668,6 +668,39 @@ var functions = sync.OnceValue(func() map[string]function {
 		"sign": {min: 3, max: 3, check: algorithm(signAlgs), run: runSign},
 	}
 })
+
+// FunctionNames is every function a template may call, sorted. The skill lists them all
+// (TestSkillNamesEveryTemplateFunction) and an unknown name's error names them.
+func FunctionNames() []string {
+	names := make([]string, 0, len(functions()))
+	for name := range functions() {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	return names
+}
+
+// ReferenceNames is every reference a template may use, as an agent writes it.
+func ReferenceNames() []string {
+	fields := func(prefix string, keys []string) []string {
+		out := make([]string, len(keys))
+		for i, k := range keys {
+			out[i] = prefix + k
+		}
+		sort.Strings(out)
+		return out
+	}
+	request := make([]string, 0, len(requestFields))
+	for k := range requestFields {
+		request = append(request, k)
+	}
+	times := make([]string, 0, len(timeFormats))
+	for k := range timeFormats {
+		times = append(times, k)
+	}
+	return append(append(append([]string{"secret.NAME"}, fields("request.", request)...), fields("time.", times)...),
+		"nonce", "uuid", "token", "vendor.client_id", "vendor.client_secret")
+}
 
 func numbers(args []node) error {
 	for _, a := range args {

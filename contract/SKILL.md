@@ -124,7 +124,7 @@ app awake by itself. Streams close on every deploy (close them on SIGTERM) and n
 when Whisk updates its servers, so every client reconnects with backoff: give events an
 `id:` and resume from `Last-Event-ID`, and keep what a stream reports in the database or
 key-value store so a reconnect misses nothing. Close a stream after an hour or so: the sign-in
-is checked when it opens, and the reconnect checks it again. CONTRACT.md §2.1 has the rest.
+is checked when it opens, and the reconnect checks it again.
 
 ## 3. Getting an app live
 
@@ -835,7 +835,7 @@ and restart between requests.
 ### Feature flags
 
 To ship a change to a few people first, declare a flag in whisk.yaml and read it from
-`X-Whisk-Flags` (Starter plan and up; CONTRACT.md §3.3):
+`X-Whisk-Flags` (Starter plan and up):
 
 ```yaml
 flags:
@@ -1359,7 +1359,31 @@ sign-in can be described: `basic(secret.USER, secret.PASSWORD)`; a signature suc
 `{base64(hmac_sha256(secret.KEY, concat(request.method, request.path, time.unix)))}` with
 `{time.unix}` in another header; a token step that posts a client id and secret and places
 `{token}`; a signed JWT, `{jwt('RS256', secret.KEY_PEM, json('iss', secret.EMAIL, 'iat',
-time.unix, 'exp', add(time.unix, 3600)))}`. CONTRACT.md §3.1 lists every reference and function.
+time.unix, 'exp', add(time.unix, 3600)))}`.
+
+References: `secret.NAME`; `request.method` (upper case), `request.url` (the whole upstream
+address), `request.host`, `request.path` (escaped, without the query), `request.query` (the raw
+query string exactly as sent, without `?`, and empty when there is none) and `request.body`;
+`time.unix`, `time.unix_ms`, `time.rfc3339`, `time.http`, `time.amz` and `time.date`; `nonce`
+and `uuid` (fixed for one call, so a header and the signature over it agree); `token` (with a
+token step or a sign-in); `vendor.client_id` and `vendor.client_secret`. Functions:
+`hmac_sha1`, `hmac_sha256`, `hmac_sha512` (key, message); `sha1`, `sha256`, `sha512`; `base64`,
+`base64url` (no padding), `hex`, `base64_decode`, `hex_decode`; `urlencode`, `upper`, `lower`,
+`trim`, `sort_query` (pairs ordered by name, encoding kept); `concat`; `basic(user, password)`;
+`add(a, b)` on whole numbers; `json('name', value, ...)`; `jwt('ALG', key, claims[, kid])`; and
+`sign('ALG', key_pem, message)` (RS256, RS384, RS512, PS256, ES256, EdDSA; `jwt` also takes
+HS256, HS384, HS512). Hashes, HMACs and signatures are raw bytes, so wrap them in `base64`,
+`base64url` or `hex`. The broker sends on the query the app sent, byte for byte, so build it once
+and keep a client library from encoding it again. Unleashed, for example, signs the query string:
+
+```yaml
+    auth:
+      headers:
+        api-auth-id: "{secret.UNLEASHED_API_ID}"
+        api-auth-signature: "{base64(hmac_sha256(secret.UNLEASHED_API_KEY, request.query))}"
+        client-type: your-business/your-app
+        Accept: application/json
+```
 
 A person grants each connection, freshly signed in, on the app's Keys tab. The
 first production deploy, and any deploy that changes the address or recipe or adds an
@@ -1419,8 +1443,12 @@ they chose as `spend_cap`: the person sees them filled in when they allow the co
 change them there. Later, set a new limit they ask for with `whisk connections limit NAME
 --per-month <dollars>`; it is in force from the next call, with no push. The person can also
 change it themselves on the app's page. Take each `cost` part's price from the provider's pricing page for the model
-the app uses, and list every place the count appears, streamed and not; CONTRACT.md §3.1 "AI
-models" has the parts for each provider. Ask for usage in streams where the provider needs it
+the app uses, and list every place the count appears, streamed and not. OpenAI's chat
+completions and the APIs that copy it (Mistral, Groq, xAI, DeepSeek) count `/usage/prompt_tokens`
+and `/usage/completion_tokens`; OpenAI's responses API and Anthropic `/usage/input_tokens` and
+`/usage/output_tokens` (Anthropic's stream also starts with `/message/usage/input_tokens`);
+Gemini `/usageMetadata/promptTokenCount` and `/usageMetadata/candidatesTokenCount`; OpenRouter
+states its cost as `/usage/cost`, priced `usd_each: 1`. Ask for usage in streams where the provider needs it
 (OpenAI: `stream_options: {include_usage: true}`). An answer that names no cost part stops that
 deploy's calls (`AI_COST_UNREADABLE`) until a deploy fixes the parts. Over a cap, calls answer
 `429 AI_SPEND_CAP`: show the person a calm message that the AI feature is paused, never an error

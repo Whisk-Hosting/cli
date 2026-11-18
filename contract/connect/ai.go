@@ -133,7 +133,7 @@ func checkAI(c Connection, add func(string, string, ...any)) {
 	a := c.AI
 	if a == nil {
 		if host := hostOf(c.URL); AIHost(host) {
-			add("/ai", "%s is an AI model's API, so this is an AI connection: add ai with its spend_cap and cost (CONTRACT.md §3.1 AI models)", host)
+			add("/ai", "%s is an AI model's API, so this is an AI connection: add ai with its spend_cap and cost (whisk skill, \"AI models\")", host)
 		}
 		return
 	}
@@ -143,7 +143,7 @@ func checkAI(c Connection, add func(string, string, ...any)) {
 		}
 	}
 	if len(a.Cost) == 0 {
-		add("/ai/cost", "name where each answer says what it cost: token counts with usd_per_million, or a cost with usd_each (CONTRACT.md §3.1 AI models lists each provider's)")
+		add("/ai/cost", "name where each answer says what it cost: token counts with usd_per_million, or a cost with usd_each (whisk skill, \"AI models\", lists each provider's)")
 	}
 	if len(a.Cost) > MaxCostParts {
 		add("/ai/cost", "at most %d parts", MaxCostParts)
