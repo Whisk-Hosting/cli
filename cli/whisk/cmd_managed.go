@@ -292,7 +292,7 @@ func forkLines(a api.App) []string {
 func forkRow(a api.App) []string {
 	f := a.Fork
 	if f == nil {
-		return []string{a.Slug, "-", "-", "-", "-", appStatusText(a)}
+		return []string{a.Slug, "-", "-", "-", "-", "-", appStatusText(a)}
 	}
 	release, code := fmt.Sprint(f.Release), "as released"
 	switch {
@@ -303,7 +303,7 @@ func forkRow(a api.App) []string {
 	case f.Changed:
 		code = "changed"
 	}
-	return []string{a.Slug, f.Product, release, fmt.Sprint(f.Newest), code, appStatusText(a)}
+	return []string{a.Slug, f.Product, release, fmt.Sprint(f.Newest), code, orDash(f.Channel), appStatusText(a)}
 }
 
 // kindText is what a copy of the product is, in a product's row. Pure.
@@ -433,6 +433,39 @@ code already holds the newest release, the command follows the deploy that carri
 	return update
 }
 
+// managedChannelCmd is whisk managed channel: how a fork takes its product's releases (FORKS.md
+// §4).
+func managedChannelCmd(s *session) *cobra.Command {
+	return &cobra.Command{
+		Use:   "channel <app> <instant|fast|standard>",
+		Short: "Choose how a fork takes its product's releases",
+		Long: `instant applies every release as soon as Whisk makes it, including one that changes the data
+people entered, which only a person chooses, signed in at the dashboard. fast offers every release
+as an update for you to apply with whisk managed update. standard offers only the releases Whisk
+marks stable, and applies them by itself while the code is a release as Whisk made it.`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			s.appFlag = args[0]
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			a, err := api.Send(s.ctx, client, endpoints.SetForkChannel, api.ForkChannelRequest{Channel: args[1]}, org, app)
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": a}, func(w io.Writer) {
+				channel := "-"
+				if a.Fork != nil && a.Fork.Channel != "" {
+					channel = a.Fork.Channel
+				}
+				fmt.Fprintf(w, "%s takes its releases on the %s channel.\n", a.Slug, channel)
+			})
+			return nil
+		},
+	}
+}
+
 func managedCmd(s *session) *cobra.Command {
 	listRun := func(*cobra.Command, []string) error { return s.managedList() }
 
@@ -460,7 +493,7 @@ With no subcommand, whisk managed lists the products and the business's copies.`
 		RunE:  listRun,
 	}
 
-	var variant string
+	var variant, channel string
 	var linkWords, setWords []string
 	add := &cobra.Command{
 		Use:   "add <product> [--link <role>=<app>] [--variant v] [--set NAME=value]",
@@ -496,7 +529,7 @@ clone, change and deploy.`,
 					return err
 				}
 			}
-			req := api.ManagedAddRequest{Product: args[0], Variant: variant, Links: ids}
+			req := api.ManagedAddRequest{Product: args[0], Variant: variant, Links: ids, Channel: channel}
 			if len(settings) > 0 {
 				req.Settings = settings
 			}
@@ -519,6 +552,7 @@ clone, change and deploy.`,
 	add.Flags().StringArrayVar(&linkWords, "link", nil, "role=app: link one of the business's apps, by slug or id, under a role the product lists")
 	add.Flags().StringVar(&variant, "variant", "", "the form the product comes in, when it has several")
 	add.Flags().StringArrayVar(&setWords, "set", nil, "NAME=value: a setting the product or the chosen variant lists")
+	add.Flags().StringVar(&channel, "channel", "", "for a product that is your own code: fast or standard (instant is chosen by a person, at the dashboard)")
 
 	set := &cobra.Command{
 		Use:   "set <app> NAME=value...",
@@ -597,7 +631,7 @@ is running; a sleeping one reads it at its next start.`,
 			return nil
 		},
 	}
-	managed.AddCommand(list, add, set, link, managedUpdateCmd(s), managedMergeCmd(s))
+	managed.AddCommand(list, add, set, link, managedUpdateCmd(s), managedChannelCmd(s), managedMergeCmd(s))
 	return managed
 }
 
@@ -736,7 +770,7 @@ func (s *session) managedTables(w io.Writer, m api.Managed, apps []api.App) {
 		for i, a := range m.Forks {
 			rows[i] = forkRow(a)
 		}
-		s.printer.Table(w, []string{"APP", "PRODUCT", "RELEASE", "NEWEST", "CODE", "STATUS"}, rows)
+		s.printer.Table(w, []string{"APP", "PRODUCT", "RELEASE", "NEWEST", "CODE", "CHANNEL", "STATUS"}, rows)
 	}
 	for _, hint := range addHints(m.Products) {
 		fmt.Fprintln(w, hint)

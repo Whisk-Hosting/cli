@@ -31,6 +31,10 @@ type AppFork struct {
 	Behind  int `json:"behind"`
 	// Changed is whether the app's code is anything but release Release as Whisk made it.
 	Changed bool `json:"changed"`
+	// Channel is how the app takes the product's releases: instant applies each as it comes,
+	// fast offers each for the business to apply, standard sees only stable releases and applies
+	// them by itself.
+	Channel string `json:"channel"`
 	// HostingIncluded is whether the fork's price includes its hosting: memory up to
 	// IncludedMemoryBytes when it needs it, none of it set aside, and the CDN. Such an app is
 	// never sold Boost or Promoted (FORKS.md §3).
@@ -206,6 +210,14 @@ type ManagedAddRequest struct {
 	Variant  string            `json:"variant,omitempty"`
 	Links    map[string]string `json:"links"`
 	Settings map[string]string `json:"settings,omitempty"`
+	// Channel is how a product whose copies are the business's own code is to take its
+	// releases: instant, fast or standard. Left out, the business's usual channel.
+	Channel string `json:"channel,omitempty"`
+}
+
+// ForkChannelRequest is PUT /orgs/:org/apps/:app/fork/channel.
+type ForkChannelRequest struct {
+	Channel string `json:"channel"`
 }
 
 // ManagedSettingsRequest is PATCH /orgs/:org/apps/:app/managed. A setting set to "" is removed.

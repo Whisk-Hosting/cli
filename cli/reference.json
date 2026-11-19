@@ -1434,6 +1434,10 @@
     "short": "Add a copy of a product, linked to the business's own apps",
     "flags": [
      {
+      "name": "--channel string",
+      "usage": "for a product that is your own code: fast or standard (instant is chosen by a person, at the dashboard)"
+     },
+     {
       "name": "--link stringArray",
       "usage": "role=app: link one of the business's apps, by slug or id, under a role the product lists"
      },
@@ -1446,6 +1450,10 @@
       "usage": "the form the product comes in, when it has several"
      }
     ]
+   },
+   {
+    "usage": "whisk managed channel \u003capp\u003e \u003cinstant|fast|standard\u003e",
+    "short": "Choose how a fork takes its product's releases"
    },
    {
     "usage": "whisk managed link \u003ccopy\u003e \u003crole\u003e=\u003capp\u003e",

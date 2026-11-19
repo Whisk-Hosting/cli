@@ -11,15 +11,16 @@ import (
 // pausing a copy. Forks (FORKS.md): the apps a business made from a product whose copies are its
 // own code.
 type (
-	Managed           = apitypes.Managed
-	ManagedProduct    = apitypes.ManagedProduct
-	ManagedAddRequest = apitypes.ManagedAddRequest
-	AppManaged        = apitypes.AppManaged
-	ManagedRelease    = apitypes.ManagedRelease
-	AppFork           = apitypes.AppFork
-	ForkUpdate        = apitypes.ForkUpdate
-	ForkSuggestion    = apitypes.ForkSuggestion
-	ForkSuggestions   = apitypes.ForkSuggestions
+	Managed            = apitypes.Managed
+	ManagedProduct     = apitypes.ManagedProduct
+	ManagedAddRequest  = apitypes.ManagedAddRequest
+	AppManaged         = apitypes.AppManaged
+	ManagedRelease     = apitypes.ManagedRelease
+	AppFork            = apitypes.AppFork
+	ForkUpdate         = apitypes.ForkUpdate
+	ForkChannelRequest = apitypes.ForkChannelRequest
+	ForkSuggestion     = apitypes.ForkSuggestion
+	ForkSuggestions    = apitypes.ForkSuggestions
 )
 
 // ProductForks is the kind of a product whose copies are the business's own code.

@@ -1293,6 +1293,9 @@
         "changed": {
           "type": "boolean"
         },
+        "channel": {
+          "type": "string"
+        },
         "hosting_included": {
           "type": "boolean"
         },
@@ -1316,6 +1319,7 @@
         "behind",
         "branch",
         "changed",
+        "channel",
         "name",
         "newest",
         "product",
@@ -5700,6 +5704,17 @@
       ],
       "type": "object"
     },
+    "apitypes.ForkChannelRequest": {
+      "properties": {
+        "channel": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "channel"
+      ],
+      "type": "object"
+    },
     "apitypes.ForkProblem": {
       "properties": {
         "line": {
@@ -6984,6 +6999,9 @@
     },
     "apitypes.ManagedAddRequest": {
       "properties": {
+        "channel": {
+          "type": "string"
+        },
         "links": {
           "additionalProperties": {
             "type": "string"
@@ -13940,6 +13958,14 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.AppFlagRequest"
+      }
+    },
+    "PUT /v1/orgs/{org}/apps/{app}/fork/channel": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.App"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.ForkChannelRequest"
       }
     },
     "PUT /v1/orgs/{org}/apps/{app}/github": {

@@ -712,6 +712,21 @@ release first, make a branch from `whisk/upstream`, push it and start its previe
 {"error":{"code":"BRANCH_RESERVED","message":"upstream is where Whisk puts CRM's releases in crm's repository, so nothing else moves it.","fix":"Work on a branch of your own. To take a release, run whisk managed merge with main checked out (or git fetch whisk, git merge whisk/upstream), then whisk deploy. To try one first, make a branch from whisk/upstream, push it and start its preview.","docs":"https://skill.whisk.run/errors/BRANCH_RESERVED","details":{"app":"crm","branch":"upstream"}}}
 ```
 
+## CHANNEL_INVALID
+
+Status: 400 · Surface: api, cli
+
+When: an app that follows one of Whisk's products as the business's own code was given a release
+channel that is none of instant, fast or standard. `details.channels` lists them.
+
+Fix: Choose `fast` (every release offered for you to apply with `whisk managed update`) or
+`standard` (only stable releases, applied by themselves). `instant` applies every release as it
+comes, and only a person chooses it, signed in at the dashboard.
+
+```json
+{"error":{"code":"CHANNEL_INVALID","message":"\"weekly\" is not a release channel.","fix":"Choose instant (every release applied as it comes), fast (every release offered for you to apply) or standard (only stable releases, applied by themselves).","docs":"https://skill.whisk.run/errors/CHANNEL_INVALID","details":{"channel":"weekly","channels":["instant","fast","standard"]}}}
+```
+
 ## FORK_CHANGED
 
 Status: 409 · Surface: api, cli

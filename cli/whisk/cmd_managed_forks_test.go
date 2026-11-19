@@ -17,7 +17,7 @@ import (
 // brings it the newest.
 func TestForkWords(t *testing.T) {
 	fork := func(release, newest int, changed bool) *api.AppFork {
-		return &api.AppFork{Product: "crm", Name: "CRM", Branch: "upstream", Release: release, Newest: newest, Behind: max(0, newest-release), Changed: changed}
+		return &api.AppFork{Product: "crm", Name: "CRM", Branch: "upstream", Release: release, Newest: newest, Behind: max(0, newest-release), Changed: changed, Channel: "fast"}
 	}
 	for _, c := range []struct {
 		name   string
@@ -28,19 +28,19 @@ func TestForkWords(t *testing.T) {
 		status string
 	}{
 		{"the newest as Whisk made it", fork(3, 3, false), "release 3, the newest, as Whisk made it", "",
-			[]string{"crm-2", "crm", "3", "3", "as released", "running, fork"}, "running, fork"},
+			[]string{"crm-2", "crm", "3", "3", "as released", "fast", "running, fork"}, "running, fork"},
 		{"an older release as Whisk made it", fork(2, 3, false), "release 2 as Whisk made it, 1 behind release 3", "whisk managed update crm-2 moves it to release 3",
-			[]string{"crm-2", "crm", "2", "3", "as released", "running, fork, 1 behind"}, "running, fork, 1 behind"},
+			[]string{"crm-2", "crm", "2", "3", "as released", "fast", "running, fork, 1 behind"}, "running, fork, 1 behind"},
 		{"the newest with the business's changes", fork(3, 3, true), "release 3, the newest, with changes of its own", "",
-			[]string{"crm-2", "crm", "3", "3", "changed", "running, fork"}, "running, fork"},
+			[]string{"crm-2", "crm", "3", "3", "changed", "fast", "running, fork"}, "running, fork"},
 		{"changed and behind", fork(1, 3, true), "release 1 with changes of its own, 2 behind release 3",
 			"whisk managed merge in a checkout of its code brings release 3 in, naming each change of the business's it meets, and whisk deploy puts it live",
-			[]string{"crm-2", "crm", "1", "3", "changed", "running, fork, 2 behind"}, "running, fork, 2 behind"},
+			[]string{"crm-2", "crm", "1", "3", "changed", "fast", "running, fork, 2 behind"}, "running, fork, 2 behind"},
 		{"a history of its own", fork(0, 3, true), "code of its own that holds none of its releases",
 			"git fetch whisk, then git merge whisk/upstream, brings release 3 into its code, and whisk deploy puts it live",
-			[]string{"crm-2", "crm", "-", "3", "changed", "running, fork, 3 behind"}, "running, fork, 3 behind"},
+			[]string{"crm-2", "crm", "-", "3", "changed", "fast", "running, fork, 3 behind"}, "running, fork, 3 behind"},
 		{"no code yet", fork(0, 3, false), "no code of its own yet", "whisk managed update crm-2 moves it to release 3",
-			[]string{"crm-2", "crm", "-", "3", "-", "running, fork, 3 behind"}, "running, fork, 3 behind"},
+			[]string{"crm-2", "crm", "-", "3", "-", "fast", "running, fork, 3 behind"}, "running, fork, 3 behind"},
 	} {
 		a := api.App{Slug: "crm-2", Status: "running", Fork: c.f}
 		if got := forkText(c.f); got != c.text {
@@ -68,7 +68,7 @@ func TestForkWords(t *testing.T) {
 		t.Errorf("forkLines for an app that follows nothing = %v", got)
 	}
 	// A fork the platform could not describe still has its row.
-	if got := forkRow(api.App{Slug: "crm", Status: "running"}); !slices.Equal(got, []string{"crm", "-", "-", "-", "-", "running"}) {
+	if got := forkRow(api.App{Slug: "crm", Status: "running"}); !slices.Equal(got, []string{"crm", "-", "-", "-", "-", "-", "running"}) {
 		t.Errorf("forkRow without the fork = %v", got)
 	}
 }
