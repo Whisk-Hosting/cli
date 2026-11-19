@@ -1972,11 +1972,18 @@ or thirty from one network address in an hour (codes the dashboard asks for to c
 count too, `details.scope` `confirm_codes`), or ten wrong passwords for one address or fifty
 from one network address. `Retry-After` says when to try again.
 
-Fix: Wait `Retry-After` seconds. If a legitimate client hits the limit, the plan's limits are
-in the message; ask an owner about a larger plan.
+At an app's edge, `details.scope` says which of the app's limits it was, with its `limit` and
+`window_seconds`: `visitor` (requests from one address not signed in), `visitor_posts` (POSTs
+from one address not signed in, counted on top of `visitor`), `person` (a signed-in person),
+`app` (the whole app) or `page_files` (a page's own files from one address). The business's
+plan sets each.
+
+Fix: Wait `Retry-After` seconds. If a legitimate client hits the limit, the message names it;
+someone signed in is counted on their own rather than by the address an office shares, and an
+owner can move to a larger plan.
 
 ```json
-{"error":{"code":"RATE_LIMITED","message":"More than 120 requests per minute from this address.","fix":"Wait 23 seconds and retry. Limits per plan are listed at https://skill.whisk.run/limits.","docs":"https://skill.whisk.run/errors/RATE_LIMITED","details":{"scope":"anonymous_ip","limit":120,"window_seconds":60,"retry_after":23}}}
+{"error":{"code":"RATE_LIMITED","message":"More than 10 POSTs a minute from this address to this app.","fix":"Wait the number of seconds in Retry-After and retry. Someone not signed in is counted by their network address, which an office shares; a signed-in person is counted on their own. The business's plan sets the limits.","docs":"https://skill.whisk.run/errors/RATE_LIMITED","details":{"scope":"visitor_posts","limit":10,"window_seconds":60,"retry_after":23}}}
 ```
 
 ## BODY_TOO_LARGE
