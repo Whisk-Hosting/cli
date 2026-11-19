@@ -284,6 +284,84 @@ func ReadSignIn(body []byte) (Signed, error) {
 	return out, nil
 }
 
+// TokenError is what a token address said when it refused (RFC 6749 §5.2), kept to the parts
+// that say why and that a provider's support can look up: the error, a Microsoft AADSTS code,
+// and the trace and correlation ids. The description itself is never kept, since a provider may
+// echo anything into it.
+type TokenError struct {
+	Error       string `json:"error,omitempty"`
+	Code        string `json:"code,omitempty"`
+	Trace       string `json:"trace_id,omitempty"`
+	Correlation string `json:"correlation_id,omitempty"`
+}
+
+var (
+	oauthErrorRe = regexp.MustCompile(`^[a-z_]{1,40}$`)
+	aadstsRe     = regexp.MustCompile(`^AADSTS\d{1,9}\b`)
+	lookupIDRe   = regexp.MustCompile(`^[A-Za-z0-9-]{1,64}$`)
+)
+
+// ReadTokenError reads a token address's refusal. A body that is not the RFC's JSON, or a part
+// that is not the shape it should be, reads as nothing.
+func ReadTokenError(body []byte) TokenError {
+	var doc struct {
+		Error       any `json:"error"`
+		Description any `json:"error_description"`
+		Trace       any `json:"trace_id"`
+		Correlation any `json:"correlation_id"`
+	}
+	if json.Unmarshal(body, &doc) != nil {
+		return TokenError{}
+	}
+	keep := func(v any, re *regexp.Regexp) string {
+		if s, ok := v.(string); ok && re.MatchString(s) {
+			return s
+		}
+		return ""
+	}
+	desc, _ := doc.Description.(string)
+	return TokenError{Error: keep(doc.Error, oauthErrorRe), Code: aadstsRe.FindString(strings.TrimSpace(desc)),
+		Trace: keep(doc.Trace, lookupIDRe), Correlation: keep(doc.Correlation, lookupIDRe)}
+}
+
+// String is the refusal as one line for a log or a page: "invalid_client, AADSTS7000215,
+// correlation id …", empty when the address said nothing readable.
+func (e TokenError) String() string {
+	parts := []string{}
+	for _, p := range []struct{ label, v string }{{"", e.Error}, {"", e.Code}, {"correlation id ", e.Correlation}, {"trace id ", e.Trace}} {
+		if p.v != "" {
+			parts = append(parts, p.label+p.v)
+		}
+	}
+	return strings.Join(parts, ", ")
+}
+
+// Hint is what a person can do about a refusal, in a sentence, or "" when the refusal says
+// nothing a person can act on.
+func (e TokenError) Hint() string {
+	switch e.Code {
+	case "AADSTS7000215":
+		return "Microsoft did not accept the client secret. Check the key holds the secret's Value, not its Secret ID, from the same app registration as the client ID."
+	case "AADSTS7000222":
+		return "The client secret has expired. Make a new one in the app registration and set it on the app's Keys page."
+	case "AADSTS700025", "AADSTS7000218", "AADSTS9002327":
+		return "The app registration treats Whisk's callback as a public or single-page client. Add the callback address under the Web platform instead."
+	case "AADSTS50011":
+		return "Whisk's callback address is not registered with the app. Add it as a redirect address."
+	}
+	switch e.Error {
+	case "invalid_client":
+		return "The system did not accept the client ID and secret. Check both keys hold the values from the same app registration, and that the secret has not expired."
+	case "unauthorized_client":
+		return "The system's app is not allowed to sign people in this way. Check its settings allow the authorization code flow."
+	case "invalid_grant":
+		return "The system did not accept the sign-in. Sign in again."
+	case "invalid_scope":
+		return "The system did not accept the permissions the connection asks for. Check the scopes in whisk.yaml."
+	}
+	return ""
+}
+
 // Refused reports whether a token address's answer to a renewal means the provider no longer
 // accepts the sign-in (RFC 6749 §5.2: 400 or 401, invalid_grant or invalid_client), as against
 // a failure worth trying again.

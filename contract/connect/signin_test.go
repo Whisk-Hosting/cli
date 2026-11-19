@@ -194,3 +194,33 @@ func TestDescribeSignIn(t *testing.T) {
 		t.Errorf("%v %v", placed, err)
 	}
 }
+
+func TestReadTokenError(t *testing.T) {
+	ms := `{"error":"invalid_client","error_description":"AADSTS7000215: Invalid client secret provided. Ensure the secret being sent in the request is the client secret value, not the client secret ID, for a secret added to app 'c0ffee'. Trace ID: 1a2b","error_codes":[7000215],"trace_id":"1a2b3c4d-0000-1111-2222-333344445555","correlation_id":"9f8e7d6c-aaaa-bbbb-cccc-ddddeeeeffff"}`
+	for _, c := range []struct {
+		name, body string
+		want       TokenError
+		hint       bool
+	}{
+		{"microsoft's refused secret", ms, TokenError{Error: "invalid_client", Code: "AADSTS7000215", Trace: "1a2b3c4d-0000-1111-2222-333344445555", Correlation: "9f8e7d6c-aaaa-bbbb-cccc-ddddeeeeffff"}, true},
+		{"a refused grant", `{"error":"invalid_grant","error_description":"Token expired"}`, TokenError{Error: "invalid_grant"}, true},
+		{"not JSON", `<html>Bad Request</html>`, TokenError{}, false},
+		{"empty", ``, TokenError{}, false},
+		{"parts not the shape they should be", `{"error":"Invalid Client <script>","error_description":"secret abc123 AADSTS1","trace_id":"a b","correlation_id":7}`, TokenError{}, false},
+		{"a body carrying a token", `{"error":"invalid_request","access_token":"tok-secret","refresh_token":"r-secret"}`, TokenError{Error: "invalid_request"}, false},
+	} {
+		got := ReadTokenError([]byte(c.body))
+		if got != c.want {
+			t.Errorf("%s: %+v", c.name, got)
+		}
+		if (got.Hint() != "") != c.hint {
+			t.Errorf("%s: hint %q", c.name, got.Hint())
+		}
+		if strings.Contains(got.String(), "secret") || strings.Contains(got.String(), "c0ffee") {
+			t.Errorf("%s: %q keeps more than the codes", c.name, got.String())
+		}
+	}
+	if s := ReadTokenError([]byte(ms)).String(); s != "invalid_client, AADSTS7000215, correlation id 9f8e7d6c-aaaa-bbbb-cccc-ddddeeeeffff, trace id 1a2b3c4d-0000-1111-2222-333344445555" {
+		t.Errorf("one line: %q", s)
+	}
+}
