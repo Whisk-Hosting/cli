@@ -120,12 +120,15 @@ type TrafficQuery struct {
 	Cached    string `query:"cached"`
 	Country   string `query:"country"`
 	EdgeCache string `query:"edge_cache"`
+	External  string `query:"external"`
 	From      string `query:"from"`
 	Host      string `query:"host"`
 	Kind      string `query:"kind"`
 	Limit     int    `query:"limit"`
 	Method    string `query:"method"`
 	Network   string `query:"network"`
+	Order     string `query:"order"`
+	Pages     string `query:"pages"`
 	Path      string `query:"path"`
 	Period    string `query:"period"`
 	Query     string `query:"query"`

@@ -32,6 +32,8 @@ type AppAnalytics struct {
 	// from its requests: absent when a filter other than page or country is set, which requests
 	// cannot be narrowed by.
 	Shares *AnalyticsShares `json:"shares,omitempty"`
+	// AI is what AI assistants did for the app over the period: absent when any filter is set.
+	AI *AnalyticsAI `json:"ai,omitempty"`
 	// KeptDays is how many days the business's plan keeps; 0 keeps everything.
 	KeptDays int `json:"kept_days"`
 	// By is what Breakdown breaks the reading down by, "" for none: page, entry, exit, source,
@@ -208,10 +210,10 @@ type AnalyticsStep struct {
 // answered for the app over the period, or from and to, people, robots and scripts alike, and
 // what the CDN answered from its copy, which never reached the app. By is what the rows are
 // grouped by, in order, from day, hour (both UTC), path, status, cached, source, method, host,
-// agent, kind, user_agent, referer, country and network; each row's Group names its value for
-// each. Agent is a crawler's, browser's or tool's name, "Other bots", "Other" or "(none)"; Kind
-// is the crawler's kind (search, ai_assistant, ai_crawler, preview, seo, other), browser, tool or
-// unknown. Filters are what narrowed it, each by name. Requests are kept as long as the plan keeps
+// agent, kind, user_agent, referer, country, network, utm_source, utm_medium and utm_campaign;
+// each row's Group names its value for each. Agent is a crawler's, browser's or tool's name,
+// "Other bots", "Other" or "(none)"; Kind is the crawler's kind (search, ai_assistant, ai_crawler,
+// preview, seo, other), browser, tool or unknown. Filters are what narrowed it, each by name. Requests are kept as long as the plan keeps
 // analytics, at most 90 days (KeptDays), and the newest arrive a few minutes late.
 type AppTraffic struct {
 	Period    string            `json:"period"`
@@ -225,12 +227,16 @@ type AppTraffic struct {
 	KeptDays  int               `json:"kept_days"`
 }
 
-// TrafficRow is one group of the traffic: its value for each part grouped by, its requests and
-// how many client addresses made them.
+// TrafficRow is one group of the traffic: its value for each part grouped by, its requests, how
+// many client addresses made them, and how long they took in milliseconds: the median and the
+// 95th percentile in all, and the median the app itself took (0 when the edge never asked it).
 type TrafficRow struct {
 	Group     map[string]string `json:"group"`
 	Requests  int               `json:"requests"`
 	Addresses int               `json:"addresses"`
+	P50Ms     int               `json:"p50_ms"`
+	P95Ms     int               `json:"p95_ms"`
+	AppP50Ms  int               `json:"app_p50_ms"`
 }
 
 // AppTrafficRequests is GET /orgs/:org/apps/:app/analytics/traffic/requests: the app's latest
@@ -299,6 +305,15 @@ type AnalyticsCrawler struct {
 type AnalyticsShares struct {
 	SharedIn []AnalyticsShare `json:"shared_in"`
 	OpenedIn []AnalyticsShare `json:"opened_in"`
+}
+
+// AnalyticsAI is what AI assistants did for an app. Fetches are the pages an assistant fetched
+// because a person asked it something (ChatGPT-User, Claude-User, Perplexity-User and the like),
+// by assistant; Referred are the visitors an assistant's answer sent, by the assistant's site.
+// Each is most first.
+type AnalyticsAI struct {
+	Fetches  []AnalyticsShare `json:"fetches"`
+	Referred []AnalyticsShare `json:"referred"`
 }
 
 // AnalyticsShare is one app and its count. Previous is its count in the span compared with,

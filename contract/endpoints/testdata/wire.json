@@ -178,6 +178,27 @@
       ],
       "type": "object"
     },
+    "apitypes.AnalyticsAI": {
+      "properties": {
+        "fetches": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsShare"
+          },
+          "type": "array"
+        },
+        "referred": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsShare"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "fetches",
+        "referred"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsChange": {
       "properties": {
         "by": {
@@ -944,6 +965,9 @@
     },
     "apitypes.AppAnalytics": {
       "properties": {
+        "ai": {
+          "$ref": "#/$defs/apitypes.AnalyticsAI"
+        },
         "average_seconds": {
           "type": "integer"
         },
@@ -10536,11 +10560,20 @@
         "addresses": {
           "type": "integer"
         },
+        "app_p50_ms": {
+          "type": "integer"
+        },
         "group": {
           "additionalProperties": {
             "type": "string"
           },
           "type": "object"
+        },
+        "p50_ms": {
+          "type": "integer"
+        },
+        "p95_ms": {
+          "type": "integer"
         },
         "requests": {
           "type": "integer"
@@ -10548,7 +10581,10 @@
       },
       "required": [
         "addresses",
+        "app_p50_ms",
         "group",
+        "p50_ms",
+        "p95_ms",
         "requests"
       ],
       "type": "object"
@@ -12388,6 +12424,9 @@
         "edge_cache": {
           "type": "string"
         },
+        "external": {
+          "type": "string"
+        },
         "from": {
           "type": "string"
         },
@@ -12404,6 +12443,12 @@
           "type": "string"
         },
         "network": {
+          "type": "string"
+        },
+        "order": {
+          "type": "string"
+        },
+        "pages": {
           "type": "string"
         },
         "path": {
@@ -12461,6 +12506,9 @@
         "edge_cache": {
           "type": "string"
         },
+        "external": {
+          "type": "string"
+        },
         "from": {
           "type": "string"
         },
@@ -12477,6 +12525,12 @@
           "type": "string"
         },
         "network": {
+          "type": "string"
+        },
+        "order": {
+          "type": "string"
+        },
+        "pages": {
           "type": "string"
         },
         "path": {
