@@ -312,8 +312,12 @@ type Deploy struct {
 // DeployEvent is one SSE event on GET /deploys/:id/events. The last one of a live deploy
 // carries the URL, the secrets still unset and, for production, the deploy's start time.
 type DeployEvent struct {
-	DeployID string          `json:"deploy_id"`
-	Status   status.Deploy   `json:"status"`
+	DeployID string        `json:"deploy_id"`
+	Status   status.Deploy `json:"status"`
+	// Seq is the step's place among the deploy's steps, from 0. It is the event's id on the
+	// stream: a client that connects again with Last-Event-ID is sent only the steps after it,
+	// and one that is sent a step again knows it by its place.
+	Seq      int             `json:"seq"`
 	Phase    Phase           `json:"phase"`
 	Error    *werrors.Detail `json:"error,omitempty"`
 	Done     bool            `json:"done"`

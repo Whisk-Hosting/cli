@@ -255,6 +255,9 @@ func render(types []any, enums map[reflect.Type]enumSet, regen string) (string, 
 		}
 		fmt.Fprintf(&b, "\nexport const %s = [%s] as const;\nexport type %s = (typeof %s)[number];\n",
 			e.list, strings.Join(quoted, ", "), e.name, e.list)
+		if e.name == "DeployStatus" {
+			b.WriteString(deploySets())
+		}
 	}
 	for _, t := range types {
 		var name, param string
@@ -528,4 +531,19 @@ func ownJSONNames(t reflect.Type) map[string]bool {
 func fieldName(line string) string {
 	name, _, _ := strings.Cut(strings.TrimSpace(line), ":")
 	return strings.TrimSuffix(name, "?")
+}
+
+// deploySets is the sets of deploy statuses a client decides by, written from the same rules the
+// platform uses (status.Deploy), so a page never keeps a list of its own: the statuses a deploy
+// ends at, and the steps of the pipeline in the order a deploy takes them, ending live.
+func deploySets() string {
+	list := func(name string, values []status.Deploy) string {
+		quoted := make([]string, len(values))
+		for i, v := range values {
+			quoted[i] = fmt.Sprintf("%q", string(v))
+		}
+		return fmt.Sprintf("export const %s: ReadonlyArray<DeployStatus> = [%s];\n", name, strings.Join(quoted, ", "))
+	}
+	steps := append(status.Filter(func(d status.Deploy) bool { return !d.Finished() }), status.DeployLive)
+	return list("DEPLOYS_FINISHED", status.Filter(status.Deploy.Finished)) + list("DEPLOY_STEPS", steps)
 }

@@ -47,7 +47,8 @@ func Deploys() []Deploy { return slices.Clone(deploys) }
 // Valid says whether d is a deploy status at all.
 func (d Deploy) Valid() bool { return slices.Contains(deploys, d) }
 
-// Finished says whether a deploy has stopped for good, one way or another: nothing moves it on.
+// Finished says whether a deploy has stopped for good, one way or another: its job is over. The
+// only move left is a newer deploy replacing one that is live or blocked (deployMoves).
 func (d Deploy) Finished() bool {
 	switch d {
 	case DeployLive, DeployFailed, DeployRolledBack, DeployCancelled, DeployBlocked, DeploySuperseded:
@@ -93,3 +94,33 @@ func (d Deploy) Abandoned() bool { return d == DeployCancelled || d == DeploySup
 func Filter(keep func(Deploy) bool) []Deploy {
 	return slices.DeleteFunc(Deploys(), func(d Deploy) bool { return !keep(d) })
 }
+
+// deployMoves is every move a deploy's status may make: the statuses each one may be followed by.
+// A deploy goes forward through the pipeline, skipping the steps it has no use for, and never
+// back, with these exceptions: one whose node was lost before it began switching is queued again,
+// a restore and a restore point report more than once, and a deploy that began switching can no
+// longer be cancelled, only fail to take over, finish or be replaced by a newer one.
+var deployMoves = map[Deploy][]Deploy{
+	DeployQueued:         {DeployQueued, DeployBuilding, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployBuilding:       {DeployQueued, DeployRehearsing, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployRehearsing:     {DeployQueued, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployRestoring:      {DeployQueued, DeployRestoring, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeploySnapshotting:   {DeployQueued, DeploySnapshotting, DeployMigrating, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployMigrating:      {DeployQueued, DeployStarting, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployStarting:       {DeployQueued, DeployHealthChecking, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeployHealthChecking: {DeployQueued, DeploySwitching, DeployFailed, DeployCancelled, DeployBlocked, DeploySuperseded},
+	DeploySwitching:      {DeployDraining, DeployLive, DeployFailed, DeploySuperseded},
+	DeployDraining:       {DeployLive, DeploySuperseded},
+	DeployLive:           {DeploySuperseded},
+	DeployBlocked:        {DeploySuperseded},
+	DeployFailed:         {},
+	DeployRolledBack:     {},
+	DeployCancelled:      {},
+	DeploySuperseded:     {},
+}
+
+// CanMove says whether a deploy in status d may move to status to (deployMoves).
+func (d Deploy) CanMove(to Deploy) bool { return slices.Contains(deployMoves[d], to) }
+
+// Cancellable says whether a person may still cancel a deploy in this status.
+func (d Deploy) Cancellable() bool { return d.CanMove(DeployCancelled) }

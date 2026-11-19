@@ -1,4 +1,14 @@
 {
+  "cancellable": [
+    "queued",
+    "building",
+    "rehearsing",
+    "restoring",
+    "snapshotting",
+    "migrating",
+    "starting",
+    "health_checking"
+  ],
   "finished": [
     "live",
     "failed",
@@ -7,6 +17,122 @@
     "blocked",
     "superseded"
   ],
+  "moves": {
+    "blocked": [
+      "superseded"
+    ],
+    "building": [
+      "queued",
+      "rehearsing",
+      "restoring",
+      "snapshotting",
+      "migrating",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "cancelled": [],
+    "draining": [
+      "live",
+      "superseded"
+    ],
+    "failed": [],
+    "health_checking": [
+      "queued",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "live": [
+      "superseded"
+    ],
+    "migrating": [
+      "queued",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "queued": [
+      "queued",
+      "building",
+      "rehearsing",
+      "restoring",
+      "snapshotting",
+      "migrating",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "rehearsing": [
+      "queued",
+      "restoring",
+      "snapshotting",
+      "migrating",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "restoring": [
+      "queued",
+      "restoring",
+      "snapshotting",
+      "migrating",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "rolled_back": [],
+    "snapshotting": [
+      "queued",
+      "snapshotting",
+      "migrating",
+      "starting",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "starting": [
+      "queued",
+      "health_checking",
+      "switching",
+      "failed",
+      "cancelled",
+      "blocked",
+      "superseded"
+    ],
+    "superseded": [],
+    "switching": [
+      "draining",
+      "live",
+      "failed",
+      "superseded"
+    ]
+  },
   "statuses": [
     "queued",
     "building",

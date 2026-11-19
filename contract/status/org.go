@@ -1,6 +1,9 @@
 package status
 
-import "slices"
+import (
+	"slices"
+	"time"
+)
 
 // Org is a business's status (CONTROL-PLANE.md "A business's status"). Only the control plane's
 // lifecycle moves it.
@@ -40,6 +43,19 @@ const (
 )
 
 var apps = []App{AppActive, AppSleeping, AppStopped, AppDeleted}
+
+// Follows says whether an app whose status a was decided by an event at decided now takes the
+// status an event at at leaves it with. Nothing moves a deleted app, and an event that happened
+// before the one the status follows no longer decides it: a wake reported after a later sleep
+// does not mark a sleeping app awake. Times compare to the second, as the node reports them, and
+// events of the same second apply in the order they arrive. decided is zero for a status no
+// event has decided yet.
+func (a App) Follows(to App, decided, at time.Time) bool {
+	if a == AppDeleted || !to.Valid() {
+		return false
+	}
+	return decided.IsZero() || !at.Truncate(time.Second).Before(decided.Truncate(time.Second))
+}
 
 // Apps is every app status.
 func Apps() []App { return slices.Clone(apps) }
