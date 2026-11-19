@@ -78,6 +78,73 @@ const (
 
 var nodes = []Node{NodeProvisioning, NodeReady, NodeDraining, NodeDown}
 
+// NodeEvent is something that moves a node's status.
+//
+//whisk:enum
+type NodeEvent string
+
+// What happens to a node.
+const (
+	// NodeHello is the node enrolling or saying hello: it is up and says what it runs.
+	NodeHello NodeEvent = "hello"
+	// NodeSeen is a heartbeat.
+	NodeSeen NodeEvent = "seen"
+	// NodeSilent is the node not having reported for as long as a node may.
+	NodeSilent NodeEvent = "silent"
+	// NodeDrain and NodeUndrain are the operator's.
+	NodeDrain   NodeEvent = "drain"
+	NodeUndrain NodeEvent = "undrain"
+)
+
+// NodeFacts is what a node's next status depends on besides the one it has.
+type NodeFacts struct {
+	// Draining is whether an operator is draining it, which outlives the node going down.
+	Draining bool
+	// FailoverOpen is whether it has a failover not yet fenced: it stays down whatever it reports.
+	FailoverOpen bool
+	// Serves is whether live deploys are still placed on it.
+	Serves bool
+}
+
+// NextNode is a node's status, and whether it is being drained, after an event. Whether a node
+// answers and whether an operator is draining it are two things: a node that reports again is
+// ready, or draining when it is being drained; a draining node that goes silent is down while
+// apps are still placed on it, so they fail over like any other node's, and stays draining once
+// it holds none, since a drained machine is expected to be switched off; draining a node that is
+// down leaves it down, and it comes back draining. Pure, table-tested.
+func NextNode(n Node, f NodeFacts, ev NodeEvent) (Node, bool) {
+	up := NodeReady
+	if f.Draining {
+		up = NodeDraining
+	}
+	switch ev {
+	case NodeHello, NodeSeen:
+		switch {
+		case n == NodeDown && f.FailoverOpen:
+			return n, f.Draining
+		case n == NodeDown, n == NodeProvisioning && ev == NodeHello:
+			return up, f.Draining
+		}
+		return n, f.Draining
+	case NodeSilent:
+		if n == NodeReady || (n == NodeDraining && f.Serves) {
+			return NodeDown, f.Draining
+		}
+		return n, f.Draining
+	case NodeDrain:
+		if n == NodeReady || n == NodeProvisioning {
+			return NodeDraining, true
+		}
+		return n, true
+	case NodeUndrain:
+		if n == NodeDraining {
+			return NodeReady, false
+		}
+		return n, false
+	}
+	return n, f.Draining
+}
+
 // Nodes is every node status.
 func Nodes() []Node { return slices.Clone(nodes) }
 
