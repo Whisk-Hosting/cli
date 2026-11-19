@@ -14,8 +14,8 @@ Output shape, one entry per finding:
 `whisk doctor --fix` applies the fixes marked safe below and reports what it changed.
 
 A warning reported at a line of code can be kept out of the report on purpose with a comment
-`doctor: allow <rule>` on that line or the line above it, saying why (`// doctor: allow W091 the
-edge test sets a parent-domain cookie on purpose`); one comment may name several rules
+`doctor: allow <rule>` on that line or the line above it, saying why (`// doctor: allow W093 the
+person asked for this mail service by name`); one comment may name several rules
 (`doctor: allow W140 W141 …`). Doctor lists it under `skipped` instead.
 Errors cannot be allowed.
 
@@ -461,19 +461,6 @@ which may keep its own sign-in: known when the directory is bound to an app and
 an app never goes live otherwise. Skipped too for a shop (whisk.yaml's `commerce: medusa`, as in the shop
 template, `ownsignin.Shop`), whose customers sign in to the shop on any plan.
 
-## W091
-
-Level: warning
-Check: the app sets a cookie with a Domain attribute.
-Fix: Leave Domain out; the platform binds every app cookie to the app's own address as __Host-<name>.
-Safe fix: no
-
-Details: the edge drops a cookie that names a Domain, because a cookie shared across addresses
-would reach every app under the domain. Matched in server code: `; Domain=` in a cookie string,
-a `domain:` option to `setCookie`, `cookie`, `cookies.set` or `serialize` (JavaScript), a
-`domain=` argument to `set_cookie` (Python), and `Domain:` in an `http.Cookie{}` (Go). One
-finding per file, at its first match.
-
 ## W092
 
 Level: warning
@@ -743,22 +730,6 @@ at the list when only its entries together do. Skipped for a Promoted app, known
 directory is bound to an app and `/apps/:app/validate` answers `promoted: true`, or when
 whisk.yaml says `promoted: true`; and for a shop (whisk.yaml's `commerce: medusa`, as in the
 shop template, `ownsignin.Shop`), whose customers sign in to the shop on any plan.
-
-## W107
-
-Level: warning
-Check: the app opens a node-postgres connection on the platform's database address as it is, so pg reads sslmode=require as verify-full and the connection is refused with "unable to get local issuer certificate".
-Fix: Add uselibpqcompat=true to the address before pg gets it (new URL(process.env.DATABASE_URL), then searchParams.set("uselibpqcompat", "true")), in every place the app opens a pool or a client.
-Safe fix: no
-
-Details: matched in JavaScript and TypeScript code that imports `pg` (or `@prisma/adapter-pg`)
-and opens a connection there (`new Pool(`, `new pg.Pool(`, `new Client(`, `new pg.Client(`,
-`new PrismaPg(`), when the same file neither sets `uselibpqcompat` nor passes its own TLS options
-(`ssl:`, `rejectUnauthorized`). A file that opens its connections through a helper the app
-wrote is read where the helper opens them. The refusal shows only when the connection is first
-used on Whisk, often in a scheduled or background function after the deploy went live, so the
-rule reports every such file, at its first connection. Skipped when whisk.yaml says
-`database: none`.
 
 ## W110
 

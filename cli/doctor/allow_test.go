@@ -6,19 +6,19 @@ import (
 )
 
 func TestAllowedAt(t *testing.T) {
-	src := []byte("a\n// doctor: allow W091 on purpose\nset cookie\nother // doctor: allow W023\nlast\n")
+	src := []byte("a\n// doctor: allow W093 on purpose\nset cookie\nother // doctor: allow W023\nlast\n")
 	cases := []struct {
 		line int
 		rule string
 		want bool
 	}{
-		{3, "W091", true},
-		{2, "W091", true},
+		{3, "W093", true},
+		{2, "W093", true},
 		{4, "W023", true},
 		{5, "W023", true},
-		{1, "W091", false},
+		{1, "W093", false},
 		{3, "W092", false},
-		{9, "W091", false},
+		{9, "W093", false},
 	}
 	for _, c := range cases {
 		if got := allowedAt(src, c.line, c.rule); got != c.want {

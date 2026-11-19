@@ -62,7 +62,7 @@ func TestAllowsRule(t *testing.T) {
 		line, rule string
 		want       bool
 	}{
-		{"// doctor: allow W091 the edge test", "W091", true},
+		{"// doctor: allow W093 the edge test", "W093", true},
 		{"# doctor: allow W140 W141 memory", "W141", true},
 		{"# doctor: allow W140, W141 memory", "W140", true},
 		{"# doctor: allow W140 memory W141", "W141", false},

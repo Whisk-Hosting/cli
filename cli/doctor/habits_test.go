@@ -46,11 +46,6 @@ func TestHabitRules(t *testing.T) {
 		{"build secret mounted", "W064", map[string]string{"whisk.yaml": manifest + "build:\n  secrets: [NPM_TOKEN]\n",
 			"Dockerfile": "FROM node:22-slim\nWORKDIR /app\nCOPY . .\nRUN --mount=type=secret,id=NPM_TOKEN,env=NPM_TOKEN npm ci\nUSER node\nEXPOSE 8080\nCMD [\"node\",\"dist/index.js\"]\n"}, false},
 
-		{"cookie domain string", "W091", map[string]string{"src/c.ts": "c.header(\"Set-Cookie\", \"sid=1; Domain=example.com; Path=/\");\n"}, true},
-		{"cookie domain option", "W091", map[string]string{"src/c.ts": "setCookie(c, \"sid\", \"1\", { domain: \".whisk.page\" });\n"}, true},
-		{"go cookie domain", "W091", map[string]string{"c.go": "package main\nvar k = http.Cookie{Name: \"sid\", Domain: \"x\"}\n"}, true},
-		{"cookie without domain", "W091", map[string]string{"src/c.ts": "setCookie(c, \"sid\", \"1\", { path: \"/\" });\n"}, false},
-
 		{"authorization header read", "W092", map[string]string{"src/auth.ts": "const token = c.req.header(\"Authorization\");\n"}, true},
 		{"jwt verify", "W092", map[string]string{"src/auth.ts": "const user = jwt.verify(token, key);\n"}, true},
 		{"go authorization read", "W092", map[string]string{"auth.go": "package main\nfunc f(r *http.Request) string { return r.Header.Get(\"Authorization\") }\n"}, true},

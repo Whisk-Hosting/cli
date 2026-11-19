@@ -19,8 +19,7 @@ import (
 // deploy: a static folder the commit does not hold (W004), a health timeout longer than a wake
 // waits (W005), timers inside the app (W023), session state on the pooled database connection
 // (W024), a function name the code does not use (W043), a build secret the Dockerfile does not
-// mount (W064), a cookie Domain (W091), identity read from a header the platform does not set
-// (W092) and an outside service Whisk already provides (W093). Each is a warning: the patterns
+// mount (W064), identity read from a header the platform does not set (W092) and an outside service Whisk already provides (W093). Each is a warning: the patterns
 // read code, they do not run it (doctor-rules.md).
 
 // WakeLimitSeconds is how long a wake waits for the app to answer its health check
@@ -266,32 +265,6 @@ func mountsSecret(dockerfile, name string) bool {
 }
 
 var reSecretMount = regexp.MustCompile(`--mount=\S*type=secret\S*`)
-
-// cookieDomainPatterns set a cookie's Domain attribute.
-var cookieDomainPatterns = map[stack.Lang][]*regexp.Regexp{
-	stack.JS: {
-		regexp.MustCompile(`(?i);\s*domain=`),
-		regexp.MustCompile(`(?i)(?:setCookie|cookie|cookies\.set|serialize)\([^)]*\bdomain\s*:`),
-	},
-	stack.PY: {
-		regexp.MustCompile(`(?i);\s*domain=`),
-		regexp.MustCompile(`set_cookie\([^)]*\bdomain\s*=`),
-	},
-	stack.GO: {
-		regexp.MustCompile(`(?i);\s*domain=`),
-		regexp.MustCompile(`http\.Cookie\{[^}]*\bDomain\s*:`),
-	},
-}
-
-func w091(r Repo, _ Context) outcome {
-	var out outcome
-	for _, f := range serverCode(r) {
-		if hs := matches(f, cookieDomainPatterns[stack.LangOf(f.Path)], 0); len(hs) > 0 {
-			out = out.add("W091", f.Path, hs[0].Line, fmt.Sprintf("%s sets a cookie with a Domain attribute, which the platform drops; app cookies are bound to the app's own address.", f.Path))
-		}
-	}
-	return out
-}
 
 // identityPatterns read who the caller is from something the platform does not vouch for: the
 // Authorization header of the incoming request, or a token the app verifies itself.

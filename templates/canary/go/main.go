@@ -241,7 +241,6 @@ func run() error {
 	// it to this host instead (H63).
 	r.Get("/diag/cookies", func(w http.ResponseWriter, req *http.Request) {
 		if d := req.URL.Query().Get("domain"); d != "" {
-			// doctor: allow W091 H63 sets a parent-domain cookie on purpose, to show the edge binds it to this host.
 			w.Header().Add("Set-Cookie", "diag_cookie=1; Domain="+d+"; Path=/diag; HttpOnly")
 		}
 		names := []string{}

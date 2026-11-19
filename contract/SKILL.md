@@ -894,14 +894,8 @@ write.
 
 ## 5. Database
 
-`DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is, with one
-exception: Node's `pg` (node-postgres, also under Prisma's `@prisma/adapter-pg`) reads
-`sslmode=require` as `verify-full` and refuses the platform's certificate with
-`SELF_SIGNED_CERT_IN_CHAIN` or `UNABLE_TO_GET_ISSUER_CERT_LOCALLY`, so in code using `pg` add `uselibpqcompat=true` to the URL
-(`new URL(process.env.DATABASE_URL)` then `searchParams.set("uselibpqcompat", "true")`) wherever
-the app opens a pool or a client; `whisk doctor` reports one that does not as W107. Only `pg`
-reads that parameter; other drivers refuse it. No
-session-level state: no `SET` outside a transaction, no advisory locks held across statements,
+`DATABASE_URL` is a pooled Postgres connection in transaction mode. Use it as-is with any
+driver: its certificate verifies, Node's `pg` included. No session-level state: no `SET` outside a transaction, no advisory locks held across statements,
 no `LISTEN`. Prepared statements are fine inside a transaction. Before a migration relies on a
 function from a recent release (such as `uuidv7()`), check the server's version:
 `whisk db schema --json` prints it as `postgres`.
@@ -1810,9 +1804,8 @@ hour signed in, 5 without a login; past that, combine them.
 - Print secrets, tokens or the environment.
 - Force-push to Whisk. Bring the other person's commits into yours and push again (§3, Several
   people on one app).
-- Set cookies with a `Domain` attribute or read them in page script by their bare name. In the
-  browser every app cookie is `__Host-<name>`, bound to the app's own address; the app's server
-  sees `<name>`. Script that sets a cookie the server should read sets `__Host-<name>` with
+- Read cookies in page script by their bare name. In the browser every app cookie is
+  `__Host-<name>`, bound to the app's own address; the app's server sees `<name>`. Script that sets a cookie the server should read sets `__Host-<name>` with
   `Secure; Path=/`, or the platform drops it. A client that reads a CSRF token cookie (axios's
   `XSRF-TOKEN`, Django's `csrftoken`) is pointed at the `__Host-` name, for example axios
   `xsrfCookieName: "__Host-XSRF-TOKEN"`; the platform already refuses cross-app form posts.
