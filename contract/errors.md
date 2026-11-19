@@ -3640,6 +3640,22 @@ process work in smaller batches. Otherwise give the app Boost (2 GiB of memory, 
 {"error":{"code":"APP_OUT_OF_MEMORY","message":"whisk-init: the previous run was killed with SIGKILL without a stop request, which means it used more than its memory limit of 256 MiB (files in /tmp count as memory).","fix":"Reduce its peak memory (stream large files, keep less in /tmp) or give the app Boost (2 GiB of memory, on any plan).","docs":"https://skill.whisk.run/errors/APP_OUT_OF_MEMORY","details":{}}}
 ```
 
+## APP_STOP_TIMEOUT
+
+Status: - · Surface: container
+
+When: the platform stopped the app (a deploy replacing it, a sleep, a move) and the app was still
+running when its grace ran out after SIGTERM, so whisk-init killed it. whisk-init prints this as
+the run's last line and the container ends as stopped. An app that catches SIGTERM and never exits
+hits it on every deploy, and the work it was doing is cut off at the kill.
+
+Fix: Exit when SIGTERM arrives: finish or hand back the work in progress, close the server, and
+end the process. A handler for SIGTERM that does not end the process keeps it running.
+
+```json
+{"error":{"code":"APP_STOP_TIMEOUT","message":"whisk-init: the app did not exit within 28s of SIGTERM, so it was killed.","fix":"Exit when SIGTERM arrives so a deploy or a sleep stops it at once.","docs":"https://skill.whisk.run/errors/APP_STOP_TIMEOUT","details":{}}}
+```
+
 ## APP_CPU_SLEEP
 
 Status: - · Surface: container
