@@ -224,6 +224,10 @@ type Routes struct {
 	Challenge []string          `json:"challenge"`
 	CSRFOff   []string          `json:"csrf_off"`
 	Headers   map[string]string `json:"headers"`
+	// DeviceHeader names the header an app's own clients send that says which install a request
+	// comes from. Someone not signed in who sends it is counted by it rather than by their
+	// address, so the installs in one office each have their own allowance (CADDY.md §6).
+	DeviceHeader string `json:"device_header,omitempty"`
 }
 
 // SignIn is how an app's customers' sign-in pages and emails look (CONTRACT.md §3). The push
@@ -950,7 +954,7 @@ func checkRules(m Manifest) Problems {
 // manifestRules are the checks beyond the schema, in the order their problems are listed. Each
 // is pure and checks one part of the manifest.
 var manifestRules = []func(Manifest) Problems{
-	checkChallengeRoutes, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV, checkB2B,
+	checkChallengeRoutes, checkDeviceHeader, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV, checkB2B,
 	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
 	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects, checkFlags,
 }
@@ -982,6 +986,22 @@ func checkChallengeRoutes(m Manifest) Problems {
 		}
 		return r + " is not a public route; challenge routes must also be listed under routes.public"
 	})
+}
+
+// notDeviceHeaders are headers every client sends or the platform sets, which never say which
+// install a request comes from.
+var notDeviceHeaders = []string{"accept", "accept-encoding", "accept-language", "connection", "content-length", "content-type",
+	"cookie", "host", "origin", "referer", "user-agent", "x-real-ip"}
+
+func checkDeviceHeader(m Manifest) Problems {
+	h := strings.ToLower(m.Routes.DeviceHeader)
+	switch {
+	case h == "":
+		return nil
+	case strings.HasPrefix(h, "x-whisk-") || strings.HasPrefix(h, "x-forwarded-") || slices.Contains(notDeviceHeaders, h):
+		return Problems{invalid("/routes/device_header", m.Routes.DeviceHeader+" is sent by every client or set by the platform, so it cannot tell installs apart; name the header your app's own clients send, such as X-Device-Id")}
+	}
+	return nil
 }
 
 func checkSecretNames(m Manifest) Problems {

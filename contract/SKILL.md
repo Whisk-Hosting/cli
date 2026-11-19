@@ -353,6 +353,7 @@ routes:
   public: ["/", "/health"]        # everything else needs a signed-in person (§4)
   challenge: ["/contact"]         # public POSTs here need a solved bot challenge (§4)
   csrf_off: []                    # rare: routes exempt from the CSRF check, for embeds
+  device_header: X-Device-Id      # optional: your own clients' install header, rate limited per install (§4)
   headers: { X-Frame-Options: DENY }   # add or override response headers
 health: { path: /health, timeout: 30 } # seconds from start to the first 200; default 90
 database: app                     # app | shared:<name> | none (§5)
@@ -649,6 +650,13 @@ ever receives requests with a `team` or `customer` identity (or `service`, for p
 deliveries and app-to-app calls); the platform has already redirected browsers to login and
 answered API clients 401. A public route receives `anonymous` when nobody is signed in and the
 full identity when someone is.
+
+Someone not signed in is rate limited by their network address, which an office shares. When the
+app's own clients (a desktop or phone install that signs its requests itself) call public routes,
+have each send a header naming its install and list it as `routes.device_header` (for example
+`X-Device-Id`): each install then has its own allowance, and the installs at one address together
+have ten times it. The edge does not check the header, so the app still authenticates every
+request.
 
 Authorise inside the app by role or group:
 

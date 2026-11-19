@@ -68,6 +68,11 @@
           "uniqueItems": true,
           "default": []
         },
+        "device_header": {
+          "description": "The header the app's own clients (a desktop or phone install) send to say which install a request comes from. Someone not signed in who sends it is rate limited per install rather than per network address; the app still checks it.",
+          "type": "string",
+          "pattern": "^[A-Za-z][A-Za-z0-9-]{0,62}$"
+        },
         "headers": {
           "description": "Response headers to add or override on every response from this app.",
           "type": "object",

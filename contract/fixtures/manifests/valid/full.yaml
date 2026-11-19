@@ -8,6 +8,7 @@ routes:
   public: ["/", "/public/**", "/health", "/contact"]
   challenge: ["/contact"]
   csrf_off: []
+  device_header: X-Job-Device
   headers:
     Content-Security-Policy: "default-src https:"
     X-Frame-Options: DENY

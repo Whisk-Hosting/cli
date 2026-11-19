@@ -1,0 +1,6 @@
+# expect: MANIFEST_INVALID /routes/device_header
+whisk: 1
+name: stock-room
+routes:
+  public: ["/device/**"]
+  device_header: X-Forwarded-For
