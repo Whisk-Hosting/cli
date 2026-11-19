@@ -6918,6 +6918,36 @@
       ],
       "type": "object"
     },
+    "apitypes.LogHour": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "lines": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "at",
+        "lines"
+      ],
+      "type": "object"
+    },
+    "apitypes.LogHours": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.LogHour"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "apitypes.LogLine": {
       "properties": {
         "at": {
@@ -12858,6 +12888,16 @@
         },
         "until": {
           "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/logs/hours": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.LogHours"
+      },
+      "query": {
+        "hours": {
+          "type": "integer"
         }
       }
     },

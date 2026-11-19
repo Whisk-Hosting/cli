@@ -204,7 +204,7 @@ var baseWire = []any{
 	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, MediaLink{},
 	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
 	PackageCounts{}, PackageScan{}, Packages{}, OrgPackages{}, AppPackages{}, LogDestination{}, LogDestinationList{},
-	LogDestinationRequest{}, LogLine{}, LogPage{}, ErrorGroup{}, ErrorSample{}, ErrorOccurrence{}, ErrorFrame{},
+	LogDestinationRequest{}, LogLine{}, LogPage{}, LogHour{}, LogHours{}, ErrorGroup{}, ErrorSample{}, ErrorOccurrence{}, ErrorFrame{},
 	AppAnalytics{}, AnalyticsCount{}, AnalyticsCrawler{}, AnalyticsShares{}, AnalyticsShare{}, AnalyticsAI{}, AnalyticsOpen{}, AnalyticsFilters{}, AnalyticsRow{},
 	AppVisitors{}, AnalyticsVisitor{}, AnalyticsVisitorSteps{}, AnalyticsStep{}, AnalyticsChart{}, AnalyticsChartPoint{}, AnalyticsChartLimits{}, AnalyticsFunnel{}, AnalyticsFunnelStep{}, AnalyticsPrevious{}, AnalyticsTotals{}, AnalyticsTable{}, AnalyticsTableRow{}, AnalyticsChanges{}, AnalyticsChange{}, AppTraffic{}, TrafficRow{}, AppTrafficRequests{}, TrafficRequest{},
 	AppCrawlers{}, CrawlerSummary{}, CrawlerPage{}, CrawlerStatus{}, CrawlerJourney{}, CrawlerJourneyDetail{}, CrawlerRequest{},

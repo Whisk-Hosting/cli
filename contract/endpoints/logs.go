@@ -10,8 +10,9 @@ var (
 	GetError       = New[None, apitypes.ErrorSample]("GET /v1/orgs/{org}/apps/{app}/errors/{id}")
 	SetErrorStatus = New[apitypes.SetErrorStatusRequest, apitypes.ErrorStatusSet]("POST /v1/orgs/{org}/apps/{app}/errors/{id}")
 	GetLogs        = New[GetLogsQuery, apitypes.LogPage]("GET /v1/orgs/{org}/apps/{app}/logs")
+	GetLogHours    = New[GetLogHoursQuery, apitypes.LogHours]("GET /v1/orgs/{org}/apps/{app}/logs/hours")
 
-	_ = public.Add(ListErrors, GetError, SetErrorStatus, GetLogs)
+	_ = public.Add(ListErrors, GetError, SetErrorStatus, GetLogs, GetLogHours)
 )
 
 // ListErrorsQuery is what ListErrors reads from the query.
@@ -32,4 +33,10 @@ type GetLogsQuery struct {
 	Stream     string `query:"stream"`
 	StreamName string `query:"stream_name"`
 	Until      string `query:"until"`
+}
+
+// GetLogHoursQuery is what GetLogHours reads from the query: how many clock hours, 1 to 168,
+// 24 when left out.
+type GetLogHoursQuery struct {
+	Hours int `query:"hours"`
 }

@@ -498,6 +498,18 @@ type LogPage struct {
 	Items []LogLine `json:"items"`
 }
 
+// LogHour is how many lines an app printed in one clock hour, starting at At (UTC).
+type LogHour struct {
+	At    time.Time `json:"at"`
+	Lines int64     `json:"lines"`
+}
+
+// LogHours is GET /orgs/:org/apps/:app/logs/hours: the lines in each clock hour of the window,
+// oldest first, ending with the hour now is in.
+type LogHours struct {
+	Items []LogHour `json:"items"`
+}
+
 // ErrorGroup is one error group of an app.
 type ErrorGroup struct {
 	ID        string    `json:"id"`
