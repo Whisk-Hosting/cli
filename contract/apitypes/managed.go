@@ -29,6 +29,9 @@ type AppFork struct {
 	Release int `json:"release"`
 	Newest  int `json:"newest"`
 	Behind  int `json:"behind"`
+	// Version and NewestVersion are those releases' versions, major.minor.patch; "" for none.
+	Version       string `json:"version,omitempty"`
+	NewestVersion string `json:"newest_version,omitempty"`
 	// Changed is whether the app's code is anything but release Release as Whisk made it.
 	Changed bool `json:"changed"`
 	// Channel is how the app takes the product's releases: instant applies each as it comes,

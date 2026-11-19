@@ -1308,11 +1308,17 @@
         "newest": {
           "type": "integer"
         },
+        "newest_version": {
+          "type": "string"
+        },
         "product": {
           "type": "string"
         },
         "release": {
           "type": "integer"
+        },
+        "version": {
+          "type": "string"
         }
       },
       "required": [

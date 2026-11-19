@@ -235,6 +235,19 @@ func managedLines(a api.App, apps []api.App) []string {
 	return out
 }
 
+// held and newest are the release a fork's code holds and the newest on its branch, by version,
+// or by number from a platform that names no version. Pure.
+func held(f *api.AppFork) string   { return releaseName(f.Release, f.Version) }
+func newest(f *api.AppFork) string { return releaseName(f.Newest, f.NewestVersion) }
+
+// releaseName is a release's version, or its number when it has none. Pure.
+func releaseName(number int, version string) string {
+	if version != "" {
+		return version
+	}
+	return fmt.Sprint(number)
+}
+
 // forkEmpty reports whether a fork has no code of its own yet: it holds no release and nothing
 // of the business's. Pure.
 func forkEmpty(f *api.AppFork) bool { return f.Release == 0 && !f.Changed }
@@ -251,9 +264,9 @@ func forkText(f *api.AppFork) string {
 	case f.Release == 0:
 		return "code of its own that holds none of its releases"
 	case f.Behind == 0:
-		return fmt.Sprintf("release %d, the newest, %s", f.Release, code)
+		return fmt.Sprintf("release %s, the newest, %s", held(f), code)
 	}
-	return fmt.Sprintf("release %d %s, %d behind release %d", f.Release, code, f.Behind, f.Newest)
+	return fmt.Sprintf("release %s %s, %d behind release %s", held(f), code, f.Behind, newest(f))
 }
 
 // forkNext is what brings a fork its product's newest release: the update for code Whisk may
@@ -264,11 +277,11 @@ func forkNext(slug string, f *api.AppFork) string {
 	case f.Behind == 0:
 		return ""
 	case f.Changed && f.Release > 0:
-		return fmt.Sprintf("whisk managed merge in a checkout of its code brings release %d in, naming each change of the business's it meets, and whisk deploy puts it live", f.Newest)
+		return fmt.Sprintf("whisk managed merge in a checkout of its code brings release %s in, naming each change of the business's it meets, and whisk deploy puts it live", newest(f))
 	case f.Changed:
-		return fmt.Sprintf("git fetch whisk, then git merge whisk/%s, brings release %d into its code, and whisk deploy puts it live", f.Branch, f.Newest)
+		return fmt.Sprintf("git fetch whisk, then git merge whisk/%s, brings release %s into its code, and whisk deploy puts it live", f.Branch, newest(f))
 	}
-	return fmt.Sprintf("whisk managed update %s moves it to release %d", slug, f.Newest)
+	return fmt.Sprintf("whisk managed update %s moves it to release %s", slug, newest(f))
 }
 
 // forkLines is what whisk apps info adds for a fork. Pure.
@@ -294,7 +307,7 @@ func forkRow(a api.App) []string {
 	if f == nil {
 		return []string{a.Slug, "-", "-", "-", "-", "-", appStatusText(a)}
 	}
-	release, code := fmt.Sprint(f.Release), "as released"
+	release, code := held(f), "as released"
 	switch {
 	case forkEmpty(f):
 		release, code = "-", "-"
@@ -303,7 +316,7 @@ func forkRow(a api.App) []string {
 	case f.Changed:
 		code = "changed"
 	}
-	return []string{a.Slug, f.Product, release, fmt.Sprint(f.Newest), code, orDash(f.Channel), appStatusText(a)}
+	return []string{a.Slug, f.Product, release, newest(f), code, orDash(f.Channel), appStatusText(a)}
 }
 
 // kindText is what a copy of the product is, in a product's row. Pure.
@@ -342,11 +355,11 @@ func updateLine(org string, u api.ForkUpdate) string {
 	case f == nil:
 		return fmt.Sprintf("%s/%s has nothing to take.", org, a.Slug)
 	case u.Updated:
-		return fmt.Sprintf("Moved %s/%s to %s release %d.", org, a.Slug, f.Name, f.Release)
+		return fmt.Sprintf("Moved %s/%s to %s release %s.", org, a.Slug, f.Name, held(f))
 	case u.Deploy == nil:
-		return fmt.Sprintf("%s/%s holds %s release %d, the newest, with changes of its own, so there is nothing to take.", org, a.Slug, f.Name, f.Release)
+		return fmt.Sprintf("%s/%s holds %s release %s, the newest, with changes of its own, so there is nothing to take.", org, a.Slug, f.Name, held(f))
 	}
-	return fmt.Sprintf("%s/%s already holds %s release %d, the newest.", org, a.Slug, f.Name, f.Release)
+	return fmt.Sprintf("%s/%s already holds %s release %s, the newest.", org, a.Slug, f.Name, held(f))
 }
 
 // forkUpdated reports what an update of a fork did, and follows the deploy that carries the

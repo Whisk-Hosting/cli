@@ -19,6 +19,11 @@ func TestForkWords(t *testing.T) {
 	fork := func(release, newest int, changed bool) *api.AppFork {
 		return &api.AppFork{Product: "crm", Name: "CRM", Branch: "upstream", Release: release, Newest: newest, Behind: max(0, newest-release), Changed: changed, Channel: "fast"}
 	}
+	versioned := func(release, newest int, held, latest string) *api.AppFork {
+		f := fork(release, newest, false)
+		f.Version, f.NewestVersion = held, latest
+		return f
+	}
 	for _, c := range []struct {
 		name   string
 		f      *api.AppFork
@@ -41,6 +46,8 @@ func TestForkWords(t *testing.T) {
 			[]string{"crm-2", "crm", "-", "3", "changed", "fast", "running, fork, 3 behind"}, "running, fork, 3 behind"},
 		{"no code yet", fork(0, 3, false), "no code of its own yet", "whisk managed update crm-2 moves it to release 3",
 			[]string{"crm-2", "crm", "-", "3", "-", "fast", "running, fork, 3 behind"}, "running, fork, 3 behind"},
+		{"releases by version", versioned(15, 16, "1.15.0", "1.15.1"), "release 1.15.0 as Whisk made it, 1 behind release 1.15.1", "whisk managed update crm-2 moves it to release 1.15.1",
+			[]string{"crm-2", "crm", "1.15.0", "1.15.1", "as released", "fast", "running, fork, 1 behind"}, "running, fork, 1 behind"},
 	} {
 		a := api.App{Slug: "crm-2", Status: "running", Fork: c.f}
 		if got := forkText(c.f); got != c.text {
