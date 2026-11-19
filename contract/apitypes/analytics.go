@@ -28,6 +28,10 @@ type AppAnalytics struct {
 	// run no script, so they are counted from the platform's request log and are in none of the
 	// numbers above.
 	Crawlers []AnalyticsCrawler `json:"crawlers"`
+	// Shares are the apps the app's links were shared in and opened in over the period, read
+	// from its requests: absent when a filter other than page or country is set, which requests
+	// cannot be narrowed by.
+	Shares *AnalyticsShares `json:"shares,omitempty"`
 	// KeptDays is how many days the business's plan keeps; 0 keeps everything.
 	KeptDays int `json:"kept_days"`
 	// By is what Breakdown breaks the reading down by, "" for none: page, entry, exit, source,
@@ -287,6 +291,22 @@ type AnalyticsCrawler struct {
 	Name     string `json:"name"`
 	Kind     string `json:"kind"`
 	Requests int    `json:"requests"`
+}
+
+// AnalyticsShares are where an app's links were shared and opened. SharedIn are the apps whose
+// link previews fetched its pages, each fetch one share, never a visit; OpenedIn are the apps
+// whose own browser opened its pages, by visitors (distinct addresses). Each is most first.
+type AnalyticsShares struct {
+	SharedIn []AnalyticsShare `json:"shared_in"`
+	OpenedIn []AnalyticsShare `json:"opened_in"`
+}
+
+// AnalyticsShare is one app and its count. Previous is its count in the span compared with,
+// present only when comparing.
+type AnalyticsShare struct {
+	Name     string `json:"name"`
+	Count    int    `json:"count"`
+	Previous *int   `json:"previous,omitempty"`
 }
 
 // AppCrawlers is GET /orgs/:org/apps/:app/analytics/crawlers: what robots asked an app for over

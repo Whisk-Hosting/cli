@@ -530,6 +530,45 @@
       ],
       "type": "object"
     },
+    "apitypes.AnalyticsShare": {
+      "properties": {
+        "count": {
+          "type": "integer"
+        },
+        "name": {
+          "type": "string"
+        },
+        "previous": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "count",
+        "name"
+      ],
+      "type": "object"
+    },
+    "apitypes.AnalyticsShares": {
+      "properties": {
+        "opened_in": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsShare"
+          },
+          "type": "array"
+        },
+        "shared_in": {
+          "items": {
+            "$ref": "#/$defs/apitypes.AnalyticsShare"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "opened_in",
+        "shared_in"
+      ],
+      "type": "object"
+    },
     "apitypes.AnalyticsStep": {
       "properties": {
         "at": {
@@ -959,6 +998,9 @@
         },
         "previous": {
           "$ref": "#/$defs/apitypes.AnalyticsPrevious"
+        },
+        "shares": {
+          "$ref": "#/$defs/apitypes.AnalyticsShares"
         },
         "sources": {
           "items": {
