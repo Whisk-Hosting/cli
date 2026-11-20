@@ -856,6 +856,13 @@ type OrgHome struct {
 	Categories []string `json:"categories"`
 }
 
+// HomeCounts is GET /orgs/:org/home/counts: the counts every page's navigation shows, which are
+// the home's own (len(apps) and needs_you.approvals) without the rest of it.
+type HomeCounts struct {
+	Apps      int `json:"apps"`
+	Approvals int `json:"approvals"`
+}
+
 // NeedsYou lists what waits on a human.
 type NeedsYou struct {
 	UnsetSecrets   []string `json:"unset_secrets"` // "app/NAME"

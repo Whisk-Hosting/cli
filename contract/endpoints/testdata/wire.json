@@ -6352,6 +6352,21 @@
       ],
       "type": "object"
     },
+    "apitypes.HomeCounts": {
+      "properties": {
+        "approvals": {
+          "type": "integer"
+        },
+        "apps": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "approvals",
+        "apps"
+      ],
+      "type": "object"
+    },
     "apitypes.HomeLayout": {
       "properties": {
         "apps": {
@@ -13145,6 +13160,11 @@
     "GET /v1/orgs/{org}/home": {
       "answer": {
         "$ref": "#/$defs/apitypes.OrgHome"
+      }
+    },
+    "GET /v1/orgs/{org}/home/counts": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.HomeCounts"
       }
     },
     "GET /v1/orgs/{org}/logs/destinations": {
