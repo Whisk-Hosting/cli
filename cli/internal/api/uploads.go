@@ -84,8 +84,8 @@ func (c *Client) PostUpload(ctx context.Context, auth UploadAuthorisation, filen
 	return c.postForm(ctx, auth.URL, auth.Fields, filename, contentType, r, size, progress)
 }
 
-// ListUploads lists what the app has authorised, newest first. GET /orgs/:org/apps/:app/uploads.
+// ListUploads lists everything the app has authorised, newest first, page by page.
+// GET /orgs/:org/apps/:app/uploads.
 func (c *Client) ListUploads(ctx context.Context, org, app string) ([]Upload, error) {
-	out, err := Call(ctx, c, endpoints.ListUploads, org, app)
-	return out.Items, err
+	return All(ctx, c, endpoints.ListUploads, org, app)
 }

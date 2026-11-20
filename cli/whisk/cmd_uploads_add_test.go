@@ -323,3 +323,92 @@ func TestOpenUploadsKeepsPaths(t *testing.T) {
 		t.Error("a folder without --keep-paths was taken")
 	}
 }
+
+// TestAlreadyThere: a file whose path already answers with a whole upload of its size, seen by
+// the same people, is not sent again; anything else is.
+func TestAlreadyThere(t *testing.T) {
+	held := []api.Upload{
+		{ID: "02", Path: "/a.pdf", Bytes: 10, Status: apitypes.UploadClean, Visibility: "public"},
+		{ID: "01", Path: "/a.pdf", Bytes: 99, Status: apitypes.UploadClean, Visibility: "public"},
+		{ID: "03", Path: "/big.pdf", Bytes: 10, Status: apitypes.UploadUnscanned, Visibility: "public"},
+		{ID: "04", Path: "/half.pdf", Bytes: 10, Status: apitypes.UploadAuthorised, Visibility: "public"},
+		{ID: "05", Path: "/bad.pdf", Bytes: 10, Status: apitypes.UploadInfected, Visibility: "public"},
+	}
+	for _, c := range []struct {
+		name       string
+		f          uploadFile
+		visibility string
+		want       string
+	}{
+		{"the newest upload at the path, the same size", uploadFile{sitePath: "/a.pdf", size: 10}, "public", "02"},
+		{"another size goes up", uploadFile{sitePath: "/a.pdf", size: 99}, "public", ""},
+		{"another visibility goes up", uploadFile{sitePath: "/a.pdf", size: 10}, "private", ""},
+		{"stored without a scan counts", uploadFile{sitePath: "/big.pdf", size: 10}, "public", "03"},
+		{"one that never finished goes up", uploadFile{sitePath: "/half.pdf", size: 10}, "public", ""},
+		{"a quarantined one goes up", uploadFile{sitePath: "/bad.pdf", size: 10}, "public", ""},
+		{"a new path goes up", uploadFile{sitePath: "/new.pdf", size: 10}, "public", ""},
+		{"a file with no path always goes up", uploadFile{size: 10}, "public", ""},
+	} {
+		u, ok := alreadyThere(c.f, c.visibility, held)
+		if got := map[bool]string{true: u.ID}[ok]; got != c.want {
+			t.Errorf("%s: got %q, want %q", c.name, got, c.want)
+		}
+	}
+}
+
+// TestUploadsAddSkipsWhatIsThere: a folder sent again sends only what is not already at its path, the
+// listing is read page by page, and a file the store did not take is sent again.
+func TestUploadsAddSkipsWhatIsThere(t *testing.T) {
+	defer func(old time.Duration) { uploadRetry = old }(uploadRetry)
+	uploadRetry = time.Millisecond
+	mux := http.NewServeMux()
+	var srv *httptest.Server
+	app := "/v1/orgs/acme/apps/crm"
+	var posts, fails atomic.Int32
+	pages := map[string]any{
+		"":   map[string]any{"items": []any{map[string]any{"id": "09", "path": "/docs/a.pdf", "bytes": 3, "status": "clean", "visibility": "public"}}, "next_cursor": "09"},
+		"09": map[string]any{"items": []any{map[string]any{"id": "08", "path": "/docs/b.pdf", "bytes": 3, "status": "clean", "visibility": "public"}}, "next_cursor": ""},
+	}
+	mux.HandleFunc("GET "+app+"/uploads", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, pages[r.URL.Query().Get("cursor")])
+	})
+	mux.HandleFunc("POST "+app+"/uploads", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 201, map[string]any{"id": "10", "key": "app/a1/10-c.pdf", "url": srv.URL + "/store", "method": "POST",
+			"fields": map[string]any{"key": "app/a1/10-c.pdf"}, "max_bytes": 3, "expires_at": "2026-10-19T02:00:00Z"})
+	})
+	mux.HandleFunc("POST /store", func(w http.ResponseWriter, r *http.Request) {
+		posts.Add(1)
+		if fails.Add(1) == 1 {
+			w.WriteHeader(502)
+			return
+		}
+		w.WriteHeader(204)
+	})
+	mux.HandleFunc("GET "+app+"/uploads/10", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]any{"id": "10", "status": "clean", "bytes": 3, "visibility": "public"})
+	})
+	mux.HandleFunc("PATCH "+app+"/uploads/10", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, 200, map[string]any{"id": "10", "status": "clean", "bytes": 3, "visibility": "public", "path": "/docs/c.pdf"})
+	})
+	srv = httptest.NewServer(mux)
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+	must(t, os.MkdirAll(filepath.Join(dir, "site", "docs"), 0o700))
+	for _, f := range []string{"a.pdf", "b.pdf", "c.pdf"} {
+		must(t, os.WriteFile(filepath.Join(dir, "site", "docs", f), []byte("pdf"), 0o600))
+	}
+	r := runRemote(t, dir, srv.URL, nil, "uploads", "add", "site", "--public", "--keep-paths", "--json")
+	if r.Code != 0 {
+		t.Fatalf("uploads add: %+v", r)
+	}
+	if n := posts.Load(); n != 2 {
+		t.Errorf("the store was sent %d posts, want 2: c.pdf, again after the store failed", n)
+	}
+	ids := []string{}
+	for _, u := range r.JSON["uploads"].([]any) {
+		ids = append(ids, u.(map[string]any)["id"].(string))
+	}
+	if strings.Join(ids, ",") != "09,08,10" {
+		t.Errorf("uploads %v", ids)
+	}
+}

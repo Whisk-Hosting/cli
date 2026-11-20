@@ -2,6 +2,7 @@ package whisk
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -31,6 +32,10 @@ const scanMaxBytes = 100 << 20
 // uploadPoll is how often --wait asks how an upload's scan and conversion are going.
 var uploadPoll = 5 * time.Second
 
+// uploadRetry is how long the first new try of a file the store did not take waits; a variable so
+// a test need not wait.
+var uploadRetry = 2 * time.Second
+
 // uploadsAddCmd uploads files from this computer into the app's storage (CLI.md §5.9): each is
 // authorised with this sign-in, posted straight to the store and then scanned and, for video,
 // audio and pictures, made ready to show, exactly as a file a visitor uploads through the app.
@@ -53,7 +58,8 @@ product video on a website).
 place under it, so whisk uploads add public/ --public --keep-paths makes public/posters/a.jpg
 answer at /posters/a.jpg, whenever the app itself has nothing there. A website links its files
 by those paths, and old links to them keep working. Uploading to a path again replaces the file
-there once the new one is scanned. --path names the path of a single file. The type comes from the file's name and contents; --content-type
+there once the new one is scanned; a file already at its path with the same size and visibility
+is not sent again, so a run that stopped part way carries on. --path names the path of a single file. The type comes from the file's name and contents; --content-type
 sets it for every file given. --wait follows each until its scan and conversion are done;
 whisk uploads show <id> --wait does it later.
 
@@ -80,13 +86,9 @@ are left out.`,
 			if s.quiet || s.json {
 				log = io.Discard
 			}
-			out := make([]api.Upload, 0, len(files))
-			for i := range files {
-				u, err := addOne(s, client, org, app, &files[i], visibility, wait, log)
-				if err != nil {
-					return err
-				}
-				out = append(out, u)
+			out, err := addAll(s, client, org, app, files, visibility, wait, log)
+			if err != nil {
+				return err
 			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "uploads": out}, func(w io.Writer) {
 				for _, u := range out {
@@ -109,6 +111,57 @@ are left out.`,
 	c.Flags().StringVar(&contentType, "content-type", "", "the type of every file given, such as video/mp4 (default: from each file's name and contents)")
 	c.Flags().BoolVar(&wait, "wait", false, "follow each upload until its scan and conversion are done")
 	return c
+}
+
+// addAll uploads every file given. A file already at its site path, the same size and seen by the
+// same people, is not sent again, so a run that stopped part way carries on where it stopped.
+func addAll(s *session, client *api.Client, org, app string, files []uploadFile, visibility string, wait bool, log io.Writer) ([]api.Upload, error) {
+	var held []api.Upload
+	if anySitePath(files) {
+		var err error
+		if held, err = client.ListUploads(s.ctx, org, app); err != nil {
+			return nil, wrap(err)
+		}
+	}
+	out := make([]api.Upload, 0, len(files))
+	for i := range files {
+		if u, ok := alreadyThere(files[i], visibility, held); ok {
+			fmt.Fprintf(log, "upload: %s is already at %s\n", files[i].name, u.Path)
+			out = append(out, u)
+			continue
+		}
+		u, err := addOne(s, client, org, app, &files[i], visibility, wait, log)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, u)
+	}
+	return out, nil
+}
+
+func anySitePath(files []uploadFile) bool {
+	for _, f := range files {
+		if f.sitePath != "" {
+			return true
+		}
+	}
+	return false
+}
+
+// alreadyThere is the upload that already answers a file's site path with a file of its size,
+// seen by the same people and stored whole: the file need not go up again. Pure.
+func alreadyThere(f uploadFile, visibility string, held []api.Upload) (api.Upload, bool) {
+	if f.sitePath == "" {
+		return api.Upload{}, false
+	}
+	for _, u := range held { // newest first, so the one that answers the path
+		if u.Path != f.sitePath {
+			continue
+		}
+		whole := u.Status == apitypes.UploadClean || u.Status == apitypes.UploadUnscanned
+		return u, whole && u.Bytes == f.size && string(u.Visibility) == visibility
+	}
+	return api.Upload{}, false
 }
 
 // uploadsToAdd opens the files given, a folder's with keepPaths, giving the one file sitePath
@@ -150,6 +203,18 @@ func addOne(s *session, client *api.Client, org, app string, f *uploadFile, visi
 		}
 	}
 	u, err := addUpload(s, client, org, app, *f, visibility, log)
+	// The store may fail to answer for a moment; a file it did not take is sent twice more.
+	for attempt := 1; attempt < 3 && isCode(err, "PLATFORM_UNAVAILABLE") && f.size <= partsFrom; attempt++ {
+		if _, serr := f.file.Seek(0, io.SeekStart); serr != nil {
+			break
+		}
+		fmt.Fprintf(log, "upload: the store did not take %s; sending it again\n", f.name)
+		select {
+		case <-s.ctx.Done():
+		case <-time.After(time.Duration(attempt) * uploadRetry):
+		}
+		u, err = addUpload(s, client, org, app, *f, visibility, log)
+	}
 	f.file.Close()
 	f.file = nil
 	if err != nil {
@@ -552,4 +617,10 @@ func firstOf(ss ...string) string {
 		}
 	}
 	return ""
+}
+
+// isCode is whether err is a Whisk error with this code.
+func isCode(err error, code string) bool {
+	var e *output.Error
+	return errors.As(err, &e) && e.Code == code
 }

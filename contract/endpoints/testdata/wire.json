@@ -6740,20 +6740,6 @@
       ],
       "type": "object"
     },
-    "apitypes.List[apitypes.Upload]": {
-      "properties": {
-        "items": {
-          "items": {
-            "$ref": "#/$defs/apitypes.Upload"
-          },
-          "type": "array"
-        }
-      },
-      "required": [
-        "items"
-      ],
-      "type": "object"
-    },
     "apitypes.List[apitypes.WebhookEvent]": {
       "properties": {
         "items": {
@@ -8509,6 +8495,24 @@
         "items": {
           "items": {
             "$ref": "#/$defs/apitypes.Token"
+          },
+          "type": "array"
+        },
+        "next_cursor": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "items",
+        "next_cursor"
+      ],
+      "type": "object"
+    },
+    "apitypes.Page[apitypes.Upload]": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.Upload"
           },
           "type": "array"
         },
@@ -13050,7 +13054,15 @@
     },
     "GET /v1/orgs/{org}/apps/{app}/uploads": {
       "answer": {
-        "$ref": "#/$defs/apitypes.List[apitypes.Upload]"
+        "$ref": "#/$defs/apitypes.Page[apitypes.Upload]"
+      },
+      "query": {
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
       }
     },
     "GET /v1/orgs/{org}/apps/{app}/uploads/{id}": {
