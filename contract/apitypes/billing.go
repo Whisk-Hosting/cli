@@ -166,6 +166,16 @@ type BillingPromoted struct {
 	NowUntil *time.Time `json:"now_until,omitempty"`
 }
 
+// BillingHosting is GET /orgs/:org/billing/hosting: what an app's Hosting card needs from the
+// business's billing, its plan, any comp, and the price of Promoted and Boost, read without
+// measuring usage or asking Stripe for the next invoice, so it answers at once.
+type BillingHosting struct {
+	Plan     Plan            `json:"plan"`
+	Comp     *BillingComp    `json:"comp,omitempty"`
+	Promoted BillingPromoted `json:"promoted"`
+	Boosted  BillingPromoted `json:"boosted"`
+}
+
 // BillingComp is a comp as the business reads it: the plan is free, until ends_at or for good.
 // Whisk's reason for it is not shown.
 type BillingComp struct {

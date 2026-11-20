@@ -186,7 +186,7 @@ var baseWire = []any{
 	// feedback.go
 	OwnFeedback{}, OwnFeedbackPage{}, FeedbackReceipt{},
 	// billing.go
-	Plan{}, PricingRow{}, Pricing{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingComp{}, BillingPromoted{}, BillingReferrals{}, BillingLicence{},
+	Plan{}, PricingRow{}, Pricing{}, Invoice{}, NextInvoice{}, Card{}, Trial{}, FreeApp{}, Billing{}, BillingHosting{}, BillingComp{}, BillingPromoted{}, BillingReferrals{}, BillingLicence{},
 	PlanCheckout{}, PlanQuote{}, PayPage{}, PostalAddress{}, CustomerDetails{}, CustomerTaxID{},
 	PayDetails{}, PayStep{},
 	// workflows.go, with contract/graph's step graph

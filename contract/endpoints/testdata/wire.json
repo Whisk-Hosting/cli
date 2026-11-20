@@ -2345,6 +2345,28 @@
       ],
       "type": "object"
     },
+    "apitypes.BillingHosting": {
+      "properties": {
+        "boosted": {
+          "$ref": "#/$defs/apitypes.BillingPromoted"
+        },
+        "comp": {
+          "$ref": "#/$defs/apitypes.BillingComp"
+        },
+        "plan": {
+          "$ref": "#/$defs/apitypes.Plan"
+        },
+        "promoted": {
+          "$ref": "#/$defs/apitypes.BillingPromoted"
+        }
+      },
+      "required": [
+        "boosted",
+        "plan",
+        "promoted"
+      ],
+      "type": "object"
+    },
     "apitypes.BillingLicence": {
       "properties": {
         "app": {
@@ -13086,6 +13108,11 @@
     "GET /v1/orgs/{org}/billing": {
       "answer": {
         "$ref": "#/$defs/apitypes.Billing"
+      }
+    },
+    "GET /v1/orgs/{org}/billing/hosting": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.BillingHosting"
       }
     },
     "GET /v1/orgs/{org}/billing/pay/{id}": {
