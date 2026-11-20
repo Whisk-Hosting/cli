@@ -259,6 +259,7 @@ func diagShare(w http.ResponseWriter, req *http.Request) {
 	}{
 		// doctor: allow W105 H37 runs this on apps that connect as the owner of their tables
 		{"create table if not exists " + s + ".diag_share_existing (marker text not null)", nil},
+		// doctor: allow W096 a schema cannot be a parameter, and pgx.Identifier quotes it
 		{"insert into " + s + ".diag_share_existing (marker) values ($1)", []any{in.Marker}},
 		{"grant usage on schema " + s + " to " + to, nil},
 		{"grant select on all tables in schema " + s + " to " + to, nil},

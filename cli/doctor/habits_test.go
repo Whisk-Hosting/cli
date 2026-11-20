@@ -27,6 +27,7 @@ func TestHabitRules(t *testing.T) {
 		{"node-cron", "W023", map[string]string{"src/poll.ts": `import cron from "node-cron";` + "\n"}, true},
 		{"apscheduler", "W023", map[string]string{"app/jobs.py": "from apscheduler.schedulers.background import BackgroundScheduler\n"}, true},
 		{"robfig cron", "W023", map[string]string{"jobs.go": "package main\nimport \"github.com/robfig/cron/v3\"\n"}, true},
+		{"cron named in a string", "W023", map[string]string{"jobs.go": "package main\nvar docs = \"github.com/robfig/cron/v3\"\n"}, false},
 		{"setInterval in browser code", "W023", map[string]string{"public/clock.js": "setInterval(tick, 1000);\n"}, false},
 
 		{"LISTEN", "W024", map[string]string{"src/listen.ts": "await client.query(\"LISTEN orders\");\n"}, true},
@@ -54,6 +55,8 @@ func TestHabitRules(t *testing.T) {
 		{"auth0", "W093", map[string]string{"src/auth.ts": `import { auth } from "express-openid-connect";` + "\n" + `import { ManagementClient } from "auth0";` + "\n"}, true},
 		{"nodemailer", "W093", map[string]string{"src/mail.ts": `const nodemailer = require("nodemailer");` + "\n"}, true},
 		{"smtplib", "W093", map[string]string{"app/mail.py": "import smtplib\n"}, true},
+		{"go mail in an import block", "W093", map[string]string{"mail.go": "package main\nimport (\n\t\"fmt\"\n\tmail \"net/smtp\"\n)\n"}, true},
+		{"go mail named in a comment", "W093", map[string]string{"mail.go": "package main\n// not \"net/smtp\": Whisk sends the email\nvar x = 1\n"}, false},
 		{"redis client is fine", "W093", map[string]string{"src/kv.ts": `import { createClient } from "redis";` + "\n"}, false},
 
 		{"customers never told apart", "W094", map[string]string{"whisk.yaml": manifest + "customer_identity: app\n"}, true},

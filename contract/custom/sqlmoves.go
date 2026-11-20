@@ -12,8 +12,9 @@ type SQLMove struct {
 	Line int    `json:"line"`
 }
 
-// SQLMoves is each table, column (table.column), view, function, procedure, type or type's value
-// (type.value) the migration sql removes or renames, as it stood before the file ran, in order.
+// SQLMoves is each table, column (table.column), view, function, procedure, type, type's value
+// (type.value) or schema the migration sql removes or renames, as it stood before the file ran, in
+// order. Moving one to another schema renames it, and a schema dropped went with all it held.
 // What the file made itself is no move, and neither is a view, function, procedure or type it
 // takes away and makes again under the same name, as a migration that changes one does. A table or
 // a column made again is still a move: what it held is gone, or means something else. SQL run
@@ -130,6 +131,10 @@ func (c *sqlCursor) kind() string {
 func (s *sqlScan) drop(c *sqlCursor) {
 	line := c.line()
 	kind := c.kind()
+	if kind == "" && c.words("schema") {
+		// A schema goes with everything in it, so the schema is what moved.
+		kind = "table"
+	}
 	if kind == "" {
 		return
 	}
@@ -168,6 +173,10 @@ func (s *sqlScan) alter(c *sqlCursor) {
 	for _, action := range c.actions() {
 		a := &sqlCursor{t: action}
 		switch {
+		case a.words("set", "schema"):
+			if to, ok := a.ident(); ok {
+				s.gone("", name, inSchema(to, name), line, false)
+			}
 		case a.words("drop"):
 			if a.words("constraint") {
 				continue
@@ -196,8 +205,8 @@ func (s *sqlScan) alter(c *sqlCursor) {
 // or a constraint's, which is no move.
 func (s *sqlScan) renameInTable(a *sqlCursor, table string, line int) {
 	if a.words("to") {
-		if to, ok := a.name(); ok {
-			s.gone("", table, to, line, false)
+		if to, ok := a.ident(); ok {
+			s.gone("", table, renamed(table, to), line, false)
 		}
 		return
 	}
@@ -217,13 +226,19 @@ func (s *sqlScan) renameInTable(a *sqlCursor, table string, line int) {
 // alterOther reads ALTER of a view, function, procedure, type or domain: a rename of it, of a
 // view's column or of a type's value.
 func (s *sqlScan) alterOther(c *sqlCursor, name, kind string, line int) {
+	if c.words("set", "schema") {
+		if to, ok := c.ident(); ok {
+			s.gone("", name, inSchema(to, name), line, true)
+		}
+		return
+	}
 	if !c.words("rename") {
 		return
 	}
 	switch {
 	case c.words("to"):
-		if to, ok := c.name(); ok {
-			s.gone("", name, to, line, true)
+		if to, ok := c.ident(); ok {
+			s.gone("", name, renamed(name, to), line, true)
 		}
 	case kind == "type" && c.words("value"):
 		from, ok := c.str()
@@ -243,12 +258,31 @@ func (s *sqlScan) alterOther(c *sqlCursor, name, kind string, line int) {
 	}
 }
 
+// renamed is the name a table, view, function or type has once it is renamed to to: a rename
+// keeps it in its schema.
+func renamed(name, to string) string {
+	if i := strings.LastIndex(name, "."); i >= 0 {
+		return name[:i+1] + to
+	}
+	return to
+}
+
+// inSchema is the name a table, view, function or type has once it is moved to schema, as a
+// database knows it: its last part in that schema, or alone in the schema public.
+func inSchema(schema, name string) string {
+	last := name[strings.LastIndex(name, ".")+1:]
+	if schema == "public" {
+		return last
+	}
+	return schema + "." + last
+}
+
 func (s *sqlScan) create(c *sqlCursor) {
 	c.words("or", "replace")
 	for more := true; more; {
 		more = c.words("temp") || c.words("temporary") || c.words("unlogged") || c.words("recursive")
 	}
-	if c.kind() == "" {
+	if c.kind() == "" && !c.words("schema") {
 		return
 	}
 	c.words("if", "not", "exists")

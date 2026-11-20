@@ -35,10 +35,6 @@ var sqlFromStrings = map[stack.Lang][]*regexp.Regexp{
 		regexp.MustCompile(`(?i)\bf["']{1,3}\s*` + sqlShape + `[^"']*\{`),
 		regexp.MustCompile(`(?i)(?:"\s*` + sqlShape + `[^"]*"|'\s*` + sqlShape + `[^']*')\s*(?:%\s*[\w(]|\.format\(|\+\s*\w)`),
 	},
-	stack.GO: {
-		// fmt.Sprintf("select … %s", x)
-		regexp.MustCompile("(?i)fmt\\.Sprintf\\(\\s*[\"`]\\s*" + sqlShape + "[^\"`]*%[svdq]"),
-	},
 }
 
 // startsWithSQL is a string literal holding a statement (W098). Its first character is the quote.
@@ -46,11 +42,16 @@ var startsWithSQL = regexp.MustCompile(`(?is)^.\s*` + sqlShape)
 
 func w096(r Repo, _ Context) outcome {
 	var out outcome
+	constants := goConstants(r.Code(stack.GO))
 	for _, f := range serverCode(r) {
 		if schemaFile(f.Path) {
 			continue
 		}
-		if hs := matches(f, sqlFromStrings[stack.LangOf(f.Path)], 0); len(hs) > 0 {
+		hs := matches(f, sqlFromStrings[stack.LangOf(f.Path)], 0)
+		if stack.LangOf(f.Path) == stack.GO {
+			hs = goSQLFromStrings(f, constants)
+		}
+		if len(hs) > 0 {
 			h := earliest(hs)
 			out = out.add("W096", f.Path, h.Line, fmt.Sprintf("%s line %d builds SQL by joining text, so a value a person types can change the statement.", f.Path, h.Line))
 		}

@@ -101,9 +101,21 @@ var timerPatterns = map[stack.Lang][]*regexp.Regexp{
 		regexp.MustCompile(`\bthreading\.Timer\(`),
 	},
 	stack.GO: {
-		regexp.MustCompile(`"(github\.com/robfig/cron(?:/v3)?|github\.com/go-co-op/gocron(?:/v2)?)"`),
 		regexp.MustCompile(`\btime\.(?:NewTicker|Tick)\(`),
 	},
+}
+
+// timerPackages are the Go packages that schedule inside the app, by import path.
+var timerPackages = regexp.MustCompile(`^github\.com/(?:robfig/cron(?:/v3)?|go-co-op/gocron(?:/v2)?)$`)
+
+// timers is each sign in a file of a timer or scheduler running inside the app.
+func timers(f File) []hit {
+	lang := stack.LangOf(f.Path)
+	hs := matches(f, timerPatterns[lang], 0)
+	if lang == stack.GO {
+		return append(goImports(f, timerPackages), hs...)
+	}
+	return hs
 }
 
 // pageCode reports whether a code file is served to the browser rather than run by the
@@ -137,7 +149,7 @@ func serverCode(r Repo) []File {
 func w023(r Repo, _ Context) outcome {
 	var out outcome
 	for _, f := range serverCode(r) {
-		if hs := matches(f, timerPatterns[stack.LangOf(f.Path)], 0); len(hs) > 0 {
+		if hs := timers(f); len(hs) > 0 {
 			out = out.add("W023", f.Path, hs[0].Line, fmt.Sprintf("%s runs a timer or scheduler inside the app (%s), which stops when the app sleeps and runs once per container.", f.Path, strings.TrimSpace(hs[0].Name)))
 		}
 	}
@@ -306,7 +318,7 @@ func assigns(content []byte, h hit) bool {
 }
 
 // outsideServices are libraries for something Whisk already provides, by the import that
-// names them, with the built-in to use instead.
+// names them, with the built-in to use instead. A Go pattern is the whole import path.
 var outsideServices = []struct {
 	lang     stack.Lang
 	pattern  *regexp.Regexp
@@ -319,9 +331,9 @@ var outsideServices = []struct {
 	{stack.PY, regexp.MustCompile(`(?m)^\s*(?:from|import)\s+(auth0|clerk_backend_api|flask_login|allauth)\b`), "the platform's login and X-Whisk-* headers (skill §4)", "sign-in"},
 	{stack.PY, regexp.MustCompile(`(?m)^\s*(?:from|import)\s+(smtplib|sendgrid|resend|postmarker|mailgun)\b`), "email: true (skill §9)", "email"},
 	{stack.PY, regexp.MustCompile(`(?m)^\s*(?:from|import)\s+(upstash_redis)\b`), "kv: true (skill §9)", "cache"},
-	{stack.GO, regexp.MustCompile(`"(github\.com/clerk/[\w./-]+|github\.com/auth0/[\w./-]+|github\.com/markbates/goth)"`), "the platform's login and X-Whisk-* headers (skill §4)", "sign-in"},
-	{stack.GO, regexp.MustCompile(`"(net/smtp|github\.com/sendgrid/[\w./-]+|github\.com/resend/[\w./-]+|github\.com/wneessen/go-mail|gopkg\.in/gomail\.v2)"`), "email: true (skill §9)", "email"},
-	{stack.GO, regexp.MustCompile(`"(github\.com/upstash/[\w./-]+)"`), "kv: true (skill §9)", "cache"},
+	{stack.GO, regexp.MustCompile(`^(?:github\.com/clerk/[\w./-]+|github\.com/auth0/[\w./-]+|github\.com/markbates/goth)$`), "the platform's login and X-Whisk-* headers (skill §4)", "sign-in"},
+	{stack.GO, regexp.MustCompile(`^(?:net/smtp|github\.com/sendgrid/[\w./-]+|github\.com/resend/[\w./-]+|github\.com/wneessen/go-mail|gopkg\.in/gomail\.v2)$`), "email: true (skill §9)", "email"},
+	{stack.GO, regexp.MustCompile(`^github\.com/upstash/[\w./-]+$`), "kv: true (skill §9)", "cache"},
 }
 
 func w093(r Repo, _ Context) outcome {
@@ -333,7 +345,11 @@ func w093(r Repo, _ Context) outcome {
 			if svc.lang != lang {
 				continue
 			}
-			for _, h := range matches(f, []*regexp.Regexp{svc.pattern}, 1) {
+			hs := matches(f, []*regexp.Regexp{svc.pattern}, 1)
+			if lang == stack.GO {
+				hs = goImports(f, svc.pattern)
+			}
+			for _, h := range hs {
 				if seen[h.Name] {
 					continue
 				}

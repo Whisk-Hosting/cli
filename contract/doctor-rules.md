@@ -536,8 +536,10 @@ are not matched. JavaScript: an untagged template literal with `${…}` passed t
 `.query(`, `.execute(`, `.raw(`, `.run(`, `.all(`, `.get(` or `.prepare(`, or a statement
 string joined with `+` there; a tagged template (postgres.js, Drizzle's `sql`) sends parameters
 and is not matched. Python: an f-string statement with `{…}`, or a statement string followed by
-`%`, `.format(` or `+`; `execute(sql, params)` is not matched. Go: `fmt.Sprintf` of a statement
-with `%s`, `%v`, `%d` or `%q`. One finding per file, at its first match.
+`%`, `.format(` or `+`; `execute(sql, params)` is not matched. Go, read from the file's syntax
+tree: `fmt.Sprintf` of a statement with `%s`, `%v`, `%d` or `%q`, or a statement string joined
+with `+` to anything but a string literal or a name the app declares with `const`. One finding
+per file, at its first match.
 
 ## W097
 
@@ -933,14 +935,16 @@ Details: in a fork, as W170 reads one. A folder counts as named while anything i
 ## W174
 
 Level: error
-Check: in a product's source, a migration removes or renames a table, column, view, function or type that no note in moved/ names, or a file in moved/ is not a note that can be read.
+Check: in a product's source, a migration removes, renames or moves to another schema a table, column, view, function or type, or drops a schema, that no note in moved/ names, or a file in moved/ is not a note that can be read.
 Fix: Write moved/<id>.yaml for the change: moved lists each name with from and, unless it went away, to; values says what became of what it held; fix says what code that used it does instead.
 Safe fix: no
 
 Details: in an app whose `whisk.yaml` declares `managed`, never in a fork's checkout. A migration
 is any SQL outside `custom/` but a `.down.sql` file and what goose (`-- +goose Down`) or dbmate
 (`-- migrate:down`) run only to undo one. A column is named `table.column` and a type's value
-`type.value`. What a migration made itself does not count, nor a view, function or type it makes
+`type.value`. Moving a table, view, function or type to another schema renames it to its name
+there, a rename keeps it in its schema, and a schema dropped is named itself, since all it held
+went with it. What a migration made itself does not count, nor a view, function or type it makes
 again under the same name; a table or column made again does, since what it held is gone or
 means something else. SQL a migration runs through `EXECUTE`, in a function or a `DO` block, is
 not read. When a business takes the release into code of its own, `whisk managed merge` hands each
