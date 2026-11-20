@@ -21,6 +21,16 @@ const (
 	MissArgs CLIMissKind = "args"
 )
 
+// CLIMissStatus is where an operator's decision leaves a shape of command line: open has none;
+// resolved opens again when an agent reaches for it again; wont_fix stays closed.
+type CLIMissStatus string
+
+const (
+	MissOpen     CLIMissStatus = "open"
+	MissResolved CLIMissStatus = "resolved"
+	MissWontFix  CLIMissStatus = "wont_fix"
+)
+
 // CLIMiss is POST /v1/cli/misses: one command line the CLI could not run. Command is the
 // command path it reached, without "whisk" ("" for whisk itself); Word is the unknown command or
 // the flags concerned, space-separated; Flags are the names of the flags given; Args is how many
@@ -48,4 +58,5 @@ type CLIMissReceipt struct {
 var (
 	_ = more.addWire(CLIMiss{}, CLIMissReceipt{})
 	_ = more.addEnum(enumOf("CLIMissKind", "CLI_MISS_KINDS", MissUnknownCommand, MissUnknownFlag, MissMissingFlag, MissFlagValue, MissFlagGroup, MissArgs))
+	_ = more.addEnum(enumOf("CLIMissStatus", "CLI_MISS_STATUSES", MissOpen, MissResolved, MissWontFix))
 )

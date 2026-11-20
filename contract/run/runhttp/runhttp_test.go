@@ -1,8 +1,14 @@
 package runhttp
 
 import (
+	"context"
+	"errors"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
+	"strings"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -51,5 +57,52 @@ func TestDefaultTransportIsHonoured(t *testing.T) {
 			continue
 		}
 		resp.Body.Close()
+	}
+}
+
+// A socket that is served a moment after the call starts is reached within the call's deadline;
+// one that never is fails when the deadline does; any other dial error fails at once.
+func TestDialSocketWaitsForItsSocket(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "agent.sock")
+	go func() {
+		time.Sleep(250 * time.Millisecond)
+		l, err := net.Listen("unix", path)
+		if err != nil {
+			t.Error(err)
+			return
+		}
+		t.Cleanup(func() { l.Close() })
+		go func() {
+			for {
+				c, err := l.Accept()
+				if err != nil {
+					return
+				}
+				c.Close()
+			}
+		}()
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+	c, err := DialSocket(path, time.Second)(ctx, "", "")
+	if err != nil {
+		t.Fatalf("the socket served after 250 ms: %v", err)
+	}
+	c.Close()
+
+	ctx, cancel = context.WithTimeout(context.Background(), 300*time.Millisecond)
+	defer cancel()
+	start := time.Now()
+	if _, err := DialSocket(filepath.Join(t.TempDir(), "never.sock"), time.Second)(ctx, "", ""); !errors.Is(err, syscall.ENOENT) {
+		t.Errorf("a socket never served: %v", err)
+	}
+	if took := time.Since(start); took < 250*time.Millisecond || took > 2*time.Second {
+		t.Errorf("gave up after %v, want the call's deadline", took)
+	}
+
+	long := filepath.Join(t.TempDir(), strings.Repeat("x", 200))
+	start = time.Now()
+	if _, err := DialSocket(long, time.Second)(context.Background(), "", ""); err == nil || time.Since(start) > time.Second {
+		t.Errorf("a path no socket can have: %v after %v", err, time.Since(start))
 	}
 }
