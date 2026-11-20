@@ -236,15 +236,15 @@ type Environment struct {
 
 // Build is one image build.
 type Build struct {
-	ID            string      `json:"id"`
-	AppID         string      `json:"app_id"`
-	EnvironmentID string      `json:"environment_id"`
-	CommitSHA     string      `json:"commit_sha"`
-	Branch        string      `json:"branch"`
-	Message       string      `json:"message"` // the commit's subject line; "" when it had none
-	Status        BuildStatus `json:"status"`
-	Builder       string      `json:"builder"` // dockerfile | railpack
-	ImageDigest   string      `json:"image_digest,omitempty"`
+	ID            string       `json:"id"`
+	AppID         string       `json:"app_id"`
+	EnvironmentID string       `json:"environment_id"`
+	CommitSHA     string       `json:"commit_sha"`
+	Branch        string       `json:"branch"`
+	Message       string       `json:"message"` // the commit's subject line; "" when it had none
+	Status        status.Build `json:"status"`
+	Builder       string       `json:"builder"` // dockerfile | railpack
+	ImageDigest   string       `json:"image_digest,omitempty"`
 	// ImageFrom is the build whose image this one runs when its commit changed only whisk.yaml's
 	// run-time settings, so nothing was built (CONTRACT.md §3.1 "Settings that apply without a
 	// build"); absent for a build that ran.
@@ -397,7 +397,7 @@ type Domain struct {
 	Hostname   string     `json:"hostname"`
 	Kind       DomainKind `json:"kind"`
 	Verified   bool       `json:"verified"`
-	CertStatus string     `json:"cert_status"`
+	CertStatus CertStatus `json:"cert_status"`
 	// CDN is set on a custom domain the platform's team marked as fronted by a CDN (CADDY.md §3).
 	CDN bool `json:"cdn"`
 	// RedirectTo is another hostname of the app that this custom domain sends every request to

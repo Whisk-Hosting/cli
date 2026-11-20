@@ -53,17 +53,6 @@ const (
 	EnvironmentSleeping EnvironmentStatus = "sleeping"
 )
 
-// BuildStatus is an image build's status.
-type BuildStatus string
-
-const (
-	BuildQueued    BuildStatus = "queued"
-	BuildRunning   BuildStatus = "running"
-	BuildSucceeded BuildStatus = "succeeded"
-	BuildFailed    BuildStatus = "failed"
-	BuildCancelled BuildStatus = "cancelled"
-)
-
 // FrozenReason is why a business is frozen (CONTROL-PLANE.md §6.15).
 type FrozenReason string
 
@@ -103,16 +92,22 @@ const (
 	ReaderBreakglass SecretReader = "breakglass"
 )
 
-// SubjectKind is who a grant names.
+// SubjectKind is who a grant names: a person, a group, everyone of its audience, or one of the
+// business's own customers.
+//
+//whisk:enum
 type SubjectKind string
 
 const (
 	SubjectUser     SubjectKind = "user"
 	SubjectGroup    SubjectKind = "group"
 	SubjectEveryone SubjectKind = "everyone"
+	SubjectCustomer SubjectKind = "customer"
 )
 
 // Audience is whether a grant is for the team or for the business's own customers.
+//
+//whisk:enum
 type Audience string
 
 const (
@@ -122,6 +117,8 @@ const (
 
 // DomainKind is where an app's hostname comes from: the platform's, a custom one, the business's
 // own domain, or a former address that redirects (CONTROL-PLANE.md §6.5).
+//
+//whisk:enum
 type DomainKind string
 
 const (
@@ -129,6 +126,20 @@ const (
 	DomainCustom   DomainKind = "custom"
 	DomainBusiness DomainKind = "business"
 	DomainFormer   DomainKind = "former"
+)
+
+// CertStatus is where a hostname's certificate stands (CONTROL-PLANE.md §3.5): none for an
+// unverified custom domain, pending until the edge presents one, issued once it does, and
+// managed for a platform address, whose certificate the edge holds for every app.
+//
+//whisk:enum
+type CertStatus string
+
+const (
+	CertNone    CertStatus = "none"
+	CertPending CertStatus = "pending"
+	CertIssued  CertStatus = "issued"
+	CertManaged CertStatus = "managed"
 )
 
 // DomainStatus is where a custom domain is (CONTROL-PLANE.md §6.11): its records are not in

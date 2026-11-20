@@ -25,7 +25,7 @@ func findDomain(domains []api.Domain, hostname string) (api.Domain, bool) {
 
 func printDNS(p output.Printer, w io.Writer, d api.Domain) {
 	if d.Verified {
-		fmt.Fprintf(w, "%s is verified; certificate %s.\n", d.Hostname, orDash(d.CertStatus))
+		fmt.Fprintf(w, "%s is verified; certificate %s.\n", d.Hostname, orDash(string(d.CertStatus)))
 		if d.CertError != "" {
 			fmt.Fprintf(w, "The CDN could not get its certificate and will try again: %s\n", d.CertError)
 		}
@@ -98,7 +98,7 @@ func domainsCmd(s *session) *cobra.Command {
 					if d.Verified {
 						verified = "verified"
 					}
-					rows[i] = []string{d.Hostname, string(d.Kind), verified, orDash(d.CertStatus), orDash(string(d.AddedBy)), orDash(d.RedirectTo)}
+					rows[i] = []string{d.Hostname, string(d.Kind), verified, orDash(string(d.CertStatus)), orDash(string(d.AddedBy)), orDash(d.RedirectTo)}
 				}
 				s.printer.Table(w, []string{"HOSTNAME", "KIND", "DNS", "CERTIFICATE", "ADDED BY", "REDIRECTS TO"}, rows)
 				printCertErrors(w, all)
@@ -296,7 +296,7 @@ func mainDomain(all []api.Domain) (string, bool) {
 // gives a bare domain A and AAAA records instead of a CNAME, or the TXT and CNAME from an API
 // that does not send one.
 func dnsRecords(d api.Domain) []map[string]string {
-	if d.Verified || d.Kind != "custom" {
+	if d.Verified || d.Kind != apitypes.DomainCustom {
 		return []map[string]string{}
 	}
 	if len(d.Records) > 0 {

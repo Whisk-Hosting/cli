@@ -1229,7 +1229,9 @@ receives `POST` with the original raw body, the original headers as `X-Whisk-Web
 plus `X-Whisk-Webhook-Id`, `X-Whisk-Webhook-Source` and `X-Whisk-Webhook-Received-At`, with
 `X-Whisk-Audience: service`. Respond 2xx within 30 seconds; anything else is retried at 1m, 5m,
 30m, 2h and 12h, then dead-lettered for replay. Dedupe on `X-Whisk-Webhook-Id`: a retry or replay
-carries the same id. The handler does not need to be in `routes.public` and cannot be reached
+carries the same id, and a delivery that Stripe, GitHub, Shopify, Slack, Linear or a
+`standard-webhooks` sender sends again under its own id is not sent to the app again. Any other
+provider's repeat arrives as a new delivery, so dedupe those on the provider's id in the payload. The handler does not need to be in `routes.public` and cannot be reached
 from the internet. `ip_allowlist` (CIDRs) also refuses deliveries from anywhere else; a provider
 with no preset uses `preset: hmac` with its signature settings under `hmac` (the fields of a
 preset in `webhook-presets.yaml`). A provider that checks the address first by sending a value

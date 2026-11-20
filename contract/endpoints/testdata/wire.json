@@ -2505,7 +2505,7 @@
         },
         "status": {
           "type": "string",
-          "x-type": "apitypes.BuildStatus"
+          "x-type": "status.Build"
         },
         "triggered_by": {
           "type": "string"
@@ -4730,7 +4730,8 @@
           "type": "string"
         },
         "cert_status": {
-          "type": "string"
+          "type": "string",
+          "x-type": "apitypes.CertStatus"
         },
         "cname_target": {
           "type": "string"
@@ -9998,7 +9999,8 @@
           "type": "array"
         },
         "cert_status": {
-          "type": "string"
+          "type": "string",
+          "x-type": "apitypes.CertStatus"
         },
         "hostname": {
           "type": "string"

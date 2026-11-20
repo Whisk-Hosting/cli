@@ -68,7 +68,7 @@ type StatusPage struct {
 	Hostname   string      `json:"hostname"`
 	Title      string      `json:"title"`
 	Verified   bool        `json:"verified"`
-	CertStatus string      `json:"cert_status"`
+	CertStatus CertStatus  `json:"cert_status"`
 	URL        string      `json:"url"`
 	Live       bool        `json:"live"`
 	Records    []DNSRecord `json:"records"`
