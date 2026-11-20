@@ -1,6 +1,7 @@
 package whisk
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -16,6 +17,7 @@ import (
 	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 	"github.com/whisk-run/cli/internal/release"
+	"github.com/whisk-run/contract/run"
 	"github.com/whisk-run/contract/run/runhttp"
 )
 
@@ -93,8 +95,8 @@ func updateCmd(s *session) *cobra.Command {
 			if got := release.Digest(data); got != want {
 				return output.New("UPDATE_FAILED", fmt.Sprintf("The downloaded %s does not match SHA256SUMS.", name), "Run whisk update again; if it fails the same way the release on the platform is inconsistent: do not install it, and report it with whisk feedback --kind bug --code UPDATE_FAILED.", map[string]any{"asset": name, "want": want, "got": got})
 			}
-			if err := replaceExecutable(exe, data, runtime.GOOS); err != nil {
-				return output.New("UPDATE_FAILED", "The new binary could not be put in place: "+err.Error(), "Check that "+filepath.Dir(exe)+" is writable, or reinstall with the install script from CLI.md §2.", map[string]any{"path": exe})
+			if err := s.install(exe, data, served); err != nil {
+				return err
 			}
 			result["updated"] = true
 			result["signature_verified"] = signed
@@ -221,54 +223,133 @@ func (s *session) fetchBytes(url string) ([]byte, error) {
 	return b, nil
 }
 
-// replaceExecutable writes data beside path and renames it into place. On Windows the running
-// file cannot be overwritten, but it can be renamed, so the old file is moved aside first
-// (`whisk.exe.old`) and removed on the next update.
-func replaceExecutable(path string, data []byte, goos string) error {
-	dir := filepath.Dir(path)
-	old := path + ".old"
-	_ = os.Remove(old) // a previous update's leftover, if any
-	tmp, err := os.CreateTemp(dir, ".whisk-update-*")
+// tryRun bounds the trial run of a new release: Windows may look the file up online before it
+// lets it start the first time.
+const tryRun = 60 * time.Second
+
+// install puts the downloaded release in place of exe. The new file runs before it replaces this
+// one, so a build the computer refuses to start (Windows Smart App Control, an antivirus) never
+// becomes the CLI.
+func (s *session) install(exe string, data []byte, served string) error {
+	unwritable := func(err error) error {
+		return output.New("UPDATE_FAILED", "The new binary could not be put in place: "+err.Error(), "Check that "+filepath.Dir(exe)+" is writable, or reinstall with the install script from CLI.md §2.", map[string]any{"path": exe})
+	}
+	staged, err := stageExecutable(exe, data, runtime.GOOS)
 	if err != nil {
+		return unwritable(err)
+	}
+	s.printer.Progress("checking whisk %s runs on this computer", served)
+	if err := s.tryBinary(staged); err != nil {
+		_ = os.Remove(staged)
+		return refusedToRun(served, Version, runtime.GOOS, err)
+	}
+	if err := swapExecutable(exe, staged, runtime.GOOS); err != nil {
+		_ = os.Remove(staged)
+		return unwritable(err)
+	}
+	return nil
+}
+
+// tryBinary runs the staged release as `whisk version` and checks it answers as whisk.
+func (s *session) tryBinary(path string) error {
+	try := s.env.TryBinary
+	if try == nil {
+		try = func(ctx context.Context, path string, args ...string) ([]byte, error) {
+			return run.Command(ctx, tryRun, path, args...).CombinedOutput()
+		}
+	}
+	out, err := try(s.ctx, path, "version")
+	return triedOutput(out, err)
+}
+
+// triedOutput judges a trial run: it must exit cleanly and print the version line.
+func triedOutput(out []byte, err error) error {
+	if err != nil {
+		if msg := strings.TrimSpace(string(out)); msg != "" {
+			return fmt.Errorf("%w: %s", err, shortLine(msg))
+		}
 		return err
+	}
+	if !strings.HasPrefix(strings.TrimSpace(string(out)), "whisk ") {
+		return fmt.Errorf("it printed %q instead of its version", shortLine(strings.TrimSpace(string(out))))
+	}
+	return nil
+}
+
+// shortLine is a trial run's first line, cut to a length an error can carry.
+func shortLine(s string) string {
+	s = strings.TrimSpace(firstLine(s))
+	if len(s) > 200 {
+		s = s[:200]
+	}
+	return s
+}
+
+// refusedToRun is the error when the downloaded release would not start here. On Windows that
+// is almost always Smart App Control or another application control policy, which lets a new
+// build start only once Microsoft knows it.
+func refusedToRun(served, current, goos string, err error) error {
+	details := map[string]any{"served": served, "current": current, "reason": err.Error()}
+	if goos == "windows" {
+		return output.New("UPDATE_FAILED", fmt.Sprintf("Windows would not start whisk %s (%s), so whisk %s stays installed and keeps working.", served, err.Error(), current),
+			"Nothing to undo. Run whisk update again later; Windows usually allows a new release within a day. Report it with whisk feedback --kind bug --code UPDATE_FAILED if it keeps happening.", details)
+	}
+	return output.New("UPDATE_FAILED", fmt.Sprintf("whisk %s would not start on this computer (%s), so whisk %s stays installed and keeps working.", served, err.Error(), current),
+		"Nothing to undo. Report it with whisk feedback --kind bug --code UPDATE_FAILED, and run whisk update again once a new release is out.", details)
+}
+
+// stageExecutable writes data beside path, ready to run and to rename into place, and returns
+// its name. On Windows it ends in .exe, so Windows will start it.
+func stageExecutable(path string, data []byte, goos string) (string, error) {
+	dir := filepath.Dir(path)
+	pattern := ".whisk-update-*"
+	if goos == "windows" {
+		pattern += ".exe"
+	}
+	tmp, err := os.CreateTemp(dir, pattern)
+	if err != nil {
+		return "", err
 	}
 	tmpName := tmp.Name()
 	cleanup := func() { _ = os.Remove(tmpName) }
 	if _, err := tmp.Write(data); err != nil {
 		tmp.Close()
 		cleanup()
-		return err
+		return "", err
 	}
 	// The bytes reach the disk before the rename makes them the CLI, so a power cut cannot
 	// leave a truncated binary in its place.
 	if err := tmp.Sync(); err != nil {
 		tmp.Close()
 		cleanup()
-		return err
+		return "", err
 	}
 	if err := tmp.Close(); err != nil {
 		cleanup()
-		return err
+		return "", err
 	}
 	if err := os.Chmod(tmpName, 0o755); err != nil {
 		cleanup()
-		return err
+		return "", err
 	}
+	return tmpName, nil
+}
+
+// swapExecutable renames the staged file into place. On Windows the running file cannot be
+// overwritten, but it can be renamed, so the old file is moved aside first (`whisk.exe.old`)
+// and removed on the next update.
+func swapExecutable(path, staged, goos string) error {
+	old := path + ".old"
+	_ = os.Remove(old) // a previous update's leftover, if any
 	if goos == "windows" {
 		if err := os.Rename(path, old); err != nil && !os.IsNotExist(err) {
-			cleanup()
 			return err
 		}
-		if err := os.Rename(tmpName, path); err != nil {
+		if err := os.Rename(staged, path); err != nil {
 			_ = os.Rename(old, path)
-			cleanup()
 			return err
 		}
 		return nil
 	}
-	if err := os.Rename(tmpName, path); err != nil {
-		cleanup()
-		return err
-	}
-	return nil
+	return os.Rename(staged, path)
 }

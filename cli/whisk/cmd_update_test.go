@@ -39,15 +39,27 @@ func runUpdate(t *testing.T, exe, base string, args ...string) result {
 	return runUpdateBuild(t, false, exe, base, args...)
 }
 
+// startsAsWhisk is a trial run of a new release that answers as whisk does.
+func startsAsWhisk(ctx context.Context, path string, args ...string) ([]byte, error) {
+	return []byte("whisk v9.9.9 (api 1, conventions 1)\n"), nil
+}
+
 // runUpdateBuild runs whisk update as the public build, or as Whisk's own build from source.
 func runUpdateBuild(t *testing.T, source bool, exe, base string, args ...string) result {
+	t.Helper()
+	return runUpdateTrying(t, source, startsAsWhisk, exe, base, args...)
+}
+
+// runUpdateTrying runs whisk update with try as the trial run of the new release; nil runs the
+// downloaded file itself.
+func runUpdateTrying(t *testing.T, source bool, try func(context.Context, string, ...string) ([]byte, error), exe, base string, args ...string) result {
 	t.Helper()
 	was := sourceBuild
 	sourceBuild = source
 	defer func() { sourceBuild = was }()
 	var out, errb bytes.Buffer
 	env := map[string]string{"WHISK_RELEASE_URL": base}
-	e := Env{Stdout: &out, Stderr: &errb, Dir: t.TempDir(), ConfigDir: t.TempDir(), Store: &memStore{m: map[string]config.Credential{}}, Executable: exe, Getenv: func(k string) string { return env[k] }}
+	e := Env{Stdout: &out, Stderr: &errb, Dir: t.TempDir(), ConfigDir: t.TempDir(), Store: &memStore{m: map[string]config.Credential{}}, Executable: exe, TryBinary: try, Getenv: func(k string) string { return env[k] }}
 	code := Run(context.Background(), append([]string{"update"}, args...), e)
 	r := result{Code: code, Stdout: out.String(), Stderr: errb.String()}
 	if lines := jsonLines(r.Stdout); len(lines) > 0 {

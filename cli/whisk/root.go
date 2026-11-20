@@ -45,6 +45,9 @@ type Env struct {
 	Git gitcmd.Runner
 	// Executable is the running binary's path for whisk update; empty means os.Executable().
 	Executable string
+	// TryBinary runs a downloaded release with the given arguments before whisk update puts it
+	// in place, returning what it printed; nil runs the file itself (tests pass a fake).
+	TryBinary func(ctx context.Context, path string, args ...string) ([]byte, error)
 	// GOOS is the operating system the CLI behaves as; empty means runtime.GOOS (tests set it).
 	GOOS string
 	// Now is the clock; nil means time.Now (tests set it).
