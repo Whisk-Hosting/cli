@@ -1661,7 +1661,11 @@ and `DELETE .../email/domains/<id>` removes one when the customer leaves. A doma
 business or app already has is `EMAIL_DOMAIN_TAKEN`; the plan caps them
 (`PLAN_LIMIT_EMAIL_DOMAINS`) and the free app has none. `whisk dev` answers these routes locally
 and verifies at once.
-The send answers 202 with an `id`; keep it with the record the mail is about. To learn what became
+The send answers 202 with an `id`; keep it with the record the mail is about. Send an
+`Idempotency-Key` header that names the message (the record's id and what the mail is, such as
+`order-1042-confirmation`): the same send under the same key within 24 hours is that message,
+sent once, so a send that timed out or answered `PLATFORM_UNAVAILABLE` is safe to make again, and
+a different message under a used key is `INVALID_REQUEST`. To learn what became
 of the message, `GET /v1/orgs/<org>/apps/<app>/email/sends/<id>` with the service token (or
 `whisk email status <id>`) answers `status` and `events`: `sent` (the provider took it, nothing
 heard since), `delayed`, `delivered` (the receiving server accepted it), `failed`, `bounced`
