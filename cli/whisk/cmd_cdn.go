@@ -170,8 +170,10 @@ func cdnCmd(s *session) *cobra.Command {
 	}
 
 	cdn := &cobra.Command{
-		Use:   "cdn",
-		Short: "Serve the app from near its visitors (Team and Business)",
+		Use: "cdn",
+		// whisk cache is what agents reach for to purge a page (CLI.md §7).
+		Aliases: []string{"cache"},
+		Short:   "Serve the app from near its visitors (Team and Business)",
 		Long: `The CDN answers the app's address and its custom domains from the location nearest each
 visitor. It helps public pages, websites and downloads; a signed-in tool gains little, since its
 pages are private and pass through uncached. A public page is cached only for as long as the

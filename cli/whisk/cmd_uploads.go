@@ -16,7 +16,7 @@ import (
 // how their scan and conversion went, signed links to private images and video, and the key
 // they are signed with.
 func uploadsCmd(s *session) *cobra.Command {
-	uploads := &cobra.Command{Use: "uploads", Short: "Add files to an app's storage, see them, and sign links to private ones"}
+	uploads := &cobra.Command{Use: "uploads", Aliases: []string{"storage"}, Short: "Add files to an app's storage, see them, and sign links to private ones"}
 
 	var expires time.Duration
 	link := &cobra.Command{

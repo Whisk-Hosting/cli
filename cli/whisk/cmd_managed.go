@@ -483,8 +483,10 @@ func managedCmd(s *session) *cobra.Command {
 	listRun := func(*cobra.Command, []string) error { return s.managedList() }
 
 	managed := &cobra.Command{
-		Use:   "managed",
-		Short: "Apps Whisk runs for the business: add, set up, list",
+		Use: "managed",
+		// whisk products lists the products, as whisk managed does (CLI.md §7).
+		Aliases: []string{"products"},
+		Short:   "Apps Whisk runs for the business: add, set up, list",
 		Long: `A managed app is an app in the business whose code and releases are Whisk's: the business adds
 a copy of a product, links it to one of its own apps, sets what the product lets it set, and
 pauses or resumes it, and every Whisk release reaches the copy without anyone deploying. Its code

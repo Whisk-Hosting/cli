@@ -410,6 +410,38 @@
   ]
  },
  {
+  "name": "audit",
+  "short": "The org's audit log, newest first: who did what, to what, and when",
+  "commands": [
+   {
+    "usage": "whisk audit [--since 7d] [--actor \u003cid\u003e] [--action deploy.created] [--limit 50] [--cursor \u003cnext\u003e]",
+    "short": "The org's audit log, newest first: who did what, to what, and when",
+    "flags": [
+     {
+      "name": "--action string",
+      "usage": "only this action, such as deploy.created"
+     },
+     {
+      "name": "--actor string",
+      "usage": "only what this actor did"
+     },
+     {
+      "name": "--cursor string",
+      "usage": "the next page, from the line a page ends with"
+     },
+     {
+      "name": "--limit int",
+      "usage": "entries in one page, 1 to 500"
+     },
+     {
+      "name": "--since string",
+      "usage": "a time (RFC 3339) or an age such as 24h or 7d"
+     }
+    ]
+   }
+  ]
+ },
+ {
   "name": "billing",
   "short": "The org's plan, this month's usage against it, and the next invoice",
   "commands": [

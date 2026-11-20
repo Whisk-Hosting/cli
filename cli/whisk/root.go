@@ -14,6 +14,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/whisk-run/contract/apitypes"
 	"github.com/whisk-run/contract/tokensig"
 
 	"github.com/whisk-run/cli/internal/api"
@@ -143,12 +144,19 @@ func (s *session) noticeUpdate() {
 
 // unknownInput turns cobra's unknown command or flag into UNKNOWN_COMMAND. The usual cause is a
 // CLI older than the docs the agent is reading, so the fix names whisk update and this version.
+//
+// Arguments a command refused name the command and show how to run it.
 func unknownInput(err error) error {
 	msg := err.Error()
+	var uf *usageFault
+	if errors.As(err, &uf) && uf.kind == apitypes.MissArgs && uf.cmd != nil {
+		return output.New("CLI_ERROR", uf.cmd.CommandPath()+" "+strings.TrimSpace(firstLine(msg))+".",
+			"Run it as "+uf.cmd.UseLine()+"; "+uf.cmd.CommandPath()+" --help says more.", map[string]any{"usage": uf.cmd.UseLine()})
+	}
 	if !strings.HasPrefix(msg, "unknown command") && !strings.HasPrefix(msg, "unknown flag") && !strings.HasPrefix(msg, "unknown shorthand flag") {
 		return err
 	}
-	first, _, _ := strings.Cut(msg, "\n")
+	first := firstLine(msg)
 	return output.New("UNKNOWN_COMMAND", "This whisk ("+Version+") has no such command or flag: "+strings.TrimSpace(first)+".",
 		"Run whisk update to install the platform's current CLI, then retry; run whisk --help for what this build offers.",
 		map[string]any{"whisk_cli": Version})
@@ -198,7 +206,7 @@ func newRoot(s *session) *cobra.Command {
 		membersCmd(s), accessCmd(s), requestsCmd(s), callCmd(s), deployKeysCmd(s), customersCmd(s), uploadsCmd(s),
 		agentTokenCmd(s), tokensCmd(s), feedbackCmd(s),
 		functionsCmd(s), runsCmd(s), eventsCmd(s), approvalsCmd(s),
-		dbCmd(s), restoreCmd(s), exportCmd(s), billingCmd(s),
+		dbCmd(s), restoreCmd(s), exportCmd(s), billingCmd(s), auditCmd(s),
 	)
 	// whisk restart is whisk apps restart, beside whisk pause and whisk resume.
 	root.AddCommand(restartCmd(s))
