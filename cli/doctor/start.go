@@ -18,12 +18,15 @@ import (
 // SlowStartMS is the typical start past which W100 warns. Most apps start in about a second.
 const SlowStartMS = 3000
 
-// startCommand is one place the app's start command is written: a Dockerfile's CMD or
-// ENTRYPOINT, a package.json script it runs, or a line of a shell script it runs.
+// startCommand is one command the app's start runs, as its words on one line: a Dockerfile's
+// CMD or ENTRYPOINT, a package.json script it runs, or a shell script it runs, each split into
+// its simple commands (shellCommands).
 type startCommand struct {
 	File string
 	Line int
 	Text string
+	// env is the variables the command's shell holds, from the Dockerfile's ENV.
+	env map[string]string
 }
 
 // startCommands is what runs when the app's container starts: with a Dockerfile, its final
@@ -37,7 +40,7 @@ func startCommands(r Repo) []startCommand {
 		scripts, lines := packageScripts(r.Read("package.json"))
 		for _, name := range []string{"prestart", "start"} {
 			if text, ok := scripts[name]; ok {
-				roots = append(roots, startCommand{File: "package.json", Line: lines[name], Text: text})
+				roots = append(roots, lineCommands("package.json", lines[name], text, nil)...)
 			}
 		}
 	}
@@ -54,7 +57,7 @@ func startCommands(r Repo) []startCommand {
 		if depth >= 3 {
 			return
 		}
-		for _, next := range followed(r, c.Text) {
+		for _, next := range followed(r, c) {
 			walk(next, depth+1)
 		}
 	}
@@ -64,46 +67,60 @@ func startCommands(r Repo) []startCommand {
 	return out
 }
 
-// finalStartInstructions is the last CMD and the last ENTRYPOINT of a Dockerfile's final stage,
-// in file order.
-func finalStartInstructions(file string, ins []instruction) []startCommand {
-	start := 0
-	for i, in := range ins {
-		if strings.HasPrefix(in.Text, "FROM ") {
-			start = i
-		}
-	}
-	var cmd, entry *instruction
-	for i := start; i < len(ins); i++ {
-		switch strings.SplitN(ins[i].Text, " ", 2)[0] {
-		case "CMD":
-			cmd = &ins[i]
-		case "ENTRYPOINT":
-			entry = &ins[i]
-		}
-	}
+// lineCommands is the simple commands of a shell text written on one line of a file (a
+// package.json script, a shell-form CMD), each at that line.
+func lineCommands(file string, line int, text string, env map[string]string) []startCommand {
 	var out []startCommand
-	for _, in := range []*instruction{entry, cmd} {
-		if in != nil {
-			out = append(out, startCommand{File: file, Line: in.Line, Text: commandWords(in.Text)})
-		}
-	}
-	if len(out) == 2 && out[0].Line > out[1].Line {
-		out[0], out[1] = out[1], out[0]
+	for _, c := range shellCommands(text, env) {
+		out = append(out, startCommand{File: file, Line: line, Text: c.Text, env: env})
 	}
 	return out
 }
 
-// commandWords is a CMD or ENTRYPOINT's command as a shell would read it: the exec form's JSON
-// array joined with spaces (["npm", "start"] is npm start), the shell form as written.
-func commandWords(instr string) string {
-	_, rest, _ := strings.Cut(instr, " ")
-	rest = strings.TrimSpace(rest)
-	var args []string
-	if strings.HasPrefix(rest, "[") && json.Unmarshal([]byte(rest), &args) == nil {
-		return strings.Join(args, " ")
+// finalStartInstructions is the commands of the last CMD and the last ENTRYPOINT of a
+// Dockerfile's final stage, in file order. The exec form is one command, its words as written;
+// the shell form is read as the shell reads it, with the stage's ENV for its variables.
+func finalStartInstructions(file string, ins []instruction) []startCommand {
+	stage := finalStage(ins)
+	env := stageEnv(stage)
+	var cmd, entry *instruction
+	for i := range stage {
+		switch stage[i].Keyword {
+		case "CMD":
+			cmd = &stage[i]
+		case "ENTRYPOINT":
+			entry = &stage[i]
+		}
 	}
-	return rest
+	found := []*instruction{entry, cmd}
+	if entry != nil && cmd != nil && entry.Line > cmd.Line {
+		found = []*instruction{cmd, entry}
+	}
+	var out []startCommand
+	for _, in := range found {
+		switch {
+		case in == nil || len(in.Args) == 0:
+		case in.Exec:
+			out = append(out, execCommands(file, in.Line, in.Args, env)...)
+		default:
+			out = append(out, lineCommands(file, in.Line, in.Args[0], env)...)
+		}
+	}
+	return out
+}
+
+// execCommands is an exec-form instruction's command: its words as written, or, when they run
+// a shell with -c, the commands of that shell's text.
+func execCommands(file string, line int, args []string, env map[string]string) []startCommand {
+	name := args[0][strings.LastIndex(args[0], "/")+1:]
+	if shells[name] {
+		for i := 1; i+1 < len(args); i++ {
+			if args[i] == "-c" {
+				return lineCommands(file, line, args[i+1], env)
+			}
+		}
+	}
+	return []startCommand{{File: file, Line: line, Text: strings.Join(args, " "), env: env}}
 }
 
 var (
@@ -112,32 +129,28 @@ var (
 )
 
 // followed is what a command runs that the repository holds: a package.json script (with its
-// pre script) and a shell script, one start command per line of it.
-func followed(r Repo, text string) []startCommand {
+// pre script) and a shell script, each as its simple commands.
+func followed(r Repo, c startCommand) []startCommand {
 	var out []startCommand
 	scripts, lines := packageScripts(r.Read("package.json"))
-	for _, m := range rePackageRun.FindAllStringSubmatch(text, -1) {
+	for _, m := range rePackageRun.FindAllStringSubmatch(c.Text, -1) {
 		name := m[2]
 		if m[1] == "npm" && !strings.Contains(m[0], " run") && name != "start" && name != "test" {
 			continue // npm runs only these without "run"; npm ci, npm install are its own.
 		}
 		for _, n := range []string{"pre" + name, name} {
 			if s, ok := scripts[n]; ok {
-				out = append(out, startCommand{File: "package.json", Line: lines[n], Text: s})
+				out = append(out, lineCommands("package.json", lines[n], s, c.env)...)
 			}
 		}
 	}
-	for _, p := range reShellFile.FindAllString(text, -1) {
+	for _, p := range reShellFile.FindAllString(c.Text, -1) {
 		file, ok := repoPath(r, p)
 		if !ok {
 			continue
 		}
-		for i, line := range strings.Split(string(r.Read(file)), "\n") {
-			t := strings.TrimSpace(line)
-			if t == "" || strings.HasPrefix(t, "#") {
-				continue
-			}
-			out = append(out, startCommand{File: file, Line: i + 1, Text: t})
+		for _, sc := range shellCommands(string(r.Read(file)), c.env) {
+			out = append(out, startCommand{File: file, Line: sc.Line, Text: sc.Text, env: c.env})
 		}
 	}
 	return out
@@ -518,7 +531,7 @@ func bundles(r Repo) bool {
 	}
 	for _, name := range dockerfiles(r) {
 		for _, in := range instructionLines(r.Read(name)) {
-			if strings.HasPrefix(in.Text, "RUN ") && reBundler.MatchString(in.Text) {
+			if in.Keyword == "RUN" && reBundler.MatchString(in.Text) {
 				return true
 			}
 		}
@@ -543,15 +556,8 @@ func shipsNodeModules(r Repo) bool {
 		src := r.Read("package.json")
 		return src != nil && json.Unmarshal(src, &pkg) == nil && len(pkg.Dependencies) > 0
 	}
-	ins := instructionLines(r.Read(names[0]))
-	start := 0
-	for i, in := range ins {
-		if strings.HasPrefix(in.Text, "FROM ") {
-			start = i
-		}
-	}
-	for _, in := range ins[start:] {
-		switch strings.SplitN(in.Text, " ", 2)[0] {
+	for _, in := range finalStage(instructionLines(r.Read(names[0]))) {
+		switch in.Keyword {
 		case "COPY", "ADD":
 			if strings.Contains(in.Text, "node_modules") {
 				return true

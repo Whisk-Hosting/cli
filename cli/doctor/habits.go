@@ -253,19 +253,6 @@ func w064(r Repo, _ Context) outcome {
 	return out
 }
 
-// mountsSecret reports whether a Dockerfile mounts the named build secret: a
-// --mount=type=secret with id=<name> (in either order, or with env=<name>). Pure.
-func mountsSecret(dockerfile, name string) bool {
-	for _, m := range reSecretMount.FindAllString(dockerfile, -1) {
-		if regexp.MustCompile(`\b(?:id|env)=` + regexp.QuoteMeta(name) + `\b`).MatchString(m) {
-			return true
-		}
-	}
-	return false
-}
-
-var reSecretMount = regexp.MustCompile(`--mount=\S*type=secret\S*`)
-
 // identityPatterns read who the caller is from something the platform does not vouch for: the
 // Authorization header of the incoming request, or a token the app verifies itself.
 var identityPatterns = map[stack.Lang][]*regexp.Regexp{

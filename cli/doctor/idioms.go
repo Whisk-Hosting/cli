@@ -277,40 +277,6 @@ func instructions(src []byte) []string {
 	return out
 }
 
-// instruction is one Dockerfile instruction and the line it starts on.
-type instruction struct {
-	Line int
-	Text string
-}
-
-// instructionLines is instructions with the line each one starts on.
-func instructionLines(src []byte) []instruction {
-	var out []instruction
-	var cur string
-	first := 0
-	for i, raw := range strings.Split(string(src), "\n") {
-		line := strings.TrimSpace(raw)
-		if line == "" || strings.HasPrefix(line, "#") {
-			continue
-		}
-		if cur == "" {
-			first = i + 1
-		}
-		if strings.HasSuffix(line, "\\") {
-			cur += strings.TrimSuffix(line, "\\") + " "
-			continue
-		}
-		cur += line
-		fields := strings.Fields(cur)
-		if len(fields) > 0 {
-			fields[0] = strings.ToUpper(fields[0])
-			out = append(out, instruction{Line: first, Text: strings.Join(fields, " ")})
-		}
-		cur = ""
-	}
-	return out
-}
-
 // literalFound reports whether a string literal with exactly this value appears in any code
 // file outside comments.
 func literalFound(r Repo, value string) bool {

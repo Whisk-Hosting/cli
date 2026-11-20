@@ -7,6 +7,10 @@ import (
 	"path"
 	"sort"
 	"strings"
+
+	"github.com/pelletier/go-toml/v2"
+	"golang.org/x/mod/modfile"
+	"golang.org/x/mod/module"
 )
 
 // Lang is a language doctor understands.
@@ -110,13 +114,13 @@ func jsFramework(pkg []byte) (framework, migrate string) {
 }
 
 func pyFramework(set map[string]bool, pyproject, requirements []byte) (framework, migrate string) {
-	deps := strings.ToLower(string(pyproject) + "\n" + string(requirements))
+	deps := pyDependencies(pyproject, requirements)
 	switch {
-	case strings.Contains(deps, "fastapi"):
+	case deps["fastapi"]:
 		framework = "fastapi"
-	case strings.Contains(deps, "django"):
+	case deps["django"]:
 		framework = "django"
-	case strings.Contains(deps, "flask"):
+	case deps["flask"]:
 		framework = "flask"
 	}
 	switch {
@@ -128,17 +132,95 @@ func pyFramework(set map[string]bool, pyproject, requirements []byte) (framework
 	return framework, migrate
 }
 
+// pyDependencies is the packages a Python app says it depends on, by their normalised names
+// (PEP 503: lower case, runs of -, _ and . as one -): pyproject.toml's project.dependencies,
+// its optional and group dependencies and Poetry's table, and each line of requirements.txt.
+// A package only named in a comment, a description or another package's name is not one. Pure.
+func pyDependencies(pyproject, requirements []byte) map[string]bool {
+	out := map[string]bool{}
+	add := func(spec string) {
+		if name := pyName(spec); name != "" {
+			out[name] = true
+		}
+	}
+	var doc struct {
+		Project struct {
+			Dependencies         []string            `toml:"dependencies"`
+			OptionalDependencies map[string][]string `toml:"optional-dependencies"`
+		} `toml:"project"`
+		DependencyGroups map[string][]any `toml:"dependency-groups"`
+		Tool             struct {
+			Poetry struct {
+				Dependencies map[string]any `toml:"dependencies"`
+			} `toml:"poetry"`
+		} `toml:"tool"`
+	}
+	if toml.Unmarshal(pyproject, &doc) == nil {
+		for _, d := range doc.Project.Dependencies {
+			add(d)
+		}
+		for _, group := range doc.Project.OptionalDependencies {
+			for _, d := range group {
+				add(d)
+			}
+		}
+		for _, group := range doc.DependencyGroups {
+			for _, d := range group {
+				if spec, ok := d.(string); ok {
+					add(spec)
+				}
+			}
+		}
+		for name := range doc.Tool.Poetry.Dependencies {
+			add(name)
+		}
+	}
+	for _, line := range strings.Split(string(requirements), "\n") {
+		line, _, _ = strings.Cut(line, "#")
+		if line = strings.TrimSpace(line); line != "" && !strings.HasPrefix(line, "-") {
+			add(line)
+		}
+	}
+	return out
+}
+
+// pyName is the normalised name a requirement starts with ("Django>=5" is django,
+// "uvicorn[standard]" is uvicorn), "" when it starts with none. Pure.
+func pyName(spec string) string {
+	spec = strings.TrimSpace(spec)
+	end := strings.IndexFunc(spec, func(r rune) bool {
+		return !(r == '-' || r == '_' || r == '.' || r >= '0' && r <= '9' || r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z')
+	})
+	if end >= 0 {
+		spec = spec[:end]
+	}
+	name := strings.Join(strings.FieldsFunc(strings.ToLower(spec), func(r rune) bool { return r == '-' || r == '_' || r == '.' }), "-")
+	return name
+}
+
+// goFramework is the router a Go app requires itself: a module go.mod requires directly, at any
+// major version. One a dependency brought in (// indirect) is not the app's router. Pure.
 func goFramework(gomod []byte) string {
-	src := string(gomod)
-	switch {
-	case strings.Contains(src, "github.com/go-chi/chi"):
-		return "chi"
-	case strings.Contains(src, "github.com/gin-gonic/gin"):
-		return "gin"
-	case strings.Contains(src, "github.com/labstack/echo"):
-		return "echo"
-	case strings.Contains(src, "github.com/gofiber/fiber"):
-		return "fiber"
+	f, err := modfile.ParseLax("go.mod", gomod, nil)
+	if err != nil {
+		return "net/http"
+	}
+	direct := map[string]bool{}
+	for _, r := range f.Require {
+		if !r.Indirect {
+			prefix, _, _ := module.SplitPathVersion(r.Mod.Path)
+			direct[prefix] = true
+		}
+	}
+	for _, known := range []struct{ path, name string }{
+		{"github.com/go-chi/chi", "chi"},
+		{"github.com/gin-gonic/gin", "gin"},
+		{"github.com/labstack/echo", "echo"},
+		{"github.com/gofiber/fiber", "fiber"},
+	} {
+		if direct[known.path] {
+			return known.name
+		}
 	}
 	return "net/http"
 }
