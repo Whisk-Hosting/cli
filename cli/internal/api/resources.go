@@ -240,7 +240,7 @@ func (c *Client) RunsOfEvent(ctx context.Context, org, app, eventID string) ([]R
 	return out.Items, c.Do(ctx, http.MethodGet, appPath(org, app)+"/runs?event="+url.QueryEscape(eventID), nil, &out)
 }
 
-// RunFilter narrows a run listing. A zero time means no lower bound.
+// RunFilter narrows a run listing. A zero time is the platform's default, the last seven days.
 type RunFilter struct {
 	Function string
 	Status   string

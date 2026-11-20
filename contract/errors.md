@@ -3282,6 +3282,22 @@ Fix: Retry with backoff. Status is at `https://whisk.run/status`.
 {"error":{"code":"PLATFORM_UNAVAILABLE","message":"The platform is temporarily unavailable.","fix":"Retry with backoff. See https://whisk.run/status for the current status.","docs":"https://skill.whisk.run/errors/PLATFORM_UNAVAILABLE","details":{"retry_after":10}}}
 ```
 
+## ANALYTICS_VERSION_SKEW
+
+Status: 502 · Surface: api, dashboard
+
+When: analytics answered a reading but refused the question itself, as it does for a moment while
+the platform's parts are on different versions during an update. Visits are still being counted;
+only this reading could not be made.
+
+Fix: Retry in a few minutes. If it persists, report it with
+`whisk feedback --kind bug --code ANALYTICS_VERSION_SKEW`: it is the platform's to fix, and nothing
+in the app changes it.
+
+```json
+{"error":{"code":"ANALYTICS_VERSION_SKEW","message":"Analytics refused this reading (400) while the platform is between versions.","fix":"Retry in a few minutes; if it persists, report it with whisk feedback --kind bug --code ANALYTICS_VERSION_SKEW.","docs":"https://skill.whisk.run/errors/ANALYTICS_VERSION_SKEW","details":{"status":400}}}
+```
+
 ## NODE_DOWN
 
 Status: 503 · Surface: api, edge, cli
@@ -3782,6 +3798,21 @@ start, reduce its start time.
 
 ```json
 {"error":{"code":"TOKEN_INVALID","message":"whisk-init: the secrets token was not accepted.","fix":"No action; the platform restarts the container with a new token.","docs":"https://skill.whisk.run/errors/TOKEN_INVALID","details":{}}}
+```
+
+## DEPLOY_NOT_LIVE
+
+Status: - · Surface: node
+
+When: a container of a deploy that is no longer meant to run, such as the previous version's
+container after a deploy switched to a new one, stopped and asked for a token to start again.
+The platform does not start it again; the live deploy keeps serving.
+
+Fix: Nothing; the live deploy serves the app. Run `whisk deploy` only if no deploy of the app
+is live.
+
+```json
+{"error":{"code":"DEPLOY_NOT_LIVE","message":"This container's deploy was replaced, so it is not started again.","fix":"No action; the live deploy serves the app.","docs":"https://skill.whisk.run/errors/DEPLOY_NOT_LIVE","details":{"deploy_id":"dep_7f3a"}}}
 ```
 
 ## TOKEN_ALREADY_USED

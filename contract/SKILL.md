@@ -93,7 +93,9 @@ An app on Whisk is a stateless HTTP server in a container.
    restart; files that must last go to storage (§9, files a job keeps). `/tmp` is memory: what you
    keep there and what the process uses share `WHISK_MEMORY_BYTES` (256 MiB on Free), and a run
    that goes over is killed without SIGTERM.
-5. Exit cleanly on SIGTERM within the grace period (default 28 seconds).
+5. Exit cleanly on SIGTERM within the grace period (default 28 seconds). A deploy sends new
+   requests to the new version at once and sends SIGTERM to the old one only once the requests it
+   already holds have finished, or after 15 minutes.
 6. Read configuration and secrets from the environment. Never from files in the repository.
 7. Trust identity only from the `X-Whisk-*` headers, which only the platform can set.
 8. Treat every queue delivery and webhook as possibly repeated; use the provided IDs to dedupe.

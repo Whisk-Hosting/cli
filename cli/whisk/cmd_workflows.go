@@ -147,7 +147,7 @@ func runsCmd(s *session) *cobra.Command {
 	list.Flags().StringVar(&event, "event", "", "only the runs this event started")
 	list.Flags().StringVar(&function, "function", "", "only runs of this function")
 	list.Flags().StringVar(&status, "status", "", "only runs in this status: running, failed, parked, completed, cancelled")
-	list.Flags().StringVar(&since, "since", "", "only runs started in the last duration (30m, 6h, 7d) or since an RFC 3339 time")
+	list.Flags().StringVar(&since, "since", "", "only runs started in the last duration (30m, 6h, 30d) or since an RFC 3339 time; the last 7 days when left out")
 
 	replay := &cobra.Command{
 		Use:   "replay <id>",
