@@ -111,3 +111,35 @@ func TestDeployMoves(t *testing.T) {
 		}
 	}
 }
+
+// A resumed deploy records no step again: every status has reached itself and the steps before
+// it, never one after, and a finished deploy has reached nothing.
+func TestReached(t *testing.T) {
+	for _, tc := range []struct {
+		at, to Deploy
+		want   bool
+	}{
+		{DeploySwitching, DeployHealthChecking, true},
+		{DeploySwitching, DeploySwitching, true},
+		{DeployDraining, DeploySwitching, true},
+		{DeployDraining, DeployHealthChecking, true},
+		{DeployHealthChecking, DeploySwitching, false},
+		{DeployStarting, DeployHealthChecking, false},
+		{DeployQueued, DeployHealthChecking, false},
+		{DeployLive, DeployDraining, false},
+		{DeployFailed, DeployHealthChecking, false},
+		{DeploySwitching, DeployLive, false},
+	} {
+		if got := tc.at.Reached(tc.to); got != tc.want {
+			t.Errorf("%s reached %s = %v, want %v", tc.at, tc.to, got, tc.want)
+		}
+	}
+	for _, at := range Deploys() {
+		for _, to := range Deploys() {
+			// Back to queued is the one move back: a deploy whose node was lost is placed again.
+			if to != DeployQueued && at.Reached(to) && at != to && at.CanMove(to) {
+				t.Errorf("%s has reached %s and may still move to it", at, to)
+			}
+		}
+	}
+}

@@ -60,6 +60,16 @@ func (d Deploy) Finished() bool {
 	return false
 }
 
+// Reached says whether a deploy in this status is at step to or past it on the way to live, so a
+// job that resumes it records no step it has already recorded. A finished deploy has reached
+// nothing more.
+func (d Deploy) Reached(to Deploy) bool {
+	if d.Finished() || to.Finished() {
+		return false
+	}
+	return slices.Index(deploys, d) >= slices.Index(deploys, to)
+}
+
 // Supersedable says whether a newer request for the environment stops a deploy in this status:
 // one that has not begun switching traffic. A deploy that is switching or draining finishes, and
 // a rollback with its data that is stopped puts the data it replaced back first.
