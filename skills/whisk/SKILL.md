@@ -1078,7 +1078,7 @@ take an import. Up to 5 GB.
 
 **One key per service in a business.** Before you declare a secret, run
 `whisk secrets list --scope org`: it lists every key the business holds and which app holds it.
-When the service already has a key there (PrintNode, Stripe, Xero, an SMTP login), use that key:
+When the service already has a key there (Stripe, Xero, a maps API, an SMTP login), use that key:
 name it exactly as listed, keep the code that reads it, and let the deploy offer it (below). One
 key for the whole business is simpler for everyone: one value to rotate, one bill, one place to
 look. Asking a person for a new key, or renaming the secret and rebuilding around a new one,
