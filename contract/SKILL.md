@@ -78,7 +78,8 @@ in an existing app or is a new one:
   access is set per app.
 - Something they would switch off, roll back or hand to someone else on its own: a new app.
 - Someone else maintains it: a new app, so their changes do not collide with yours.
-- Needing the other app's data is not a reason to merge: use a shared database (§5).
+- Needing the other app's data is not a reason to merge: use a shared database (§5). Reuse the
+  key the business already holds for a service rather than asking for a new one (§6).
 
 Say which you chose and why in one sentence. When the rules do not settle it, ask the human.
 
@@ -472,7 +473,7 @@ Some changes are the business's to allow, not yours. A production deploy waits w
 `GRANT_NEEDED` (exit 2, a `NEEDS_HUMAN` block) when, compared with the live app, it calls
 another app, adds a webhook, makes a route public, drops a route's challenge
 or CSRF check, or changes `customer_identity`; when it names a business secret this app is not on
-the list of; or when a connection needs a grant. The block names each change in a plain sentence
+the list of, or a key another app of the business holds (§6); or when a connection needs a grant. The block names each change in a plain sentence
 and gives one link where an owner or admin approves them all with one tap. Relay it verbatim and
 say plainly what each change lets the app do; never try to approve it yourself. The first
 deploy, a deploy that widens nothing and a deploy the same as one approved before do not wait,
@@ -923,7 +924,10 @@ also runs the `migrate` command on your own machine before it starts the app.
 
 `database: app` (default) gives the app its own database. `database: shared:<name>` gives the
 app its own schema inside a database shared across the org, for apps that must join across each
-other. `database: none` for apps without one.
+other. `database: none` for apps without one. When an app needs data another app of the
+business keeps, read it from there: a grant in the owning app's migration when both are on one
+shared database (below), or a call to the other app (§8). Prefer that to a new database or a copy
+of the data.
 
 In a shared database each app connects as its own role and owns one schema of the same name,
 `app_<app id in lower case>`, which is first on its `search_path`, so unqualified tables land
@@ -1067,6 +1071,16 @@ take an import. Up to 5 GB.
 
 ## 6. Secrets
 
+**One key per service in a business.** Before you declare a secret, run
+`whisk secrets list --scope org`: it lists every key the business holds and which app holds it.
+When the service already has a key there (PrintNode, Stripe, Xero, an SMTP login), use that key:
+name it exactly as listed, keep the code that reads it, and let the deploy offer it (below). One
+key for the whole business is simpler for everyone: one value to rotate, one bill, one place to
+look. Asking a person for a new key, or renaming the secret and rebuilding around a new one,
+is only for when the business has no key for that service yet, or the person asks for a separate
+one. If you are unsure, ask the person whether to use the key the business already has; never
+ask them for a new one first.
+
 Declare names in the manifest; humans set values in the dashboard.
 
 ```yaml
@@ -1092,13 +1106,15 @@ Previews get a secret only when a person has shared it with previews, so by defa
 runs without production's keys and must cope with them missing. If a preview needs one, run
 `whisk secrets set NAME --previews` and relay the link; turning it on is the human's decision.
 
-When a deploy waits on a name another app of the business already has a value for, the
-`SECRET_UNSET` error says which app (`details.elsewhere`). Ask the human whether this app may use
-the same value; if they agree, run `whisk secrets share NAME --from <app>`. The value becomes the
-business's and nobody pastes it again. A business secret reaches only the apps on its list
-(`whisk secrets apps NAME`): the app it came from is on it, and this app's production deploy waits
-(`GRANT_NEEDED`) until an owner or admin adds it; relay the link. A preview starts without a
-business secret its app is not on the list of and says so (`SECRET_NOT_GRANTED`). Values shorter than 8 characters
+**How the business's key reaches this app.** A production deploy that names a key another app
+of the business holds waits with `GRANT_NEEDED` (kind `secret`, whose `change` names that app)
+instead of asking for a value: the one tap that allows the deploy shares the value and lets this
+app read it. Relay that link with everything else the deploy waits on; never send the person to
+paste the key or to the Keys page as a separate step. Outside production, `SECRET_UNSET` says which
+app holds it (`details.elsewhere`): run `whisk secrets share NAME --from <app>`. A business secret
+reaches only the apps on its list (`whisk secrets apps NAME`), and the deploy's one approval adds
+the app to it. A preview starts without a business secret its app is not on the list of and says
+so (`SECRET_NOT_GRANTED`). Keys never move between businesses. Values shorter than 8 characters
 are refused (`SECRET_TOO_SHORT`) because they cannot be scrubbed; put those under `env`.
 
 ## 7. Jobs and workflows

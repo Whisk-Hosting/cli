@@ -1062,18 +1062,19 @@ starts without it, otherwise it is blocked; the CLI prints a `NEEDS_HUMAN` block
 is `true`), because the build cannot run without it.
 
 When another app of the business already has its own value under a missing name,
-`details.elsewhere` maps that name to those apps' slugs.
+`details.elsewhere` maps that name to those apps' slugs. A production deploy offers such a value
+in its approval instead (`GRANT_NEEDED`, kind `secret`), so this mostly reaches previews.
 
 `details.url` is where a person adds the values: for a production deploy its own page, where one
 step adds every value and allows anything else it waits on; for a preview the app's Keys page.
 
 Fix: Relay the names and the URL to the human. Nothing else is needed; the deploy goes on by
-itself once the values are added. For a name in `details.elsewhere`, first ask the human whether this
-app may use the same value as that app; if they agree, run
-`whisk secrets share NAME --from <app>` instead of asking for the value.
+itself once the values are added. For a name in `details.elsewhere`, use the key the business already
+has: run `whisk secrets share NAME --from <app>` (ask the person first if you are unsure), and
+never ask for a new value.
 
 ```json
-{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm. Ask the human whether this app may use the same value; if so, run whisk secrets share XERO_CLIENT_SECRET --from crm. Ask your person to add SLACK_WEBHOOK_URL at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z. The deploy goes on by itself once they are added.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
+{"error":{"code":"SECRET_UNSET","message":"2 declared secrets have no value: XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL.","fix":"XERO_CLIENT_SECRET is already set for crm in this business: run whisk secrets share XERO_CLIENT_SECRET --from crm to use the same key here rather than asking for a new one. Ask your person to add SLACK_WEBHOOK_URL at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z. The deploy goes on by itself once they are added.","docs":"https://skill.whisk.run/errors/SECRET_UNSET","details":{"names":["XERO_CLIENT_SECRET","SLACK_WEBHOOK_URL"],"elsewhere":{"XERO_CLIENT_SECRET":["crm"]},"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
 ## GRANT_NEEDED
@@ -1083,7 +1084,9 @@ Status: 409 · Surface: api, deploy, cli
 When: a production deploy declares something only a person may allow, and no grant covers it
 yet. One of four kinds: a `connection` whose address or recipe differs from
 the granted one, or that names an operation not granted; a `secret` the business shares that
-the app is not on the list of apps for; `access` wider than the
+the app is not on the list of apps for, or a key with no value here that another app of the same
+business already holds, whose approval makes that value the business's and lets this app read it
+(`change` names the app, and the name is not in `details.unset_secrets`); `access` wider than the
 app's live production deploy has: a new app under `calls`, a new webhook, a
 route made public, a challenge dropped, CSRF turned off, or a change to `customer_identity`; or
 `data`: in an app that follows one of Whisk's products as the business's own code, an update to
@@ -1146,12 +1149,13 @@ deploy waits instead, with `GRANT_NEEDED`.
 `details.url` opens that one key on the business's Keys page when one secret is named
 (`?key=NAME`), else the Keys page.
 
-Fix: If the app should use it, ask an owner or admin to add the app to the secret's apps on the
-business's Keys page, or to approve the production deploy that waits for it. A preview also
+Fix: If the app should use it, deploy to production and relay the approval link of the deploy
+that waits for it: one tap there adds the app to the secret's apps along with anything else the
+deploy waits on. A preview also
 needs the secret shared with previews.
 
 ```json
-{"error":{"code":"SECRET_NOT_GRANTED","message":"The preview started without the shared secret MAPS_KEY: crm is not on the list of apps the business shares it with.","fix":"If the app should use it, ask an owner or admin to add crm to its apps at https://whisk.run/o/acme/keys?key=MAPS_KEY, or to approve the production deploy that waits for it. A preview also needs the secret shared with previews.","docs":"https://skill.whisk.run/errors/SECRET_NOT_GRANTED","details":{"names":["MAPS_KEY"],"url":"https://whisk.run/o/acme/keys?key=MAPS_KEY"}}}
+{"error":{"code":"SECRET_NOT_GRANTED","message":"The preview started without the shared secret MAPS_KEY: crm is not on the list of apps the business shares it with.","fix":"If crm should use it, deploy to production and relay the approval link of the deploy that waits for it: one tap there adds crm to its apps (https://whisk.run/o/acme/keys?key=MAPS_KEY). A preview also needs the secret shared with previews.","docs":"https://skill.whisk.run/errors/SECRET_NOT_GRANTED","details":{"names":["MAPS_KEY"],"url":"https://whisk.run/o/acme/keys?key=MAPS_KEY"}}}
 ```
 
 ## CONFIRMATION_NEEDED

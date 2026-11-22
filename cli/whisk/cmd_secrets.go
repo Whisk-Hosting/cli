@@ -60,21 +60,12 @@ func secretsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
+			slugs, err := s.appSlugs(client, org, app == "" && heldByApps(all))
+			if err != nil {
+				return err
+			}
 			s.printer.Result(map[string]any{"org": org, "app": app, "secrets": all, "url": secretsURL(s.dashboard(), org, app)}, func(w io.Writer) {
-				if len(all) == 0 {
-					fmt.Fprintln(w, "No secrets declared. Declare one with whisk secrets declare NAME.")
-					return
-				}
-				rows := make([][]string, len(all))
-				for i, sec := range all {
-					set := "unset"
-					if sec.Set {
-						set = "set"
-					}
-					rows[i] = []string{sec.Name, string(sec.Scope), set, fmt.Sprint(sec.Version), previewsLabel(sec.Previews), fmt.Sprint(len(sec.Consumers)), when(sec.LastReadAt)}
-				}
-				s.printer.Table(w, []string{"NAME", "SCOPE", "VALUE", "VERSION", "PREVIEWS", "CONSUMERS", "LAST READ"}, rows)
-				fmt.Fprintf(w, "Values are set at %s\n", secretsURL(s.dashboard(), org, app))
+				s.secretsTable(w, all, org, app, slugs)
 			})
 			return nil
 		},
@@ -235,10 +226,9 @@ branch's code.`,
 		Use:   "share NAME --from <app>",
 		Short: "Make the value another app already has under NAME the business's",
 		Long: `Moves the value an app already has under NAME to the business. The app it came from keeps
-reading it; any other app that names NAME reads it once an owner or admin adds that app to its
-list (whisk secrets apps NAME), and its production deploy waits for them until then. Ask the human
-first whether the app may use the same value. No value is sent or shown. An app with its own value
-keeps it.`,
+reading it; any other app that names NAME reads it once it is on its list (whisk secrets apps
+NAME), which the one approval of its production deploy adds. One key per service is simplest for
+a business, so share an existing key rather than asking for a new one. No value is sent or shown. An app with its own value keeps it.`,
 		Args: cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if from == "" {
@@ -354,4 +344,73 @@ func previewsNeedsHuman(url, org, app string, names []string, on bool) error {
 		Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
 		Details: map[string]any{"url": url, "name": names[0], "names": names, "org": org, "app": app, "previews": on},
 	}
+}
+
+// holderLabel is who holds a key in the business's list: the app's slug (its id when the apps
+// did not load), or "business" for a key the business shares. Pure.
+func holderLabel(appID string, slugs map[string]string) string {
+	if appID == "" {
+		return "business"
+	}
+	if slug, ok := slugs[appID]; ok {
+		return slug
+	}
+	return appID
+}
+
+// appSlugs is the business's apps' slugs by id, for the list of the business's keys, which
+// names the app that holds each key so a key another app already has is found and reused; none
+// when want is false.
+func (s *session) appSlugs(client *api.Client, org string, want bool) (map[string]string, error) {
+	slugs := map[string]string{}
+	if !want {
+		return slugs, nil
+	}
+	apps, err := api.All(s.ctx, client, endpoints.ListApps, org)
+	if err != nil {
+		return nil, wrap(err)
+	}
+	for _, a := range apps {
+		slugs[a.ID] = a.Slug
+	}
+	return slugs, nil
+}
+
+// secretsTable prints whisk secrets list: for the business's keys, with the app that holds each.
+func (s *session) secretsTable(w io.Writer, all []api.Secret, org, app string, slugs map[string]string) {
+	if len(all) == 0 {
+		fmt.Fprintln(w, "No secrets declared. Declare one with whisk secrets declare NAME.")
+		return
+	}
+	business := app == ""
+	rows := make([][]string, len(all))
+	for i, sec := range all {
+		set := "unset"
+		if sec.Set {
+			set = "set"
+		}
+		rows[i] = []string{sec.Name, string(sec.Scope), set, fmt.Sprint(sec.Version), previewsLabel(sec.Previews), fmt.Sprint(len(sec.Consumers)), when(sec.LastReadAt)}
+		if business {
+			rows[i] = append(rows[i], holderLabel(sec.AppID, slugs))
+		}
+	}
+	head := []string{"NAME", "SCOPE", "VALUE", "VERSION", "PREVIEWS", "CONSUMERS", "LAST READ"}
+	if business {
+		head = append(head, "HELD BY")
+	}
+	s.printer.Table(w, head, rows)
+	fmt.Fprintf(w, "Values are set at %s\n", secretsURL(s.dashboard(), org, app))
+	if business {
+		fmt.Fprintln(w, "An app that needs one of these keys names it exactly as listed and uses the same value (whisk secrets share NAME --from <app>).")
+	}
+}
+
+// heldByApps reports whether any of the keys is an app's own, whose holder the list names. Pure.
+func heldByApps(all []api.Secret) bool {
+	for _, sec := range all {
+		if sec.AppID != "" {
+			return true
+		}
+	}
+	return false
 }
