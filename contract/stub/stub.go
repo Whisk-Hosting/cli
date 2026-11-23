@@ -130,6 +130,8 @@ type stub struct {
 	mediaKey []byte
 
 	serviceToken string
+	// push is the run's push key, devices and kept notifications (push.go).
+	push         *pushStore
 	sessionValue string
 	sessionID    string
 	secrets      map[string]string
@@ -188,6 +190,7 @@ func build(o Options) (*stub, manifest.Manifest, error) {
 		bodyLimit:      8 << 20,
 		altcha:         altcha{key: []byte(randomToken(32)), maxNumber: 50000},
 		store:          newStore(),
+		push:           newPushStore(),
 		log:            o.Log,
 	}
 	s.hooks = newHooks(s)
@@ -424,6 +427,7 @@ func (s *stub) appEnv(databaseURL string) []string {
 		kv("WHISK_INNGEST_SIGNING_KEY", s.signingKey),
 		kv("WHISK_INNGEST_EVENT_KEY", s.eventKey),
 		kv("WHISK_DELIVERY_KEY", base64.StdEncoding.EncodeToString(s.deliveryKey)),
+		"WHISK_PUSH_KEY=" + s.push.key,
 		"WHISK_STOP_GRACE=28",
 		"TZ=UTC",
 		"WHISK_DEV=1",

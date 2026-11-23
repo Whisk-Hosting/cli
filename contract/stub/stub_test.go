@@ -60,7 +60,7 @@ func newTestStub(t *testing.T, app *httptest.Server) *stub {
 		serviceToken: "whsk_service_test", sessionValue: "sess", sessionID: newULID(),
 		deliveryKey: randomBytes(32), deliveryMarker: randomToken(16), mediaKey: randomBytes(32),
 		secrets: map[string]string{"STRIPE_WEBHOOK_SECRET": "whsec_test"}, urlTokens: map[string]string{"legacy": "tok123"},
-		bodyLimit: 8 << 20, altcha: altcha{key: []byte("k"), maxNumber: 1000}, store: newStore(),
+		bodyLimit: 8 << 20, altcha: altcha{key: []byte("k"), maxNumber: 1000}, store: newStore(), push: newPushStore(),
 		identity: &identity{UserID: "01USER", Email: "ana@acme.example", Name: "Ana", Groups: []string{"finance"}, Roles: []string{"owner"}, Audience: "team"},
 	}
 	s.hooks = newHooks(s)

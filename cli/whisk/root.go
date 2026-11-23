@@ -197,7 +197,7 @@ func newRoot(s *session) *cobra.Command {
 	pf.StringVar(&s.appFlag, "app", "", "app slug, instead of .whisk/app.json")
 
 	root.AddCommand(
-		versionCmd(s), updateCmd(s), skillCmd(s), errorGroupsCmd(s, errorsCmd(s)), schemaCmd(s), cronCmd(s), webhooksCmd(s), inboxCmd(s), emailCmd(s),
+		versionCmd(s), updateCmd(s), skillCmd(s), errorGroupsCmd(s, errorsCmd(s)), schemaCmd(s), cronCmd(s), webhooksCmd(s), inboxCmd(s), emailCmd(s), pushCmd(s),
 		logsCmd(s), tracesCmd(s), analyticsCmd(s), mcpCmd(s),
 		loginCmd(s), logoutCmd(s), whoamiCmd(s), accountCmd(s), orgsCmd(s), useCmd(s), cloneCmd(s), gitCredentialCmd(s),
 		initCmd(s), appsCmd(s), managedCmd(s), changesCmd(s), pauseCmd(s), resumeCmd(s), doctorCmd(s), devCmd(s),

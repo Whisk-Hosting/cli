@@ -26,6 +26,10 @@ import (
 //	POST /v1/orgs/{org}/apps/{app}/email/send                  send an email (service token), kept here
 //	GET  /v1/orgs/{org}/apps/{app}/email/sent                  what the app sent, newest first
 //	GET  /v1/orgs/{org}/apps/{app}/email/sends/{id}            what became of one (service token)
+//	*    /v1/orgs/{org}/apps/{app}/push/devices                 a person's devices (service token; push.go)
+//	POST /v1/orgs/{org}/apps/{app}/push/send                    send a notification (service token), kept here
+//	GET  /v1/orgs/{org}/apps/{app}/push/sent                    what the app sent, newest first
+//	GET  /v1/orgs/{org}/apps/{app}/push/sends/{id}              what became of one (service token)
 //	POST /hooks/{org}/{app}/{source}[/{token}]                  webhook ingress
 //	POST /v1/orgs/{org}/apps/{app}/cdn/purge                   drop paths from the CDN (service token; cdn.go)
 //	*    /v1/orgs/{org}/apps/{app}/domains[/{id}[/verify]]       custom domains (domains.go)
@@ -79,6 +83,8 @@ func (a *api) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, 200, map[string]any{"emails": s.store.mailList()})
 	case strings.HasPrefix(p, prefix+"/email/sends/") && r.Method == http.MethodGet:
 		a.emailSend(w, r, strings.TrimPrefix(p, prefix+"/email/sends/"))
+	case strings.HasPrefix(p, prefix+"/push/"):
+		a.push(w, r, strings.TrimPrefix(p, prefix+"/push"))
 	case p == prefix+"/cdn/purge" && r.Method == http.MethodPost:
 		a.cdnPurge(w, r)
 	case p == prefix+"/domains" || strings.HasPrefix(p, prefix+"/domains/"):

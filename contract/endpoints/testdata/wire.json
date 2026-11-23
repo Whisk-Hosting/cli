@@ -149,6 +149,24 @@
       ],
       "type": "object"
     },
+    "apitypes.AddPushDeviceRequest": {
+      "properties": {
+        "label": {
+          "type": "string"
+        },
+        "subscription": {
+          "$ref": "#/$defs/apitypes.PushSubscription"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "subscription",
+        "user"
+      ],
+      "type": "object"
+    },
     "apitypes.AlwaysOnRequest": {
       "properties": {
         "always_on": {
@@ -6740,6 +6758,20 @@
       ],
       "type": "object"
     },
+    "apitypes.List[apitypes.PushDevice]": {
+      "properties": {
+        "items": {
+          "items": {
+            "$ref": "#/$defs/apitypes.PushDevice"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "items"
+      ],
+      "type": "object"
+    },
     "apitypes.List[apitypes.WebhookEvent]": {
       "properties": {
         "items": {
@@ -9002,6 +9034,155 @@
       ],
       "type": "object"
     },
+    "apitypes.PushDelivery": {
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "attempts": {
+          "type": "integer"
+        },
+        "detail": {
+          "type": "string"
+        },
+        "device": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "attempts",
+        "device",
+        "status",
+        "user"
+      ],
+      "type": "object"
+    },
+    "apitypes.PushDevice": {
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "last_ok_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "service": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "id",
+        "service",
+        "user"
+      ],
+      "type": "object"
+    },
+    "apitypes.PushDevicesRemoved": {
+      "properties": {
+        "removed": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "removed"
+      ],
+      "type": "object"
+    },
+    "apitypes.PushSend": {
+      "properties": {
+        "created_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deliveries": {
+          "items": {
+            "$ref": "#/$defs/apitypes.PushDelivery"
+          },
+          "type": "array"
+        },
+        "emailed": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "created_at",
+        "deliveries",
+        "emailed",
+        "id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "apitypes.PushSent": {
+      "properties": {
+        "devices": {
+          "type": "integer"
+        },
+        "id": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "devices",
+        "id",
+        "status"
+      ],
+      "type": "object"
+    },
+    "apitypes.PushSubscription": {
+      "properties": {
+        "endpoint": {
+          "type": "string"
+        },
+        "keys": {
+          "properties": {
+            "auth": {
+              "type": "string"
+            },
+            "p256dh": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "auth",
+            "p256dh"
+          ],
+          "type": "object"
+        }
+      },
+      "required": [
+        "endpoint",
+        "keys"
+      ],
+      "type": "object"
+    },
     "apitypes.Rehearsal": {
       "properties": {
         "bytes": {
@@ -9724,6 +9905,44 @@
         "reply_to",
         "subject",
         "text",
+        "to"
+      ],
+      "type": "object"
+    },
+    "apitypes.SendPushRequest": {
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "data": {
+          "additionalProperties": {},
+          "type": "object"
+        },
+        "fallback_email": {
+          "type": "string"
+        },
+        "icon": {
+          "type": "string"
+        },
+        "tag": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "to": {},
+        "ttl": {
+          "type": "integer"
+        },
+        "urgency": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "title",
         "to"
       ],
       "type": "object"
@@ -11997,6 +12216,19 @@
         "$ref": "#/$defs/apitypes.App"
       }
     },
+    "DELETE /v1/orgs/{org}/apps/{app}/push/devices": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.PushDevicesRemoved"
+      },
+      "query": {
+        "endpoint": {
+          "type": "string"
+        },
+        "user": {
+          "type": "string"
+        }
+      }
+    },
     "DELETE /v1/orgs/{org}/apps/{app}/status-page": {
       "answer": {
         "type": "null"
@@ -12979,6 +13211,21 @@
         "$ref": "#/$defs/apitypes.PackageScan"
       }
     },
+    "GET /v1/orgs/{org}/apps/{app}/push/devices": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.List[apitypes.PushDevice]"
+      },
+      "query": {
+        "user": {
+          "type": "string"
+        }
+      }
+    },
+    "GET /v1/orgs/{org}/apps/{app}/push/sends/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.PushSend"
+      }
+    },
     "GET /v1/orgs/{org}/apps/{app}/restores": {
       "answer": {
         "$ref": "#/$defs/apitypes.Page[apitypes.RestoreJSON]"
@@ -13774,6 +14021,22 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.StartPreviewRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/push/devices": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.PushDevice"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.AddPushDeviceRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/push/send": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.PushSent"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.SendPushRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/rename": {

@@ -63,6 +63,7 @@ the human asks for that service by name; if a built-in falls short, say so with 
 | Files and uploads | `storage: true` (§9) | an S3 or R2 account, Cloudinary, UploadThing |
 | Video and audio | `<whisk-video>` (§9) | Mux, Vimeo, YouTube embeds |
 | Email | `email: true` (§9) | SendGrid, Resend, Mailgun, SMTP |
+| Push notifications | `/.whisk/push.js` and `…/push/send` (§9) | OneSignal, Firebase Cloud Messaging, Pusher Beams, the `web-push` package |
 | Cache, counters, locks | `kv: true` (§9) | Upstash, Redis Cloud |
 | Errors | `SENTRY_DSN`, Whisk's own error store, `whisk errors` (§3) | a Sentry account, Bugsnag, Rollbar |
 | Logs and request tracing | stdout, `X-Whisk-Request-Id`, `whisk logs`, OpenTelemetry traces to `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT`, `whisk traces` (§2, §11) | Datadog, Logtail, LogRocket, Honeycomb, an APM agent |
@@ -1704,6 +1705,47 @@ answers `EMAIL_SEND_NOT_FOUND`. Under `whisk dev` a kept message stays `sent`.
 Transactional only: at most 20 recipients a message and 100 a minute. The plan includes a daily
 allowance; past it a paid plan keeps sending and is billed, and the free app stops (it also stops
 at 50 a month). `EMAIL_RATE_LIMITED` says which limit with `details.period`.
+
+**Push notifications** (every plan, nothing to declare). Whisk holds your app's signing key,
+delivers to every device a person turned notifications on for, retries while a push service is
+busy, forgets devices that are gone, and can email the person instead. Do not add `web-push`,
+VAPID keys or a push service of your own.
+
+1. On a page, `<script src="/.whisk/push.js"></script>`. `await Whisk.push.state()` is
+   `unsupported`, `needs-install`, `denied`, `off` or `on`: show a "Turn on notifications"
+   button for `off`, and for `needs-install` say to add the app to the Home Screen first: an
+   iPhone or iPad shows notifications only from an app added to the Home Screen. Link Whisk's web
+   manifest, made from the app's name and its `sign_in` colours and logo, with `<link
+   rel="manifest" href="/.whisk/manifest.webmanifest">`, unless the app serves its own. From the button's tap, `await Whisk.push.enable({ register })`, where
+   `register(subscription, { label })` posts to a route of your own. Call
+   `Whisk.push.sync({ register })` on each page load so a renewed device reaches you, and
+   `Whisk.push.disable({ unregister })` to turn it off. `enable` rejects with `e.code`
+   `PUSH_DENIED`, `PUSH_NEEDS_INSTALL` or `PUSH_UNSUPPORTED`; show `e.message`.
+2. That route, for the signed-in person, calls `POST /v1/orgs/<org>/apps/<app>/push/devices` with
+   the service token and `{user, subscription, label}`, where `user` is your key for the person:
+   `X-Whisk-User-Id` with Whisk's sign-in, or your own user id with your own. A person may have
+   several devices; the same browser signed in as someone else moves to them.
+   `GET …/push/devices?user=` lists them and `DELETE …/push/devices?user=&endpoint=` removes
+   a person's devices, or one.
+3. To notify, `POST /v1/orgs/<org>/apps/<app>/push/send` with the service token and `{to, title,
+   body, url}`: `to` is one user key or up to 500, `url` a path on your app (or an https address)
+   that a tap opens. Optional: `tag` (a newer notification with the same tag replaces the older
+   one on the device), `icon`, `data` (handed to the page), `ttl` (seconds it stays worth
+   delivering, default a day), `urgency` (`very-low`, `low`, `normal`, `high`), and
+   `fallback_email`, which Whisk emails the title, body and a link when no device took it (as
+   your app's email, counted against its allowance). Send an `Idempotency-Key` header, such as
+   the id of what happened, so a retried send notifies once. It answers 202 `{id, devices,
+   status}`; `GET …/push/sends/<id>` says what became of each device's copy (`delivered`,
+   `retrying`, `gone`, `refused`, `expired`) for 7 days. A notification is at most 3.7 KB of JSON
+   (`PUSH_TOO_LARGE`): send an id in `data` and fetch the rest. At most 5,000 devices a minute
+   (`PUSH_RATE_LIMITED`). Notify for what the person asked to hear about, never marketing.
+
+An app with its own service worker keeps it: add `importScripts("/.whisk/push-sw.js")` to it
+and pass `{ registration: await navigator.serviceWorker.ready }` to `enable`, `sync` and
+`disable`. To subscribe with code of your own, `WHISK_PUSH_KEY` is the key to subscribe with
+(`applicationServerKey`), and the notification your worker receives is `{title, body, url, tag,
+icon, data, send}`. Under `whisk dev` notifications are kept, not sent: `GET …/push/sent` lists
+them.
 
 **PDFs** (invoices, statements, reports). Typeset them with Typst, one static binary and no
 browser: download one exact release in a build stage and copy the binary into the final image,

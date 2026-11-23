@@ -2673,6 +2673,64 @@ this; a burst usually means a loop.
 {"error":{"code":"EMAIL_RATE_LIMITED","message":"acme has sent 1,000 emails today, the plan's daily limit.","fix":"Wait 5h12m for the window to reset, and check for a loop if the volume was unexpected.","docs":"https://skill.whisk.run/errors/EMAIL_RATE_LIMITED","details":{"limit":1000,"sent":1000,"retry_after":18720}}}
 ```
 
+## PUSH_SUBSCRIPTION_INVALID
+
+Status: 400 · Surface: api
+
+When: `POST …/push/devices` carries a subscription Whisk cannot send to: its endpoint is not an
+https address on a browser's push service (Google, Mozilla, Apple, Microsoft), or its `p256dh`
+key or `auth` secret is missing or malformed.
+
+Fix: Send the subscription `PushManager.subscribe` answered, as its `toJSON()` gives it:
+`{endpoint, keys: {p256dh, auth}}`. `Whisk.push.enable()` from `/.whisk/push.js` gives it in that
+shape.
+
+```json
+{"error":{"code":"PUSH_SUBSCRIPTION_INVALID","message":"The subscription's endpoint is not a browser push service.","fix":"Send the subscription PushManager.subscribe answered, as its toJSON() gives it: {endpoint, keys: {p256dh, auth}}.","docs":"https://skill.whisk.run/errors/PUSH_SUBSCRIPTION_INVALID"}}
+```
+
+## PUSH_TOO_LARGE
+
+Status: 400 · Surface: api
+
+When: a notification's title, body, link, tag, icon and `data` together are more JSON than one
+push message carries, about 3.7 KB.
+
+Fix: Send less in `body` and `data`: put an id in `data` and have the page the notification opens
+fetch the rest.
+
+```json
+{"error":{"code":"PUSH_TOO_LARGE","message":"The notification is 4210 bytes; one may hold 3736.","fix":"Send less in body and data: put an id in data and have the page it opens fetch the rest.","docs":"https://skill.whisk.run/errors/PUSH_TOO_LARGE","details":{"bytes":4210,"limit_bytes":3736}}}
+```
+
+## PUSH_RATE_LIMITED
+
+Status: 429 · Surface: api
+
+When: the app has sent notifications to 5,000 devices in the last minute. A burst like this
+usually means a loop.
+
+Fix: Send fewer notifications: group what happened into one, and try again in a minute.
+
+```json
+{"error":{"code":"PUSH_RATE_LIMITED","message":"crm has sent to 5000 devices in the last minute; an app may send to 5000 a minute.","fix":"Send fewer notifications: group what happened into one, and try again in a minute.","docs":"https://skill.whisk.run/errors/PUSH_RATE_LIMITED","details":{"limit_per_minute":5000,"retry_after_seconds":60}}}
+```
+
+## PUSH_SEND_NOT_FOUND
+
+Status: 404 · Surface: api, cli
+
+When: `GET …/push/sends/<id>` (or `whisk push status <id>`) names an id that is not one of this
+app's sends: a typo, an id another app sent, or a send older than 7 days, after which a
+notification and what became of it are no longer kept.
+
+Fix: Send the `id` the app's `POST …/push/send` answered, with the token of the app that sent
+it, within 7 days of sending.
+
+```json
+{"error":{"code":"PUSH_SEND_NOT_FOUND","message":"crm sent no notification with id 01JD4M2X8Q7R6S5T4V3W2X1Y0Z in the last 7 days.","fix":"Send the id the app's POST …/push/send answered, with the token of the app that sent it, within 7 days of sending.","docs":"https://skill.whisk.run/errors/PUSH_SEND_NOT_FOUND","details":{"app":"crm","id":"01JD4M2X8Q7R6S5T4V3W2X1Y0Z","kept_days":7}}}
+```
+
 ## CUSTOMER_INVITE_SENT
 
 Status: 429 · Surface: api

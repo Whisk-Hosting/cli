@@ -69,6 +69,9 @@ func (e *edge) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		writeError(w, r, http.StatusBadRequest, werrors.New("PATH_AMBIGUOUS", "The request path has a . or .. segment, so the app could serve a different route than the one it names.", "Send the path already resolved, as a browser does: /a/b/../c is /a/c.", nil))
 		return
 	}
+	if e.servePush(w, r) {
+		return
+	}
 	switch {
 	case path == "/.whisk/login":
 		e.login(w, r)

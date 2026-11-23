@@ -1604,6 +1604,52 @@
   ]
  },
  {
+  "name": "push",
+  "short": "The push notifications the app sends",
+  "commands": [
+   {
+    "usage": "whisk push devices",
+    "short": "The devices people turned the app's notifications on for",
+    "flags": [
+     {
+      "name": "--user string",
+      "usage": "only this person's devices, by the app's key for them"
+     }
+    ]
+   },
+   {
+    "usage": "whisk push send --to \u003cuser\u003e --title \u003ctitle\u003e",
+    "short": "Send a notification to people's devices, to try it",
+    "flags": [
+     {
+      "name": "--body string",
+      "usage": "its text"
+     },
+     {
+      "name": "--fallback-email string",
+      "usage": "an address to email when no device takes it"
+     },
+     {
+      "name": "--title string",
+      "usage": "the notification's title"
+     },
+     {
+      "name": "--to stringSlice",
+      "usage": "the person, by the app's key for them; repeat for more"
+     },
+     {
+      "name": "--url string",
+      "usage": "the page a tap opens, a path such as /tickets/42"
+     }
+    ]
+   },
+   {
+    "usage": "whisk push status \u003cid\u003e",
+    "short": "What became of a notification: each device's copy delivered, retrying, gone, refused or expired"
+   }
+  ]
+ },
+ {
   "name": "redirects",
   "short": "Old addresses the edge redirects (whisk.yaml redirects and redirects_file)",
   "commands": [

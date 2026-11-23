@@ -19,6 +19,7 @@ version. Read them from the environment at start; never commit values; never ren
 | `WHISK_INNGEST_URL` | origin of the workflow API the Inngest SDK talks to (scheme and host, no path); pass it as the SDK's base URL |
 | `WHISK_INNGEST_SIGNING_KEY` | this app's own; verifies function-run requests to `queue.endpoint`, and tells the platform which app the SDK is |
 | `WHISK_INNGEST_EVENT_KEY` | this app's own; lets the Inngest SDK send events from inside a function |
+| `WHISK_PUSH_KEY` | this app's public push key, base64url; `/.whisk/push.js` reads it for itself, and a page that subscribes with its own code passes it to `PushManager.subscribe` as `applicationServerKey`. Public, the same in every environment of the app |
 | `WHISK_DELIVERY_KEY` | base64, 32 bytes, this app's own; verifies `X-Whisk-Delivery-Signature` on webhook deliveries (headers.md, delivery headers) |
 | `SENTRY_DSN` | error tracking; initialise any Sentry SDK with it |
 | `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` | `https://api.whisk.run/v1/otlp/v1/traces`, where an OpenTelemetry SDK sends the app's traces |
