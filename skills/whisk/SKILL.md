@@ -1744,7 +1744,10 @@ An app with its own service worker keeps it: add `importScripts("/.whisk/push-sw
 and pass `{ registration: await navigator.serviceWorker.ready }` to `enable`, `sync` and
 `disable`. To subscribe with code of your own, `WHISK_PUSH_KEY` is the key to subscribe with
 (`applicationServerKey`), and the notification your worker receives is `{title, body, url, tag,
-icon, data, send}`. Under `whisk dev` notifications are kept, not sent: `GET …/push/sent` lists
+icon, data, send}`. Whisk's worker opens a click's `url` by focusing a window already on it,
+else navigating one of the app's windows there, else opening one. To open it your own way (say,
+routing in place without a reload), add your `notificationclick` listener before the
+`importScripts` line and call `event.stopImmediatePropagation()` in it. Under `whisk dev` notifications are kept, not sent: `GET …/push/sent` lists
 them.
 
 **PDFs** (invoices, statements, reports). Typeset them with Typst, one static binary and no
