@@ -15,6 +15,7 @@ import (
 	"github.com/spf13/cobra"
 
 	"github.com/whisk-run/contract/apitypes"
+	"github.com/whisk-run/contract/endpoints"
 	"github.com/whisk-run/contract/tokensig"
 
 	"github.com/whisk-run/cli/internal/api"
@@ -288,8 +289,30 @@ func (s *session) client() (*api.Client, config.Credential, error) {
 				"Run whisk login again on this computer.", map[string]any{"profile": s.profile})
 		}
 		c.Key = key
+		s.renewIfDue(c, &cred)
 	}
 	return c, cred, nil
+}
+
+// renewTimeout bounds a renewal, so a slow platform delays the command by this much at most.
+const renewTimeout = 5 * time.Second
+
+// renewIfDue renews a login bound to this computer that is nearing its expiry (config.RenewDue)
+// before the command's own request, and keeps the new expiry with the profile. It is silent
+// and never stops the command: a renewal that fails or is slow leaves the login as it was, and
+// the next command tries again.
+func (s *session) renewIfDue(c *api.Client, cred *config.Credential) {
+	if !config.RenewDue(*cred, s.now()) {
+		return
+	}
+	ctx, cancel := context.WithTimeout(s.ctx, renewTimeout)
+	defer cancel()
+	out, err := api.Call(ctx, c, endpoints.RenewSelf)
+	if err != nil || !out.ExpiresAt.After(cred.ExpiresAt) {
+		return
+	}
+	cred.ExpiresAt = out.ExpiresAt
+	_ = s.store.Set(s.profile, *cred)
 }
 
 // Credential is a profile's stored token, for a program driving the CLI as a library.

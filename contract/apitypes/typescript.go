@@ -176,7 +176,7 @@ var baseWire = []any{
 	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, UpdateHold{}, DeployEvent{}, Warning{}, ForkUpdate{}, ForkChanges{}, ForkChange{}, ForkUnreadable{}, ForkProblem{}, ForkSuggestion{}, ForkSuggestions{}, ForkSuggestRequest{}, ForkChannelRequest{}, ForkDetail{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
-	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{},
+	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{}, TokenRenewal{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},
 	OrgHome{}, HomeCounts{}, NeedsYou{}, AppListing{}, ListingValues{}, AppAccess{}, HomeLayout{}, HomeApp{}, ValidationListing{},
 	CreateOrgRequest{}, PatchOrgRequest{}, ConfirmOrgRequest{}, InviteRequest{}, PersonAppsRequest{}, PatchMemberRequest{},

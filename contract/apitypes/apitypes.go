@@ -661,6 +661,12 @@ type GitPassword struct {
 	ExpiresAt time.Time `json:"expires_at"`
 }
 
+// TokenRenewal is the answer to POST /tokens/self/renew: when the signed request's login now
+// lapses (CONTROL-PLANE.md §4.4).
+type TokenRenewal struct {
+	ExpiresAt time.Time `json:"expires_at"`
+}
+
 // Request bodies.
 
 // CreateOrgRequest is POST /orgs.

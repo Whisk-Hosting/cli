@@ -26,6 +26,7 @@ func TestWordsAgentsReachFor(t *testing.T) {
 		"cache purge":  "whisk cdn purge",
 		"storage":      "whisk uploads",
 		"products":     "whisk managed",
+		"env":          "whisk envs",
 		"audit":        "whisk audit",
 	} {
 		c, _, err := root.Find(strings.Fields(typed))

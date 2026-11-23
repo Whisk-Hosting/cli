@@ -8,6 +8,7 @@ import (
 var (
 	Whoami          = New[None, apitypes.Whoami]("GET /v1/whoami")
 	RevokeSelf      = New[None, None]("DELETE /v1/tokens/self")
+	RenewSelf       = New[None, apitypes.TokenRenewal]("POST /v1/tokens/self/renew")
 	GitPassword     = New[None, apitypes.GitPassword]("POST /v1/tokens/git")
 	DeviceCode      = New[apitypes.DeviceCodeRequest, apitypes.DeviceCode]("POST /v1/device/code")
 	DeviceInfo      = New[None, apitypes.DeviceInfo]("GET /v1/device/{code}")
@@ -21,5 +22,5 @@ var (
 	MarkOrgOpened   = New[None, None]("PUT /v1/orgs/{org}/opened")
 	DeviceToken     = New[apitypes.DeviceTokenRequest, apitypes.DeviceToken]("POST /v1/device/token")
 
-	_ = public.Add(Whoami, RevokeSelf, GitPassword, DeviceCode, DeviceInfo, DeviceApprove, MySessions, RevokeMySession, MyTokens, RevokeMyToken, ListOrgs, CreateOrg, MarkOrgOpened, DeviceToken)
+	_ = public.Add(Whoami, RevokeSelf, RenewSelf, GitPassword, DeviceCode, DeviceInfo, DeviceApprove, MySessions, RevokeMySession, MyTokens, RevokeMyToken, ListOrgs, CreateOrg, MarkOrgOpened, DeviceToken)
 )

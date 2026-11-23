@@ -92,6 +92,21 @@ type Credential struct {
 	PendingCode string `json:"pending_code,omitempty"`
 }
 
+// RenewWithin is how close to its expiry a login is renewed: a command run with less than this
+// left renews it first, so an agent at work is never stopped by a login that lapses mid-task.
+const RenewWithin = 7 * 24 * time.Hour
+
+// RenewDue (pure) reports whether the CLI renews the credential before the request it is about
+// to make: a login bound to this computer (only those renew, on a signed request), still live,
+// with less than RenewWithin left. A lapsed login cannot renew; its person signs in again.
+func RenewDue(c Credential, now time.Time) bool {
+	if c.Token == "" || c.PrivateKey == "" || c.PendingCode != "" || c.ExpiresAt.IsZero() {
+		return false
+	}
+	left := c.ExpiresAt.Sub(now)
+	return left > 0 && left < RenewWithin
+}
+
 // PendingProfile is where a --no-wait login keeps its key until --resume collects the token,
 // beside the profile's credential rather than over it.
 func PendingProfile(profile string) string { return profile + ":pending" }

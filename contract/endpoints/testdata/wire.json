@@ -10552,6 +10552,18 @@
       ],
       "type": "object"
     },
+    "apitypes.TokenRenewal": {
+      "properties": {
+        "expires_at": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "expires_at"
+      ],
+      "type": "object"
+    },
     "apitypes.TraceDetail": {
       "properties": {
         "duration_ms": {
@@ -14331,6 +14343,11 @@
     "POST /v1/tokens/git": {
       "answer": {
         "$ref": "#/$defs/apitypes.GitPassword"
+      }
+    },
+    "POST /v1/tokens/self/renew": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.TokenRenewal"
       }
     },
     "POST /v1/visits": {

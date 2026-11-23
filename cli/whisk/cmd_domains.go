@@ -326,7 +326,7 @@ func pointsByAddress(records []map[string]string) bool {
 }
 
 func envsCmd(s *session) *cobra.Command {
-	envs := &cobra.Command{Use: "envs", Short: "Environments: production and the previews"}
+	envs := &cobra.Command{Use: "envs", Aliases: []string{"env"}, Short: "Environments: production and the previews"}
 
 	list := &cobra.Command{
 		Use:   "list",
