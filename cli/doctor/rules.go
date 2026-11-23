@@ -501,7 +501,7 @@ func w041(r Repo, _ Context) outcome {
 	var out outcome
 	for _, pg := range parsed {
 		for i, s := range pg.Graph.Steps {
-			if s.IsDecision() || literalFound(r, s.ID) {
+			if s.IsDecision() || literalFound(r, s.ID) || builtNameFound(r, s.ID) {
 				continue
 			}
 			out = out.add("W041", pg.File, yamlLine(pg.Node, fmt.Sprintf("/steps/%d/id", i)), fmt.Sprintf("Step %s of %s is not found as a string literal in code.", s.ID, pg.Function))

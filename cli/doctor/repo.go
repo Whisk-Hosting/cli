@@ -58,6 +58,9 @@ type Repo struct {
 	// why git could not read it (W170 to W173).
 	Fork    *Fork
 	ForkErr string
+	// Undeployed are the top-level folders whose code the deployed app does not run
+	// (deployed.go); Code leaves them out.
+	Undeployed []string
 }
 
 const contentCap = 4 << 20
@@ -117,6 +120,7 @@ func Load(ctx context.Context, dir string) (Repo, error) {
 		}
 		r.Manifest, r.ManifestErr = manifest.Parse(src)
 	}
+	r.Undeployed = undeployedFolders(r)
 	if b, ok, err := config.LoadBinding(abs); err == nil && ok {
 		r.Binding = &b
 	}
@@ -258,11 +262,12 @@ func (r Repo) Has(p string) bool {
 	return false
 }
 
-// Code returns the app's own source files for a language: not tests, not vendored, with text.
+// Code returns the app's own source files for a language: not tests, not vendored, not in a
+// folder the deployed app does not run, with text.
 func (r Repo) Code(lang stack.Lang) []File {
 	var out []File
 	for _, f := range r.Files {
-		if f.Content == nil || stack.LangOf(f.Path) != lang || stack.IsTest(f.Path) || stack.IsVendored(f.Path) {
+		if f.Content == nil || stack.LangOf(f.Path) != lang || stack.IsTest(f.Path) || stack.IsVendored(f.Path) || undeployed(f.Path, r.Undeployed) {
 			continue
 		}
 		out = append(out, f)

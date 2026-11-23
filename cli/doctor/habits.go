@@ -119,7 +119,8 @@ func timers(f File) []hit {
 }
 
 // pageCode reports whether a code file is served to the browser rather than run by the
-// server: under a static folder or a public/ or client/ folder. Pure.
+// server: under a static folder, a browser bundle's folder (browserFolders) or a public/ or
+// client/ folder. Pure.
 func pageCode(p string, static []string) bool {
 	for _, dir := range static {
 		if dir != "" && strings.HasPrefix(p, strings.Trim(dir, "/")+"/") {
@@ -135,6 +136,7 @@ func serverCode(r Repo) []File {
 	for _, s := range r.Manifest.Static {
 		static = append(static, s.Dir)
 	}
+	static = append(static, browserFolders(r.Files)...)
 	var out []File
 	for _, lang := range []stack.Lang{stack.JS, stack.PY, stack.GO} {
 		for _, f := range r.Code(lang) {
@@ -149,6 +151,9 @@ func serverCode(r Repo) []File {
 func w023(r Repo, _ Context) outcome {
 	var out outcome
 	for _, f := range serverCode(r) {
+		if stack.LangOf(f.Path) == stack.JS && browserFile(f) {
+			continue // a timer in a page refreshes what the person is looking at
+		}
 		if hs := timers(f); len(hs) > 0 {
 			out = out.add("W023", f.Path, hs[0].Line, fmt.Sprintf("%s runs a timer or scheduler inside the app (%s), which stops when the app sleeps and runs once per container.", f.Path, strings.TrimSpace(hs[0].Name)))
 		}

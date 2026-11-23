@@ -3,6 +3,7 @@ package doctor
 import (
 	"path"
 	"regexp"
+	"slices"
 	"strings"
 
 	"github.com/whisk-run/cli/internal/stack"
@@ -164,6 +165,17 @@ func routeFiles(r Repo, routePath, method string) []File {
 				if re.Match(f.Content) && !hasPath(out, f.Path) {
 					out = append(out, f)
 				}
+			}
+		}
+	}
+	if len(out) > 0 {
+		return out
+	}
+	code := r.AllCode()
+	for _, p := range templateFiles(routeTemplates(code), routePath, method) {
+		for _, f := range code {
+			if f.Path == p {
+				out = append(out, f)
 			}
 		}
 	}
@@ -348,4 +360,196 @@ func passwordFields(r Repo) []hit {
 		out = append(out, first)
 	}
 	return out
+}
+
+// A route written with parameters or built from a name (app.post(`/hooks/${name}`),
+// router.post("/:name") under app.route("/hooks", router), @router.post("/{name}") with
+// APIRouter(prefix="/hooks"), r.Post("/{name}") inside r.Route("/hooks", …)) registers every
+// path it matches, so a delivery route at one of them is found (W050, W053).
+
+// routeTemplate is one route a file registers, as a pattern of the paths it matches.
+type routeTemplate struct {
+	file    string
+	method  string // GET, POST or "" for any
+	mount   bool   // a prefix other routes hang under: use, route, Mount, Group, prefix=
+	pattern string // regular expression text for the path, unanchored
+	static  bool   // the path has a segment written out, not only parameters
+}
+
+var routeTemplateCalls = map[stack.Lang]*regexp.Regexp{
+	stack.JS: regexp.MustCompile(`\.(get|post|put|patch|delete|all|route|use|on|basePath)\(\s*(?:["'][A-Za-z]+["']\s*,\s*)?(?:"([^"\n]*)"|'([^'\n]*)'|` + "`([^`]*)`" + `)(\s*\+)?`),
+	stack.PY: regexp.MustCompile(`\.(get|post|put|patch|delete|route|api_route|add_api_route|add_url_rule|include_router|register_blueprint)\(\s*(?:f?"([^"\n]*)"|f?'([^'\n]*)'|())()|\b(prefix|url_prefix)\s*=\s*f?["']([^"'\n]*)["']`),
+	stack.GO: regexp.MustCompile(`\.(Get|GET|Post|POST|Put|Patch|Delete|Handle|HandleFunc|Route|Mount|Any|Group|Method)\(\s*(?:"[A-Z]+"\s*,\s*)?"([^"\n]*)"()()(\s*\+)?`),
+}
+
+var (
+	reTplExpr  = regexp.MustCompile(`\$\{[^}]*\}`)
+	reTplParam = regexp.MustCompile(`:[A-Za-z_]\w*\??|\{[^}/]*\}|<[^>/]*>|\*`)
+	reGoMethod = regexp.MustCompile(`^([A-Z]+) (/.*)$`)
+)
+
+// routePattern turns a route's written path into a pattern of the paths it matches, and says
+// whether any segment is written out. tail is a concatenation after the literal. Pure.
+func routePattern(written string, tail bool) (string, bool) {
+	var b strings.Builder
+	static := false
+	parts := reTplExpr.Split(written, -1)
+	for i, part := range parts {
+		last := 0
+		for _, loc := range reTplParam.FindAllStringIndex(part, -1) {
+			b.WriteString(regexp.QuoteMeta(part[last:loc[0]]))
+			if part[loc[0]:loc[1]] == "*" {
+				b.WriteString(`.*`)
+			} else {
+				b.WriteString(`[^/]+`)
+			}
+			last = loc[1]
+		}
+		b.WriteString(regexp.QuoteMeta(part[last:]))
+		for _, seg := range strings.Split(reTplParam.ReplaceAllString(part, ""), "/") {
+			if strings.Trim(seg, ".-_") != "" {
+				static = true
+			}
+		}
+		if i < len(parts)-1 {
+			b.WriteString(`[^/]+`)
+		}
+	}
+	if tail {
+		b.WriteString(`.*`)
+	}
+	return b.String(), static
+}
+
+// routeTemplates is every route the files register, with the prefixes they mount. Pure.
+func routeTemplates(files []File) []routeTemplate {
+	var out []routeTemplate
+	for _, f := range files {
+		lang := stack.LangOf(f.Path)
+		re := routeTemplateCalls[lang]
+		if re == nil {
+			continue
+		}
+		src := blankComments(lang, f.Content)
+		for _, m := range re.FindAllStringSubmatch(string(src), -1) {
+			call, written, tail := m[1], m[2]+m[3]+m[4], m[5] != ""
+			if lang == stack.PY && m[6] != "" {
+				call, written = m[6], m[7]
+			}
+			method := ""
+			switch strings.ToLower(call) {
+			case "get":
+				method = "GET"
+			case "post":
+				method = "POST"
+			}
+			if g := reGoMethod.FindStringSubmatch(written); g != nil {
+				method, written = g[1], g[2]
+			}
+			if !strings.HasPrefix(written, "/") && !strings.HasPrefix(written, "${") {
+				continue
+			}
+			mount := false
+			switch call {
+			case "use", "route", "basePath", "Route", "Mount", "Group", "include_router", "register_blueprint", "prefix", "url_prefix":
+				mount = true
+			}
+			pattern, static := routePattern(written, tail)
+			out = append(out, routeTemplate{file: f.Path, method: method, mount: mount, pattern: pattern, static: static})
+		}
+	}
+	return out
+}
+
+// templateFiles is each file with a route that matches the path for the method, alone or
+// under a prefix some file mounts. A route with no segment written out counts only under a
+// prefix that has one, so a catch-all does not stand for every route. Pure.
+func templateFiles(templates []routeTemplate, routePath, method string) []string {
+	var out []string
+	matchesPath := func(pattern string) bool {
+		re, err := regexp.Compile(`^` + pattern + `/?$`)
+		return err == nil && re.MatchString(routePath)
+	}
+	for _, t := range templates {
+		if t.method != "" && t.method != method || slices.Contains(out, t.file) {
+			continue
+		}
+		if t.static && matchesPath(t.pattern) {
+			out = append(out, t.file)
+			continue
+		}
+		for _, p := range templates {
+			if !p.mount || !p.static || p.file == t.file && p.pattern == t.pattern {
+				continue
+			}
+			if matchesPath(strings.TrimSuffix(p.pattern, "/") + t.pattern) {
+				out = append(out, t.file)
+				break
+			}
+		}
+	}
+	return out
+}
+
+// Names built at runtime: a template literal (`send-orders-${id}`), a Python f-string
+// (f"send-orders-{id}") or a Go format string (fmt.Sprintf("send-orders-%d", id)).
+var (
+	reBuiltJS = regexp.MustCompile("`([^`]*\\$\\{[^`]*)`")
+	reBuiltPY = regexp.MustCompile(`\bf"([^"\n]*\{[^"\n]*)"|\bf'([^'\n]*\{[^'\n]*)'`)
+	reBuiltGO = regexp.MustCompile(`\bfmt\.Sprintf\(\s*"([^"\n]*%[^"\n]*)"`)
+
+	builtHoles = map[stack.Lang]*regexp.Regexp{
+		stack.JS: regexp.MustCompile(`\$\{[^}]*\}`),
+		stack.PY: regexp.MustCompile(`\{[^}]*\}`),
+		stack.GO: regexp.MustCompile(`%[-+# 0-9.]*[a-zA-Z]`),
+	}
+)
+
+// builtNames is each name a file builds at runtime, as its text. Pure.
+func builtNames(f File) []string {
+	lang := stack.LangOf(f.Path)
+	re := map[stack.Lang]*regexp.Regexp{stack.JS: reBuiltJS, stack.PY: reBuiltPY, stack.GO: reBuiltGO}[lang]
+	if re == nil {
+		return nil
+	}
+	var out []string
+	for _, m := range re.FindAllStringSubmatch(string(blankComments(lang, f.Content)), -1) {
+		out = append(out, strings.Join(m[1:], ""))
+	}
+	return out
+}
+
+// builtNameCovers reports whether a name built at runtime stands for an id: the id is what the
+// name is with each hole filled, or what is written before the first hole, without the
+// separator that joins the hole on (send-orders for `send-orders-${id}`). Pure.
+func builtNameCovers(lang stack.Lang, built, id string) bool {
+	holes := builtHoles[lang]
+	if holes == nil {
+		return false
+	}
+	loc := holes.FindStringIndex(built)
+	if loc == nil {
+		return false
+	}
+	if head := strings.TrimRight(built[:loc[0]], "-_:./ "); head != "" && head == id {
+		return true
+	}
+	parts := holes.Split(built, -1)
+	for i := range parts {
+		parts[i] = regexp.QuoteMeta(parts[i])
+	}
+	re, err := regexp.Compile(`^` + strings.Join(parts, `.+`) + `$`)
+	return err == nil && strings.Join(parts, "") != "" && re.MatchString(id)
+}
+
+// builtNameFound reports whether any code file builds a name at runtime that stands for the id.
+func builtNameFound(r Repo, id string) bool {
+	for _, f := range r.AllCode() {
+		for _, b := range builtNames(f) {
+			if builtNameCovers(stack.LangOf(f.Path), b, id) {
+				return true
+			}
+		}
+	}
+	return false
 }

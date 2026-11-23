@@ -24,6 +24,14 @@ files, per language. "Where detectable" means the check is skipped, not failed, 
 language or framework is not one doctor understands. The idioms doctor recognises are listed
 under each rule so an agent can write code doctor will read correctly.
 
+Code rules read the code the deployed app runs. A top-level folder is left out when the build
+never ships it (a Dockerfile that copies other folders only, or `.dockerignore`), or when its name
+says it is for working on the app (`dev`, `tools`, `scripts`, `bin`, `examples`, `docs`, `bench`,
+`playground`, `sandbox`, `scratch`, `experiments`, `inactive`, `archive`, `old`, `unused`,
+`deprecated`, `disabled`, `legacy` and the like) and nothing the deploy runs names or imports it:
+whisk.yaml, the Dockerfile, a Procfile, the `package.json` scripts a build and start run, and the
+app's own imports and paths written in its code.
+
 ## W001
 
 Level: error
@@ -178,8 +186,12 @@ Fix: Declare a function with cron in whisk.yaml and move the work into it; the p
 Safe fix: no
 
 Details: an app sleeps when idle and may run in more than one container, so a timer inside it
-stops when it sleeps and runs once per container while it is awake. Matched in server code (not
-in a `static` folder or a `public/` or `client/` folder, which run in the browser): JavaScript
+stops when it sleeps and runs once per container while it is awake. Matched in server code. Code
+that runs in the browser is left out: a `static` folder, a `public/` or `client/` folder, a
+browser bundle's folder (one with a bundler configuration such as `vite.config.ts`, or an
+`index.html` that loads a script, or the `root` a top-level bundler configuration names), and a
+JavaScript file that says `"use client"` or uses `document`, `window`, `localStorage` or React's
+`useEffect` and `useState`. Matched: JavaScript
 `setInterval(` and imports of `node-cron`, `cron`, `node-schedule`, `toad-scheduler`, `agenda`,
 `bree` and `croner`; Python imports of `apscheduler`, `schedule`, `crontab` and `rocketry`, and
 `threading.Timer(`; Go imports of `github.com/robfig/cron` and `github.com/go-co-op/gocron`, and
@@ -266,7 +278,10 @@ Details: decision nodes (ids ending `?`) are exempt. A step of kind `approval` i
 the id alone; the `/request` step the approval helper creates is not expected in the graph. The
 literal must appear in the file that defines the function or a file it imports; an id that only
 appears in a comment does not count. Strings are read as strings, so a cron such as
-`"*/3 * * * *"` or a glob such as `"src/**"` does not open a comment.
+`"*/3 * * * *"` or a glob such as `"src/**"` does not open a comment. A name built at runtime stands for the id
+when what is written before its first hole is the id (`` `send-orders-${id}` ``,
+`f"send-orders-{id}"`, `fmt.Sprintf("send-orders-%d", id)` for `send-orders`) or the id fills
+its holes.
 
 ## W042
 
@@ -304,7 +319,12 @@ Check: a webhook handler path, or the inbox handler, is not found as a route in 
 Fix: Add a POST route at the handler path, or change webhooks[].handler (or inbox.handler) to the route that exists.
 Safe fix: no
 
-Details: same route idioms as W022, for POST.
+Details: same route idioms as W022, for POST. A route with parameters or built from a name
+counts for every path it matches: `` app.post(`/hooks/${name}`) ``, `app.post("/hooks/" + name)`,
+`app.post("/hooks/:name")`, `@router.post("/{name}")`, `r.Post("/{name}")`,
+`HandleFunc("POST /hooks/{name}")`, alone or under a prefix the code mounts (`app.route("/hooks",
+hooks)`, `app.use("/hooks", …)`, `APIRouter(prefix="/hooks")`, `r.Route("/hooks", …)`). A route
+that is only parameters counts only under a prefix.
 
 ## W051
 
@@ -709,7 +729,9 @@ left out, comments not read): any `set role`, `set local role` or `set session r
 line; and the first schema change in each file that is not part of the migrations (`create`,
 `alter` or `drop` of a table, index, schema, policy, function, trigger, view, sequence or type,
 and `create extension`). A file is part of the migrations when its path names `migrat`,
-`alembic` or a `drizzle/` folder, or it is a `.sql` file. Migrations run when the app starts
+`alembic` or a `drizzle/` folder, it is a `.sql` file, the manifest's `migrate` command runs it
+(`src/setup.ts` for `node dist/setup.js`), or one of those imports it, directly or through other
+files, since the migration then runs its statements as the owner. Migrations run when the app starts
 are W102's finding, which says that under this setting they stop the app from starting.
 
 ## W106
