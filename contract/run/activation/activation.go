@@ -13,6 +13,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -94,19 +95,43 @@ func Listen(name, addr string) (*Listener, error) {
 // restart was meant to keep (24 November, build2's push helper: TestDrainWaitsForAnAcceptedConnection).
 type Listener struct {
 	net.Listener
-	open sync.WaitGroup
+	open    sync.WaitGroup
+	stopped atomic.Bool
 }
 
 // Track wraps lis so its accepted connections can be waited for.
 func Track(lis net.Listener) *Listener { return &Listener{Listener: lis} }
 
+// Accept is the next connection, or http.ErrServerClosed once Stop has closed the listener, so a
+// server's Serve ends as it does after Shutdown.
 func (l *Listener) Accept() (net.Conn, error) {
 	c, err := l.Listener.Accept()
 	if err != nil {
+		if l.stopped.Load() {
+			return nil, http.ErrServerClosed
+		}
 		return nil, err
 	}
 	l.open.Add(1)
 	return &trackedConn{Conn: c, done: l.open.Done}, nil
+}
+
+// Stop stops srv, which serves on l, without losing a request. It closes the listener, so the
+// connections still in the socket's queue wait there for the next process; turns keep-alives
+// off, so each connection closes once its request is answered; waits until every connection l
+// accepted is closed or ctx ends; and only then shuts srv down. Shutting down first loses a
+// request: Go's server closes, without an answer, a connection whose request it reads after its
+// shutdown began, and a connection accepted in the instant before the stop had sent its request
+// a moment later (TestStopAnswersARequestThatArrivesAfterItBegins).
+func (l *Listener) Stop(ctx context.Context, srv *http.Server) error {
+	l.stopped.Store(true)
+	_ = l.Listener.Close()
+	srv.SetKeepAlivesEnabled(false)
+	err := l.Drain(ctx)
+	if serr := srv.Shutdown(ctx); err == nil {
+		err = serr
+	}
+	return err
 }
 
 // Drain waits until every connection the listener accepted is closed, or ctx ends. Call it after
@@ -134,8 +159,8 @@ func (c *trackedConn) Close() error {
 	return err
 }
 
-// Serve serves srv on l until ctx ends, then shuts it down within grace and waits for every
-// connection l accepted to close, so a stop answers every request that reached the process.
+// Serve serves srv on l until ctx ends, then stops it within grace (Stop), so a stop answers
+// every request that reached the process.
 func (l *Listener) Serve(ctx context.Context, srv *http.Server, grace time.Duration) error {
 	served := make(chan error, 1)
 	go func() { served <- srv.Serve(l) }()
@@ -146,10 +171,7 @@ func (l *Listener) Serve(ctx context.Context, srv *http.Server, grace time.Durat
 	}
 	shut, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
 	defer cancel()
-	err := srv.Shutdown(shut)
-	if derr := l.Drain(shut); err == nil {
-		err = derr
-	}
+	err := l.Stop(shut, srv)
 	if serr := <-served; err == nil && !errors.Is(serr, http.ErrServerClosed) {
 		err = serr
 	}

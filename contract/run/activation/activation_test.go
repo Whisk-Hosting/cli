@@ -1,9 +1,11 @@
 package activation
 
 import (
+	"bufio"
 	"context"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"testing"
@@ -139,5 +141,67 @@ func TestDrainWaitsForAnAcceptedConnection(t *testing.T) {
 				t.Fatalf("Drain: %v, want ok %v", err, tc.ok)
 			}
 		})
+	}
+}
+
+// A connection the server accepted just before a stop, whose request arrives after the stop
+// began, is answered: the restart of build2's push helper in the Checks run of 24 November at
+// 19:24 UTC answered one request of 25 with nothing.
+func TestStopAnswersARequestThatArrivesAfterItBegins(t *testing.T) {
+	lis, err := Listen("none", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	accepted := make(chan struct{}, 1)
+	srv := &http.Server{
+		Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, "answered") }),
+		ConnState: func(_ net.Conn, s http.ConnState) {
+			if s == http.StateNew {
+				accepted <- struct{}{}
+			}
+		},
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	served := make(chan error, 1)
+	go func() { served <- lis.Serve(ctx, srv, 5*time.Second) }()
+	client, err := net.Dial("tcp", lis.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	select {
+	case <-accepted:
+	case <-time.After(2 * time.Second):
+		t.Fatal("the server never accepted the connection")
+	}
+	cancel()
+	// The stop has begun once the port takes no new connection.
+	deadline := time.Now().Add(2 * time.Second)
+	for {
+		c, err := net.DialTimeout("tcp", lis.Addr().String(), 100*time.Millisecond)
+		if err != nil {
+			break
+		}
+		c.Close()
+		if time.Now().After(deadline) {
+			t.Fatal("the stop never closed the listener")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	time.Sleep(20 * time.Millisecond)
+	if _, err := io.WriteString(client, "GET / HTTP/1.1\r\nHost: x\r\n\r\n"); err != nil {
+		t.Fatal(err)
+	}
+	_ = client.SetReadDeadline(time.Now().Add(5 * time.Second))
+	res, err := http.ReadResponse(bufio.NewReader(client), nil)
+	if err != nil {
+		t.Fatalf("the request sent after the stop began was not answered: %v", err)
+	}
+	body, _ := io.ReadAll(res.Body)
+	if res.StatusCode != http.StatusOK || string(body) != "answered" {
+		t.Fatalf("answered %d %q", res.StatusCode, body)
+	}
+	if err := <-served; err != nil {
+		t.Fatalf("Serve: %v", err)
 	}
 }
