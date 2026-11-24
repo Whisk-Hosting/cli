@@ -89,6 +89,12 @@ func (c *Client) GetRestore(ctx context.Context, org, app, id string) (Restore, 
 	return Call(ctx, c, endpoints.GetRestore, org, app, id)
 }
 
+// DiscardRestore drops the copy a restore made beside the live database, by the restore's id.
+// DELETE /orgs/:org/apps/:app/restores/:id.
+func (c *Client) DiscardRestore(ctx context.Context, org, app, id string) (Restore, error) {
+	return Call(ctx, c, endpoints.DiscardRestore, org, app, id)
+}
+
 // ListRestores returns the app's restores, newest first. GET /orgs/:org/apps/:app/restores.
 func (c *Client) ListRestores(ctx context.Context, org, app string) ([]Restore, error) {
 	out, err := Call(ctx, c, endpoints.ListRestores, org, app)

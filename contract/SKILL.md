@@ -1049,7 +1049,8 @@ minute in the plan's window: the last 7 days on Starter and Team, 30 on Business
 has no self-service restore. `whisk db snapshot` marks a restore point before risky work and
 prints the command that returns to it, or says the plan cannot. `whisk restore --at <time or 2h>`
 restores into a new database beside the live one, which `whisk db query --database <name>` reads,
-so you can check it first; `--swap` puts it live. `whisk restore --before <deploy-id>` goes back
+so you can check it first; `--swap` puts it live, and `whisk restore discard <id>` drops the copy
+once you are done with it (it goes on its own after 30 days). `whisk restore --before <deploy-id>` goes back
 to just before that deploy's migration instead. When the live version's migration was the
 mistake, `whisk rollback --data` makes the version before it live again on production's data as
 it was just before that migration: the app's requests wait while the databases change places and

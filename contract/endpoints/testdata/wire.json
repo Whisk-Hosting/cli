@@ -9411,6 +9411,10 @@
           "format": "date-time",
           "type": "string"
         },
+        "discarded_at": {
+          "format": "date-time",
+          "type": "string"
+        },
         "environment": {
           "type": "string"
         },
@@ -9423,6 +9427,10 @@
           "type": "string"
         },
         "import": {
+          "type": "string"
+        },
+        "kept_until": {
+          "format": "date-time",
           "type": "string"
         },
         "previous_database": {
@@ -12239,6 +12247,11 @@
         "user": {
           "type": "string"
         }
+      }
+    },
+    "DELETE /v1/orgs/{org}/apps/{app}/restores/{id}": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.RestoreJSON"
       }
     },
     "DELETE /v1/orgs/{org}/apps/{app}/status-page": {

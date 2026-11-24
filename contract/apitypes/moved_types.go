@@ -49,6 +49,12 @@ type RestoreJSON struct {
 	CreatedAt        time.Time       `json:"created_at"`
 	StartedAt        *time.Time      `json:"started_at,omitempty"`
 	FinishedAt       *time.Time      `json:"finished_at,omitempty"`
+	// DiscardedAt is when whisk restore discard dropped the copy the restore made; absent while
+	// the copy stands.
+	DiscardedAt *time.Time `json:"discarded_at,omitempty"`
+	// KeptUntil is when a copy still standing beside the live database is dropped on its own;
+	// absent when there is none.
+	KeptUntil *time.Time `json:"kept_until,omitempty"`
 }
 
 // VisitReceipt answers POST /v1/visits.

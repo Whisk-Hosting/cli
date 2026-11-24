@@ -1736,6 +1736,10 @@
     ]
    },
    {
+    "usage": "whisk restore discard \u003cid\u003e",
+    "short": "Drop the copy a restore made beside the live database"
+   },
+   {
     "usage": "whisk restore list",
     "short": "List the app's restores, newest first"
    },

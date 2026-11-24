@@ -86,9 +86,9 @@ func restoreCmd(s *session) *cobra.Command {
 		Use:   "restore (--at <RFC 3339 time> | --before <deploy-id>) [--swap] [--env name] [--wait]",
 		Short: "Restore the database to a point in time, beside the live one or swapped in",
 		Long: `Restores the environment's database to the moment given by --at into a fresh database
-beside the live one, named in the result, so the data can be inspected first. With --swap the
-restored database becomes the live one and the previous one is kept for 7 days. Both are
-audited. Paid plans; the time must be inside the plan's retention window.
+beside the live one, named in the result, so the data can be inspected first; that copy is kept
+for 30 days unless whisk restore discard drops it sooner. With --swap the restored database
+becomes the live one and the previous one is kept for 7 days. Both are audited. Paid plans; the time must be inside the plan's retention window.
 
 --before <deploy-id> restores to the restore point that deploy took just before its migration
 instead. When the app's server kept the copy of the database it took then, the restore is made
@@ -190,8 +190,36 @@ app's restores.`,
 			return nil
 		},
 	}
-	c.AddCommand(show, list)
+	c.AddCommand(show, list, restoreDiscardCmd(s))
 	return c
+}
+
+// restoreDiscardCmd is whisk restore discard <id>: the copy a restore made dropped, by the
+// restore's id (CONTROL-PLANE.md §6.18).
+func restoreDiscardCmd(s *session) *cobra.Command {
+	return &cobra.Command{
+		Use:   "discard <id>",
+		Short: "Drop the copy a restore made beside the live database",
+		Long: `Drop the copy a restore made beside the live database, by the restore's id from whisk restore
+list. Only that copy goes: the live database is never touched, and a restore that swapped its copy
+in has nothing to discard. The backups the copy came from stay, so whisk restore can make it again
+while the plan's restore window reaches back that far.`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			r, err := client.DiscardRestore(s.ctx, org, app, args[0])
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "restore": r}, func(w io.Writer) {
+				fmt.Fprintf(w, "Discarded %s, the copy restore %s made. The live database is untouched.\n", r.TargetDatabase, r.ID)
+			})
+			return nil
+		},
+	}
 }
 
 // restoreTo is the moment whisk restore goes back to with --at, or zero with --before, which
@@ -282,6 +310,9 @@ func restoreRow(r api.Restore) string {
 	if r.TargetDatabase != "" {
 		line += " into " + r.TargetDatabase
 	}
+	if r.DiscardedAt != nil {
+		line += " (discarded)"
+	}
 	if e := api.RestoreError(r); e != nil {
 		line += "  " + e.Code
 	}
@@ -295,12 +326,17 @@ func printRestore(w io.Writer, r api.Restore) {
 	}
 	fmt.Fprintln(w, ".")
 	switch {
+	case r.DiscardedAt != nil:
+		fmt.Fprintf(w, "Its copy was discarded at %s.\n", r.DiscardedAt.UTC().Format(time.RFC3339))
 	case r.Swap && r.Status == "done":
 		fmt.Fprintln(w, "The restored database is the live one; the previous one is kept for 7 days.")
 	case r.Swap:
 		fmt.Fprintln(w, "The restored database becomes the live one when the restore finishes; the previous one is kept for 7 days.")
 	default:
-		fmt.Fprintln(w, "The live database is untouched. Inspect the restored one with whisk db query --database <name>, then run again with --swap to switch to it.")
+		fmt.Fprintln(w, "The live database is untouched. Inspect the restored one with whisk db query --database <name>, then run again with --swap to switch to it, or drop it with whisk restore discard "+r.ID+".")
+	}
+	if r.KeptUntil != nil {
+		fmt.Fprintf(w, "The copy is dropped on its own at %s.\n", r.KeptUntil.UTC().Format(time.RFC3339))
 	}
 }
 

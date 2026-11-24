@@ -3126,6 +3126,34 @@ or an update stands, and `whisk restore list` lists the app's restores.
 {"error":{"code":"RESTORE_IN_PROGRESS","message":"A restore started at 2026-09-16T10:02:00Z is still running.","fix":"Wait for it to finish: whisk restore show 01J9 --wait follows it (GET /orgs/:org/apps/:app/restores/01J9).","docs":"https://skill.whisk.run/errors/RESTORE_IN_PROGRESS","details":{"restore":"01J9","started_at":"2026-09-16T10:02:00Z"}}}
 ```
 
+## RESTORE_NOT_FINISHED
+
+Status: 409 · Surface: api, cli
+
+When: `whisk restore discard` named a restore that is still queued or running, so the copy it
+makes beside the live database is not finished. `details.restore` names it.
+
+Fix: Wait for it to end with `whisk restore show <id> --wait`, then discard it.
+
+```json
+{"error":{"code":"RESTORE_NOT_FINISHED","message":"Restore 01J9 is still running, so its copy is not finished.","fix":"Wait for it to end with whisk restore show 01J9 --wait, then discard it.","docs":"https://skill.whisk.run/errors/RESTORE_NOT_FINISHED","details":{"restore":"01J9","status":"running"}}}
+```
+
+## RESTORE_NO_COPY
+
+Status: 409 · Surface: api, cli
+
+When: `whisk restore discard` named a restore that has no copy beside the live database to drop:
+it swapped its copy in, so that copy is the live database, or it made none. Nothing was dropped.
+A discard only ever drops a copy a restore made, never the live database.
+
+Fix: Nothing to discard. `whisk restore list` shows the app's restores and the copies they made;
+a database a swap set aside is dropped on its own after 7 days.
+
+```json
+{"error":{"code":"RESTORE_NO_COPY","message":"Restore 01J9 swapped its copy in, so that copy is the app's live database now.","fix":"Nothing to discard: the database it set aside, app_01j9_pre_1795473920, is dropped on its own after 7 days. whisk restore show 01J9 says when it finished.","docs":"https://skill.whisk.run/errors/RESTORE_NO_COPY","details":{"restore":"01J9","previous":"app_01j9_pre_1795473920"}}}
+```
+
 ## APP_NOT_RESTORABLE
 
 Status: 409 · Surface: api, cli
