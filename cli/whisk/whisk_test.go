@@ -274,6 +274,37 @@ func TestUnknownFlagIsAnErrorNotACrash(t *testing.T) {
 	}
 }
 
+// A flag agents reach for meaning something whisk spells another way gets a fix naming what
+// to use; any other unknown flag still points at whisk update.
+func TestFlagHint(t *testing.T) {
+	cases := []struct{ msg, command, want string }{
+		{"unknown flag: --output", "whisk connections list", "Run whisk connections list --json."},
+		{"unknown flag: --format", "whisk apps list", "machine output is --json"},
+		{"unknown shorthand flag: 'o' in -ojson", "whisk logs", "whisk has no -o:"},
+		{"unknown flag: --env", "whisk status", "whisk envs list"},
+		{"unknown flag: --environment", "whisk status", "whisk envs list"},
+		{"unknown flag: --env", "whisk apps list", ""},
+		{"unknown flag: --outputs", "whisk apps list", ""},
+		{"unknown shorthand flag: 'x' in -x", "whisk apps list", ""},
+		{`unknown command "nosuch" for "whisk"`, "whisk", ""},
+	}
+	for _, c := range cases {
+		got := flagHint(c.command, unknownFlag(c.msg))
+		if (c.want == "") != (got == "") || !strings.Contains(got, c.want) {
+			t.Errorf("%s on %s: %q, want %q", c.msg, c.command, got, c.want)
+		}
+	}
+	r := runCLI(t, t.TempDir(), nil, nil, "connections", "list", "--output", "json", "--json")
+	var body struct{ Error struct{ Code, Fix string } }
+	if err := json.Unmarshal([]byte(r.Stdout), &body); err != nil || body.Error.Code != "UNKNOWN_COMMAND" || !strings.Contains(body.Error.Fix, "whisk connections list --json") {
+		t.Errorf("connections list --output: %+v %q", body, r.Stdout)
+	}
+	r = runCLI(t, t.TempDir(), nil, nil, "status", "--env", "preview:x", "--json")
+	if err := json.Unmarshal([]byte(r.Stdout), &body); err != nil || !strings.Contains(body.Error.Fix, "whisk envs list") {
+		t.Errorf("status --env: %+v %q", body, r.Stdout)
+	}
+}
+
 // A command this build lacks points at whisk update, and --json still gets one JSON object.
 func TestUnknownCommandPointsAtUpdate(t *testing.T) {
 	r := runCLI(t, t.TempDir(), nil, nil, "nosuch", "url", "--json")

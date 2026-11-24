@@ -158,9 +158,42 @@ func unknownInput(err error) error {
 		return err
 	}
 	first := firstLine(msg)
+	fix := "Run whisk update to install the platform's current CLI, then retry; run whisk --help for what this build offers."
+	if errors.As(err, &uf) && uf.cmd != nil {
+		if hint := flagHint(uf.cmd.CommandPath(), unknownFlag(first)); hint != "" {
+			fix = hint
+		}
+	}
 	return output.New("UNKNOWN_COMMAND", "This whisk ("+Version+") has no such command or flag: "+strings.TrimSpace(first)+".",
-		"Run whisk update to install the platform's current CLI, then retry; run whisk --help for what this build offers.",
-		map[string]any{"whisk_cli": Version})
+		fix, map[string]any{"whisk_cli": Version})
+}
+
+// unknownFlag is the flag cobra named in an unknown flag error, as typed: --output, or -o for
+// "unknown shorthand flag: 'o' in -ojson". "" for any other error. Pure.
+func unknownFlag(msg string) string {
+	if rest, ok := strings.CutPrefix(msg, "unknown flag: "); ok {
+		name, _, _ := strings.Cut(strings.TrimSpace(rest), "=")
+		return name
+	}
+	if rest, ok := strings.CutPrefix(msg, "unknown shorthand flag: "); ok {
+		if len(rest) >= 3 && rest[0] == '\'' && rest[2] == '\'' {
+			return "-" + rest[1:2]
+		}
+	}
+	return ""
+}
+
+// flagHint is the fix for a flag the command does not take when agents reach for it meaning
+// something whisk spells another way, or "" when the flag is not one of those. A command that
+// took the flag would not have failed, so the command only shapes the sentence. Pure.
+func flagHint(command, flag string) string {
+	switch {
+	case flag == "--output" || flag == "--format" || flag == "-o":
+		return "whisk has no " + flag + ": machine output is --json, one JSON object on stdout. Run " + command + " --json."
+	case command == "whisk status" && (flag == "--env" || flag == "--environment"):
+		return "whisk status shows the app as a whole and its current deploy, with no --env; run whisk envs list for every environment's state, URL and live deploy."
+	}
+	return ""
 }
 
 // hasJSONFlag reports whether --json appears before any -- terminator.
