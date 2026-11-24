@@ -117,7 +117,7 @@ name the target.
 
 Level: error
 Check: a tracked file contains a value matching a secret rule.
-Fix: Remove the value, declare a name under secrets, read it from the environment, and rotate the leaked value with the provider.
+Fix: Remove the value, declare a name under secrets, read it from the environment, and rotate the leaked value with the provider. If the value is not a secret, end that line with a gitleaks:allow comment, or allow it in .gitleaks.toml.
 Safe fix: no
 
 Details: the same gitleaks rule set the pre-receive hook uses, so a repository that passes doctor

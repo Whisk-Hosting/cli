@@ -1018,7 +1018,9 @@ connection string with a password). The push is rejected before it is stored.
 
 Fix: Remove the value from the file, declare a name for it under `secrets` in `whisk.yaml`, read
 it from the environment, amend or rewrite the commit so the value is not in history, and ask a
-human to set the value in the dashboard. Rotate the leaked value with the provider.
+human to set the value in the dashboard. Rotate the leaked value with the provider. When the
+match is `generic-api-key` and the value is not a secret (a label, an id or a test value), the
+fix says to end that line with a `gitleaks:allow` comment or allow it in `.gitleaks.toml`.
 
 ```json
 {"error":{"code":"SECRET_IN_COMMIT","message":"A value that looks like a Stripe secret key is in src/config.ts line 12.","fix":"Remove the value, declare STRIPE_SECRET_KEY under secrets in whisk.yaml, read it from the environment, rewrite the commit, and ask an owner to set it at https://whisk.run/o/acme/secrets. Rotate the key in Stripe.","docs":"https://skill.whisk.run/errors/SECRET_IN_COMMIT","details":{"file":"src/config.ts","line":12,"rule":"stripe-secret","commit":"a1b2c3d"}}}
