@@ -158,6 +158,24 @@ func TestPrefixWaits(t *testing.T) {
 			in:   `[{"op":"StepRun","id":"a","name":"feat.resume","data":{}},{"op":"Sleep","id":"b","name":"1h"}]`,
 			want: `[{"op":"StepRun","id":"a","name":"feat.resume","data":{}},{"op":"Sleep","id":"b","name":"1h"}]`,
 		},
+		{
+			name:    "a repeated opcode is dropped, since the engine may read either copy",
+			in:      `[{"op":"WAitForEvent","name":"0","op":{}}]`,
+			want:    `[{"name":"0"}]`,
+			changed: true,
+		},
+		{
+			name:    "a repeated event is dropped",
+			in:      `[{"op":"WaitForEvent","name":"x","opts":{"event":"a","event":1}}]`,
+			want:    `[{"name":"app_a/x","op":"WaitForEvent","opts":{}}]`,
+			changed: true,
+		},
+		{
+			name:    "a key repeated in the app's data goes too",
+			in:      `[{"op":"StepRun","id":"a","data":{"k":1,"k":2}}]`,
+			want:    `[{"data":{},"id":"a","op":"StepRun"}]`,
+			changed: true,
+		},
 		{name: "a function's return value", in: `{"doubled":42}`, want: `{"doubled":42}`},
 		{name: "not JSON", in: `ok`, want: `ok`},
 	}

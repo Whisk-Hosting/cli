@@ -38,7 +38,7 @@ const (
 // that checks a run's event against the function's triggers (the TypeScript SDK) would refuse
 // the cron-run name, which the function never declared; its data is the schedule's {cron}.
 func Scheduled(appID string, body []byte) ([]byte, bool) {
-	v, ok := decode(body)
+	v, _, ok := decode(body)
 	if !ok || appID == "" {
 		return body, false
 	}
@@ -60,7 +60,7 @@ func Scheduled(appID string, body []byte) ([]byte, bool) {
 // scheduled run's event, as Scheduled. An event is an object with a string name and a data
 // member; nothing else is touched.
 func Strip(appID string, body []byte) ([]byte, bool) {
-	v, ok := decode(body)
+	v, _, ok := decode(body)
 	if !ok || appID == "" {
 		return body, false
 	}
@@ -118,12 +118,12 @@ const waitOp = "WaitForEvent"
 // so a run waits for its own app's event whatever name the code wrote. body is the SDK's list
 // of opcodes; anything else is returned unchanged.
 func PrefixWaits(appID string, body []byte) ([]byte, bool) {
-	v, ok := decode(body)
+	v, dropped, ok := decode(body)
 	ops, list := v.([]any)
 	if !ok || !list || appID == "" {
 		return body, false
 	}
-	if !prefixOps(appID, ops) {
+	if !prefixOps(appID, ops) && !dropped {
 		return body, false
 	}
 	return encode(ops, body)
@@ -131,12 +131,12 @@ func PrefixWaits(appID string, body []byte) ([]byte, bool) {
 
 // PrefixCheckpointWaits is PrefixWaits for an SDK checkpoint, whose opcodes are its steps.
 func PrefixCheckpointWaits(appID string, body []byte) ([]byte, bool) {
-	v, ok := decode(body)
+	v, dropped, ok := decode(body)
 	call, obj := v.(map[string]any)
 	if !ok || !obj || appID == "" {
 		return body, false
 	}
-	renamed := canonicalKeys(call, "steps")
+	renamed := canonicalKeys(call, "steps") || dropped
 	ops, list := call["steps"].([]any)
 	if !list || !prefixOps(appID, ops) && !renamed {
 		return body, false
@@ -207,15 +207,76 @@ func canonicalKeys(m map[string]any, fields ...string) bool {
 }
 
 // decode reads a body keeping numbers exactly as written, so a large id in an app's data
-// survives the rewrite.
-func decode(body []byte) (any, bool) {
+// survives the rewrite. A key an object holds more than once is dropped, every copy of it, and
+// dropped says so: which copy a reader takes depends on the reader (a map keeps the last, a Go
+// struct field whose last value has the wrong type keeps the first), so a rewrite that read one
+// copy while the engine read another would leave a wait outside the app. A key spelled two ways
+// is canonicalKeys' to drop, for the fields the engine reads.
+func decode(body []byte) (v any, dropped, ok bool) {
 	dec := json.NewDecoder(bytes.NewReader(body))
 	dec.UseNumber()
-	var v any
-	if err := dec.Decode(&v); err != nil {
-		return nil, false
+	v, dropped, err := decodeValue(dec)
+	if err != nil {
+		return nil, false, false
 	}
-	return v, true
+	return v, dropped, true
+}
+
+// decodeValue reads the next value from dec, dropping every key an object repeats.
+func decodeValue(dec *json.Decoder) (any, bool, error) {
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, false, err
+	}
+	switch tok {
+	case json.Delim('['):
+		return decodeList(dec)
+	case json.Delim('{'):
+		return decodeObject(dec)
+	}
+	return tok, false, nil
+}
+
+// decodeList reads a list's members after its opening bracket.
+func decodeList(dec *json.Decoder) (any, bool, error) {
+	list, dropped := []any{}, false
+	for dec.More() {
+		child, d, err := decodeValue(dec)
+		if err != nil {
+			return nil, false, err
+		}
+		list, dropped = append(list, child), dropped || d
+	}
+	_, err := dec.Token()
+	return list, dropped, err
+}
+
+// decodeObject reads an object's members after its opening brace, leaving out every copy of a
+// key it holds more than once.
+func decodeObject(dec *json.Decoder) (any, bool, error) {
+	obj, repeated, dropped := map[string]any{}, map[string]bool{}, false
+	for dec.More() {
+		key, err := dec.Token()
+		if err != nil {
+			return nil, false, err
+		}
+		k, _ := key.(string)
+		child, d, err := decodeValue(dec)
+		if err != nil {
+			return nil, false, err
+		}
+		if _, seen := obj[k]; seen {
+			repeated[k] = true
+		}
+		obj[k], dropped = child, dropped || d
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, false, err
+	}
+	for k := range repeated {
+		delete(obj, k)
+	}
+	return obj, dropped || len(repeated) > 0, nil
 }
 
 // encode writes a rewritten body with its keys sorted and no HTML escaping, the canonical form
