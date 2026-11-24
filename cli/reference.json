@@ -1810,6 +1810,10 @@
       "usage": "only runs of this function"
      },
      {
+      "name": "--limit uint",
+      "usage": "at most this many runs, the newest; every match when left out"
+     },
+     {
       "name": "--since string",
       "usage": "only runs started in the last duration (30m, 6h, 30d) or since an RFC 3339 time; the last 7 days when left out"
      },

@@ -7,6 +7,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/whisk-run/cli/internal/api"
 	"github.com/whisk-run/cli/internal/output"
 )
 
@@ -85,5 +86,21 @@ func TestEventsSendDataFile(t *testing.T) {
 	r := runRemote(t, dir, srv.URL, nil, "events", "send", "call.ended", "--data-file", "missing.json", "--json")
 	if r.Code != 1 || r.JSON["error"].(map[string]any)["code"] != "INVALID_REQUEST" || len(st.events) != 2 {
 		t.Fatalf("missing file: %+v", r)
+	}
+}
+
+func TestNewestRuns(t *testing.T) {
+	runs := []api.Run{{ID: "c"}, {ID: "b"}, {ID: "a"}}
+	for _, c := range []struct {
+		n    uint
+		want int
+	}{{0, 3}, {1, 1}, {2, 2}, {3, 3}, {9, 3}} {
+		got := newestRuns(runs, c.n)
+		if len(got) != c.want || got[0].ID != "c" {
+			t.Errorf("newestRuns(%d) = %v, want the newest %d", c.n, got, c.want)
+		}
+	}
+	if got := newestRuns(nil, 5); len(got) != 0 {
+		t.Errorf("no runs gave %v", got)
 	}
 }

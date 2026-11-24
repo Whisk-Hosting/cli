@@ -84,11 +84,20 @@ func functionsCmd(s *session) *cobra.Command {
 	return functions
 }
 
+// newestRuns is the first n of runs listed newest first, or all of them when n is 0. Pure.
+func newestRuns(runs []api.Run, n uint) []api.Run {
+	if n == 0 || n >= uint(len(runs)) {
+		return runs
+	}
+	return runs[:n]
+}
+
 // runsCmd reads what the app's functions did (CLI.md §5.8).
 func runsCmd(s *session) *cobra.Command {
 	runs := &cobra.Command{Use: "runs", Short: "Runs of the app's functions"}
 
 	var event, function, status, since string
+	var limit uint
 	list := &cobra.Command{
 		Use:   "list [<function>] [--status failed|running|parked] [--since 1h] [--event id]",
 		Short: "List the app's runs, newest first: all, one function's, or the runs one event started",
@@ -125,6 +134,7 @@ func runsCmd(s *session) *cobra.Command {
 			if err != nil {
 				return wrap(err)
 			}
+			list = newestRuns(list, limit)
 			result["runs"] = list
 			s.printer.Result(result, func(w io.Writer) {
 				if len(list) == 0 {
@@ -147,6 +157,7 @@ func runsCmd(s *session) *cobra.Command {
 	list.Flags().StringVar(&event, "event", "", "only the runs this event started")
 	list.Flags().StringVar(&function, "function", "", "only runs of this function")
 	list.Flags().StringVar(&status, "status", "", "only runs in this status: running, failed, parked, completed, cancelled")
+	list.Flags().UintVar(&limit, "limit", 0, "at most this many runs, the newest; every match when left out")
 	list.Flags().StringVar(&since, "since", "", "only runs started in the last duration (30m, 6h, 30d) or since an RFC 3339 time; the last 7 days when left out")
 
 	replay := &cobra.Command{
