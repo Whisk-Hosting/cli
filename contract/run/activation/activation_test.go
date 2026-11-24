@@ -1,6 +1,7 @@
 package activation
 
 import (
+	"context"
 	"io"
 	"net"
 	"os"
@@ -100,5 +101,43 @@ func TestListenServesOnThePassedSocket(t *testing.T) {
 	}
 	if string(got) != "served" {
 		t.Fatalf("read %q from the passed socket", got)
+	}
+}
+
+func TestDrainWaitsForAnAcceptedConnection(t *testing.T) {
+	lis, err := Listen("none", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer lis.Close()
+	client, err := net.Dial("tcp", lis.Addr().String())
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer client.Close()
+	server, err := lis.Accept()
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := []struct {
+		name  string
+		close bool
+		ok    bool
+	}{
+		{"an open connection holds the stop until its time runs out", false, false},
+		{"a closed one lets it go", true, true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.close {
+				_ = server.Close()
+				_ = server.Close() // a second close counts once
+			}
+			ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+			defer cancel()
+			if err := lis.Drain(ctx); (err == nil) != tc.ok {
+				t.Fatalf("Drain: %v, want ok %v", err, tc.ok)
+			}
+		})
 	}
 }

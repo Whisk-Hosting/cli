@@ -4,11 +4,16 @@
 package activation
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 // firstFD is the first descriptor systemd passes (SD_LISTEN_FDS_START).
@@ -61,13 +66,17 @@ func Pick(e Env, name string) (int, bool, error) {
 // Listen is the TCP listener systemd passed under name (the socket unit's FileDescriptorName),
 // or a new one on addr when it passed none. Programs the process starts ignore the passed
 // variables, which name this process's pid; the listener's descriptor closes on exec.
-func Listen(name, addr string) (net.Listener, error) {
+func Listen(name, addr string) (*Listener, error) {
 	fd, ok, err := Pick(Env{PID: os.Getenv("LISTEN_PID"), FDs: os.Getenv("LISTEN_FDS"), Names: os.Getenv("LISTEN_FDNAMES"), Self: os.Getpid()}, name)
 	if err != nil {
 		return nil, err
 	}
 	if !ok {
-		return net.Listen("tcp", addr)
+		lis, err := net.Listen("tcp", addr)
+		if err != nil {
+			return nil, err
+		}
+		return Track(lis), nil
 	}
 	f := os.NewFile(uintptr(fd), name)
 	// FileListener duplicates the descriptor with close-on-exec; systemd's copy stays its own.
@@ -76,5 +85,73 @@ func Listen(name, addr string) (net.Listener, error) {
 	if err != nil {
 		return nil, fmt.Errorf("socket %q from systemd: %w", name, err)
 	}
-	return lis, nil
+	return Track(lis), nil
+}
+
+// Listener is a listener that knows the connections it accepted and has not seen closed, so a
+// stop can wait for them: http.Server.Shutdown can return while a connection it accepted in the
+// same instant is still unanswered, and a process that then exits resets it, the one request a
+// restart was meant to keep (24 November, build2's push helper: TestDrainWaitsForAnAcceptedConnection).
+type Listener struct {
+	net.Listener
+	open sync.WaitGroup
+}
+
+// Track wraps lis so its accepted connections can be waited for.
+func Track(lis net.Listener) *Listener { return &Listener{Listener: lis} }
+
+func (l *Listener) Accept() (net.Conn, error) {
+	c, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	l.open.Add(1)
+	return &trackedConn{Conn: c, done: l.open.Done}, nil
+}
+
+// Drain waits until every connection the listener accepted is closed, or ctx ends. Call it after
+// the server's Shutdown, before the process exits.
+func (l *Listener) Drain(ctx context.Context) error {
+	done := make(chan struct{})
+	go func() { l.open.Wait(); close(done) }()
+	select {
+	case <-done:
+		return nil
+	case <-ctx.Done():
+		return fmt.Errorf("connections still open when the stop's time ran out: %w", ctx.Err())
+	}
+}
+
+type trackedConn struct {
+	net.Conn
+	once sync.Once
+	done func()
+}
+
+func (c *trackedConn) Close() error {
+	err := c.Conn.Close()
+	c.once.Do(c.done)
+	return err
+}
+
+// Serve serves srv on l until ctx ends, then shuts it down within grace and waits for every
+// connection l accepted to close, so a stop answers every request that reached the process.
+func (l *Listener) Serve(ctx context.Context, srv *http.Server, grace time.Duration) error {
+	served := make(chan error, 1)
+	go func() { served <- srv.Serve(l) }()
+	select {
+	case err := <-served:
+		return err
+	case <-ctx.Done():
+	}
+	shut, cancel := context.WithTimeout(context.WithoutCancel(ctx), grace)
+	defer cancel()
+	err := srv.Shutdown(shut)
+	if derr := l.Drain(shut); err == nil {
+		err = derr
+	}
+	if serr := <-served; err == nil && !errors.Is(serr, http.ErrServerClosed) {
+		err = serr
+	}
+	return err
 }
