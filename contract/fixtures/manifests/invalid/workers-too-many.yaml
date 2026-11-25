@@ -1,7 +1,6 @@
 # expect: MANIFEST_INVALID /workers
 whisk: 1
 name: invoicer
-promoted: true
 workers:
   - {name: a, command: a}
   - {name: b, command: b}

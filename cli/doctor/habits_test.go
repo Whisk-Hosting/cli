@@ -20,8 +20,13 @@ func TestHabitRules(t *testing.T) {
 
 		{"timeout over the wake", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1)}, true},
 		{"timeout over the wake, always on", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1) + "always_on: true\n"}, false},
-		{"timeout over the wake, promoted", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1) + "promoted: true\n"}, false},
+		{"timeout over the wake, whisk.yaml says promoted", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 120\n", 1) + "promoted: true\n"}, true},
 		{"timeout within the wake", "W005", map[string]string{"whisk.yaml": strings.Replace(manifest, "path: /health\n", "path: /health\n  timeout: 45\n", 1)}, false},
+
+		{"whisk.yaml says promoted", "W179", map[string]string{"whisk.yaml": manifest + "promoted: true\n"}, true},
+		{"whisk.yaml says not promoted", "W179", map[string]string{"whisk.yaml": manifest + "promoted: false\n"}, true},
+		{"whisk.yaml says nothing of promotion", "W179", map[string]string{}, false},
+		{"workers need no promoted key", "W179", map[string]string{"whisk.yaml": manifest + "workers:\n  - { name: q, command: node dist/q.js }\n"}, false},
 
 		{"setInterval", "W023", map[string]string{"src/poll.ts": "setInterval(() => sync(), 60_000);\n"}, true},
 		{"node-cron", "W023", map[string]string{"src/poll.ts": `import cron from "node-cron";` + "\n"}, true},
@@ -35,9 +40,9 @@ func TestHabitRules(t *testing.T) {
 		{"SET search_path", "W024", map[string]string{"src/db2.ts": "await pool.query('SET search_path TO app');\n"}, true},
 		{"transaction lock", "W024", map[string]string{"src/lock.ts": "await sql`select pg_advisory_xact_lock(42)`;\n"}, false},
 		{"SET LOCAL", "W024", map[string]string{"src/db2.ts": "await tx.query('SET LOCAL statement_timeout = 5000');\n"}, false},
-		{"in a direct worker", "W024", map[string]string{"whisk.yaml": manifest + "promoted: true\nworkers:\n  - { name: listen, command: node dist/listen.js, database: direct }\n", "src/listen.ts": "await client.query(\"LISTEN orders\");\n"}, false},
-		{"in a pooled worker", "W024", map[string]string{"whisk.yaml": manifest + "promoted: true\nworkers:\n  - { name: listen, command: node dist/listen.js }\n", "src/listen.ts": "await client.query(\"LISTEN orders\");\n"}, true},
-		{"jobs beside a direct worker", "W024", map[string]string{"whisk.yaml": manifest + "promoted: true\nworkers:\n  - { name: q, command: node dist/q.js, database: direct }\n", "src/jobs/lock.ts": "await sql`select pg_advisory_lock(42)`;\n"}, false},
+		{"in a direct worker", "W024", map[string]string{"whisk.yaml": manifest + "workers:\n  - { name: listen, command: node dist/listen.js, database: direct }\n", "src/listen.ts": "await client.query(\"LISTEN orders\");\n"}, false},
+		{"in a pooled worker", "W024", map[string]string{"whisk.yaml": manifest + "workers:\n  - { name: listen, command: node dist/listen.js }\n", "src/listen.ts": "await client.query(\"LISTEN orders\");\n"}, true},
+		{"jobs beside a direct worker", "W024", map[string]string{"whisk.yaml": manifest + "workers:\n  - { name: q, command: node dist/q.js, database: direct }\n", "src/jobs/lock.ts": "await sql`select pg_advisory_lock(42)`;\n"}, false},
 		{"in a migration", "W024", map[string]string{"src/migrate.ts": "await pool.query('SET search_path TO app');\n"}, false},
 
 		{"function id differs", "W043", map[string]string{"whisk.yaml": strings.Replace(manifest, "name: nightly", "name: nightly-report", 1)}, true},

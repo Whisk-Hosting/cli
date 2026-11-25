@@ -512,15 +512,18 @@ Fix: Add a card at `details.card_url`, then boost or promote the app, or add the
 
 Status: 409 · Surface: deploy, cli
 
-When: the app's whisk.yaml says `promoted: true` (it runs only as a Promoted app, as a shop does)
-and the app is not a Promoted app in force. Its production deploy is blocked; previews run.
-`details.dashboard` is the app's page, whose Promoted card makes it one.
+When: the app uses what only a Promoted app has (`workers`, or `b2b: true`) and is not a Promoted
+app in force. Its production deploy is blocked; previews run. `details.dashboard` is the app's
+page, whose Promoted card makes it one. An app that uses neither is never blocked for want of a
+promotion, whatever its whisk.yaml says.
 
 Fix: Ask an owner or billing contact to make the app a Promoted app at the URL; never promote it
-yourself, since it is charged. The blocked deploy goes live on its own once it is one.
+yourself, since it is charged. The blocked deploy goes live on its own once it is one. If the
+business chose not to promote it, run the work as functions instead of `workers`, or remove
+`b2b: true`, and deploy again.
 
 ```json
-{"error":{"code":"PROMOTED_APP_REQUIRED","message":"This app runs only as a Promoted app, and is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop. The deploy goes live on its own once it is one.","docs":"https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED","details":{"dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
+{"error":{"code":"PROMOTED_APP_REQUIRED","message":"Trade ordering comes only with Promoted apps, and kiwi-shop is not one yet.","fix":"Ask an owner or billing contact to make kiwi-shop a Promoted app at https://whisk.run/o/acme/apps/kiwi-shop. The deploy goes live on its own once it is one.","docs":"https://skill.whisk.run/errors/PROMOTED_APP_REQUIRED","details":{"dashboard":"https://whisk.run/o/acme/apps/kiwi-shop"}}}
 ```
 
 ## OWN_SIGNIN_NOT_PROMOTED
@@ -529,18 +532,17 @@ Status: - · Surface: deploy (a warning), cli
 
 When: the deploy went live, but every route of the app is public (`routes.public` covers `/**`)
 and its code or pages ask for a password, so it runs its own sign-in, which only a Promoted app
-may do. The app is neither a Promoted app in force nor a shop (`commerce: medusa`), and its
-whisk.yaml does not say `promoted: true`. It is a warning on the deploy (`warnings`), not a
+may do. The app is neither a Promoted app in force nor a shop (`commerce: medusa`). It is a warning on the deploy (`warnings`), not a
 failure: the app serves. `details.dashboard` is the app's page, where an owner or billing
 contact makes it a Promoted app; `details.rule` is doctor's matching rule, W106.
 
-Fix: If the app must keep its own sign-in, set `promoted: true` in whisk.yaml and ask an owner
-or billing contact to make it a Promoted app at the URL; never promote it yourself, since it is
+Fix: If the app must keep its own sign-in, ask an owner or billing contact to make it a Promoted
+app at the URL; never promote it yourself, since it is
 charged. Otherwise remove the password field and list under `routes.public` only the routes that
 must be public, and the platform signs people in.
 
 ```json
-{"error":{"code":"OWN_SIGNIN_NOT_PROMOTED","message":"Every route of crm is public (routes.public covers /**) and it asks for a password, so it runs its own sign-in, which only a Promoted app may do; it still deploys.","fix":"If crm must keep its own sign-in, set promoted: true in whisk.yaml and ask an owner or billing contact to make it a Promoted app at https://whisk.run/o/acme/apps/crm (it is charged, so it is their choice). Otherwise remove the password field and list under routes.public only the routes that must be public, and the platform signs people in.","docs":"https://skill.whisk.run/errors/OWN_SIGNIN_NOT_PROMOTED","details":{"rule":"W106","dashboard":"https://whisk.run/o/acme/apps/crm"}}}
+{"error":{"code":"OWN_SIGNIN_NOT_PROMOTED","message":"Every route of crm is public (routes.public covers /**) and it asks for a password, so it runs its own sign-in, which only a Promoted app may do; it still deploys.","fix":"If crm must keep its own sign-in, ask an owner or billing contact to make it a Promoted app at https://whisk.run/o/acme/apps/crm (it is charged, so it is their choice). Otherwise remove the password field and list under routes.public only the routes that must be public, and the platform signs people in.","docs":"https://skill.whisk.run/errors/OWN_SIGNIN_NOT_PROMOTED","details":{"rule":"W106","dashboard":"https://whisk.run/o/acme/apps/crm"}}}
 ```
 
 ## B2B_UNAVAILABLE

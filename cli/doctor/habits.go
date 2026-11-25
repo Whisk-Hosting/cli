@@ -62,9 +62,9 @@ func staticProblem(files []File, dir string, git, onDisk bool) string {
 	return "does not exist"
 }
 
-func w005(r Repo, _ Context) outcome {
+func w005(r Repo, c Context) outcome {
 	line := yamlLine(r.ManifestNode, "/health/timeout")
-	if !yamlHas(r.ManifestNode, "health", "timeout") || r.Manifest.AlwaysOn || r.Manifest.Promoted || r.Manifest.Health.Timeout <= WakeLimitSeconds {
+	if !yamlHas(r.ManifestNode, "health", "timeout") || r.Manifest.AlwaysOn || promotedNow(c) || r.Manifest.Health.Timeout <= WakeLimitSeconds {
 		return outcome{}
 	}
 	return one("W005", manifestFile, line, fmt.Sprintf("health.timeout is %d seconds, but a sleeping app has %d seconds to answer when a visitor wakes it.", r.Manifest.Health.Timeout, WakeLimitSeconds))
@@ -394,4 +394,19 @@ func w094(r Repo, _ Context) outcome {
 		}
 	}
 	return one("W094", manifestFile, yamlLine(r.ManifestNode, "/customer_identity"), fmt.Sprintf("customer_identity is %s, but no code limits what a customer sees to the signed-in person, so one customer may read another's records.", r.Manifest.CustomerIdentity))
+}
+
+// promotedNow is whether the app doctor checks is a Promoted app, as the platform answers for a
+// directory bound to an app (/apps/:app/validate). Only the platform knows: whisk.yaml never
+// says what a business bought (W179).
+func promotedNow(c Context) bool { return c.Validation != nil && c.Validation.Promoted }
+
+// w179 asks for the promoted key to go: Whisk does not read it, since whether an app is a
+// Promoted app is the business's choice in the dashboard, and a file that said so would go
+// stale when the business stopped promoting it.
+func w179(r Repo, _ Context) outcome {
+	if !yamlHas(r.ManifestNode, "promoted") {
+		return outcome{}
+	}
+	return one("W179", manifestFile, yamlLine(r.ManifestNode, "/promoted"), "whisk.yaml says promoted, which Whisk does not read: whether the app is a Promoted app is set on its page in the dashboard.")
 }

@@ -96,8 +96,8 @@ Safe fix: no
 Details: a deploy waits `health.timeout` seconds for the health check, but a wake waits 60
 (NODE-AGENT.md §A8): an app that needs longer deploys, then fails every wake after it sleeps
 with `WAKE_TIMEOUT`. Only a timeout written in whisk.yaml is read; the default (90) is not
-reported, since most apps answer in a few seconds. An app with `promoted: true` runs only as a
-Promoted app, which never sleeps.
+reported, since most apps answer in a few seconds. Skipped for a Promoted app, which never sleeps,
+known when the directory is bound to an app and `/apps/:app/validate` answers `promoted: true`.
 
 ## W006
 
@@ -477,8 +477,7 @@ password is what the abuse scan holds for review. Matched in code and in templat
 `.type = "password"`, and Python's `PasswordField` and `PasswordInput`. Tests and vendored
 folders are left out. One finding per file, at its first match. Skipped for a Promoted app,
 which may keep its own sign-in: known when the directory is bound to an app and
-`/apps/:app/validate` answers `promoted: true`, or when whisk.yaml says `promoted: true`, since such
-an app never goes live otherwise. Skipped too for a shop (whisk.yaml's `commerce: medusa`, as in the shop
+`/apps/:app/validate` answers `promoted: true`. Skipped too for a shop (whisk.yaml's `commerce: medusa`, as in the shop
 template, `ownsignin.Shop`), whose customers sign in to the shop on any plan.
 
 ## W092
@@ -604,8 +603,10 @@ PATCH or DELETE route whose path matches `routes.public`, as registered in code 
 like and `HandleFunc("POST /…")`), with path parameters (`:id`, `{id}`, `<id>`) read as one
 segment. Webhook handlers and the queue endpoint are service routes and not matched. Also any
 `routes.public` entry with a segment `admin`, `administrator`, `manage`, `internal` or `staff`,
-reported at its line in whisk.yaml. The routes in code are not read for an app with `promoted:
-true`, or for a shop, which keeps its own sign-in and so lists every route as public.
+reported at its line in whisk.yaml. The routes in code are not read for a Promoted app (known
+when the directory is bound to an app and `/apps/:app/validate` answers `promoted: true`), a
+shop, or an app with its own sign-in (W106's test), since each lists every route as public and
+its sign-in decides who may write.
 
 ## W100
 
@@ -738,7 +739,7 @@ are W102's finding, which says that under this setting they stop the app from st
 
 Level: warning
 Check: every route is public and the app asks for a password, so it runs its own sign-in, and it is neither a Promoted app nor a shop.
-Fix: If the app must keep its own sign-in, set promoted: true in whisk.yaml and ask an owner or billing contact to make it a Promoted app in the dashboard (it is charged, so it is their choice); otherwise remove the password field and list under routes.public only the routes that must be public.
+Fix: If the app must keep its own sign-in, ask an owner or billing contact to make it a Promoted app in the dashboard (it is charged, so it is their choice); otherwise remove the password field and list under routes.public only the routes that must be public.
 Safe fix: no
 
 Details: every route is public when `routes.public` matches every path: `"/**"`, or any entries
@@ -751,8 +752,7 @@ public asks for no password and is not reported. The app is not blocked: it depl
 and every deploy of it carries the same warning as `OWN_SIGNIN_NOT_PROMOTED`, until it is a
 Promoted app or stops. Reported at the `routes.public` entry that makes every route public, or
 at the list when only its entries together do. Skipped for a Promoted app, known when the
-directory is bound to an app and `/apps/:app/validate` answers `promoted: true`, or when
-whisk.yaml says `promoted: true`; and for a shop (whisk.yaml's `commerce: medusa`, as in the
+directory is bound to an app and `/apps/:app/validate` answers `promoted: true`; and for a shop (whisk.yaml's `commerce: medusa`, as in the
 shop template, `ownsignin.Shop`), whose customers sign in to the shop on any plan.
 
 ## W110
@@ -1026,3 +1026,16 @@ Safe fix: no
 Details: the browser refuses the tool's script or its pings, so the tool records no visits and
 nothing in the app's logs says so. A directive the policy leaves out falls back to `default-src`,
 as a browser reads it. Whisk's own analytics are on the app's own address and need nothing added.
+
+## W179
+
+Level: warning
+Check: whisk.yaml has a `promoted` key.
+Fix: Remove promoted from whisk.yaml. Whether the app is a Promoted app is set on its page in the dashboard.
+Safe fix: no
+
+Details: Whisk does not read the key, whatever its value. A Promoted app is something a business
+buys, so only the platform says whether an app is one; a whisk.yaml that said so would go stale
+the moment the business stopped promoting the app. What
+needs a Promoted app is read from what the app uses (`workers`, `b2b: true`;
+`manifest.NeedsPromoted`), and its production deploy waits with `PROMOTED_APP_REQUIRED` only then.

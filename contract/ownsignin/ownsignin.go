@@ -27,8 +27,7 @@ const (
 func Keeps(public []string) bool { return routes.CoversAll(public) }
 
 // Warn reports whether an app warrants the warning: every route is public, it asks for a
-// password, it is not a Promoted app (promoted is true when it is one in force or its whisk.yaml
-// says promoted: true) and it is not a shop.
+// password, it is not a Promoted app in force (promoted) and it is not a shop.
 func Warn(public []string, asksPassword, promoted, shop bool) bool {
 	return asksPassword && !promoted && !shop && Keeps(public)
 }
@@ -96,5 +95,5 @@ func Message(app string) string {
 
 // Fix is the deploy warning's fix: promote is where an owner makes app a Promoted app.
 func Fix(app, promote string) string {
-	return "If " + app + " must keep its own sign-in, set promoted: true in whisk.yaml and ask an owner or billing contact to make it a Promoted app at " + promote + " (it is charged, so it is their choice). Otherwise remove the password field and list under routes.public only the routes that must be public, and the platform signs people in."
+	return "If " + app + " must keep its own sign-in, ask an owner or billing contact to make it a Promoted app at " + promote + " (it is charged, so it is their choice). Otherwise remove the password field and list under routes.public only the routes that must be public, and the platform signs people in."
 }

@@ -143,7 +143,6 @@ func Manifest(slug string, s stack.Stack, h hostfiles.Found) string {
 			"# Workers run beside the web process, one copy each, and only in a Promoted app:",
 			"# production waits for an owner to promote it. database: direct gives a worker a",
 			"# session connection, for queues that LISTEN or take advisory locks.",
-			"promoted: true",
 			"workers:")
 		for _, wk := range h.Workers {
 			w("  - name: "+wk.Name,

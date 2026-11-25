@@ -2,7 +2,6 @@ whisk: 1
 name: invoicer
 routes:
   public: ["/**"]
-promoted: true
 kv: true
 workers:
   - name: jobs

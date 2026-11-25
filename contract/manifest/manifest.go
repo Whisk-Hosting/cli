@@ -70,11 +70,8 @@ type Manifest struct {
 	KVEvict  *bool `json:"kv_evict,omitempty"`
 	Email    bool  `json:"email"`
 	AlwaysOn bool  `json:"always_on"`
-	// Promoted is true when the app runs only as a Promoted app: its production deploy waits
-	// until it is one (CONTROL-PLANE.md §6.15).
-	Promoted bool `json:"promoted"`
 	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
-	// gives only to Promoted apps in force (CONTRACT.md §11).
+	// gives only to Promoted apps in force (CONTRACT.md §11, NeedsPromoted).
 	B2B bool `json:"b2b"`
 	// Commerce is "medusa" when the app's API is the shop template's Medusa server, which Whisk
 	// may answer with its own commerce server (CONTRACT.md §11).
@@ -758,8 +755,20 @@ func withRawDefaults(obj map[string]any) map[string]any {
 	return out
 }
 
+// ignoredKeys are keys the schema accepts and Whisk does not read, so a file that has one still
+// deploys: promoted, since whether an app is a Promoted app is the business's choice in the
+// dashboard and whisk.yaml never says what a business bought (CONTRACT.md §3, NeedsPromoted).
+// Doctor's W179 asks for it to go. They are dropped before decoding, so no Go code can read them.
+var ignoredKeys = []string{"promoted"}
+
 func decode(obj map[string]any) (Manifest, error) {
-	b, err := json.Marshal(obj)
+	kept := make(map[string]any, len(obj))
+	for k, v := range obj {
+		if !slices.Contains(ignoredKeys, k) {
+			kept[k] = v
+		}
+	}
+	b, err := json.Marshal(kept)
 	if err != nil {
 		return Manifest{}, err
 	}
@@ -919,14 +928,12 @@ func checkMCP(m Manifest) Problems {
 	return nil
 }
 
-// checkWorkers holds workers to Promoted apps, unique names and a database for a direct one
-// (CONTRACT.md §3.2).
+// checkWorkers holds workers to unique names and a database for a direct one (CONTRACT.md
+// §3.2). That they come only with Promoted apps is the deploy's to decide, from the app's
+// promotion (NeedsPromoted), never the file's.
 func checkWorkers(m Manifest) Problems {
 	var ps Problems
 	add := func(path, msg string) { ps = append(ps, Problem{Path: path, Message: msg, Code: "MANIFEST_INVALID"}) }
-	if len(m.Workers) > 0 && !m.Promoted {
-		add("/workers", "workers come only with Promoted apps; set promoted: true as well, or run the work as functions")
-	}
 	seen := map[string]int{}
 	for i, w := range m.Workers {
 		if j, dup := seen[w.Name]; dup {
@@ -954,7 +961,7 @@ func checkRules(m Manifest) Problems {
 // manifestRules are the checks beyond the schema, in the order their problems are listed. Each
 // is pure and checks one part of the manifest.
 var manifestRules = []func(Manifest) Problems{
-	checkChallengeRoutes, checkDeviceHeader, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV, checkB2B,
+	checkChallengeRoutes, checkDeviceHeader, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV,
 	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
 	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects, checkFlags,
 }
@@ -1048,6 +1055,13 @@ func checkSignIn(m Manifest) Problems {
 	return ps
 }
 
+// NeedsPromoted is whether the app's code uses what only a Promoted app has: workers, or trade
+// ordering. Its production deploy then waits until the business makes it a Promoted app in the
+// dashboard (PROMOTED_APP_REQUIRED). It reads only what the code uses, never the promoted key,
+// so a business that stops promoting an app never has to change the app's files to deploy it
+// again. Pure, table-tested.
+func (m Manifest) NeedsPromoted() bool { return len(m.Workers) > 0 || m.B2B }
+
 // KeepsKVKeys reports whether the app's cache keeps every key when full instead of evicting:
 // only when it asks for a cache and sets kv_evict: false. Pure.
 func (m Manifest) KeepsKVKeys() bool { return m.KV && m.KVEvict != nil && !*m.KVEvict }
@@ -1055,13 +1069,6 @@ func (m Manifest) KeepsKVKeys() bool { return m.KV && m.KVEvict != nil && !*m.KV
 func checkKV(m Manifest) Problems {
 	if m.KVEvict != nil && !m.KV {
 		return Problems{invalid("/kv_evict", "kv_evict says how the app's cache makes room, so it needs kv: true as well")}
-	}
-	return nil
-}
-
-func checkB2B(m Manifest) Problems {
-	if m.B2B && !m.Promoted {
-		return Problems{invalid("/b2b", "trade ordering comes only with Promoted apps; set promoted: true as well")}
 	}
 	return nil
 }

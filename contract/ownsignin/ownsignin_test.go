@@ -46,10 +46,15 @@ func TestWords(t *testing.T) {
 		t.Errorf("Message = %q", m)
 	}
 	f := Fix("crm", "https://whisk.run/o/acme/apps/crm")
-	for _, want := range []string{"promoted: true", "https://whisk.run/o/acme/apps/crm", "charged", "routes.public"} {
+	for _, want := range []string{"make it a Promoted app", "https://whisk.run/o/acme/apps/crm", "charged", "routes.public"} {
 		if !strings.Contains(f, want) {
 			t.Errorf("Fix = %q, want it to say %q", f, want)
 		}
+	}
+	// Only the platform says whether an app is a Promoted app (CONTRACT.md §3), so the fix never
+	// sends an agent to whisk.yaml for it.
+	if strings.Contains(f, "promoted:") || strings.Contains(f, "whisk.yaml") {
+		t.Errorf("Fix = %q, names whisk.yaml's promoted key", f)
 	}
 	if strings.Contains(m+f, "—") {
 		t.Errorf("no em dashes in user-facing copy")

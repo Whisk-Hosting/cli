@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 )
@@ -173,5 +174,41 @@ func TestCheckCron(t *testing.T) {
 		if err := CheckCron(b); err == nil {
 			t.Errorf("%q should be invalid", b)
 		}
+	}
+}
+
+// Only what the app uses needs a Promoted app; whisk.yaml's promoted key is dropped before
+// decoding, so it changes nothing, whatever its value (CONTRACT.md §3, doctor-rules.md W179).
+func TestNeedsPromoted(t *testing.T) {
+	base := "whisk: 1\nname: app\n"
+	worker := "workers:\n  - name: jobs\n    command: node dist/worker.js\n"
+	cases := []struct {
+		name, extra string
+		want        bool
+	}{
+		{"nothing", "", false},
+		{"promoted: true alone", "promoted: true\n", false},
+		{"promoted: false alone", "promoted: false\n", false},
+		{"workers", worker, true},
+		{"workers, promoted: false", "promoted: false\n" + worker, true},
+		{"trade ordering", "b2b: true\n", true},
+	}
+	for _, c := range cases {
+		t.Run(c.name, func(t *testing.T) {
+			m, err := Parse([]byte(base + c.extra))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got := m.NeedsPromoted(); got != c.want {
+				t.Errorf("NeedsPromoted = %v, want %v", got, c.want)
+			}
+			plain, err := Parse([]byte(base + strings.ReplaceAll(strings.ReplaceAll(c.extra, "promoted: true\n", ""), "promoted: false\n", "")))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(m, plain) {
+				t.Errorf("the promoted key changed the manifest:\n%+v\n%+v", m, plain)
+			}
+		})
 	}
 }

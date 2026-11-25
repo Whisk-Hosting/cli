@@ -386,11 +386,10 @@ kv: false                         # a Redis of its own (§9) · paid
 kv_evict: true                    # false for a job queue: a full cache refuses writes (§9)
 email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
-promoted: false                   # runs only as a Promoted app (§4) · paid
-b2b: false                        # the shop template's trade ordering, beside promoted: true (§4) · paid
+b2b: false                        # the shop template's trade ordering, Promoted apps only (§4) · paid
 commerce: medusa                  # the shop template's own setting: keep it in a shop made from it (§4)
 content: payload                  # the site and shop templates' own setting: keep it (§4)
-workers: []                       # an existing app's own job processes, beside promoted: true (§4) · paid
+workers: []                       # an existing app's own job processes, Promoted apps only (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
@@ -725,10 +724,12 @@ owner in the dashboard (`promoted.in_force` on `GET /v1/orgs/<org>/apps/<app>`):
 sleeps, has 4 GB of memory that is always there for it and at least two processor cores (the
 plan's, when it gives more), and is served first when its server is busy. Never ask for promotion to get round
 anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
-choice. An app that cannot run any other way says `promoted: true` in whisk.yaml: its
-production deploy then waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes
-it, and goes live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a
-Promoted app's memory without waiting. Everything else in this skill still applies.
+choice. Only the dashboard says whether an app is a Promoted app: whisk.yaml never does, so
+leave `promoted:` out of it (doctor's W179), and never change the app's files when an owner
+promotes it or stops. An app that uses `workers` or `b2b: true` needs a Promoted app: its
+production deploy waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it,
+and goes live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted
+app's memory without waiting. Everything else in this skill still applies.
 
 A Promoted app is where an existing product brings what it already has:
 
@@ -763,8 +764,8 @@ A Promoted app is where an existing product brings what it already has:
   (GST number, phone, address, policy pages, own domain and email) without holding up the launch.
 - **Trade ordering.** The shop template runs on any plan with room for it and
   keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
-  account, the ERP link) comes only with Promoted apps: `b2b: true` beside `promoted: true`, and
-  a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
+  account, the ERP link) comes only with Promoted apps: with `b2b: true` a production deploy
+  waits until the app is one, and a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
   `commerce: medusa`: keep it, since Whisk's commerce engine answers its API (`/store`,
   `/admin`, `/auth`, `/hooks`, in Medusa's shape) and the app serves only its pages. The site
   and shop templates' whisk.yaml say `content: payload`: keep it, since Whisk's content engine

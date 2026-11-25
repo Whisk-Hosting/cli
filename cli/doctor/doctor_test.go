@@ -604,7 +604,7 @@ func TestW106(t *testing.T) {
 		{"public only together", "/*/**", "", "", nil, 5, "", false},
 		{"some routes public", "/blog/**", "", "", nil, 0, "", false},
 		{"a Promoted app", "/**", "", "", &api.Validation{Promoted: true}, 0, "W106: skipped, the app is a Promoted app, which may keep its own sign-in", false},
-		{"whisk.yaml says promoted", "/**", "promoted: true\n", "", nil, 0, "W106: skipped, whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in", false},
+		{"whisk.yaml says promoted, which only the platform knows", "/**", "promoted: true\n", "", nil, 6, "", false},
 		{"a shop", "/**", "commerce: medusa\n", "", nil, 0, "W106: skipped, the app is a shop, which keeps its customers' sign-in", false},
 		{"Medusa's package alone is no shop", "/**", "", `{"dependencies":{"@medusajs/medusa":"2.21.2"}}`, nil, 6, "", false},
 	}
@@ -627,7 +627,7 @@ func TestW106(t *testing.T) {
 					t.Errorf("findings = %+v, want none", o.findings)
 				}
 			} else if len(o.findings) != 1 || o.findings[0].File != "whisk.yaml" || o.findings[0].Line != tc.line ||
-				!strings.Contains(o.findings[0].Message, "only a Promoted app") || !strings.Contains(o.findings[0].Fix, "promoted: true") {
+				!strings.Contains(o.findings[0].Message, "only a Promoted app") || !strings.Contains(o.findings[0].Fix, "make it a Promoted app") || strings.Contains(o.findings[0].Fix, "whisk.yaml") {
 				t.Errorf("findings = %+v, want one at whisk.yaml line %d", o.findings, tc.line)
 			}
 			if got := strings.Join(o.skipped, ";"); got != tc.skipped {
@@ -702,10 +702,10 @@ func TestInboxHandlerRoute(t *testing.T) {
 	}
 }
 
-// An app that runs only as a Promoted app keeps its own sign-in, lists every route as public and
-// never sleeps (doctor-rules.md W005, W052, W090, W099); a Medusa route file counts as a route
-// (W022).
-func TestPromotedOnlyApp(t *testing.T) {
+// A Promoted app keeps its own sign-in, lists every route as public and never sleeps
+// (doctor-rules.md W005, W052, W090, W099); a Medusa route file counts as a route (W022). Only
+// the platform says the app is one: whisk.yaml's promoted key changes nothing but W179.
+func TestPromotedApp(t *testing.T) {
 	manifest := `whisk: 1
 name: shop
 routes:
@@ -714,8 +714,7 @@ health:
   path: /health/ready
   timeout: 90
 database: app
-promoted: %s
-%s`
+%s%s`
 	files := map[string]string{
 		"package.json":                  `{"name":"shop","dependencies":{"@medusajs/medusa":"2.21.2"}}`,
 		"package-lock.json":             `{"name":"shop","lockfileVersion":3}`,
@@ -730,17 +729,26 @@ promoted: %s
 	// Promoted app.
 	const other = `{"name":"shop","dependencies":{"express":"5.1.0"}}`
 	for _, tc := range []struct {
-		name, promoted, commerce, pkg string
-		want                          []string
+		name, key, commerce, pkg string
+		promoted                 bool
+		want                     []string
 	}{
-		{"promoted", "true", "", files["package.json"], nil},
-		{"shop", "false", "commerce: medusa\n", files["package.json"], []string{"W005"}},
-		{"promoted other", "true", "", other, nil},
-		{"other", "false", "", other, []string{"W005", "W090", "W099", "W106"}},
+		{"promoted", "", "", files["package.json"], true, nil},
+		{"shop", "", "commerce: medusa\n", files["package.json"], false, []string{"W005"}},
+		{"promoted other", "", "", other, true, nil},
+		{"other", "", "", other, false, []string{"W005", "W090", "W106"}},
+		{"other whose whisk.yaml says promoted", "promoted: true\n", "", other, false, []string{"W005", "W090", "W106", "W179"}},
+		{"promoted other whose whisk.yaml says not", "promoted: false\n", "", other, true, []string{"W179"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			rep := runDoctor(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.promoted, tc.commerce), "package.json": tc.pkg}), false)
-			for _, id := range []string{"W005", "W022", "W052", "W090", "W099", "W106"} {
+			dir := writeAll(t, with(files, map[string]string{"whisk.yaml": fmt.Sprintf(manifest, tc.key, tc.commerce), "package.json": tc.pkg}))
+			rep, err := Run(context.Background(), Options{Dir: dir, Validate: func(context.Context, []byte) (api.Validation, error) {
+				return api.Validation{Promoted: tc.promoted}, nil
+			}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, id := range []string{"W005", "W022", "W052", "W090", "W099", "W106", "W179"} {
 				want := false
 				for _, w := range tc.want {
 					want = want || w == id

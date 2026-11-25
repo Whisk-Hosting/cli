@@ -290,7 +290,7 @@
       "default": false
     },
     "promoted": {
-      "description": "true when the app runs only as a Promoted app (it needs a Promoted app's memory): its production deploy waits until the app is one.",
+      "description": "Not read. Whether the app is a Promoted app is set on its page in the dashboard; doctor's W179 asks for this key to be removed.",
       "type": "boolean",
       "default": false
     },
@@ -303,12 +303,12 @@
       "enum": ["payload"]
     },
     "b2b": {
-      "description": "true asks the build for trade ordering, the shop template's private plugin, given only to Promoted apps in force. Needs promoted: true.",
+      "description": "true asks the build for trade ordering, the shop template's private plugin, given only to Promoted apps in force: a production deploy waits until the app is one.",
       "type": "boolean",
       "default": false
     },
     "workers": {
-      "description": "Long-running processes a Promoted app runs beside its web process, in the same container and memory: one copy of each, restarted when it exits. Needs promoted: true.",
+      "description": "Long-running processes a Promoted app runs beside its web process, in the same container and memory: one copy of each, restarted when it exits. A production deploy waits until the app is one.",
       "type": "array",
       "items": { "$ref": "#/$defs/worker" },
       "maxItems": 10,

@@ -222,16 +222,16 @@ func routeGlob(p string) string {
 
 var adminSegment = regexp.MustCompile(`(?i)(?:^|/)(?:admin|administrator|manage|internal|staff)(?:/|$|\*)`)
 
-func w099(r Repo, _ Context) outcome {
+func w099(r Repo, c Context) outcome {
 	var out outcome
 	for i, p := range r.Manifest.Routes.Public {
 		if adminSegment.MatchString(p) {
 			out = out.add("W099", manifestFile, yamlLine(r.ManifestNode, fmt.Sprintf("/routes/public/%d", i)), fmt.Sprintf("routes.public lists %s, which is named for staff; anyone on the internet can open it.", p))
 		}
 	}
-	if r.Manifest.Promoted || isShop(r) {
-		// A Promoted app with its own sign-in, or a shop, lists every route as public;
-		// its sign-in decides who may write.
+	if promotedNow(c) || isShop(r) || ownSignin(r) {
+		// A Promoted app, a shop, or any app with its own sign-in lists every route as public;
+		// its sign-in decides who may write (W106 says when that is not a Promoted app's).
 		return out
 	}
 	seen := map[string]bool{}

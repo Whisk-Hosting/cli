@@ -1,7 +1,6 @@
 # expect: MANIFEST_INVALID duplicate worker name jobs
 whisk: 1
 name: invoicer
-promoted: true
 workers:
   - name: jobs
     command: node dist/worker.js

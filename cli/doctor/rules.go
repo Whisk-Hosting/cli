@@ -140,6 +140,7 @@ var ruleTable = []rule{
 	{"W176", true, w176},
 	{"W177", false, w177},
 	{"W178", false, w178},
+	{"W179", true, w179},
 }
 
 const manifestFile = "whisk.yaml"
@@ -1046,11 +1047,8 @@ func problems(err error) []problem {
 func graphProblems(err error) []problem { return problems(err) }
 
 func w090(r Repo, c Context) outcome {
-	if c.Validation != nil && c.Validation.Promoted {
+	if promotedNow(c) {
 		return skip("W090", "the app is a Promoted app, which may keep its own sign-in")
-	}
-	if r.Manifest.Promoted {
-		return skip("W090", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
 	}
 	if isShop(r) {
 		return skip("W090", "the app is a shop, which keeps its customers' sign-in")
@@ -1074,14 +1072,18 @@ func w106(r Repo, c Context) outcome {
 	switch {
 	case !ownsignin.Keeps(public), len(passwordFields(r)) == 0:
 		return outcome{}
-	case c.Validation != nil && c.Validation.Promoted:
+	case promotedNow(c):
 		return skip("W106", "the app is a Promoted app, which may keep its own sign-in")
-	case r.Manifest.Promoted:
-		return skip("W106", "whisk.yaml says the app runs only as a Promoted app, which may keep its own sign-in")
 	case isShop(r):
 		return skip("W106", "the app is a shop, which keeps its customers' sign-in")
 	}
 	return one("W106", manifestFile, yamlLine(r.ManifestNode, catchAllPointer(public)), ownsignin.Message(r.Manifest.Name))
+}
+
+// ownSignin is whether the app runs its own sign-in: every route is public and it asks for a
+// password (ownsignin.Keeps, W090's fields).
+func ownSignin(r Repo) bool {
+	return ownsignin.Keeps(r.Manifest.Routes.Public) && len(passwordFields(r)) > 0
 }
 
 // catchAllPointer is where in whisk.yaml routes.public makes every route public: the first

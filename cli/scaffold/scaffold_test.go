@@ -89,8 +89,8 @@ func TestManifestWithWorkers(t *testing.T) {
 		{Name: "jobs", Command: "bundle exec good_job start", Database: manifest.WorkerDirect},
 		{Name: "mail", Command: "bundle exec sidekiq -q mail", Database: manifest.WorkerPooled},
 	}
-	if !m.Promoted || !m.KV || len(m.Workers) != len(want) {
-		t.Fatalf("got promoted %v kv %v workers %+v\n%s", m.Promoted, m.KV, m.Workers, src)
+	if !m.NeedsPromoted() || !m.KV || len(m.Workers) != len(want) || strings.Contains(src, "promoted:") {
+		t.Fatalf("got needs promoted %v kv %v workers %+v, and the file must not say promoted (W179)\n%s", m.NeedsPromoted(), m.KV, m.Workers, src)
 	}
 	for i, w := range want {
 		if m.Workers[i].Name != w.Name || m.Workers[i].Command != w.Command || m.Workers[i].Database != w.Database {
