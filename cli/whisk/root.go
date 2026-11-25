@@ -40,6 +40,9 @@ type Env struct {
 	Getenv     func(string) string
 	Dir        string // working directory
 	IsTerminal bool   // stdin and stdout are a terminal
+	// ReadHidden reads one line from the terminal without echoing it, for a secret's value; nil
+	// when stdin is not a terminal, and the value is read from stdin instead.
+	ReadHidden func() ([]byte, error)
 	ConfigDir  string // overrides the config directory when set
 	// Store overrides the credential store when set (tests).
 	Store config.Store

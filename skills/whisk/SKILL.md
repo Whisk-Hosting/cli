@@ -489,8 +489,8 @@ Never force-push to Whisk: it deletes the other person's work.
 deploy that went live with something wrong, such as `FUNCTIONS_NOT_REGISTERED` (a function name
 in `whisk.yaml` the code does not use), whose fix says what to change. If declared secrets
 (`build.secrets` included) have no value yet it also prints a `NEEDS_HUMAN` block naming them and
-the dashboard URL. Relay that block to the human verbatim. Do not ask them for the values; the
-app restarts on its own when they are set.
+the dashboard URL. Set the ones you have with `whisk secrets set` (§6) and relay the block for
+the rest; the app restarts on its own when they are set.
 
 Some changes are the business's to allow, not yours. A production deploy waits with
 `GRANT_NEEDED` (exit 2, a `NEEDS_HUMAN` block) when, compared with the live app, it calls
@@ -614,24 +614,32 @@ is only for when the business has no key for that service yet, or the person ask
 one. If you are unsure, ask the person whether to use the key the business already has; never
 ask them for a new one first.
 
-Declare names in the manifest; humans set values in the dashboard.
+Declare names in the manifest, then give each one its value.
 
 ```yaml
 secrets: [XERO_CLIENT_SECRET, SLACK_WEBHOOK_URL]
 ```
 
-The value arrives in the environment under that name. Never write a value into code, a file, a
-commit message or a log line; the push is rejected if a commit contains one, and every value is
-scrubbed from logs. Never ask the human for a value in chat. When a secret is needed, say:
+The value arrives in the environment under that name. Never write a value into code, a file in
+the repository, a commit message or a log line; the push is rejected if a commit contains one, and
+every value is scrubbed from logs.
 
-> Set `XERO_CLIENT_SECRET` at https://whisk.run/o/<org>/secrets. I have declared it; the app
-> restarts when you save it.
+`whisk secrets set NAME` stores a value. It reads it from stdin, or from a prompt that does not
+echo when a person runs it in a terminal, and never from an argument, so pipe it in from wherever
+it is kept:
 
-`whisk secrets declare NAME` creates the slot before the first deploy if you want the human to
-fill it early. `whisk secrets set NAME1 NAME2 …` never takes a value: it prints one link that
-opens the secrets page with a paste box ready for those names, so the human pastes them all at
-once (a `.env`-style `NAME=value` block works). Relay that link. Org-scoped secrets are
-shared by every app in the org; app-scoped ones shadow them. A slot nobody filled, such as one
+```sh
+printenv XERO_CLIENT_SECRET | whisk secrets set XERO_CLIENT_SECRET
+op read op://vault/xero/secret | whisk secrets set XERO_CLIENT_SECRET
+whisk secrets set --from-env ~/old-host.env    # every NAME=value line
+```
+
+It answers with the new version, never the value, and the apps that read it restart. When you do
+not have a value, give the person the link from `whisk secrets link NAME` or the deploy's
+`NEEDS_HUMAN` block, which opens the secrets page with a paste box ready for those names. If they
+give you the value instead, set it straight away and do not repeat it back.
+`whisk secrets declare NAME` creates an empty slot before the first deploy. Org-scoped secrets
+are shared by every app in the org; app-scoped ones shadow them. A slot nobody filled, such as one
 whisk.yaml no longer names, you remove with `whisk secrets delete NAME`; one with a value only a
 person deletes.
 

@@ -65,7 +65,6 @@ func (e *Error) Body() map[string]any {
 
 var exitByCode = map[string]int{
 	"NEEDS_HUMAN":                     ExitNeedsHuman,
-	"SECRET_VALUE_NEEDS_HUMAN":        ExitNeedsHuman,
 	"GRANT_NEEDED":                    ExitNeedsHuman,
 	"CONFIRMATION_NEEDED":             ExitNeedsHuman,
 	"MANIFEST_INVALID":                ExitValidation,

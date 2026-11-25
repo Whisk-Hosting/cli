@@ -1875,7 +1875,7 @@
  },
  {
   "name": "secrets",
-  "short": "Secret names, versions and reads; never values",
+  "short": "Set secret values; list names, versions and reads, never values",
   "commands": [
    {
     "usage": "whisk secrets apps NAME",
@@ -1883,7 +1883,7 @@
    },
    {
     "usage": "whisk secrets declare NAME",
-    "short": "Create the slot for a secret; a human sets its value in the dashboard"
+    "short": "Create the slot for a secret without a value; whisk secrets set gives it one"
    },
    {
     "usage": "whisk secrets delete NAME",
@@ -1891,7 +1891,7 @@
    },
    {
     "usage": "whisk secrets link NAME",
-    "short": "Print the dashboard URL where a human sets the value"
+    "short": "Print the dashboard URL where a person sets the value"
    },
    {
     "usage": "whisk secrets list",
@@ -1918,9 +1918,17 @@
     ]
    },
    {
-    "usage": "whisk secrets set NAME [NAME...] [--previews | --previews=false]",
-    "short": "Where a human sets the values: prints one link for all of them and exits 2",
+    "usage": "whisk secrets set NAME [NAME...] [--from-env FILE] [--note TEXT]",
+    "short": "Set secret values, read from a hidden prompt, stdin or a dotenv file",
     "flags": [
+     {
+      "name": "--from-env string",
+      "usage": "a dotenv file of NAME=VALUE lines to set, or - for stdin"
+     },
+     {
+      "name": "--note string",
+      "usage": "a note kept with the new version, such as where the value came from"
+     },
      {
       "name": "--previews",
       "usage": "ask a person to share the secrets with previews (--previews=false to stop sharing)"

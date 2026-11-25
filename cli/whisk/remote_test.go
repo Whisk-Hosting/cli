@@ -140,6 +140,7 @@ type remoteState struct {
 	posted      []map[string]any // POST deploys bodies
 	putGrants   []map[string]any
 	declared    []map[string]any
+	setValues   []map[string]any
 	invited     []map[string]any
 	deletedSecs []string
 	failGets    int              // GETs of d-fail: the first sees it still building
@@ -311,6 +312,17 @@ func remoteAPI(t *testing.T, st *remoteState) *httptest.Server {
 		}
 		st.declared = append(st.declared, body)
 		writeJSON(w, 201, map[string]any{"id": "s2", "name": body["name"], "scope": body["scope"], "app_id": body["app_id"], "set": false, "version": 0, "consumers": []string{}, "created_at": "2026-09-08T00:00:00Z"})
+	}))
+	mux.HandleFunc("PUT /v1/orgs/acme/secrets/{name}/value", auth(func(w http.ResponseWriter, r *http.Request) {
+		var body map[string]any
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		body["name"] = r.PathValue("name")
+		st.setValues = append(st.setValues, body)
+		scope := "org"
+		if body["app_id"] != nil {
+			scope = "app"
+		}
+		writeJSON(w, 200, map[string]any{"id": "s3", "name": r.PathValue("name"), "scope": scope, "set": true, "version": len(st.setValues), "consumers": []string{"a1"}, "created_at": "2026-09-08T00:00:00Z"})
 	}))
 	mux.HandleFunc("GET /v1/orgs/acme/secrets/{name}/versions", auth(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("app") != "crm" {
@@ -1010,31 +1022,40 @@ func TestSecretsCommands(t *testing.T) {
 	git := &fakeGit{}
 	appURL := srv.URL + "/o/acme/apps/crm/secrets"
 
-	r := runRemote(t, dir, srv.URL, git, "secrets", "set", "STRIPE_SECRET_KEY", "--json")
-	if r.Code != 2 {
-		t.Fatalf("secrets set must exit 2: %+v", r)
+	// The value comes on stdin, loses the one newline echo adds, and is never printed.
+	const value = "stripe-test-value-0001"
+	r := runRemoteIn(t, value+"\n", dir, srv.URL, "secrets", "set", "STRIPE_SECRET_KEY", "--note", "from the old host", "--json")
+	if r.Code != 0 || len(st.setValues) != 1 || st.setValues[0]["value"] != value || st.setValues[0]["app_id"] != "crm" || st.setValues[0]["note"] != "from the old host" {
+		t.Fatalf("set from stdin: %+v sent %v", r, st.setValues)
 	}
-	e := r.JSON["error"].(map[string]any)
-	if e["code"] != "NEEDS_HUMAN" || e["details"].(map[string]any)["url"] != appURL+"?set=STRIPE_SECRET_KEY" || e["details"].(map[string]any)["name"] != "STRIPE_SECRET_KEY" {
-		t.Fatalf("set error: %v", e)
+	if strings.Contains(r.Stdout+r.Stderr, value) || r.JSON["secrets"].([]any)[0].(map[string]any)["version"] != float64(1) {
+		t.Fatalf("set printed the value or no version: %+v", r)
 	}
-	// Several names get one link that opens a field for each.
-	r = runRemote(t, dir, srv.URL, git, "secrets", "set", "STRIPE_SECRET_KEY", "XERO_CLIENT_SECRET", "--json")
-	e = r.JSON["error"].(map[string]any)
-	if r.Code != 2 || e["details"].(map[string]any)["url"] != appURL+"?set=STRIPE_SECRET_KEY,XERO_CLIENT_SECRET" || len(e["details"].(map[string]any)["names"].([]any)) != 2 || !strings.Contains(e["message"].(string), "need values") {
-		t.Fatalf("set several: %v", e)
+	r = runRemoteIn(t, value, dir, srv.URL, "secrets", "set", "SHARED", "--scope", "org")
+	if r.Code != 0 || st.setValues[1]["app_id"] != nil || !strings.Contains(r.Stdout, "Set SHARED (org scope) to version 2") || strings.Contains(r.Stdout+r.Stderr, value) {
+		t.Fatalf("set --scope org: %+v sent %v", r, st.setValues)
 	}
-	r = runRemote(t, dir, srv.URL, git, "secrets", "set", "STRIPE_SECRET_KEY")
-	if r.Code != 2 || !strings.Contains(r.Stderr, "NEEDS_HUMAN") || !strings.Contains(r.Stderr, appURL) {
-		t.Fatalf("set human: %+v", r)
+	// Nothing on stdin, or one stdin for several names, sets nothing.
+	r = runRemoteIn(t, "", dir, srv.URL, "secrets", "set", "STRIPE_SECRET_KEY", "--json")
+	if r.Code != 1 || r.JSON["error"].(map[string]any)["code"] != "INVALID_REQUEST" || len(st.setValues) != 2 {
+		t.Fatalf("set with empty stdin: %+v", r)
 	}
-	r = runRemote(t, dir, srv.URL, git, "secrets", "set", "SHARED", "--scope", "org", "--json")
-	if r.Code != 2 || r.JSON["error"].(map[string]any)["details"].(map[string]any)["url"] != srv.URL+"/o/acme/secrets?set=SHARED" {
-		t.Fatalf("set --scope org: %+v", r)
+	r = runRemoteIn(t, value, dir, srv.URL, "secrets", "set", "STRIPE_SECRET_KEY", "XERO_CLIENT_SECRET", "--json")
+	if r.Code != 1 || !strings.Contains(r.JSON["error"].(map[string]any)["fix"].(string), "--from-env") || len(st.setValues) != 2 {
+		t.Fatalf("set several from stdin: %+v", r)
+	}
+	// A dotenv file on stdin sets every line, or only the names given.
+	r = runRemoteIn(t, "# old host\nexport STRIPE_SECRET_KEY=\"stripe-live-value-0002\"\nXERO_CLIENT_SECRET=xero-bbbbbbbb2222\n", dir, srv.URL, "secrets", "set", "--from-env", "-", "--json")
+	if r.Code != 0 || len(st.setValues) != 4 || st.setValues[2]["value"] != "stripe-live-value-0002" || st.setValues[3]["name"] != "XERO_CLIENT_SECRET" || len(r.JSON["secrets"].([]any)) != 2 {
+		t.Fatalf("set --from-env: %+v sent %v", r, st.setValues)
+	}
+	r = runRemoteIn(t, "A_KEY=aaaaaaaa1111\nB_KEY=bbbbbbbb2222\n", dir, srv.URL, "secrets", "set", "B_KEY", "--from-env", "-", "--json")
+	if r.Code != 0 || len(st.setValues) != 5 || st.setValues[4]["name"] != "B_KEY" {
+		t.Fatalf("set --from-env with a name: %+v sent %v", r, st.setValues)
 	}
 	// Sharing with previews is a person's too: the block names the page and what to turn on or off.
 	r = runRemote(t, dir, srv.URL, git, "secrets", "set", "STRIPE_SECRET_KEY", "--previews", "--json")
-	e = r.JSON["error"].(map[string]any)
+	e := r.JSON["error"].(map[string]any)
 	if r.Code != 2 || e["code"] != "NEEDS_HUMAN" || e["details"].(map[string]any)["url"] != appURL || e["details"].(map[string]any)["previews"] != true || !strings.Contains(e["fix"].(string), "turn Share with previews on for STRIPE_SECRET_KEY") {
 		t.Fatalf("set --previews: %+v", r)
 	}

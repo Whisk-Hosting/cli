@@ -34,7 +34,7 @@ func (s *session) secretScope(scope string) (org, app string, err error) {
 }
 
 func secretsCmd(s *session) *cobra.Command {
-	secrets := &cobra.Command{Use: "secrets", Short: "Secret names, versions and reads; never values"}
+	secrets := &cobra.Command{Use: "secrets", Short: "Set secret values; list names, versions and reads, never values"}
 	var scope string
 	secrets.PersistentFlags().StringVar(&scope, "scope", "", "org for org-scoped secrets, app for the bound app (default: app when bound, else org)")
 
@@ -73,7 +73,7 @@ func secretsCmd(s *session) *cobra.Command {
 
 	declare := &cobra.Command{
 		Use:   "declare NAME",
-		Short: "Create the slot for a secret; a human sets its value in the dashboard",
+		Short: "Create the slot for a secret without a value; whisk secrets set gives it one",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			org, app, err := s.secretScope(scope)
@@ -94,7 +94,7 @@ func secretsCmd(s *session) *cobra.Command {
 			}
 			url := secretsURL(s.dashboard(), org, app)
 			s.printer.Result(map[string]any{"org": org, "app": app, "secret": sec, "url": url}, func(w io.Writer) {
-				state := "has no value yet; set it at " + url
+				state := "has no value yet; set it with whisk secrets set " + sec.Name + " or at " + url
 				if sec.Set {
 					state = "already has a value"
 				}
@@ -104,48 +104,11 @@ func secretsCmd(s *session) *cobra.Command {
 		},
 	}
 
-	var previews bool
-	set := &cobra.Command{
-		Use:   "set NAME [NAME...] [--previews | --previews=false]",
-		Short: "Where a human sets the values: prints one link for all of them and exits 2",
-		Long: `Secret values are only ever typed in the dashboard. The CLI never takes one, from a prompt or
-otherwise, so this prints the NEEDS_HUMAN block with one link for every name given. The link opens
-the secrets page with a field for each name, so an owner, admin or developer types every value and
-saves them at once.
-
-Previews receive a secret only when it is shared with previews. With --previews (or
---previews=false) the block instead asks an owner or admin to turn "Share with previews" on (or
-off) for the names on the secrets page; that is a person's decision too, since a preview runs a
-branch's code.`,
-		Args: cobra.MinimumNArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.secretScope(scope)
-			if err != nil {
-				return err
-			}
-			if cmd.Flags().Changed("previews") {
-				return previewsNeedsHuman(secretsURL(s.dashboard(), org, app), org, app, args, previews)
-			}
-			url := pasteURL(secretsURL(s.dashboard(), org, app), args)
-			verb, them := "needs a value", "the value"
-			if len(args) > 1 {
-				verb, them = "need values", "the values"
-			}
-			return &output.Error{
-				Code:    "NEEDS_HUMAN",
-				Message: fmt.Sprintf("%s %s, and values are set in the dashboard, never through the CLI.", strings.Join(args, ", "), verb),
-				Fix:     "Ask an owner, admin or developer to open " + url + " and paste " + them + " there. Do not ask them for a value and do not put one in a file.",
-				Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
-				Details: map[string]any{"url": url, "name": args[0], "names": args, "org": org, "app": app},
-			}
-		},
-	}
-
-	set.Flags().BoolVar(&previews, "previews", false, "ask a person to share the secrets with previews (--previews=false to stop sharing)")
+	set := secretsSetCmd(s, &scope)
 
 	link := &cobra.Command{
 		Use:   "link NAME",
-		Short: "Print the dashboard URL where a human sets the value",
+		Short: "Print the dashboard URL where a person sets the value",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			org, app, err := s.secretScope(scope)

@@ -1029,20 +1029,6 @@ fix says to end that line with a `gitleaks:allow` comment or allow it in `.gitle
 {"error":{"code":"SECRET_IN_COMMIT","message":"A value that looks like a Stripe secret key is in src/config.ts line 12.","fix":"Remove the value, declare STRIPE_SECRET_KEY under secrets in whisk.yaml, read it from the environment, rewrite the commit, and ask an owner to set it at https://whisk.run/o/acme/secrets. Rotate the key in Stripe.","docs":"https://skill.whisk.run/errors/SECRET_IN_COMMIT","details":{"file":"src/config.ts","line":12,"rule":"stripe-secret","commit":"a1b2c3d"}}}
 ```
 
-## SECRET_VALUE_NEEDS_HUMAN
-
-Status: 403 · Surface: api, cli
-
-When: an agent token tried to set a secret's value. Agents may declare names; only a human
-session may set values.
-
-Fix: Tell the human the secret name and the URL where they set it. Do not ask them for the
-value and do not put it in a file.
-
-```json
-{"error":{"code":"SECRET_VALUE_NEEDS_HUMAN","message":"Agent tokens cannot set secret values.","fix":"Ask an owner, admin or developer to set XERO_CLIENT_SECRET at https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET. The deploy will restart automatically once it is set.","docs":"https://skill.whisk.run/errors/SECRET_VALUE_NEEDS_HUMAN","details":{"name":"XERO_CLIENT_SECRET","url":"https://whisk.run/o/acme/secrets/XERO_CLIENT_SECRET"}}}
-```
-
 ## SECRET_SHREDDED
 
 Status: 410 · Surface: api

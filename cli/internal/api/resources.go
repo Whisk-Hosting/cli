@@ -31,7 +31,7 @@ type SecretVersion = apitypes.SecretVersion
 // SecretRead is one delivery of a value to a container (or a break-glass read).
 type SecretRead = apitypes.SecretRead
 
-// DeclareSecret is the body of POST /orgs/:org/secrets. Agents never send a value.
+// DeclareSecret is the body of POST /orgs/:org/secrets; the CLI sends values with SetSecretValue.
 type DeclareSecret = apitypes.DeclareSecretRequest
 
 func orgPath(org string) string { return "/orgs/" + pathSeg(org) }
