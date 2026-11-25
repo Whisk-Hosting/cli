@@ -10,7 +10,7 @@ import (
 
 // The words agents reached for reach the commands that do the work (CLI.md §7): get, info and
 // show name one another's commands, whisk restart is whisk apps restart, whisk usage is whisk
-// billing, whisk cache is whisk cdn, whisk storage is whisk uploads, whisk products is whisk
+// billing, whisk cache is whisk cdn, whisk previews is whisk envs, whisk storage is whisk uploads, whisk products is whisk
 // managed, -q is --quiet, and whisk call takes --body for --data and saves with -o.
 func TestWordsAgentsReachFor(t *testing.T) {
 	root := newRoot(&session{ctx: context.Background()})
@@ -27,6 +27,8 @@ func TestWordsAgentsReachFor(t *testing.T) {
 		"storage":      "whisk uploads",
 		"products":     "whisk managed",
 		"env":          "whisk envs",
+		"previews":     "whisk envs",
+		"preview list": "whisk envs list",
 		"audit":        "whisk audit",
 	} {
 		c, _, err := root.Find(strings.Fields(typed))

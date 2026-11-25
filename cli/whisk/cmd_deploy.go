@@ -1314,20 +1314,21 @@ func deploysCmd(s *session) *cobra.Command {
 		},
 	}
 	logCmd := &cobra.Command{
-		Use:   "log <id>",
+		Use:   "log [<id>]",
 		Short: "Print a deploy's whole build log, or the app's last lines when it failed to start",
-		Long: `Prints the build log of the deploy's build, in full. For a deploy whose app failed to start
-(HEALTH_CHECK_FAILED, CONTAINER_CRASHED) or to migrate, it also prints the lines the deploy's
-error carries. --json gives {"deploy_id", "build_id", "build_log", "app_log"}.`,
-		Args: cobra.ExactArgs(1),
+		Long: `Prints the build log of the deploy's build, in full: the app's latest deploy when no id is
+given. For a deploy whose app failed to start (HEALTH_CHECK_FAILED, CONTAINER_CRASHED) or to
+migrate, it also prints the lines the deploy's error carries. --json gives {"deploy_id",
+"build_id", "build_log", "app_log"}.`,
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, org, app, err := s.appClient()
 			if err != nil {
 				return err
 			}
-			d, err := api.Call(s.ctx, client, endpoints.GetDeploy, org, app, args[0])
+			d, err := deployToLog(s.ctx, client, org, app, args)
 			if err != nil {
-				return wrap(err)
+				return err
 			}
 			appLog := []string{}
 			if d.Error != nil {
@@ -1574,4 +1575,30 @@ func (t *logTail) finish() {
 	case t.open:
 		fmt.Fprintln(t.w)
 	}
+}
+
+// deployToLog is the deploy whisk deploys log reads: the one named, or the app's latest.
+func deployToLog(ctx context.Context, client *api.Client, org, app string, args []string) (api.Deploy, error) {
+	id := ""
+	if len(args) == 1 {
+		id = args[0]
+	} else {
+		recent, err := client.ListDeploys(ctx, org, app, 1)
+		if err != nil {
+			return api.Deploy{}, wrap(err)
+		}
+		if id, err = latestDeployID(recent); err != nil {
+			return api.Deploy{}, err
+		}
+	}
+	d, err := api.Call(ctx, client, endpoints.GetDeploy, org, app, id)
+	return d, wrap(err)
+}
+
+// latestDeployID is the newest of deploys listed newest first. Pure.
+func latestDeployID(recent []api.Deploy) (string, error) {
+	if len(recent) == 0 {
+		return "", output.New("NOT_FOUND", "This app has no deploys yet, so there is no log to print.", "Deploy it with whisk deploy, then run whisk deploys log.", nil)
+	}
+	return recent[0].ID, nil
 }

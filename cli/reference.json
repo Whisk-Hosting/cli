@@ -846,7 +846,7 @@
     ]
    },
    {
-    "usage": "whisk deploys log \u003cid\u003e",
+    "usage": "whisk deploys log [\u003cid\u003e]",
     "short": "Print a deploy's whole build log, or the app's last lines when it failed to start"
    }
   ]
