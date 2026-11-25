@@ -10,6 +10,9 @@ health:
 
 database: app
 migrate: "alembic upgrade head"
+# The app runs as a login that reads and writes rows under every policy and cannot change the
+# schema; only migrate runs as the owner (SKILL.md §5).
+database_role: restricted
 
 functions:
   - name: note-added

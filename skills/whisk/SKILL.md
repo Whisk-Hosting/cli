@@ -383,6 +383,7 @@ routes:
 health: { path: /health, timeout: 30 } # seconds from start to the first 200; default 90
 database: app                     # app | shared:<name> | none (§5)
 migrate: "node dist/migrate.js"   # runs before traffic switches, at most 600 seconds (§5)
+database_role: restricted         # the app cannot change its schema; set it on every new app (§5)
 build:
   dockerfile: Dockerfile          # optional; the stack is detected without one
   secrets: [NPM_TOKEN]            # available only while building, never at run time
@@ -566,6 +567,13 @@ database, kept for 7 days, where anything users wrote meanwhile can be read back
 `whisk db query --database`. So run each migration in one transaction (most tools do on
 Postgres), and keep migrations forward-only and idempotent where the tool allows. `whisk dev`
 also runs the `migrate` command on your own machine before it starts the app.
+
+Give every new app `database_role: restricted`, as the starters do: the running app then reads
+and writes rows under every row-level security policy and cannot turn a policy off or change a
+table, and only `migrate` runs as the owner. Make each table that holds a customer's rows enable
+and force row-level security, with its policy, in the migration that creates it (W095). An app
+that already runs without the setting keeps working as it is; add it once nothing outside
+`migrate` changes the schema (W105).
 
 `database: app` (default) gives the app its own database. `database: shared:<name>` gives the
 app its own schema inside a database shared across the org, for apps that must join across each

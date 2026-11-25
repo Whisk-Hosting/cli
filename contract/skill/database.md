@@ -38,9 +38,10 @@ runs as `system` and sees every row. Another app reading a shared schema is filt
 owner's policies too: it sets `system` the same way when it should see every row. `whisk dev`
 connects as a superuser, which policies never filter, so prove isolation on a deploy.
 
-**Keep the app's own queries from changing the schema.** By default the app connects as the role
-that owns its tables, so a bug or an injected statement could turn row-level security off, drop
-a policy or rewrite a table. Set `database_role: restricted` and the app connects as a second
+**Keep the app's own queries from changing the schema.** Without `database_role` the app connects
+as the role that owns its tables (the default, kept so apps written that way keep running), so a
+bug or an injected statement could turn row-level security off, drop a policy or rewrite a table.
+The starters set `database_role: restricted`, and every new app should: the app connects as a second
 login, `<owner>_run`, that owns nothing: it reads and writes rows, under every policy, and cannot
 change a table, a policy or anything else the migrations made. Only the `migrate` step connects
 as the owner. Use it for any app whose data is kept apart with row-level security, and for an
