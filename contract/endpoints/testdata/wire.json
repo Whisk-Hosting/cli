@@ -7854,6 +7854,9 @@
         "slack_webhook_set": {
           "type": "boolean"
         },
+        "spend_cap_cents": {
+          "type": "integer"
+        },
         "sso": {
           "$ref": "#/$defs/apitypes.SSOSettings"
         },
@@ -7866,6 +7869,7 @@
         "notifications",
         "passkeys_required",
         "slack_webhook_set",
+        "spend_cap_cents",
         "sso"
       ],
       "type": "object"
@@ -7893,6 +7897,9 @@
         },
         "slack_webhook_url": {
           "type": "string"
+        },
+        "spend_cap_cents": {
+          "type": "integer"
         },
         "sso": {
           "$ref": "#/$defs/apitypes.SSORequest"
@@ -13865,6 +13872,14 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.DbQueryRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/db/reader": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.DatabaseURL"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.DbEnvironmentRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/db/schema": {

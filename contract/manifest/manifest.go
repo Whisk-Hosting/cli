@@ -70,6 +70,9 @@ type Manifest struct {
 	KVEvict  *bool `json:"kv_evict,omitempty"`
 	Email    bool  `json:"email"`
 	AlwaysOn bool  `json:"always_on"`
+	// Extensions are the Postgres extensions Whisk turns on in the app's database before its
+	// migrations run, from Extensions' list (SKILL.md §5).
+	Extensions []string `json:"extensions"`
 	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
 	// gives only to Promoted apps in force (CONTRACT.md §11, NeedsPromoted).
 	B2B bool `json:"b2b"`
@@ -79,8 +82,8 @@ type Manifest struct {
 	// Content is "payload" when the app's site editor API (/cms/api) is the site template's
 	// Payload server, which Whisk may answer with its own content server (CONTRACT.md §11).
 	Content string `json:"content,omitempty"`
-	// Workers are long-running processes a Promoted app runs beside its web process, in the
-	// same container (CONTRACT.md §3.2).
+	// Workers are long-running processes an app runs beside its web process, in the same
+	// container: one on a plan that keeps apps on, more on a Promoted app (CONTRACT.md §3.2).
 	Workers []Worker `json:"workers"`
 	Calls   []string `json:"calls"`
 	// AcceptedCallers names the only apps of the business whose calls this app accepts
@@ -840,6 +843,7 @@ func withDefaults(m Manifest) Manifest {
 	if m.Webhooks == nil {
 		m.Webhooks = []Webhook{}
 	}
+	m.Extensions = append([]string{}, m.Extensions...)
 	if m.Workers == nil {
 		m.Workers = []Worker{}
 	}
@@ -961,7 +965,7 @@ func checkRules(m Manifest) Problems {
 // manifestRules are the checks beyond the schema, in the order their problems are listed. Each
 // is pure and checks one part of the manifest.
 var manifestRules = []func(Manifest) Problems{
-	checkChallengeRoutes, checkDeviceHeader, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV,
+	checkChallengeRoutes, checkDeviceHeader, checkSecretNames, checkAppRoutes, checkAdmin, checkSignIn, checkMCP, checkKV, checkExtensions,
 	checkWorkers, checkManaged, checkBuildSecretNames, checkEnvNames, checkFunctions, checkRestricted,
 	checkWebhooks, checkConnections, checkInbox, checkCallers, checkRedirects, checkFlags,
 }
@@ -1055,8 +1059,14 @@ func checkSignIn(m Manifest) Problems {
 	return ps
 }
 
-// NeedsPromoted is whether the app's code uses what only a Promoted app has: workers, or trade
-// ordering. Its production deploy then waits until the business makes it a Promoted app in the
+// AllowedExtensions are the Postgres extensions an app may name in extensions: each is on
+// every node, survives failover and restores, and needs the platform to create it, since an
+// app's own login cannot (CONTRACT.md §3).
+var AllowedExtensions = []string{"vector", "pg_trgm"}
+
+// NeedsPromoted is whether the app's code uses what a Promoted app has: workers, or trade
+// ordering. The control plane lets one worker run on a plan that keeps apps on
+// (scheduler.PlanWorker). Its production deploy then waits until the business makes it a Promoted app in the
 // dashboard (PROMOTED_APP_REQUIRED). It reads only what the code uses, never the promoted key,
 // so a business that stops promoting an app never has to change the app's files to deploy it
 // again. Pure, table-tested.
@@ -1065,6 +1075,13 @@ func (m Manifest) NeedsPromoted() bool { return len(m.Workers) > 0 || m.B2B }
 // KeepsKVKeys reports whether the app's cache keeps every key when full instead of evicting:
 // only when it asks for a cache and sets kv_evict: false. Pure.
 func (m Manifest) KeepsKVKeys() bool { return m.KV && m.KVEvict != nil && !*m.KVEvict }
+
+func checkExtensions(m Manifest) Problems {
+	if len(m.Extensions) > 0 && m.Database == "none" {
+		return Problems{invalid("/extensions", "extensions are turned on in the app's database, so the app needs one: remove database: none or the extensions")}
+	}
+	return nil
+}
 
 func checkKV(m Manifest) Problems {
 	if m.KVEvict != nil && !m.KV {

@@ -61,3 +61,36 @@ func contains(list []string, s string) bool {
 	}
 	return false
 }
+
+// An app's extensions are made locally as Whisk makes them: by the superuser, before the app's
+// migrations, on Postgres with pgvector when the app names vector (SKILL.md §5).
+func TestComposeExtensions(t *testing.T) {
+	ports := Ports{Postgres: 50001, PgBouncer: 50002, Inngest: 50003}
+	for _, tc := range []struct {
+		yaml, image, sql string
+	}{
+		{"whisk: 1\nname: app\n", imagePostgres, ""},
+		{"whisk: 1\nname: app\nextensions: [pg_trgm]\n", imagePostgres, `create extension if not exists \"pg_trgm\";`},
+		{"whisk: 1\nname: app\nextensions: [vector, pg_trgm]\n", imagePgvector, `create extension if not exists \"vector\"; create extension if not exists \"pg_trgm\";`},
+	} {
+		m, err := manifest.Parse([]byte(tc.yaml))
+		if err != nil {
+			t.Fatal(err)
+		}
+		c := BuildPlan(m, ports, 3002, false).Compose
+		if strings.Count(c, "image: "+tc.image) == 0 {
+			t.Errorf("%q: compose lacks image %s:\n%s", tc.yaml, tc.image, c)
+		}
+		if tc.sql == "" && strings.Contains(c, "postgres-init") {
+			t.Errorf("%q: no extensions should need no init:\n%s", tc.yaml, c)
+		}
+		if tc.sql != "" && !strings.Contains(c, tc.sql) {
+			t.Errorf("%q: compose lacks %s:\n%s", tc.yaml, tc.sql, c)
+		}
+	}
+	plain, _ := manifest.Parse([]byte("whisk: 1\nname: app\n"))
+	vec, _ := manifest.Parse([]byte("whisk: 1\nname: app\nextensions: [vector]\n"))
+	if Hash(plain, ports, 3002) == Hash(vec, ports, 3002) {
+		t.Error("naming an extension does not regenerate the compose file")
+	}
+}

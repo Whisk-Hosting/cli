@@ -380,6 +380,7 @@ health: { path: /health, timeout: 30 } # seconds from start to the first 200; de
 database: app                     # app | shared:<name> | none (§5)
 migrate: "node dist/migrate.js"   # runs before traffic switches, at most 600 seconds (§5)
 database_role: restricted         # the app cannot change its schema; set it on every new app (§5)
+extensions: [vector]              # vector (pgvector) and pg_trgm, turned on before migrate (§5)
 build:
   dockerfile: Dockerfile          # optional; the stack is detected without one
   secrets: [NPM_TOKEN]            # available only while building, never at run time
@@ -402,7 +403,7 @@ always_on: false                  # never sleeps · paid
 b2b: false                        # the shop template's trade ordering, Promoted apps only (§4) · paid
 commerce: medusa                  # the shop template's own setting: keep it in a shop made from it (§4)
 content: payload                  # the site and shop templates' own setting: keep it (§4)
-workers: []                       # an existing app's own job processes, Promoted apps only (§4) · paid
+workers: []                       # an existing app's own job processes: one on a paid plan, more on a Promoted app (§4) · paid
 calls: []                         # other apps of the business this one calls (§8)
 accepted_callers: []              # other apps of the business that may call this one (§8)
 customer_identity: none           # none | app | org: the app's own users (§4) · every plan
@@ -549,7 +550,10 @@ public page, redirect to `/.whisk/login?return=<path>`. Both are handled in fron
 driver: its certificate verifies, Node's `pg` included. No session-level state: no `SET` outside a transaction, no advisory locks held across statements,
 no `LISTEN`. Prepared statements are fine inside a transaction. Before a migration relies on a
 function from a recent release (such as `uuidv7()`), check the server's version:
-`whisk db schema --json` prints it as `postgres`.
+`whisk db schema --json` prints it as `postgres`. For embeddings or fuzzy text search, name
+`extensions: [vector]` or `[pg_trgm]` in whisk.yaml: Whisk turns them on in the database before
+the migrations run, so never `CREATE EXTENSION` in a migration. No other
+extension is available.
 
 Migrations run from the manifest's `migrate` command before traffic switches, with a direct
 connection the platform provides for that step and a snapshot taken first. The previous deploy

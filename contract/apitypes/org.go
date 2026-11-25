@@ -262,6 +262,9 @@ type OrgSettings struct {
 	SSO              SSOSettings `json:"sso"`
 	PasskeysRequired bool        `json:"passkeys_required"`
 	DBAccess         bool        `json:"db_access"`
+	// SpendCapCents is the most the month's extras past the plan's allowances are charged; the
+	// owners are told at half, 80% and all of it (CONTROL-PLANE.md §6.15 "The spending limit").
+	SpendCapCents int64 `json:"spend_cap_cents"`
 	// NotEmailed are the notification kinds Whisk does not email any business just now, whatever
 	// the routing says (CONTROL-PLANE.md §6.14 "Customer email"); they still reach the dashboard,
 	// Slack and the webhook.
@@ -304,6 +307,8 @@ type OrgSettingsRequest struct {
 	// PasskeysRequired is the owner's alone to change, and turning it on needs a session that
 	// meets it: a passkey or company sign-in.
 	PasskeysRequired *bool `json:"passkeys_required,omitempty"`
+	// SpendCapCents sets the spending limit: whole dollars, from $1 to $100,000.
+	SpendCapCents *int64 `json:"spend_cap_cents,omitempty"`
 }
 
 // SSORequest carries the client secret once, on the way in; without it the kept one stays.

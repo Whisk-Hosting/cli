@@ -84,7 +84,7 @@ starts the app as the owner again on the next deploy.
 
 **Looking at the data from your machine.** The database's own address is inside the platform, so
 connecting to it from outside does not work (`whisk db url` says so). Use these instead; they
-run on the platform, need nothing installed, and are audited:
+are audited:
 
 - `whisk db schema --json`: the PostgreSQL version and every table with its columns, keys and
   estimated row count. Read it first when planning an import or a migration.
@@ -99,6 +99,9 @@ run on the platform, need nothing installed, and are audited:
   On Free nothing undoes it (`details.restorable` is `false`): copy the rows it changes first
   with `whisk db query "select …" --json`.
 - Do not put `begin` or `commit` in the SQL: each call is already one transaction.
+- `whisk db connect` opens a read-only tunnel for an hour and prints a string for psql or any
+  Postgres tool on 127.0.0.1. Its login is its own, reads what the owner reads, writes nothing,
+  and ends with its sessions when the hour does. A shared database is read with `db query`.
 
 **Undoing a mistake.** Backups are continuous, and `whisk restore` returns the database to any
 minute in the plan's window: the last 7 days on Starter and Team, 30 on Business; Free

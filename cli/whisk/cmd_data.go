@@ -15,7 +15,7 @@ import (
 // dbCmd is the app's database from outside the app (CLI.md §5.9): SQL and the schema, run on
 // the platform through the API, the connection string, and a restore point.
 func dbCmd(s *session) *cobra.Command {
-	db := &cobra.Command{Use: "db", Short: "The app's database: SQL, the schema, a restore point"}
+	db := &cobra.Command{Use: "db", Short: "The app's database: SQL, the schema, a read-only tunnel, a restore point"}
 
 	var environment string
 	var private bool
@@ -74,7 +74,7 @@ schema, which run on the platform. --private prints the inside address anyway.`,
 	}
 	snapshot.Flags().StringVar(&snapEnv, "env", "", "the environment; production when omitted")
 
-	db.AddCommand(queryCmd(s), dbSchemaCmd(s), shellCmd(s), url, snapshot, dbImportCmd(s))
+	db.AddCommand(queryCmd(s), dbSchemaCmd(s), shellCmd(s), dbConnectCmd(s), url, snapshot, dbImportCmd(s))
 	return db
 }
 

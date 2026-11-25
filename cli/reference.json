@@ -675,8 +675,22 @@
  },
  {
   "name": "db",
-  "short": "The app's database: SQL, the schema, a restore point",
+  "short": "The app's database: SQL, the schema, a read-only tunnel, a restore point",
   "commands": [
+   {
+    "usage": "whisk db connect [--env production|preview:\u003cbranch\u003e] [--port n]",
+    "short": "Open a read-only tunnel to the database for psql or a GUI, for an hour; audited",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "the environment; production when omitted"
+     },
+     {
+      "name": "--port int",
+      "usage": "the port on 127.0.0.1 to listen on; 0 takes any"
+     }
+    ]
+   },
    {
     "usage": "whisk db import \u003cdump file\u003e [--swap] [--wait]",
     "short": "Load a pg_dump of another database into the app's database, beside it or swapped in",

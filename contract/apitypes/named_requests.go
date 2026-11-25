@@ -11,6 +11,10 @@ type ChangePlanRequest struct {
 	Plan     string    `json:"plan"`
 	Interval string    `json:"interval"`
 	QuotedAt time.Time `json:"quoted_at"`
+	// Reason and Note answer the one question asked when a business moves off a paid plan to Free:
+	// optional, and kept only for Whisk's own view of why businesses leave.
+	Reason string `json:"reason,omitempty"`
+	Note   string `json:"note,omitempty"`
 }
 
 // DeviceTokenRequest is the body of POST /v1/device/token.

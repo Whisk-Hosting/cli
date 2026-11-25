@@ -50,8 +50,9 @@ plan's, when it gives more), and is served first when its server is busy. Never 
 anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
 choice. Only the dashboard says whether an app is a Promoted app: whisk.yaml never does, so
 leave `promoted:` out of it (doctor's W179), and never change the app's files when an owner
-promotes it or stops. An app that uses `workers` or `b2b: true` needs a Promoted app: its
-production deploy waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it,
+promotes it or stops. An app with more than one worker, or `b2b: true`, needs a Promoted app,
+and so does one worker on the free plan; one worker on a paid plan runs in the app's own memory
+and keeps it on. When it needs one, its production deploy waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it,
 and goes live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted
 app's memory without waiting. Everything else in this skill still applies.
 

@@ -513,8 +513,8 @@ Fix: Add a card at `details.card_url`, then boost or promote the app, or add the
 
 Status: 409 · Surface: deploy, cli
 
-When: the app uses what only a Promoted app has (`workers`, or `b2b: true`) and is not a Promoted
-app in force. Its production deploy is blocked; previews run. `details.dashboard` is the app's
+When: the app uses what only a Promoted app has (more than one worker, one worker on the free
+plan, or `b2b: true`) and is not a Promoted app in force. Its production deploy is blocked; previews run. `details.dashboard` is the app's
 page, whose Promoted card makes it one. An app that uses neither is never blocked for want of a
 promotion, whatever its whisk.yaml says.
 
@@ -3340,8 +3340,9 @@ run queries one after another rather than at once.
 
 Status: - · Surface: cli
 
-When: `whisk db url` was run where the platform runs no public database proxy, so the
-connection string's address is inside the app's network and does not answer from outside.
+When: `whisk db url` or `whisk db connect` was run where the platform runs no public database
+proxy, so the connection string's address is inside the app's network and does not answer from
+outside.
 
 Fix: Use `whisk db query "<sql>"` or `whisk db schema`, which run on the platform. `--private`
 prints the inside address anyway, for use from inside the platform.

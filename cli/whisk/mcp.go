@@ -84,7 +84,7 @@ func firstSentence(s string) string {
 
 // mcpExcluded are commands that are not tools: the server itself, shell helpers, and the ones
 // that run until stopped or need a terminal.
-var mcpExcluded = map[string]bool{"mcp": true, "completion": true, "help": true, "dev": true, "db shell": true}
+var mcpExcluded = map[string]bool{"mcp": true, "completion": true, "help": true, "dev": true, "db shell": true, "db connect": true}
 
 // mcpCurated are the tools whisk mcp offers by default: the loop of building, deploying and
 // mending one app. A model picks worse from a long list, so the other commands wait behind

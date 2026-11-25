@@ -25,6 +25,12 @@ func (c *Client) DatabaseURL(ctx context.Context, org, app, environment string) 
 	return Send(ctx, c, endpoints.DbURL, apitypes.DbEnvironmentRequest{Environment: environment}, org, app)
 }
 
+// DatabaseReader mints a read-only connection string of a login of its own, for an hour, audited.
+// POST /orgs/:org/apps/:app/db/reader {environment}.
+func (c *Client) DatabaseReader(ctx context.Context, org, app, environment string) (DBURL, error) {
+	return Send(ctx, c, endpoints.DbReader, apitypes.DbEnvironmentRequest{Environment: environment}, org, app)
+}
+
 // Snapshot is a restore point marker; Restorable is whether the org's plan can return to it with
 // whisk restore.
 type Snapshot = apitypes.DatabaseSnapshot

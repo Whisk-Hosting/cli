@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/whisk-run/contract/manifest"
@@ -16,6 +17,7 @@ import (
 // Images pinned for the local stack.
 const (
 	imagePostgres  = "postgres:18-alpine"
+	imagePgvector  = "pgvector/pgvector:0.8.1-pg18" // Postgres with pgvector, for an app that names vector
 	imagePgBouncer = "edoburu/pgbouncer:v1.26.0-p0"
 	imageInngest   = "inngest/inngest:v1.46.0"
 	imageValkey    = "valkey/valkey:9.1.2-alpine"
@@ -79,7 +81,7 @@ func dbName(app string) string { return strings.ReplaceAll(app, "-", "_") }
 // Hash identifies the inputs a compose file was generated from, so a changed manifest or
 // port set regenerates it and an unchanged one is reused while the stack runs.
 func Hash(m manifest.Manifest, ports Ports, internalPort int) string {
-	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%v|%v|%v|%v|%d", m.Name, m.KV, m.KeepsKVKeys(), m.Storage, ports, internalPort)))
+	sum := sha256.Sum256([]byte(fmt.Sprintf("%s|%v|%v|%v|%v|%v|%d", m.Name, m.KV, m.KeepsKVKeys(), m.Storage, m.Extensions, ports, internalPort)))
 	return hex.EncodeToString(sum[:8])
 }
 
@@ -91,7 +93,7 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 	w("name: whisk-%s", m.Name)
 	w("services:")
 	w("  postgres:")
-	w("    image: %s", imagePostgres)
+	w("    image: %s", postgresImage(m))
 	w("    environment: {POSTGRES_USER: whisk, POSTGRES_PASSWORD: whisk, POSTGRES_DB: %s}", db)
 	w(`    ports: ["127.0.0.1:%d:5432"]`, ports.Postgres)
 	w(`    volumes: ["postgres:/var/lib/postgresql"]`)
@@ -120,6 +122,15 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 		w(`    command: ["inngest", "dev", "-u", %s, "--no-discovery", "--host", "0.0.0.0", "--port", "8288"]`, yamlString(callback))
 		w(`    ports: ["127.0.0.1:%d:8288"]`, ports.Inngest)
 		w(`    extra_hosts: ["host.docker.internal:host-gateway"]`)
+	}
+	if len(m.Extensions) > 0 {
+		// The app's extensions, made by the superuser before the app's migrations run, as Whisk
+		// makes them (SKILL.md §5).
+		w("  postgres-init:")
+		w("    image: %s", postgresImage(m))
+		w("    depends_on: {postgres: {condition: service_healthy}}")
+		w("    environment: {PGHOST: postgres, PGUSER: whisk, PGPASSWORD: whisk, PGDATABASE: %s}", db)
+		w(`    entrypoint: ["psql", "-v", "ON_ERROR_STOP=1", "-c", %s]`, yamlString(extensionsSQL(m.Extensions)))
 	}
 	if m.KV {
 		w("  valkey:")
@@ -154,6 +165,25 @@ func composeYAML(m manifest.Manifest, ports Ports, internalPort int, hostNetwork
 		w("  storage: {}")
 	}
 	return b.String()
+}
+
+// postgresImage is the local Postgres image: pgvector's when the app names vector, since the
+// official image has only contrib. Pure.
+func postgresImage(m manifest.Manifest) string {
+	if slices.Contains(m.Extensions, "vector") {
+		return imagePgvector
+	}
+	return imagePostgres
+}
+
+// extensionsSQL makes the app's extensions. The manifest allows only the names Whisk makes, so
+// each is a plain identifier. Pure.
+func extensionsSQL(names []string) string {
+	stmts := make([]string, len(names))
+	for i, n := range names {
+		stmts[i] = fmt.Sprintf("create extension if not exists %q;", n)
+	}
+	return strings.Join(stmts, " ")
 }
 
 // kvPolicy is the maxmemory-policy of the app's cache on Whisk (SKILL.md §9). Pure.

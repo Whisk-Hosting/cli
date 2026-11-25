@@ -284,6 +284,13 @@
       "type": "boolean",
       "default": false
     },
+    "extensions": {
+      "description": "Postgres extensions Whisk turns on in the app's database before its migrations run: vector (pgvector) and pg_trgm. Needs a database.",
+      "type": "array",
+      "items": { "enum": ["vector", "pg_trgm"] },
+      "uniqueItems": true,
+      "default": []
+    },
     "always_on": {
       "description": "true keeps the app awake. Plan-gated.",
       "type": "boolean",
@@ -308,7 +315,7 @@
       "default": false
     },
     "workers": {
-      "description": "Long-running processes a Promoted app runs beside its web process, in the same container and memory: one copy of each, restarted when it exits. A production deploy waits until the app is one.",
+      "description": "Long-running processes the app runs beside its web process, in the same container and memory: one copy of each, restarted when it exits. One runs on any paid plan and keeps the app on; more, or one on the free plan, need a Promoted app, and a production deploy waits until the app is one.",
       "type": "array",
       "items": { "$ref": "#/$defs/worker" },
       "maxItems": 10,
