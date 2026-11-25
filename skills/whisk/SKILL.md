@@ -558,9 +558,11 @@ Migrations run from the manifest's `migrate` command before traffic switches, wi
 connection the platform provides for that step and a snapshot taken first. The previous deploy
 stays live and keeps writing while the migration runs. A migration that runs longer than 600
 seconds is stopped; split a long backfill into a function instead. A failed migration that
-changed no tables, columns, indexes or functions leaves the database as it is, so nothing users
-wrote is lost; one that did change them is rolled back to the snapshot, and the error names the
-replaced database, kept for 7 days, where anything users wrote meanwhile can be read back with
+changed nothing, or only added tables, indexes, views or functions before it stopped, leaves the
+database as it is, so nothing users wrote is lost; the error names what it added, so make it
+safe to run again (`IF NOT EXISTS`). One that dropped or changed something the live version
+uses, or added a unique index, is rolled back to the snapshot, and the error names the replaced
+database, kept for 7 days, where anything users wrote meanwhile can be read back with
 `whisk db query --database`. So run each migration in one transaction (most tools do on
 Postgres), and keep migrations forward-only and idempotent where the tool allows. `whisk dev`
 also runs the `migrate` command on your own machine before it starts the app.

@@ -279,7 +279,7 @@ another network. Never request those paths.
 Status: 403 · Surface: api, git, edge, hooks, deploy
 
 When: a check found an app of the business that looks like a scam or malware, or the business
-was started by a person, address or computer already held, so it is paused until Whisk reviews
+was started by a person or computer already held, so it is paused until Whisk reviews
 it. Apps show a review page; deploys, new apps, previews, app email and
 webhooks are refused. Export still works.
 
@@ -1612,19 +1612,21 @@ Status: - · Surface: deploy, cli
 When: the `migrate` command exited non-zero, or ran longer than 600 seconds and was stopped
 (`details.timed_out`, `details.timeout_seconds`); the previous deploy is still live.
 The live app keeps writing while a migration runs, so the database is rolled back only when the
-migration changed its definitions (tables, columns, constraints, indexes, views, functions,
-types): it is then restored to the restore point taken before the migration, the message names
+migration removed or changed a definition (a table's columns, constraints, triggers or policies,
+an index, a view, a function, a type) or added a unique index: it is then restored to the restore point taken before the migration, the message names
 the window whose writes are not in the live database, `details.kept_copy` names the replaced
 database (kept for 7 days and readable with `whisk db query --database <kept_copy>`), and
 `details.writes_not_kept` holds the window. Where the app's server kept a copy of the database
 taken with the restore point, that copy is put back in a moment, `details.from_instant_copy` is
 `true` and the window starts when the copy was taken. A migration that changed no definitions
-(one in a transaction undoes itself) leaves the database as it is, with `details.restored` `left
-as it was`; data it changed outside a transaction stays changed. A restore point that did not reach
+(one in a transaction undoes itself), or only added tables, indexes, views or functions before it
+stopped, leaves the database as it is, with `details.restored` `left as it was` and what it added
+in `details.added`; data it changed outside a transaction stays changed. A restore point that did not reach
 the backup archive fails the deploy before the migration runs, with `details.step` `snapshot`.
 
 Fix: Read the output in `details.log`. Fix the migration and redeploy. Write migrations to run
-in one transaction, so a failure leaves nothing to roll back. A migration that needs longer than
+in one transaction, so a failure leaves nothing to roll back. When `details.added` is set, make
+the migration safe to run again (`CREATE ... IF NOT EXISTS`) before redeploying. A migration that needs longer than
 600 seconds is split into smaller ones, or its long backfill moves to a function. If
 `details.kept_copy` is set and users wrote during the window, read their rows from the kept copy
 with `whisk db query --database` and write them back.
