@@ -38,15 +38,20 @@ func manifestKeys(t *testing.T) []string {
 	return keys
 }
 
-// TestSkillNamesEveryManifestKey holds SKILL.md to CONTRACT.md §12: an agent learns every
-// feature from the skill, so every key the manifest takes appears in it, written as YAML or in
-// backticks.
+// keyWritten matches a manifest key written as YAML or in backticks.
+func keyWritten(leaf string) *regexp.Regexp {
+	return regexp.MustCompile("(?m)(^|[\\s{,`.-])" + regexp.QuoteMeta(leaf) + "(:|`)")
+}
+
+// TestSkillNamesEveryManifestKey holds the skill to CONTRACT.md §12: an agent learns every
+// feature from the skill, so every key the manifest takes appears in SKILL.md or one of its
+// files, written as YAML or in backticks.
 func TestSkillNamesEveryManifestKey(t *testing.T) {
+	full := FullSkill()
 	for _, key := range manifestKeys(t) {
 		leaf := regexp.MustCompile(`[^.]+$`).FindString(key)
-		written := regexp.MustCompile("(?m)(^|[\\s{,`.-])" + regexp.QuoteMeta(leaf) + "(:|`)")
-		if !written.MatchString(Skill) {
-			t.Errorf("SKILL.md never names %s; add it where an agent would look for it", key)
+		if !keyWritten(leaf).MatchString(full) {
+			t.Errorf("the skill never names %s; add it where an agent would look for it", key)
 		}
 	}
 }

@@ -1941,11 +1941,11 @@
  },
  {
   "name": "skill",
-  "short": "Print the skill document an agent reads first",
+  "short": "Print the skill document an agent reads first, or one of its files",
   "commands": [
    {
-    "usage": "whisk skill",
-    "short": "Print the skill document an agent reads first"
+    "usage": "whisk skill [file]",
+    "short": "Print the skill document an agent reads first, or one of its files"
    }
   ]
  },

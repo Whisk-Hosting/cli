@@ -43,7 +43,8 @@ type mcpTool struct {
 	flagTypes   map[string]string
 }
 
-// mcpResources is the contract as resources: the nine documents and one entry per error code.
+// mcpResources is the contract as resources: the nine documents, the skill's files and one entry
+// per error code.
 func mcpResources() []mcpResource {
 	docs := []mcpResource{
 		{URI: "whisk://contract/SKILL.md", Name: "SKILL.md", Description: "The skill: what an agent reads first to build and deploy on Whisk", MimeType: "text/markdown", text: contract.Skill},
@@ -56,12 +57,21 @@ func mcpResources() []mcpResource {
 		{URI: "whisk://contract/webhook-presets.yaml", Name: "webhook-presets.yaml", Description: "The webhook presets: how each provider signs its deliveries", MimeType: "application/yaml", text: string(contract.PresetsYAML)},
 		{URI: "whisk://contract/workflows.md", Name: "workflows.md", Description: "What the workflow engine supports, with its limits", MimeType: "text/markdown", text: contract.WorkflowsDoc},
 	}
+	for _, f := range contract.SkillFiles() {
+		docs = append(docs, mcpResource{URI: "whisk://contract/" + f.Name, Name: f.Name, Description: skillFileWhat(f.Text), MimeType: "text/markdown", text: f.Text})
+	}
 	for _, code := range errors.Codes() {
 		entry, _ := errors.Lookup(code)
 		section, _ := errors.Section(code)
 		docs = append(docs, mcpResource{URI: "whisk://errors/" + code, Name: code, Description: firstSentence(entry.When), MimeType: "text/markdown", text: section})
 	}
 	return docs
+}
+
+// skillFileWhat is a skill file's title, without the prefix every one shares. Pure.
+func skillFileWhat(text string) string {
+	title, _, _ := strings.Cut(text, "\n")
+	return "The skill, " + strings.TrimPrefix(title, "# Whisk skill ")
 }
 
 func firstSentence(s string) string {

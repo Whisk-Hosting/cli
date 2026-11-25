@@ -35,10 +35,30 @@ func versionCmd(s *session) *cobra.Command {
 
 func skillCmd(s *session) *cobra.Command {
 	return &cobra.Command{
-		Use:   "skill",
-		Short: "Print the skill document an agent reads first",
-		Args:  cobra.NoArgs,
+		Use:   "skill [file]",
+		Short: "Print the skill document an agent reads first, or one of its files",
+		Long: "Print SKILL.md, what every app needs. With a file name SKILL.md names, such as\n" +
+			"identity.md, print that file: the rest of a section an app needs only sometimes.",
+		Args: cobra.MaximumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(args) == 1 {
+				name := args[0]
+				if !strings.HasSuffix(name, ".md") {
+					name += ".md"
+				}
+				text, ok := contract.SkillFileNamed(name)
+				if !ok {
+					known := []string{}
+					for _, f := range contract.SkillFiles() {
+						known = append(known, f.Name)
+					}
+					return output.New("NOT_FOUND", args[0]+" is not one of the skill's files.", "Run whisk skill with one of the files in the table at the top of SKILL.md.", map[string]any{"known": known})
+				}
+				s.printer.Result(map[string]any{"file": name, "text": text, "conventions": contract.Version}, func(w io.Writer) {
+					fmt.Fprint(w, text)
+				})
+				return nil
+			}
 			s.printer.Result(map[string]any{"skill": contract.Skill, "conventions": contract.Version}, func(w io.Writer) {
 				fmt.Fprint(w, contract.Skill)
 			})
