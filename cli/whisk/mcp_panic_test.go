@@ -21,7 +21,7 @@ func TestMCPPanicAnswersTheCall(t *testing.T) {
 		}
 		return ""
 	}}
-	srv := newMCPServer(env)
+	srv := newMCPServer(env, true)
 	armed.Store(true)
 	in := strings.NewReader(`{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"whoami","arguments":{}}}` + "\n" +
 		`{"jsonrpc":"2.0","id":8,"method":"ping"}` + "\n")

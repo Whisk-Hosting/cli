@@ -9,17 +9,19 @@ import (
 
 // mcpCmd serves the CLI as an MCP server on stdio (CLI.md §5.13, CONTRACT.md §12).
 func mcpCmd(s *session) *cobra.Command {
-	var list bool
+	var list, all bool
 	c := &cobra.Command{
-		Use:   "mcp [--list]",
-		Short: "Serve the contract as MCP resources and every command as an MCP tool, over stdio",
+		Use:   "mcp [--list] [--all]",
+		Short: "Serve the contract as MCP resources and the app commands as MCP tools, over stdio",
 		Long: `Runs an MCP server on stdin and stdout (JSON-RPC 2.0, one message per line, protocol
 2025-06-18) for agents that prefer it to a shell: the contract documents and every error code
-are resources, and every whisk command is a tool that runs with --json. Point a client at
-"whisk mcp" as a stdio server. Nothing else is written to stdout while it runs.`,
+are resources, and the commands that build, deploy and mend an app are tools that run with
+--json. --all offers every whisk command as a tool; a model chooses better from the short list,
+and the shell has the rest. Point a client at "whisk mcp" as a stdio server. Nothing else is
+written to stdout while it runs.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			server := newMCPServer(s.env)
+			server := newMCPServer(s.env, all)
 			if list {
 				names := make([]string, len(server.tools))
 				for i, t := range server.tools {
@@ -44,5 +46,6 @@ are resources, and every whisk command is a tool that runs with --json. Point a 
 		},
 	}
 	c.Flags().BoolVar(&list, "list", false, "print the tools and resources instead of serving")
+	c.Flags().BoolVar(&all, "all", false, "offer every command as a tool, not only the app commands")
 	return c
 }

@@ -283,11 +283,12 @@ was started by a person or computer already held, so it is paused until Whisk re
 it. Apps show a review page; deploys, new apps, previews, app email and
 webhooks are refused. Export still works.
 
-Fix: Nothing to do: Whisk reviews every held business and releases it if the check was wrong.
-Write to support@whisk.run if it is urgent.
+Fix: Nothing to do: the owners were emailed what the check found. Whisk reviews every held
+business within 24 hours and releases it if the check was wrong. Write to support@whisk.run if
+it is urgent.
 
 ```json
-{"error":{"code":"ORG_UNDER_REVIEW","message":"acme is paused while Whisk reviews it.","fix":"Nothing to do: Whisk reviews every held business and releases it if the check was wrong. Write to support@whisk.run if it is urgent.","docs":"https://skill.whisk.run/errors/ORG_UNDER_REVIEW","details":{"org":"acme"}}}
+{"error":{"code":"ORG_UNDER_REVIEW","message":"acme is paused while Whisk reviews it.","fix":"Nothing to do: the owners were emailed what the check found. Whisk reviews every held business within 24 hours and releases it if the check was wrong. Write to support@whisk.run if it is urgent.","docs":"https://skill.whisk.run/errors/ORG_UNDER_REVIEW","details":{"org":"acme"}}}
 ```
 
 ## ACCOUNT_BANNED
@@ -2653,7 +2654,7 @@ it, within 30 days of sending.
 Status: 403 · Surface: api
 
 When: the message links to an address a malware or phishing list names, or to an app Whisk is
-reviewing. The message is not sent, and the business is held for review (`ORG_UNDER_REVIEW`).
+reviewing. The message is not sent, and nothing else changes: the business is not held.
 
 Fix: Remove the link. If the address is yours and the list is wrong, write to support@whisk.run.
 

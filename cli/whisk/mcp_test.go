@@ -22,7 +22,7 @@ func mcpSession(t *testing.T, lines ...string) []map[string]any {
 	t.Helper()
 	var out, errb bytes.Buffer
 	env := Env{Stdout: &out, Stderr: &errb, Dir: t.TempDir(), ConfigDir: t.TempDir(), Store: &memStore{m: map[string]config.Credential{}}, Getenv: func(string) string { return "" }}
-	srv := newMCPServer(env)
+	srv := newMCPServer(env, true)
 	if err := srv.serve(context.Background(), strings.NewReader(strings.Join(lines, "\n")+"\n"), &out); err != nil {
 		t.Fatal(err)
 	}
@@ -162,8 +162,12 @@ func TestToolArgv(t *testing.T) {
 
 func TestMCPListFlag(t *testing.T) {
 	r := runCLI(t, t.TempDir(), nil, &memStore{}, "mcp", "--list", "--json")
-	if r.Code != 0 || r.JSON["protocol"] != mcpProtocolVersion || len(r.JSON["tools"].([]any)) < 30 || len(r.JSON["resources"].([]any)) < 8 {
+	if r.Code != 0 || r.JSON["protocol"] != mcpProtocolVersion || len(r.JSON["tools"].([]any)) != len(mcpCurated) || len(r.JSON["resources"].([]any)) < 8 {
 		t.Fatalf("mcp --list: %+v", r)
+	}
+	all := runCLI(t, t.TempDir(), nil, &memStore{}, "mcp", "--list", "--all", "--json")
+	if all.Code != 0 || len(all.JSON["tools"].([]any)) < 100 {
+		t.Fatalf("mcp --list --all: %d tools", len(all.JSON["tools"].([]any)))
 	}
 }
 
@@ -218,7 +222,7 @@ func TestMCPLongCallDoesNotBlock(t *testing.T) {
 	}}
 	in, feed := io.Pipe()
 	done := make(chan error)
-	go func() { done <- newMCPServer(env).serve(context.Background(), in, &out) }()
+	go func() { done <- newMCPServer(env, true).serve(context.Background(), in, &out) }()
 	write := func(s string) {
 		if _, err := io.WriteString(feed, s+"\n"); err != nil {
 			t.Fatal(err)
@@ -268,5 +272,25 @@ func TestMCPDeployDoesNotWaitByDefault(t *testing.T) {
 	must(t, err)
 	if strings.Contains(strings.Join(argv, " "), "--no-wait") {
 		t.Fatalf("no-wait: false still added --no-wait: %q", argv)
+	}
+}
+
+// whisk mcp offers the app loop's commands by default and every command with --all; each
+// curated name is a command, so a rename never drops one silently.
+func TestMCPCuratedByDefault(t *testing.T) {
+	root := newRoot(&session{env: Env{}})
+	all := mcpToolsFor(root, true)
+	curated := mcpToolsFor(newRoot(&session{env: Env{}}), false)
+	names := map[string]bool{}
+	for _, tl := range curated {
+		names[tl.Name] = true
+	}
+	for name := range mcpCurated {
+		if !names[name] {
+			t.Errorf("the curated tool %s is no command", name)
+		}
+	}
+	if len(curated) != len(mcpCurated) || len(curated) > 30 || len(all) <= len(curated) {
+		t.Fatalf("curated %d of %d, all %d", len(curated), len(mcpCurated), len(all))
 	}
 }

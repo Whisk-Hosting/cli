@@ -1517,12 +1517,16 @@
  },
  {
   "name": "mcp",
-  "short": "Serve the contract as MCP resources and every command as an MCP tool, over stdio",
+  "short": "Serve the contract as MCP resources and the app commands as MCP tools, over stdio",
   "commands": [
    {
-    "usage": "whisk mcp [--list]",
-    "short": "Serve the contract as MCP resources and every command as an MCP tool, over stdio",
+    "usage": "whisk mcp [--list] [--all]",
+    "short": "Serve the contract as MCP resources and the app commands as MCP tools, over stdio",
     "flags": [
+     {
+      "name": "--all",
+      "usage": "offer every command as a tool, not only the app commands"
+     },
      {
       "name": "--list",
       "usage": "print the tools and resources instead of serving"

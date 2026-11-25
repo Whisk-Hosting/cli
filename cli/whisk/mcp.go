@@ -20,8 +20,8 @@ import (
 	"github.com/whisk-run/contract/run"
 )
 
-// The CLI as an MCP server (CONTRACT.md §12): the contract documents as resources, every
-// command as a tool. JSON-RPC 2.0 over stdio, one message per line, MCP 2025-06-18.
+// The CLI as an MCP server (CONTRACT.md §12): the contract documents as resources, the
+// commands of the app loop as tools, and with --all every command. JSON-RPC 2.0 over stdio, one message per line, MCP 2025-06-18.
 
 const mcpProtocolVersion = "2025-06-18"
 
@@ -85,6 +85,32 @@ func firstSentence(s string) string {
 // mcpExcluded are commands that are not tools: the server itself, shell helpers, and the ones
 // that run until stopped or need a terminal.
 var mcpExcluded = map[string]bool{"mcp": true, "completion": true, "help": true, "dev": true, "db shell": true}
+
+// mcpCurated are the tools whisk mcp offers by default: the loop of building, deploying and
+// mending one app. A model picks worse from a long list, so the other commands wait behind
+// --all. TestMCPCuratedByDefault holds each name to a command.
+var mcpCurated = map[string]bool{
+	"login": true, "whoami": true, "skill": true, "init": true, "doctor": true, "status": true,
+	"apps_list": true, "apps_info": true, "deploy": true, "deploys_info": true, "deploys_list": true, "deploys_log": true,
+	"rollback": true, "restart": true, "logs": true, "errors": true, "errors_show": true,
+	"secrets_list": true, "secrets_set": true, "db_query": true, "db_schema": true,
+	"runs_list": true, "runs_show": true, "runs_replay": true, "feedback_send": true,
+}
+
+// mcpToolsFor is the tools whisk mcp serves: the curated ones, or with all every command.
+func mcpToolsFor(root *cobra.Command, all bool) []mcpTool {
+	tools := mcpTools(root)
+	if all {
+		return tools
+	}
+	out := make([]mcpTool, 0, len(mcpCurated))
+	for _, t := range tools {
+		if mcpCurated[t.Name] {
+			out = append(out, t)
+		}
+	}
+	return out
+}
 
 // mcpTools lists every runnable command of the tree as a tool, sorted by name.
 func mcpTools(root *cobra.Command) []mcpTool {
@@ -262,8 +288,8 @@ type mcpServer struct {
 	tools     []mcpTool
 }
 
-func newMCPServer(env Env) *mcpServer {
-	return &mcpServer{env: env, resources: mcpResources(), tools: mcpTools(newRoot(&session{env: env}))}
+func newMCPServer(env Env, all bool) *mcpServer {
+	return &mcpServer{env: env, resources: mcpResources(), tools: mcpToolsFor(newRoot(&session{env: env}), all)}
 }
 
 // serve reads messages until EOF. Notifications get no answer; requests get exactly one. A

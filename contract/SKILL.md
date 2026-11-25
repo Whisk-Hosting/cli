@@ -221,7 +221,8 @@ or to have an owner invite them. A person adds a new business themselves at
 `https://whisk.run/new`.
 
 If you speak MCP rather than a shell, run `whisk mcp` as a stdio server: this document and
-every error code are its resources, every command is a tool.
+every error code are its resources, and the commands that build, deploy and mend an app are its
+tools. `whisk mcp --all` offers every command.
 
 In a chat with no shell, such as ChatGPT or Claude, the person connects Whisk's assistant
 connector (`https://api.whisk.run/mcp`) and signs in once. Its tools cover deploying (`deploy_app`
