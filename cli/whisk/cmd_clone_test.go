@@ -19,10 +19,13 @@ type cloneGit struct {
 	clone gitcmd.Result
 	// cloneSchannel answers a clone made with -c http.sslBackend=schannel when set.
 	cloneSchannel *gitcmd.Result
-	sha           string
-	calls         [][]string
-	dirs          []string
-	envs          [][]string
+	// later answers the clones after the first, in order, when set.
+	later  []gitcmd.Result
+	clones int
+	sha    string
+	calls  [][]string
+	dirs   []string
+	envs   [][]string
 }
 
 func (g *cloneGit) Run(ctx context.Context, dir string, env []string, args ...string) (gitcmd.Result, error) {
@@ -34,6 +37,10 @@ func (g *cloneGit) Run(ctx context.Context, dir string, env []string, args ...st
 	switch {
 	case len(sub) > 0 && sub[0] == "clone":
 		res := g.clone
+		if g.clones > 0 && g.clones <= len(g.later) {
+			res = g.later[g.clones-1]
+		}
+		g.clones++
 		if g.cloneSchannel != nil && strings.Contains(strings.Join(args, " "), "http.sslBackend=schannel") {
 			res = *g.cloneSchannel
 		}
@@ -245,5 +252,74 @@ func TestCloneConfigQuotesThePath(t *testing.T) {
 	}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("cloneConfig: %v", got)
+	}
+}
+
+func TestCloneRetriesOnceAndSaysWhichSideFailed(t *testing.T) {
+	srv := remoteAPI(t, &remoteState{})
+	defer srv.Close()
+	unpack := gitcmd.Result{ExitCode: 128, Stderr: "fatal: fetch-pack: invalid index-pack output"}
+	dropped := gitcmd.Result{ExitCode: 128, Stderr: "error: RPC failed; curl 18 transfer closed\nfatal: early EOF\nfatal: fetch-pack: invalid index-pack output"}
+	for _, tc := range []struct {
+		name   string
+		first  gitcmd.Result
+		second gitcmd.Result
+		code   string
+		retry  string
+	}{
+		{"unpack then works", unpack, gitcmd.Result{}, "", "pack.threads=1"},
+		{"unpack twice is this computer's", unpack, unpack, "GIT_UNPACK_FAILED", "pack.threads=1"},
+		{"dropped twice is the network's", dropped, dropped, "PLATFORM_UNAVAILABLE", "clone"},
+		{"unknown is not retried", gitcmd.Result{ExitCode: 128, Stderr: "fatal: something new"}, gitcmd.Result{}, "GIT_CLONE_FAILED", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			g := &cloneGit{clone: tc.first, later: []gitcmd.Result{tc.second}, sha: "abc1234abc"}
+			r := runCloneCLI(t, "windows", t.TempDir(), srv.URL, g, "clone", "acme/crm", "--json")
+			if tc.code == "" && r.Code != 0 {
+				t.Fatalf("want success: %d %s", r.Code, r.Stdout)
+			}
+			if tc.code != "" && !strings.Contains(r.Stdout, `"code":"`+tc.code+`"`) {
+				t.Fatalf("want %s: %s", tc.code, r.Stdout)
+			}
+			wantClones := 2
+			if tc.retry == "" {
+				wantClones = 1
+			}
+			if g.clones != wantClones {
+				t.Fatalf("clones = %d, want %d", g.clones, wantClones)
+			}
+			if tc.retry != "" && !slices.Contains(g.cloneCalls()[1], tc.retry) {
+				t.Fatalf("retry args %v lack %s", g.cloneCalls()[1], tc.retry)
+			}
+		})
+	}
+}
+
+func (g *cloneGit) cloneCalls() [][]string {
+	var out [][]string
+	for _, c := range g.calls {
+		if slices.Contains(c, "clone") {
+			out = append(out, c)
+		}
+	}
+	return out
+}
+
+func TestUnpackFailed(t *testing.T) {
+	for _, tc := range []struct {
+		stderr string
+		want   bool
+	}{
+		{"fatal: fetch-pack: invalid index-pack output", true},
+		{"error: index-pack died of signal 9\nfatal: index-pack failed", true},
+		{"fatal: unable to write file .git/objects/pack/tmp_pack_x: No space left on device", true},
+		{"fatal: early EOF\nfatal: fetch-pack: invalid index-pack output", false},
+		{"fatal: the remote end hung up unexpectedly", false},
+		{"fatal: Authentication failed", false},
+		{"fatal: something new", false},
+	} {
+		if got := unpackFailed(tc.stderr); got != tc.want {
+			t.Errorf("unpackFailed(%q) = %v, want %v", tc.stderr, got, tc.want)
+		}
 	}
 }

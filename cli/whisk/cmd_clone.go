@@ -8,6 +8,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -79,21 +80,12 @@ func runClone(s *session, org, app, dir string) error {
 		return output.New("PLATFORM_UNAVAILABLE", err.Error()+".", "Check WHISK_API points at the Whisk platform you meant, then retry.", map[string]any{"git_url": a.GitURL})
 	}
 	args := gitcmd.Networked(cargs, "clone", "--quiet", "--origin", "whisk", "--", a.GitURL, target)
-	res, err := s.gitRun(env, args...)
+	res, schannel, err := s.cloneTried(env, args, target, a.GitURL)
 	if err != nil {
 		return err
 	}
-	schannel := false
-	if !res.OK() && s.goos() == "windows" && gitcmd.Failure(res.Stderr, gitcmd.PushUnknown) == "tls" {
-		s.printer.Progress("git's OpenSSL does not trust %s; retrying with the Windows certificate store.", gitHost(a.GitURL))
-		_ = os.RemoveAll(target)
-		res, err = s.gitRun(env, append(append([]string{}, gitcmd.SchannelArgs...), args...)...)
-		if err != nil {
-			return err
-		}
-		schannel = true
-	}
 	if !res.OK() {
+		_ = os.RemoveAll(target)
 		return cloneFailed(res, gitHost(a.GitURL), s.goos(), schannel)
 	}
 	for _, c := range cloneConfig(gitOrigin(a.GitURL), exe, schannel) {
@@ -121,6 +113,38 @@ func runClone(s *session, org, app, dir string) error {
 		fmt.Fprintf(w, "Cloned %s/%s into %s at %s. git pull and git push work there; whisk deploy puts changes live.\n", org, app, dir, short(sha))
 	})
 	return nil
+}
+
+// cloneTried runs git clone into target and tries it once more when that can help: through
+// the Windows certificate store when git's OpenSSL refused the host, then once again when the
+// connection dropped or the computer could not unpack the copy (cloneRetry). It answers git's
+// last result and whether the Windows store was used.
+func (s *session) cloneTried(env, args []string, target, gitURL string) (gitcmd.Result, bool, error) {
+	res, err := s.gitRun(env, args...)
+	if err != nil {
+		return res, false, err
+	}
+	var pre []string
+	if !res.OK() && s.goos() == "windows" && gitcmd.Failure(res.Stderr, gitcmd.PushUnknown) == "tls" {
+		s.printer.Progress("git's OpenSSL does not trust %s; retrying with the Windows certificate store.", gitHost(gitURL))
+		_ = os.RemoveAll(target)
+		pre = gitcmd.SchannelArgs
+		if res, err = s.gitRun(env, append(append([]string{}, pre...), args...)...); err != nil {
+			return res, true, err
+		}
+	}
+	schannel := pre != nil
+	if res.OK() {
+		return res, schannel, nil
+	}
+	retry, why := cloneRetry(res.Stderr)
+	if retry == nil {
+		return res, schannel, nil
+	}
+	s.printer.Progress("%s Retrying once.", why)
+	_ = os.RemoveAll(target)
+	res, err = s.gitRun(env, append(append(append([]string{}, pre...), retry...), args...)...)
+	return res, schannel, err
 }
 
 // bindClone ties a fresh checkout to its app when the code brought no binding of its own. A
@@ -214,7 +238,52 @@ func cloneFailed(res gitcmd.Result, host, goos string, triedSchannel bool) error
 	case "auth":
 		return output.New("AUTH_REQUIRED", "The platform refused the token for git clone.", "Run whisk login again and approve the code for this app (or the whole org), then retry.", details)
 	}
-	return fmt.Errorf("git clone failed (exit %d): %s", res.ExitCode, lastLine(tail))
+	if unpackFailed(res.Stderr) {
+		return output.New("GIT_UNPACK_FAILED", "The platform sent the code, and git on this computer could not unpack it: "+lastLine(tail), unpackFix(goos), details)
+	}
+	return output.New("GIT_CLONE_FAILED", fmt.Sprintf("git clone failed (exit %d): %s", res.ExitCode, lastLine(tail)), "Read details.git for git's own words. Check git version is 2.30 or newer and the folder is writable, then run whisk clone again; if it fails the same way, send whisk feedback with the output.", details)
+}
+
+// unpackSigns are git's words when the copy arrived and the computer's own git failed to unpack
+// or write it: index-pack (or unpack-objects) died, exited without reporting a pack, or could
+// not write to the disk. A copy cut short by the network or the server shows as an early EOF or
+// a hang-up instead, which gitcmd.Failure names "network" first.
+var unpackSigns = []string{
+	"invalid index-pack output", "index-pack failed", "index-pack died", "unpack-objects failed",
+	"unable to write", "no space left on device", "permission denied", "unable to create temporary file",
+}
+
+// unpackFailed reports whether a failed clone's stderr says the computer, not the platform,
+// failed: the copy arrived and git could not unpack or write it. Pure.
+func unpackFailed(stderr string) bool {
+	if gitcmd.Failure(stderr, gitcmd.PushUnknown) != "other" {
+		return false
+	}
+	low := strings.ToLower(stderr)
+	return slices.ContainsFunc(unpackSigns, func(sign string) bool { return strings.Contains(low, sign) })
+}
+
+// unpackFix is GIT_UNPACK_FAILED's fix for the computer's operating system. Pure.
+func unpackFix(goos string) string {
+	fix := "The platform's side worked; the fault is on this computer. Clone into a folder on a local disk with free space, outside any synced folder, then run whisk clone again."
+	if goos == "windows" {
+		fix = "The platform's side worked; the fault is on this computer. On Windows this is most often antivirus or a synced folder (OneDrive) holding git's files while it unpacks: clone into a local folder outside OneDrive, such as C:\\src, or exclude that folder from real-time scanning, update Git for Windows, then run whisk clone again."
+	}
+	return fix
+}
+
+// cloneRetry is how a failed clone is tried once more, as git -c arguments to put first, and
+// the sentence that says why; nil when retrying would not help. A dropped connection is tried
+// again as it was. A copy the computer failed to unpack is tried with index-pack on one thread,
+// which steps around git's threaded unpacking when that is what crashed. Pure.
+func cloneRetry(stderr string) ([]string, string) {
+	switch {
+	case gitcmd.Failure(stderr, gitcmd.PushUnknown) == "network":
+		return []string{}, "The connection to the git host dropped part-way."
+	case unpackFailed(stderr):
+		return []string{"-c", "pack.threads=1"}, "git on this computer could not unpack the copy the platform sent."
+	}
+	return nil, ""
 }
 
 func gitCredentialCmd(s *session) *cobra.Command {

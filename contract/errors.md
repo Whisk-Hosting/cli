@@ -3651,6 +3651,40 @@ bundle that includes it), then deploy again.
 {"error":{"code":"GIT_TLS_UNTRUSTED","message":"git does not trust the certificate of git.whisk.run.","fix":"Update the system CA certificates. If an HTTPS-inspecting proxy or antivirus is in the path, point git's http.sslCAInfo at a bundle that includes its root certificate, then run whisk deploy again.","docs":"https://skill.whisk.run/errors/GIT_TLS_UNTRUSTED","details":{"host":"git.whisk.run","git":["fatal: unable to access 'https://git.whisk.run/01J/a1.git/': SSL certificate problem: unable to get local issuer certificate"]}}}
 ```
 
+## GIT_UNPACK_FAILED
+
+Status: - · Surface: cli
+
+When: `whisk clone` received the app's code from the platform's git host and git on this
+computer could not unpack or write it ("fetch-pack: invalid index-pack output", "index-pack
+failed", a full disk or a folder git cannot write). The CLI has already retried once with
+index-pack on one thread and removed the half-made folder. The fault is on the computer, not
+the platform. `details.git` holds git's last lines.
+
+Fix: Clone into a folder on a local disk with free space, outside any synced folder. On Windows
+this is most often antivirus or OneDrive holding git's files while it unpacks: use a folder such
+as `C:\src`, or exclude it from real-time scanning, update Git for Windows, then run `whisk
+clone` again.
+
+```json
+{"error":{"code":"GIT_UNPACK_FAILED","message":"The platform sent the code, and git on this computer could not unpack it: fatal: fetch-pack: invalid index-pack output","fix":"The platform's side worked; the fault is on this computer. On Windows this is most often antivirus or a synced folder (OneDrive) holding git's files while it unpacks: clone into a local folder outside OneDrive, such as C:\\src, or exclude that folder from real-time scanning, update Git for Windows, then run whisk clone again.","docs":"https://skill.whisk.run/errors/GIT_UNPACK_FAILED","details":{"git":["fatal: fetch-pack: invalid index-pack output"]}}}
+```
+
+## GIT_CLONE_FAILED
+
+Status: - · Surface: cli
+
+When: `whisk clone` ran git and git failed in a way the CLI does not recognise as a network,
+certificate, sign-in or unpacking problem. It was not retried, and the half-made folder was
+removed. `details.git` holds git's last lines.
+
+Fix: Read `details.git`. Check `git version` is 2.30 or newer and the folder is writable, then
+run `whisk clone` again. If it fails the same way, send `whisk feedback` with the output.
+
+```json
+{"error":{"code":"GIT_CLONE_FAILED","message":"git clone failed (exit 128): fatal: something new","fix":"Read details.git for git's own words. Check git version is 2.30 or newer and the folder is writable, then run whisk clone again; if it fails the same way, send whisk feedback with the output.","docs":"https://skill.whisk.run/errors/GIT_CLONE_FAILED","details":{"git":["fatal: something new"]}}}
+```
+
 ## TLS_UNTRUSTED
 
 Status: - · Surface: cli
