@@ -421,7 +421,7 @@ func orgsCmd(s *session) *cobra.Command {
 	return &cobra.Command{
 		Use:   "orgs",
 		Short: "List the orgs the token can see",
-		Args:  cobra.NoArgs,
+		Args:  orgsArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			client, _, err := s.client()
 			if err != nil {
@@ -536,4 +536,14 @@ func valueOf[T any](p *T) T {
 		return zero
 	}
 	return *p
+}
+
+// orgsArgs takes whisk orgs as typed, and whisk orgs list as agents also type it; any other word
+// gets the commands that do what it may mean. Pure.
+func orgsArgs(_ *cobra.Command, args []string) error {
+	if len(args) == 0 || (len(args) == 1 && args[0] == "list") {
+		return nil
+	}
+	return output.New("INVALID_REQUEST", fmt.Sprintf("whisk orgs lists every org and takes no %q.", strings.Join(args, " ")),
+		"Run whisk orgs for the orgs the token can see; to work in one, pass --org <slug> to any command.", nil)
 }
