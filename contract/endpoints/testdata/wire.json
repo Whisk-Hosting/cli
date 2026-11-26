@@ -58,11 +58,18 @@
             "$ref": "#/$defs/apitypes.Grant"
           },
           "type": "array"
+        },
+        "openings": {
+          "items": {
+            "$ref": "#/$defs/apitypes.Opening"
+          },
+          "type": "array"
         }
       },
       "required": [
         "app_id",
-        "grants"
+        "grants",
+        "openings"
       ],
       "type": "object"
     },
@@ -7590,6 +7597,32 @@
         "id",
         "kind",
         "title"
+      ],
+      "type": "object"
+    },
+    "apitypes.Opening": {
+      "properties": {
+        "challenge": {
+          "type": "boolean"
+        },
+        "kind": {
+          "type": "string",
+          "x-type": "apitypes.OpeningKind"
+        },
+        "name": {
+          "type": "string"
+        },
+        "path": {
+          "type": "string"
+        },
+        "who": {
+          "type": "string",
+          "x-type": "apitypes.OpeningWho"
+        }
+      },
+      "required": [
+        "kind",
+        "who"
       ],
       "type": "object"
     },

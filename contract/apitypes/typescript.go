@@ -113,6 +113,8 @@ var baseEnums = func() map[reflect.Type]enumSet {
 	add(enumOf("SecretReader", "SECRET_READERS", ReaderContainer, ReaderPlatform, ReaderBreakglass))
 	add(enumOf("SubjectKind", "SUBJECT_KINDS", SubjectUser, SubjectGroup, SubjectEveryone, SubjectCustomer))
 	add(enumOf("Audience", "AUDIENCES", AudienceTeam, AudienceCustomer))
+	add(enumOf("OpeningKind", "OPENING_KINDS", OpeningRoute, OpeningFiles, OpeningMCP, OpeningApps, OpeningWebhook, OpeningEmail, OpeningRest))
+	add(enumOf("OpeningWho", "OPENING_WHO", OpenAnyone, OpenSignedIn, OpenAssistants, OpenApps, OpenChecked))
 	add(enumOf("DomainKind", "DOMAIN_KINDS", DomainPlatform, DomainCustom, DomainBusiness, DomainFormer))
 	add(enumOf("CertStatus", "CERT_STATUSES", CertNone, CertPending, CertIssued, CertManaged))
 	add(enumOf("DomainStatus", "DOMAIN_STATUSES", DomainPendingDNS, DomainPendingCertificate, DomainActive))
@@ -174,7 +176,7 @@ var baseWire = []any{
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
 	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppNeedsUpgrade{}, AppManaged{}, AppFork{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
 	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, UpdateHold{}, DeployEvent{}, Warning{}, ForkUpdate{}, ForkChanges{}, ForkChange{}, ForkUnreadable{}, ForkProblem{}, ForkSuggestion{}, ForkSuggestions{}, ForkSuggestRequest{}, ForkChannelRequest{}, ForkDetail{},
-	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Domain{}, Token{}, Session{},
+	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Opening{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{}, TokenRenewal{},
 	DeviceSuggestion{}, Login{}, LoginBusiness{}, LoginBusinessRequest{},

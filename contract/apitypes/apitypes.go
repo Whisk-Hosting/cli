@@ -385,10 +385,25 @@ type Grant struct {
 	Label       string      `json:"label,omitempty"` // the person's email or the group's name
 }
 
-// Access is an app's grants.
+// Access is an app's grants, and the ways into it with who may use each (Openings).
 type Access struct {
 	AppID  string  `json:"app_id"`
 	Grants []Grant `json:"grants"`
+	// Openings are the ways into the app as the edge classes them under its live whisk.yaml,
+	// anyone's first and the rest of the app last (CADDY.md §5.1). With no live deploy the
+	// whole app is the rest, behind sign-in.
+	Openings []Opening `json:"openings"`
+}
+
+// Opening is one way into an app: a path or a pattern of paths, what serves it, and who may use
+// it. Name is a webhook's name; Challenge is a public route whose form posts must carry a solved
+// bot check.
+type Opening struct {
+	Kind      OpeningKind `json:"kind"`
+	Path      string      `json:"path,omitempty"`
+	Name      string      `json:"name,omitempty"`
+	Who       OpeningWho  `json:"who"`
+	Challenge bool        `json:"challenge,omitempty"`
 }
 
 // Domain is a hostname of an app.

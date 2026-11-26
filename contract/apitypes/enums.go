@@ -105,6 +105,39 @@ const (
 	SubjectCustomer SubjectKind = "customer"
 )
 
+// OpeningKind is what serves one way into an app: a route the app answers, a static folder, its
+// MCP server, a route only the business's other apps may call, a webhook's handler, inbound
+// email's handler, or the rest of the app.
+//
+//whisk:enum
+type OpeningKind string
+
+const (
+	OpeningRoute   OpeningKind = "route"
+	OpeningFiles   OpeningKind = "files"
+	OpeningMCP     OpeningKind = "mcp"
+	OpeningApps    OpeningKind = "apps"
+	OpeningWebhook OpeningKind = "webhook"
+	OpeningEmail   OpeningKind = "email"
+	OpeningRest    OpeningKind = "rest"
+)
+
+// OpeningWho is who may use a way into an app: anyone on the internet, the people its access
+// lets in, the chat assistants a person signed in, the business's other apps, or only what
+// Whisk delivers after checking the sender (a webhook's signature or addresses, an email's
+// allowed senders).
+//
+//whisk:enum
+type OpeningWho string
+
+const (
+	OpenAnyone     OpeningWho = "anyone"
+	OpenSignedIn   OpeningWho = "signed_in"
+	OpenAssistants OpeningWho = "assistants"
+	OpenApps       OpeningWho = "apps"
+	OpenChecked    OpeningWho = "checked"
+)
+
 // Audience is whether a grant is for the team or for the business's own customers.
 //
 //whisk:enum
