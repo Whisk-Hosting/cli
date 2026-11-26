@@ -4604,6 +4604,21 @@ Fix: Nothing on the tenant's side. Retry in a few minutes.
 {"error":{"code":"NODE_STATE_FAILED","message":"team-photo.jpg could not be resized just now.","fix":"Retry in a few minutes.","docs":"https://skill.whisk.run/errors/NODE_STATE_FAILED","details":{}}}
 ```
 
+## NOT_A_LEFTOVER
+
+Status: - · Surface: node
+
+When: the platform asked a server to remove a replaced deploy's container it had found still
+running, and the server's own reading said otherwise: the container is not an app container of
+that deploy, or no container of a later deploy runs the app's traffic beside it. The server
+changed nothing, and the app keeps serving.
+
+Fix: Nothing on the tenant's side. The platform reads the server's report again.
+
+```json
+{"error":{"code":"NOT_A_LEFTOVER","message":"The container is not a replaced deploy's left running, so it was left as it is.","fix":"Nothing on the tenant's side; the platform reads the server's report again.","docs":"https://skill.whisk.run/errors/NOT_A_LEFTOVER","details":{}}}
+```
+
 ## DOCKER_FAILED
 
 Status: - · Surface: deploy, node
