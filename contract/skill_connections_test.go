@@ -22,7 +22,7 @@ func TestSkillNamesEveryTemplateFunction(t *testing.T) {
 // TestSkillCitesNoPrivateDocument keeps the public skill from sending an agent to a document
 // only Whisk can read: docs/ is private, so its pages are never cited.
 func TestSkillCitesNoPrivateDocument(t *testing.T) {
-	private := regexp.MustCompile(`\b(ARCHITECTURE|BROKER|CADDY|CLI|COMMERCE-ENGINE|CONTENT-ENGINE|CONTRACT|CONTROL-PLANE|DASHBOARD|DEPLOYMENT|DESIGN|FORKS|HARNESS|INFRA|MANAGED-APPS|NODE-AGENT|SHOP-B2B)\.md\b`)
+	private := regexp.MustCompile(`\b(ARCHITECTURE|BROKER|CADDY|CLI|COMMERCE-ENGINE|CONTENT-ENGINE|CONTRACT|CONTROL-PLANE|DASHBOARD|DEPLOYMENT|DESIGN|ENGINES|FORKS|HARNESS|INFRA|MANAGED-APPS|NODE-AGENT|SHOP-B2B)\.md\b`)
 	if found := private.FindAllString(FullSkill(), -1); len(found) > 0 {
 		t.Errorf("the skill cites %v, which agents cannot open; say what they need in the skill", found)
 	}

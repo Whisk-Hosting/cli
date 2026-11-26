@@ -17,7 +17,7 @@ import (
 )
 
 // A shop (whisk.yaml commerce: medusa) runs on Whisk's commerce engine everywhere, on this
-// computer too (COMMERCE-ENGINE.md §6). The engine is Whisk's own program: whisk dev downloads it
+// computer too (ENGINES.md §3). The engine is Whisk's own program: whisk dev downloads it
 // for this platform as the person signed in, keeps it beside the CLI's settings, and checks its
 // digest before running it. A kept engine still served is not downloaded again, and one kept
 // from before runs when the platform cannot be reached. A site (whisk.yaml content: payload) gets
@@ -68,7 +68,7 @@ type devEngineKind struct {
 var (
 	commerceKind = devEngineKind{route: "commerce-engine", dir: "engine", file: "engine", what: "commerce engine", needs: "A shop runs on Whisk's commerce engine"}
 	// A site (whisk.yaml content: payload) runs Whisk's content engine beside itself here as its
-	// previews do (CONTENT-ENGINE.md §7), kept and checked as the commerce engine is.
+	// previews do (ENGINES.md §4), kept and checked as the commerce engine is.
 	contentKind = devEngineKind{route: "content-engine", dir: "content-engine", file: "content", what: "content engine", needs: "A site's editor runs on Whisk's content engine"}
 )
 
