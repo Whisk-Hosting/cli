@@ -128,7 +128,9 @@ const (
 
 // StorageInfo is GET /orgs/:org/storage: where the org's files are and how much of the plan is
 // used. OwnBucketIncluded is whether the plan lets an owner bring a bucket of its own; a business
-// already on its own bucket keeps it and may replace its keys on any plan.
+// already on its own bucket keeps it and may replace its keys on any plan. UsedBytes is the
+// files as last measured, at FilesMeasuredAt; FilesMeasuredAt is absent while the files are
+// being measured for the first time, and UsedBytes is then 0.
 type StorageInfo struct {
 	Provider          BucketProvider `json:"provider"`
 	Endpoint          string         `json:"endpoint"`
@@ -137,6 +139,7 @@ type StorageInfo struct {
 	UsedBytes         int64          `json:"used_bytes"`
 	LimitBytes        int64          `json:"limit_bytes"`
 	OwnBucketIncluded bool           `json:"own_bucket_included"`
+	FilesMeasuredAt   *time.Time     `json:"files_measured_at,omitempty"`
 }
 
 // StorageProviderRequest is PUT /orgs/:org/storage/provider: a bucket of the business's own.
@@ -159,14 +162,17 @@ type StorageProviderSet struct {
 
 // AppStorage is what one app holds and where its business stands against the plan: the app's
 // database (previews' included), files and code (its git repository), and the business's total
-// of all three, which is what the plan's storage allowance counts.
+// of all three, which is what the plan's storage allowance counts. The files are as last
+// measured, at FilesMeasuredAt; it is absent while they are being measured for the first time,
+// and the files then count 0 in every total.
 type AppStorage struct {
-	DatabaseBytes int64 `json:"database_bytes"`
-	FilesBytes    int64 `json:"files_bytes"`
-	RepoBytes     int64 `json:"repo_bytes"`
-	UsedBytes     int64 `json:"used_bytes"`
-	OrgUsedBytes  int64 `json:"org_used_bytes"`
-	LimitBytes    int64 `json:"limit_bytes"`
+	DatabaseBytes   int64      `json:"database_bytes"`
+	FilesBytes      int64      `json:"files_bytes"`
+	RepoBytes       int64      `json:"repo_bytes"`
+	UsedBytes       int64      `json:"used_bytes"`
+	OrgUsedBytes    int64      `json:"org_used_bytes"`
+	LimitBytes      int64      `json:"limit_bytes"`
+	FilesMeasuredAt *time.Time `json:"files_measured_at,omitempty"`
 }
 
 // UploadStatus is what the scan made of an upload.

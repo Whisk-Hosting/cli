@@ -2250,6 +2250,21 @@ again; a push declares the function again and lifts the parking.
 {"error":{"code":"RUN_CONCURRENCY_LIMIT","message":"sync-contacts had 41 runs in flight at once, over the limit of 20, and was parked.","fix":"Send one event carrying a batch instead of one per item, then push to lift the parking.","docs":"https://skill.whisk.run/errors/RUN_CONCURRENCY_LIMIT","details":{"function":"sync-contacts","limit":20,"observed":41}}}
 ```
 
+## RUN_REPLAY_REFUSED
+
+Status: 422 · Surface: api
+
+When: `whisk runs replay` (`POST .../runs/:id/replay`) reached the workflow engine and the
+engine refused to start the run again. The refusal is the engine's final answer for that run, so
+retrying the replay gets the same one. `details.engine_reason` is the engine's own words.
+
+Fix: Start a new run instead: send the event again with whisk events send, or for a scheduled
+function run whisk cron run <function>. Trying the replay again gets the same answer.
+
+```json
+{"error":{"code":"RUN_REPLAY_REFUSED","message":"The workflow engine refused to start run 01J9 of sync again: event name is reserved for internal use.","fix":"Start a new run instead: send the event again with whisk events send, or for a scheduled function run whisk cron run sync. Trying the replay again gets the same answer.","docs":"https://skill.whisk.run/errors/RUN_REPLAY_REFUSED","details":{"run_id":"01J9","function":"sync","engine_status":400,"engine_reason":"event name is reserved for internal use"}}}
+```
+
 ## EVENT_RATE_LIMITED
 
 Status: 429 · Surface: api

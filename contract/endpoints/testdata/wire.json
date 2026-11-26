@@ -1869,6 +1869,10 @@
         "files_bytes": {
           "type": "integer"
         },
+        "files_measured_at": {
+          "format": "date-time",
+          "type": "string"
+        },
         "limit_bytes": {
           "type": "integer"
         },
@@ -10405,6 +10409,10 @@
           "type": "string"
         },
         "endpoint": {
+          "type": "string"
+        },
+        "files_measured_at": {
+          "format": "date-time",
           "type": "string"
         },
         "limit_bytes": {
