@@ -205,3 +205,20 @@ func TestStopAnswersARequestThatArrivesAfterItBegins(t *testing.T) {
 		t.Fatalf("Serve: %v", err)
 	}
 }
+
+// A stop asked for is no error: the listener Stop closes first is closed again by the server's
+// shutdown, and that is the stop itself, so a process ends 0 at each restart.
+func TestAStopIsNoError(t *testing.T) {
+	lis, err := Listen("none", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv := &http.Server{Handler: http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {})}
+	go func() { _ = srv.Serve(lis) }()
+	time.Sleep(20 * time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := lis.Stop(ctx, srv); err != nil {
+		t.Errorf("a stop asked for ended in %v", err)
+	}
+}

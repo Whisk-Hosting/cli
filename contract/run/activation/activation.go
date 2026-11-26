@@ -128,7 +128,8 @@ func (l *Listener) Stop(ctx context.Context, srv *http.Server) error {
 	_ = l.Listener.Close()
 	srv.SetKeepAlivesEnabled(false)
 	err := l.Drain(ctx)
-	if serr := srv.Shutdown(ctx); err == nil {
+	// Shutdown closes the listener again, which answers net.ErrClosed: that is the stop itself.
+	if serr := srv.Shutdown(ctx); err == nil && !errors.Is(serr, net.ErrClosed) {
 		err = serr
 	}
 	return err
