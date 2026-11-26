@@ -400,6 +400,18 @@ type Packages struct {
 	Included bool         `json:"included"`
 	Scan     *PackageScan `json:"scan"`
 	Pending  *PackageScan `json:"pending,omitempty"`
+	// Fix is the security fix ready to apply, on every plan, when there is one.
+	Fix *SecurityFix `json:"fix,omitempty"`
+}
+
+// SecurityFix is an app's live code built again on a base image that fixes known security
+// problems, waiting for a person to apply it (CONTROL-PLANE.md §6.28 "A fix ready to apply").
+// Applying it is a deploy of BuildID; until then nothing has changed. Fixes is what it clears.
+type SecurityFix struct {
+	BuildID  string           `json:"build_id"`
+	DeployID string           `json:"deploy_id"`
+	Fixes    []PackageFinding `json:"fixes"`
+	BuiltAt  time.Time        `json:"built_at"`
 }
 
 // Serious reports whether a finding wants acting on now: critical or high, with a fixed version

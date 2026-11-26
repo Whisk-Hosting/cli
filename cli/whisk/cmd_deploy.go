@@ -35,6 +35,9 @@ type deployOptions struct {
 	Commit    bool
 	CommitSet bool
 	Message   string
+	// Build is a build to deploy as it is, with no push: a security fix Whisk built
+	// (SECURITY_FIX_READY), or any earlier build of the app.
+	Build string
 }
 
 func deployCmd(s *session) *cobra.Command {
@@ -47,10 +50,16 @@ everything committed (--commit commits what is not ignored as "whisk deploy"; it
 a directory that is not a repository yet; -m "what changed" commits it with that message instead),
 points the remote "whisk" at the app's repository, pushes
 with the token as the credential (never written to .git/config), and streams the deploy's phases
-until it is live or failed. With --json every event is one JSON line, then one summary object.`,
+until it is live or failed. With --json every event is one JSON line, then one summary object.
+
+--build <id> deploys that build as it is, with no push and no doctor: the security fix Whisk
+built when the live code's base image had a fix out (SECURITY_FIX_READY), or any earlier build.`,
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			opts.CommitSet = cmd.Flags().Changed("commit")
+			if opts.Build != "" {
+				return runDeployBuild(s, opts)
+			}
 			return runDeploy(s, opts)
 		},
 	}
@@ -60,7 +69,28 @@ until it is live or failed. With --json every event is one JSON line, then one s
 	c.Flags().BoolVar(&opts.Force, "force", false, "skip doctor")
 	c.Flags().BoolVar(&opts.Commit, "commit", false, "commit everything not ignored as \"whisk deploy\" before pushing (default true when the directory is not a repository yet)")
 	c.Flags().StringVarP(&opts.Message, "message", "m", "", "one line saying what changed, shown with the deploy; commits uncommitted changes with it (implies --commit)")
+	c.Flags().StringVar(&opts.Build, "build", "", "deploy this build as it is, with no push (a security fix Whisk built)")
 	return c
+}
+
+// runDeployBuild deploys an existing build of the app, as it is, and follows it.
+func runDeployBuild(s *session, opts deployOptions) error {
+	client, org, app, err := s.appClient()
+	if err != nil {
+		return err
+	}
+	d, err := api.Send(s.ctx, client, endpoints.CreateDeploy, api.CreateDeployRequest{Environment: opts.Env, BuildID: opts.Build}, org, app)
+	if err != nil {
+		return wrap(err)
+	}
+	s.printer.Progress("Deploying build %s (%s) as deploy %s.", opts.Build, short(d.CommitSHA), d.ID)
+	if opts.NoWait {
+		s.printer.Result(map[string]any{"deploy_id": d.ID, "status": d.Status, "commit_sha": d.CommitSHA, "environment": d.Environment}, func(w io.Writer) {
+			fmt.Fprintf(w, "Deploy %s queued. Follow it with: whisk deploys info %s\n", d.ID, d.ID)
+		})
+		return nil
+	}
+	return s.waitForDeploy(client, org, app, d)
 }
 
 func runDeploy(s *session, opts deployOptions) error {

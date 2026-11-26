@@ -206,7 +206,7 @@ var baseWire = []any{
 	EmailDomain{}, EmailAttachment{}, EmailStatus{}, EmailSend{}, EmailSendEvent{}, EmailProviderRequest{}, EmailProviderSet{}, StorageInfo{}, StorageProviderRequest{},
 	StorageProviderSet{}, AppStorage{}, Upload{}, UploadMedia{}, UploadImage{}, MediaLink{},
 	MediaLinks{}, MediaLinkKey{}, PackageFinding{},
-	PackageCounts{}, PackageScan{}, Packages{}, OrgPackages{}, AppPackages{}, LogDestination{}, LogDestinationList{},
+	PackageCounts{}, PackageScan{}, Packages{}, SecurityFix{}, OrgPackages{}, AppPackages{}, LogDestination{}, LogDestinationList{},
 	LogDestinationRequest{}, LogLine{}, LogPage{}, LogHour{}, LogHours{}, ErrorGroup{}, ErrorSample{}, ErrorOccurrence{}, ErrorFrame{},
 	AppAnalytics{}, AnalyticsCount{}, AnalyticsCrawler{}, AnalyticsShares{}, AnalyticsShare{}, AnalyticsAI{}, AnalyticsOpen{}, AnalyticsFilters{}, AnalyticsRow{},
 	AppVisitors{}, AnalyticsVisitor{}, AnalyticsVisitorSteps{}, AnalyticsStep{}, AnalyticsChart{}, AnalyticsChartPoint{}, AnalyticsChartLimits{}, AnalyticsFunnel{}, AnalyticsFunnelStep{}, AnalyticsPrevious{}, AnalyticsTotals{}, AnalyticsTable{}, AnalyticsTableRow{}, AnalyticsChanges{}, AnalyticsChange{}, AppTraffic{}, TrafficRow{}, AppTrafficRequests{}, TrafficRequest{},

@@ -798,6 +798,10 @@
       "usage": "the local branch to push (default: the current one)"
      },
      {
+      "name": "--build string",
+      "usage": "deploy this build as it is, with no push (a security fix Whisk built)"
+     },
+     {
       "name": "--commit",
       "usage": "commit everything not ignored as \"whisk deploy\" before pushing (default true when the directory is not a repository yet)"
      },

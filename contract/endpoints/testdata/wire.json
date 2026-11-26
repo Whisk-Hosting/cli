@@ -8175,6 +8175,9 @@
     },
     "apitypes.Packages": {
       "properties": {
+        "fix": {
+          "$ref": "#/$defs/apitypes.SecurityFix"
+        },
         "included": {
           "type": "boolean"
         },
@@ -9918,6 +9921,33 @@
         "created_by",
         "length",
         "version"
+      ],
+      "type": "object"
+    },
+    "apitypes.SecurityFix": {
+      "properties": {
+        "build_id": {
+          "type": "string"
+        },
+        "built_at": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "deploy_id": {
+          "type": "string"
+        },
+        "fixes": {
+          "items": {
+            "$ref": "#/$defs/apitypes.PackageFinding"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "build_id",
+        "built_at",
+        "deploy_id",
+        "fixes"
       ],
       "type": "object"
     },

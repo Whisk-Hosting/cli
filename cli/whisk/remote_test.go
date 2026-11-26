@@ -1386,3 +1386,22 @@ func TestPersonRequests(t *testing.T) {
 		t.Fatalf("show pending: %+v", r)
 	}
 }
+
+// whisk deploy --build deploys that build as it is: no push, no doctor, one create with its id.
+func TestDeployBuildDeploysItAsItIs(t *testing.T) {
+	st := &remoteState{}
+	srv := remoteAPI(t, st)
+	defer srv.Close()
+	dir := boundDir(t, srv.URL)
+	git := &fakeGit{}
+	r := runRemote(t, dir, srv.URL, git, "deploy", "--build", "b-fix", "--no-wait", "--json")
+	if r.Code != 0 || r.JSON["deploy_id"] == nil {
+		t.Fatalf("deploy --build: %+v", r)
+	}
+	if len(st.posted) != 1 || st.posted[0]["build_id"] != "b-fix" {
+		t.Fatalf("deploy --build body: %v", st.posted)
+	}
+	if len(git.calls) != 0 {
+		t.Fatalf("deploy --build ran git: %v", git.calls)
+	}
+}

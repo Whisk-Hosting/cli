@@ -2376,6 +2376,24 @@ minutes and run it again.
 {"error":{"code":"PACKAGE_CHECK_FAILED","message":"The check for malicious packages did not finish (2 tries, the last: it took longer than 2m30s), so nothing was built.","fix":"Run whisk deploy again; if it stops the same way, wait a few minutes and run it again.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_FAILED","details":{"build_id":"01J9","fault":"platform"}}}
 ```
 
+## SECURITY_FIX_READY
+
+Status: - · Surface: deploy, api, dashboard
+
+When: the base image the app's live build was made on has known security problems its publisher
+has fixed, so Whisk built the live commit again on the fixed image, checked the new image clears
+every one of them, and stopped. The deploy waits at `blocked` and nothing changed: the live app is
+as it was. `details.build_id` is the new build, `details.fixes` the problems it clears and
+`details.url` the app's page, where a person applies it. A deploy of the business's own takes a
+fresh base image too, so it replaces the fix, which is then cancelled.
+
+Fix: Tell the human a security fix is ready and relay `details.url`. Apply it only when they ask,
+with `whisk deploy --build <build_id>`, which deploys that build as it is.
+
+```json
+{"error":{"code":"SECURITY_FIX_READY","message":"A security fix for crm is ready: its live code built again on a base image that fixes 2 known security problems.","fix":"Apply it at https://whisk.run/o/acme/apps/crm, or run whisk deploy --build 01JA2. Nothing changes until it is applied.","docs":"https://skill.whisk.run/errors/SECURITY_FIX_READY","details":{"build_id":"01JA2","fixes":[{"id":"CVE-2026-1234","package":"openssl","version":"3.0.13-r0","fixed":"3.0.15-r1","severity":"high","where":"image","tool":"trivy","reach":"unknown"}],"url":"https://whisk.run/o/acme/apps/crm"}}}
+```
+
 ## PACKAGE_LOOKALIKE
 
 Status: - · Surface: deploy (a warning), cli
