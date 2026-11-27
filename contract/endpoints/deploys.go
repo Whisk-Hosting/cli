@@ -22,8 +22,10 @@ type ListBuildsQuery struct {
 	Limit  int    `query:"limit"`
 }
 
-// ListDeploysQuery is what ListDeploys reads from the query.
+// ListDeploysQuery is what ListDeploys reads from the query. Env, when set, is the name of one
+// of the app's environments (production, preview:<branch>), and only its deploys are listed.
 type ListDeploysQuery struct {
 	Cursor string `query:"cursor"`
+	Env    string `query:"env"`
 	Limit  int    `query:"limit"`
 }

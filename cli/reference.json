@@ -843,7 +843,7 @@
  },
  {
   "name": "deploys",
-  "short": "Deploys of the app",
+  "short": "Deploys of the app, each with its build",
   "commands": [
    {
     "usage": "whisk deploys cancel \u003cid\u003e",
@@ -854,9 +854,13 @@
     "short": "Show one deploy with its phases"
    },
    {
-    "usage": "whisk deploys list",
+    "usage": "whisk deploys list [--env production|preview:\u003cbranch\u003e]",
     "short": "List recent deploys, newest first",
     "flags": [
+     {
+      "name": "--env string",
+      "usage": "only this environment's deploys: production or preview:\u003cbranch\u003e (default all)"
+     },
      {
       "name": "--limit int",
       "usage": "how many to show"

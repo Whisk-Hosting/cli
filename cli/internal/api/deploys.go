@@ -20,7 +20,12 @@ func appPath(org, app string) string {
 
 // ListDeploys returns one page of the app's deploys, newest first.
 func (c *Client) ListDeploys(ctx context.Context, org, app string, limit int) ([]Deploy, error) {
-	out, err := Send(ctx, c, endpoints.ListDeploys, endpoints.ListDeploysQuery{Limit: max(limit, 0)}, org, app)
+	return c.ListEnvDeploys(ctx, org, app, "", limit)
+}
+
+// ListEnvDeploys is ListDeploys of one environment by its name, or of all when env is empty.
+func (c *Client) ListEnvDeploys(ctx context.Context, org, app, env string, limit int) ([]Deploy, error) {
+	out, err := Send(ctx, c, endpoints.ListDeploys, endpoints.ListDeploysQuery{Env: env, Limit: max(limit, 0)}, org, app)
 	if out.Items == nil {
 		out.Items = []Deploy{}
 	}

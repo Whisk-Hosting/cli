@@ -1275,36 +1275,10 @@ func (s *session) logExcerpt(client *api.Client, org, app string, d api.Deploy, 
 // ---- deploys, rollback ----------------------------------------------------------------------
 
 func deploysCmd(s *session) *cobra.Command {
-	deploys := &cobra.Command{Use: "deploys", Short: "Deploys of the app"}
-	var limit int
-	list := &cobra.Command{
-		Use:   "list",
-		Short: "List recent deploys, newest first",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, args []string) error {
-			client, org, app, err := s.appClient()
-			if err != nil {
-				return err
-			}
-			all, err := client.ListDeploys(s.ctx, org, app, limit)
-			if err != nil {
-				return wrap(err)
-			}
-			s.printer.Result(map[string]any{"org": org, "app": app, "deploys": all}, func(w io.Writer) {
-				if len(all) == 0 {
-					fmt.Fprintln(w, "No deploys yet. Run whisk deploy.")
-					return
-				}
-				rows := make([][]string, len(all))
-				for i, d := range all {
-					rows[i] = []string{d.ID, string(d.Status), d.Environment, short(d.CommitSHA), orDash(d.Branch), orDash(clip(d.Message, 50)), orDash(d.TriggeredByLabel), at(d.CreatedAt), deployWhy(d.Error)}
-				}
-				s.printer.Table(w, []string{"DEPLOY", "STATUS", "ENV", "COMMIT", "BRANCH", "CHANGE", "BY", "WHEN", "WHY"}, rows)
-			})
-			return nil
-		},
-	}
-	list.Flags().IntVar(&limit, "limit", 20, "how many to show")
+	// Every deploy names the build it runs, and whisk deploys log prints that build's log, so
+	// whisk builds is this group too.
+	deploys := &cobra.Command{Use: "deploys", Aliases: []string{"builds"}, Short: "Deploys of the app, each with its build"}
+	list := deploysListCmd(s)
 
 	info := &cobra.Command{
 		Use:   "info <id>",
@@ -1391,6 +1365,46 @@ migrate, it also prints the lines the deploy's error carries. --json gives {"dep
 	}
 	deploys.AddCommand(list, info, cancel, logCmd)
 	return deploys
+}
+
+// deploysListCmd lists the app's deploys, newest first, of one environment with --env.
+func deploysListCmd(s *session) *cobra.Command {
+	var limit int
+	var envName string
+	list := &cobra.Command{
+		Use:   "list [--env production|preview:<branch>]",
+		Short: "List recent deploys, newest first",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			all, err := client.ListEnvDeploys(s.ctx, org, app, envName, limit)
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "deploys": all}, func(w io.Writer) {
+				if len(all) == 0 && envName != "" {
+					fmt.Fprintf(w, "No deploys to %s yet.\n", envName)
+					return
+				}
+				if len(all) == 0 {
+					fmt.Fprintln(w, "No deploys yet. Run whisk deploy.")
+					return
+				}
+				rows := make([][]string, len(all))
+				for i, d := range all {
+					rows[i] = []string{d.ID, string(d.Status), d.Environment, short(d.CommitSHA), orDash(d.Branch), orDash(clip(d.Message, 50)), orDash(d.TriggeredByLabel), at(d.CreatedAt), deployWhy(d.Error)}
+				}
+				s.printer.Table(w, []string{"DEPLOY", "STATUS", "ENV", "COMMIT", "BRANCH", "CHANGE", "BY", "WHEN", "WHY"}, rows)
+			})
+			return nil
+		},
+	}
+	list.Flags().IntVar(&limit, "limit", 20, "how many to show")
+	list.Flags().StringVar(&envName, "env", "", "only this environment's deploys: production or preview:<branch> (default all)")
+	return list
 }
 
 func printDeploy(p output.Printer, w io.Writer, d api.Deploy) {

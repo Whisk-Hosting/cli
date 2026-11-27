@@ -25,7 +25,9 @@ import (
 // person grants, resumes and revokes them in the dashboard; the CLI lists, explains, pauses and
 // sets their limits.
 func connectionsCmd(s *session) *cobra.Command {
-	connections := &cobra.Command{Use: "connections", Short: "Outside systems the app reaches through Whisk's broker"}
+	connections := &cobra.Command{Use: "connections", Aliases: []string{"connection"}, Short: "Outside systems the app reaches through Whisk's broker",
+		Long: "Outside systems the app reaches through Whisk's broker without holding their credential. " +
+			"For the app's own database, whisk db connect opens a tunnel for psql or a GUI and prints its connection string."}
 
 	list := &cobra.Command{
 		Use:   "list",

@@ -378,6 +378,9 @@ func envsCmd(s *session) *cobra.Command {
 			return nil
 		},
 	}
+	// The delete never asks, so --yes, which agents pass to every delete, is taken and changes nothing.
+	del.Flags().Bool("yes", false, "accepted for scripts; the delete never asks")
+	_ = del.Flags().MarkHidden("yes")
 	var noWait bool
 	start := &cobra.Command{
 		Use:   "start <branch>",
