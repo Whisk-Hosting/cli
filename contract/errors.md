@@ -579,24 +579,6 @@ lines starting `cms:`.
 {"error":{"code":"CMS_UNAVAILABLE","message":"The site editor is starting.","fix":"Try again in a few seconds.","docs":"https://skill.whisk.run/errors/CMS_UNAVAILABLE"}}
 ```
 
-## PROMOTED_ONLY
-
-Status: 409 · Surface: api
-
-When: someone asked for something only a Promoted app in force has, for an app that is not one:
-setting up or verifying a status page (`details.feature: status_page`). Hourly backup points,
-the 30-day restore window and uptime alerts need no request; they start when the app is promoted.
-An app stays marked as promoted after its plan stops including Promoted apps, and is not one in
-force until the plan includes them again (`details.in_force: false`).
-
-Fix: An owner or billing contact makes the app a Promoted app on its overview in the dashboard
-(the link in the message), then try again. When the app is promoted but not in force, move to a
-plan that includes Promoted apps first.
-
-```json
-{"error":{"code":"PROMOTED_ONLY","message":"A status page is for Promoted apps, and shop is not one.","fix":"An owner or billing contact can promote shop at https://whisk.run/o/acme/apps/shop, then try again.","docs":"https://skill.whisk.run/errors/PROMOTED_ONLY","details":{"feature":"status_page","app":"shop","in_force":false}}}
-```
-
 ## APP_MANAGED
 
 Status: 409 · Surface: api, git, cli
@@ -1568,7 +1550,7 @@ app locally with `whisk dev` and fetch the health path.
 Status: 409 · Surface: api
 
 When: Boost or Promoted was asked for on a copy of one of Whisk's apps whose price includes its
-hosting. It is already hosted as a Promoted app is, but for the status page and its own sign-in.
+hosting. It is already hosted as a Promoted app is, but for its own sign-in.
 
 Fix: Nothing to buy. Leave the app as it is.
 

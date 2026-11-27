@@ -10332,77 +10332,6 @@
       ],
       "type": "object"
     },
-    "apitypes.StatusPage": {
-      "properties": {
-        "addresses": {
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
-        "cert_status": {
-          "type": "string",
-          "x-type": "apitypes.CertStatus"
-        },
-        "hostname": {
-          "type": "string"
-        },
-        "live": {
-          "type": "boolean"
-        },
-        "records": {
-          "items": {
-            "$ref": "#/$defs/apitypes.DNSRecord"
-          },
-          "type": "array"
-        },
-        "title": {
-          "type": "string"
-        },
-        "url": {
-          "type": "string"
-        },
-        "verified": {
-          "type": "boolean"
-        }
-      },
-      "required": [
-        "addresses",
-        "cert_status",
-        "hostname",
-        "live",
-        "records",
-        "title",
-        "url",
-        "verified"
-      ],
-      "type": "object"
-    },
-    "apitypes.StatusPageAnswer": {
-      "properties": {
-        "page": {
-          "$ref": "#/$defs/apitypes.StatusPage"
-        }
-      },
-      "required": [
-        "page"
-      ],
-      "type": "object"
-    },
-    "apitypes.StatusPageRequest": {
-      "properties": {
-        "hostname": {
-          "type": "string"
-        },
-        "title": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "hostname"
-      ],
-      "type": "object"
-    },
     "apitypes.StorageInfo": {
       "properties": {
         "bucket": {
@@ -11348,93 +11277,6 @@
       ],
       "type": "object"
     },
-    "apitypes.Uptime": {
-      "properties": {
-        "checked_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "days": {
-          "items": {
-            "$ref": "#/$defs/apitypes.UptimeDay"
-          },
-          "type": "array"
-        },
-        "incidents": {
-          "items": {
-            "$ref": "#/$defs/apitypes.UptimeIncident"
-          },
-          "type": "array"
-        },
-        "monitored": {
-          "type": "boolean"
-        },
-        "status": {
-          "type": "string",
-          "x-type": "apitypes.UptimeStatus"
-        },
-        "uptime_90d": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "checked_at",
-        "days",
-        "incidents",
-        "monitored",
-        "status",
-        "uptime_90d"
-      ],
-      "type": "object"
-    },
-    "apitypes.UptimeDay": {
-      "properties": {
-        "date": {
-          "type": "string"
-        },
-        "down_seconds": {
-          "type": "integer"
-        },
-        "uptime": {
-          "type": "number"
-        }
-      },
-      "required": [
-        "date",
-        "down_seconds",
-        "uptime"
-      ],
-      "type": "object"
-    },
-    "apitypes.UptimeIncident": {
-      "properties": {
-        "detail": {
-          "type": "string"
-        },
-        "duration_seconds": {
-          "type": "integer"
-        },
-        "ended_at": {
-          "format": "date-time",
-          "type": "string"
-        },
-        "id": {
-          "type": "string"
-        },
-        "started_at": {
-          "format": "date-time",
-          "type": "string"
-        }
-      },
-      "required": [
-        "detail",
-        "duration_seconds",
-        "ended_at",
-        "id",
-        "started_at"
-      ],
-      "type": "object"
-    },
     "apitypes.User": {
       "properties": {
         "email": {
@@ -12330,11 +12172,6 @@
     "DELETE /v1/orgs/{org}/apps/{app}/restores/{id}": {
       "answer": {
         "$ref": "#/$defs/apitypes.RestoreJSON"
-      }
-    },
-    "DELETE /v1/orgs/{org}/apps/{app}/status-page": {
-      "answer": {
-        "type": "null"
       }
     },
     "DELETE /v1/orgs/{org}/apps/{app}/uploads/{id}": {
@@ -13359,11 +13196,6 @@
         }
       }
     },
-    "GET /v1/orgs/{org}/apps/{app}/status-page": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.StatusPageAnswer"
-      }
-    },
     "GET /v1/orgs/{org}/apps/{app}/storage": {
       "answer": {
         "$ref": "#/$defs/apitypes.AppStorage"
@@ -13418,11 +13250,6 @@
     "GET /v1/orgs/{org}/apps/{app}/uploads/{id}": {
       "answer": {
         "$ref": "#/$defs/apitypes.Upload"
-      }
-    },
-    "GET /v1/orgs/{org}/apps/{app}/uptime": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.Uptime"
       }
     },
     "GET /v1/orgs/{org}/apps/{app}/webhooks": {
@@ -14202,11 +14029,6 @@
         "$ref": "#/$defs/apitypes.SourceRequest"
       }
     },
-    "POST /v1/orgs/{org}/apps/{app}/status-page/verify": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.StatusPage"
-      }
-    },
     "POST /v1/orgs/{org}/apps/{app}/uploads": {
       "answer": {
         "$ref": "#/$defs/apitypes.UploadAuthorisation"
@@ -14577,14 +14399,6 @@
     "PUT /v1/orgs/{org}/apps/{app}/promoted": {
       "answer": {
         "$ref": "#/$defs/apitypes.App"
-      }
-    },
-    "PUT /v1/orgs/{org}/apps/{app}/status-page": {
-      "answer": {
-        "$ref": "#/$defs/apitypes.StatusPage"
-      },
-      "body": {
-        "$ref": "#/$defs/apitypes.StatusPageRequest"
       }
     },
     "PUT /v1/orgs/{org}/email/provider": {

@@ -162,7 +162,6 @@ var baseEnums = func() map[reflect.Type]enumSet {
 	add(enumOf("GitHubBranchState", "GITHUB_BRANCH_STATES", BranchInSync, BranchWaiting, BranchRefused))
 	add(enumOf("GitHubLinkStatus", "GITHUB_LINK_STATUSES", GitHubLinkActive, GitHubLinkBroken))
 	add(enumOf("StepKind", "STEP_KINDS", graph.KindRun, graph.KindApproval, graph.KindSleep, graph.KindWait))
-	add(enumOf("UptimeStatus", "UPTIME_STATUSES", UptimeUp, UptimeDown, UptimeUnknown))
 	return m
 }()
 
@@ -174,8 +173,8 @@ var baseWire = []any{
 	generic{name: "List", param: "T", sample: List[typeParam]{}},
 	named{"ErrorDetail", werrors.Detail{}}, named{"ErrorBody", werrors.Body{}},
 	Org{}, Timeline{}, Support{}, Comp{}, User{}, Member{}, Group{},
-	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppNeedsUpgrade{}, AppManaged{}, AppFork{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{}, UptimeDay{},
-	UptimeIncident{}, Uptime{}, StatusPage{}, StatusPageAnswer{}, StatusPageRequest{}, Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, UpdateHold{}, DeployEvent{}, Warning{}, ForkUpdate{}, ForkChanges{}, ForkChange{}, ForkUnreadable{}, ForkProblem{}, ForkSuggestion{}, ForkSuggestions{}, ForkSuggestRequest{}, ForkChannelRequest{}, ForkDetail{},
+	App{}, AppProblem{}, AppStart{}, AppMemory{}, AppMemoryHistory{}, AppMemoryPoint{}, AppPromoted{}, AppBoosted{}, AppNeedsUpgrade{}, AppManaged{}, AppFork{}, ManagedRelease{}, ManagedVariant{}, ManagedProduct{}, Managed{}, ManagedAddRequest{}, ManagedSettingsRequest{}, LinkRequest{}, BackupPoint{}, BackupPoints{},
+	Environment{}, Build{}, Phase{}, Deploy{}, Rehearsal{}, RehearsedTable{}, RehearsedColumn{}, DataRollback{}, UpdateHold{}, DeployEvent{}, Warning{}, ForkUpdate{}, ForkChanges{}, ForkChange{}, ForkUnreadable{}, ForkProblem{}, ForkSuggestion{}, ForkSuggestions{}, ForkSuggestRequest{}, ForkChannelRequest{}, ForkDetail{},
 	Secret{}, SecretVersion{}, SecretRead{}, Grant{}, Access{}, Opening{}, Domain{}, Token{}, Session{},
 	Whoami{}, WhoamiIdentity{}, WhoamiToken{}, NotInLogin{}, AuditEvent{}, Manifest{}, Validation{}, CallConsent{},
 	DeviceCode{}, DeviceToken{}, DeviceInfo{}, RequestedFrom{}, DeviceCodeRequest{}, GitPassword{}, TokenRenewal{},
