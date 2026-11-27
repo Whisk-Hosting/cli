@@ -86,6 +86,10 @@ type AuthoriseUploadRequest struct {
 	MaxBytes    int64  `json:"max_bytes"`
 	Visibility  string `json:"visibility"`
 	Parts       bool   `json:"parts"`
+	// SHA256 is the file's content hash, in lowercase hex. When the environment already holds a
+	// scanned, clean upload of that content, type and visibility, the answer is that upload,
+	// with stored true and no form, and nothing is sent.
+	SHA256 string `json:"sha256,omitempty"`
 }
 
 // LinkUploadsRequest is the body of POST /v1/orgs/{org}/apps/{app}/uploads/links.

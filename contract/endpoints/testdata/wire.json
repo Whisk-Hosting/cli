@@ -2208,6 +2208,9 @@
         "parts": {
           "type": "boolean"
         },
+        "sha256": {
+          "type": "string"
+        },
         "visibility": {
           "type": "string"
         }
@@ -11140,6 +11143,9 @@
         },
         "scan_max_bytes": {
           "type": "integer"
+        },
+        "stored": {
+          "type": "boolean"
         },
         "url": {
           "type": "string"

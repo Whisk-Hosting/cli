@@ -37,6 +37,9 @@ type UploadAuthorisation struct {
 	ScanMaxBytes int64 `json:"scan_max_bytes"`
 	// Parts is set instead of the form for an upload in parts (§6.13 "Uploading in parts").
 	Parts *UploadParts `json:"parts,omitempty"`
+	// Stored is true when the request named a sha256 the environment already holds: ID and Key
+	// are that upload's, there is no form, and nothing is to be sent.
+	Stored bool `json:"stored,omitempty"`
 }
 
 var _ = more.addWire(UploadAuthorisation{}, UploadPartState{}, UploadParts{})
