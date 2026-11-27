@@ -1,10 +1,13 @@
 package whisk
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/url"
+	"slices"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -124,13 +127,7 @@ func connectionsCmd(s *session) *cobra.Command {
 connections page. The CLI never grants, so this prints the NEEDS_HUMAN block with that page
 and exits 2. Relay it to the human and say plainly what each operation lets the app do.`,
 		Args: cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			org, app, err := s.target()
-			if err != nil {
-				return err
-			}
-			return grantBlock(args[0], org, app, connectionsURL(s.dashboard(), org, app))
-		},
+		RunE: func(cmd *cobra.Command, args []string) error { return grantRun(s, args[0]) },
 	}
 
 	var env string
@@ -259,6 +256,11 @@ func connectionsURL(dash, org, app string) string {
 	return appPage(dash, org, app, "/secrets")
 }
 
+// connectionURL is the Keys page opened at one connection, its Grant button in view. Pure.
+func connectionURL(dash, org, app, name string) string {
+	return connectionsURL(dash, org, app) + "#system-" + name
+}
+
 func findConnection(all []api.Connection, name string) (api.Connection, bool) {
 	for _, c := range all {
 		if c.Name == name {
@@ -313,14 +315,23 @@ func grantLine(c api.Connection, env apitypes.ConnectionEnvironment) string {
 	return line
 }
 
-// waitsFor names what keeps a connection from working: a person's grant, keys with no value.
+// waitsFor names what keeps a connection from working: a person's grant, keys with no value,
+// and for a key another app of the business holds, the command that shares it.
 func waitsFor(c api.Connection) string {
 	var parts []string
 	if c.Waiting {
 		parts = append(parts, "a grant")
 	}
-	if len(c.Unset) > 0 {
-		parts = append(parts, "keys "+strings.Join(c.Unset, ", "))
+	var held []string
+	for _, n := range c.Unset {
+		if apps := c.Elsewhere[n]; len(apps) > 0 {
+			held = append(held, fmt.Sprintf("%s (held by %s: whisk secrets share %s --from %s)", n, strings.Join(apps, ", "), n, apps[0]))
+		} else {
+			held = append(held, n)
+		}
+	}
+	if len(held) > 0 {
+		parts = append(parts, "keys "+strings.Join(held, ", "))
 	}
 	if len(parts) == 0 {
 		return "-"
@@ -402,15 +413,60 @@ func secretWarnings(uses []connect.Use) []string {
 	return out
 }
 
-// grantBlock is grant's answer: the NEEDS_HUMAN block with the connections page, exit 2.
-func grantBlock(name, org, app, page string) *output.Error {
+// grantBlock is grant's answer: the NEEDS_HUMAN block with the connection's place on the Keys
+// page, exit 2. A key another app of the business already holds (elsewhere) comes first as the
+// command that shares it, so the person is never asked for a value the business has. Pure.
+func grantBlock(name, org, app, page string, elsewhere map[string][]string) *output.Error {
+	fix := fmt.Sprintf("Ask an owner or admin to open %s and tap Grant (and previews, if a preview needs it). Tell them plainly what each operation lets the app do (whisk connections show %s). A deploy waiting on it starts when it is granted.", page, name)
+	details := map[string]any{"url": page, "name": name, "org": org, "app": app}
+	if share := shareCommands(elsewhere); len(share) > 0 {
+		fix = "The business already holds its keys: run " + strings.Join(share, " and ") + " (no value is shown or sent), never ask for them again. Then: " + fix
+		details["elsewhere"] = elsewhere
+		details["share"] = share
+	}
 	return &output.Error{
 		Code:    "NEEDS_HUMAN",
 		Message: fmt.Sprintf("Granting %s is for a person, freshly signed in, in the dashboard; the CLI never grants.", name),
-		Fix:     fmt.Sprintf("Ask an owner or admin to open %s, review what %s may do and grant it. Tell them plainly what each operation lets the app do (whisk connections show %s). A deploy waiting on it starts when it is granted.", page, name, name),
+		Fix:     fix,
 		Docs:    "https://skill.whisk.run/errors/NEEDS_HUMAN",
-		Details: map[string]any{"url": page, "name": name, "org": org, "app": app},
+		Details: details,
 	}
+}
+
+// grantRun answers grant: the NEEDS_HUMAN block, with the command that shares each key another
+// app of the business holds, so it is shared, not asked for.
+func grantRun(s *session, name string) error {
+	client, org, app, err := s.appClient()
+	if err != nil {
+		return err
+	}
+	elsewhere, err := keysElsewhere(s.ctx, client, org, app, name)
+	if err != nil {
+		return wrap(err)
+	}
+	return grantBlock(name, org, app, connectionURL(s.dashboard(), org, app, name), elsewhere)
+}
+
+// keysElsewhere is, for the named connection, the apps of the business holding each key it lacks.
+func keysElsewhere(ctx context.Context, client *api.Client, org, app, name string) (map[string][]string, error) {
+	all, err := api.All(ctx, client, endpoints.ListConnections, org, app)
+	if err != nil {
+		return nil, err
+	}
+	c, _ := findConnection(all, name)
+	return c.Elsewhere, nil
+}
+
+// shareCommands is the command that shares each key another app holds, by name. Pure.
+func shareCommands(elsewhere map[string][]string) []string {
+	names := slices.Sorted(maps.Keys(elsewhere))
+	out := make([]string, 0, len(names))
+	for _, n := range names {
+		if apps := elsewhere[n]; len(apps) > 0 {
+			out = append(out, fmt.Sprintf("whisk secrets share %s --from %s", n, apps[0]))
+		}
+	}
+	return out
 }
 
 // pausePlan checks pause's arguments: NAME with an optional --env, or --all alone.

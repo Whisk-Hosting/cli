@@ -139,8 +139,12 @@ type Connection struct {
 	Hash    string          `json:"hash"`
 	Summary connect.Summary `json:"summary"`
 	// Unset names the secrets the recipe reads that have no value yet.
-	Unset  []string          `json:"unset"`
-	Grants []ConnectionGrant `json:"grants"`
+	Unset []string `json:"unset"`
+	// Elsewhere names, for each unset secret another app of the business already holds a value
+	// for, those apps: share that value (whisk secrets share NAME --from APP) rather than ask a
+	// person for it again.
+	Elsewhere map[string][]string `json:"elsewhere,omitempty"`
+	Grants    []ConnectionGrant   `json:"grants"`
 	// Waiting is whether a blocked deploy waits on this connection's grant.
 	Waiting bool `json:"waiting"`
 	// Keypair is the key pair Whisk made for the connection, when its recipe asks for one: nil

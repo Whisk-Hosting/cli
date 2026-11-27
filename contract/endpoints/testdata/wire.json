@@ -2872,6 +2872,15 @@
         "ai": {
           "$ref": "#/$defs/apitypes.ConnectionAI"
         },
+        "elsewhere": {
+          "additionalProperties": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "type": "object"
+        },
         "grants": {
           "items": {
             "$ref": "#/$defs/apitypes.ConnectionGrant"

@@ -270,12 +270,28 @@ func TestGrantsNeededBlock(t *testing.T) {
 }
 
 func TestGrantBlock(t *testing.T) {
-	e := grantBlock("erp", "acme", "crm", "https://whisk.run/o/acme/apps/crm/secrets")
-	if e.Code != "NEEDS_HUMAN" || output.ExitCode(e) != output.ExitNeedsHuman || e.Details["url"] != "https://whisk.run/o/acme/apps/crm/secrets" || e.Details["name"] != "erp" {
+	page := connectionURL("https://whisk.run", "acme", "crm", "erp")
+	if page != "https://whisk.run/o/acme/apps/crm/secrets#system-erp" {
+		t.Errorf("page: %s", page)
+	}
+	e := grantBlock("erp", "acme", "crm", page, nil)
+	if e.Code != "NEEDS_HUMAN" || output.ExitCode(e) != output.ExitNeedsHuman || e.Details["url"] != page || e.Details["name"] != "erp" {
 		t.Errorf("block: %+v", e)
 	}
-	if !strings.Contains(e.Fix, "whisk connections show erp") {
+	if !strings.Contains(e.Fix, "whisk connections show erp") || strings.Contains(e.Fix, "secrets share") {
 		t.Errorf("fix: %q", e.Fix)
+	}
+	// A key another app of the business holds is shared first, never asked for again.
+	e = grantBlock("erp", "acme", "crm", page, map[string][]string{"ERP_KEY": {"hub"}, "ERP_ID": {"hub", "shop"}})
+	if !strings.Contains(e.Fix, "whisk secrets share ERP_ID --from hub and whisk secrets share ERP_KEY --from hub") || !strings.Contains(e.Fix, "never ask for them again") {
+		t.Errorf("fix with keys elsewhere: %q", e.Fix)
+	}
+}
+
+func TestWaitsForNamesWhoHoldsAKey(t *testing.T) {
+	c := api.Connection{Unset: []string{"ERP_KEY", "ERP_ID"}, Elsewhere: map[string][]string{"ERP_KEY": {"hub"}}}
+	if got := waitsFor(c); got != "keys ERP_KEY (held by hub: whisk secrets share ERP_KEY --from hub), ERP_ID" {
+		t.Errorf("waits for: %q", got)
 	}
 }
 
@@ -434,15 +450,18 @@ func TestConnectionsCommands(t *testing.T) {
 	before := len(calls())
 	r = runRemote(t, dir, srv.URL, nil, "connections", "grant", "erp", "--json")
 	e := r.JSON["error"].(map[string]any)
-	if r.Code != 2 || e["code"] != "NEEDS_HUMAN" || e["details"].(map[string]any)["url"] != page {
+	if r.Code != 2 || e["code"] != "NEEDS_HUMAN" || e["details"].(map[string]any)["url"] != page+"#system-erp" {
 		t.Fatalf("grant: %+v", r)
 	}
 	r = runRemote(t, dir, srv.URL, nil, "connections", "grant", "erp")
 	if r.Code != 2 || !strings.Contains(r.Stderr, "NEEDS_HUMAN") || !strings.Contains(r.Stderr, page) {
 		t.Fatalf("grant human: %+v", r)
 	}
-	if len(calls()) != before {
-		t.Errorf("grant called the platform: %v", calls()[before:])
+	// grant only reads the connections, for a key the business already holds; it never grants.
+	for _, c := range calls()[before:] {
+		if !strings.HasPrefix(c, "GET ") {
+			t.Errorf("grant changed something on the platform: %v", c)
+		}
 	}
 
 	r = runRemote(t, dir, srv.URL, nil, "connections", "pause", "erp", "--env", "production", "--json")

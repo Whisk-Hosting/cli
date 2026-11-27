@@ -115,7 +115,10 @@ Call `$WHISK_CONNECTION_ERP_URL/stock/42` with the header `Whisk-Service-Token:
 $WHISK_SERVICE_TOKEN` (or `Authorization: Bearer $WHISK_SERVICE_TOKEN` when the API's own
 credential goes in another header); a client library pointed at that address needs only that
 default header. Never put the API's key in code or under `secrets`: the keys a recipe reads
-(`secret.NAME`) are declared for you, a person sets them, and they never reach the app.
+(`secret.NAME`) are declared for you, a person sets them, and they never reach the app. A key is
+the business's: when another app of it already holds one the recipe names (`whisk connections
+list` says which app), share it with `whisk secrets share NAME --from <app>` and never ask the
+person to paste it again; their one tap granting the connection then lets the app use it.
 
 The recipe is text with `{expression}` placeholders built from fixed functions, so any API's
 sign-in can be described: `basic(secret.USER, secret.PASSWORD)`; a signature such as
