@@ -400,7 +400,7 @@ kv: false                         # a Redis of its own (§9) · paid
 kv_evict: true                    # false for a job queue: a full cache refuses writes (§9)
 email: false                      # sending email (§9) · every plan
 always_on: false                  # never sleeps · paid
-b2b: false                        # the shop template's trade ordering, Promoted apps only (§4) · paid
+b2b: false                        # the shop template's trade ordering, any paid plan or a Promoted app (§4) · paid
 commerce: medusa                  # the shop template's own setting: keep it in a shop made from it (§4)
 content: payload                  # the site and shop templates' own setting: keep it (§4)
 workers: []                       # an existing app's own job processes: one on a paid plan, more on a Promoted app (§4) · paid

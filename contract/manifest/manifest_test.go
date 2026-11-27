@@ -191,7 +191,7 @@ func TestNeedsPromoted(t *testing.T) {
 		{"promoted: false alone", "promoted: false\n", false},
 		{"workers", worker, true},
 		{"workers, promoted: false", "promoted: false\n" + worker, true},
-		{"trade ordering", "b2b: true\n", true},
+		{"trade ordering comes with any paid plan", "b2b: true\n", false},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {

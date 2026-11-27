@@ -74,7 +74,7 @@ type Manifest struct {
 	// migrations run, from Extensions' list (SKILL.md §5).
 	Extensions []string `json:"extensions"`
 	// B2B asks the build for trade ordering, the shop template's private plugin, which Whisk
-	// gives only to Promoted apps in force (CONTRACT.md §11, NeedsPromoted).
+	// gives to apps of a business on any paid plan, and to Promoted apps (CONTRACT.md §11).
 	B2B bool `json:"b2b"`
 	// Commerce is "medusa" when the app's API is the shop template's Medusa server, which Whisk
 	// may answer with its own commerce server (CONTRACT.md §11).
@@ -1064,13 +1064,14 @@ func checkSignIn(m Manifest) Problems {
 // app's own login cannot (CONTRACT.md §3).
 var AllowedExtensions = []string{"vector", "pg_trgm"}
 
-// NeedsPromoted is whether the app's code uses what a Promoted app has: workers, or trade
-// ordering. The control plane lets one worker run on a plan that keeps apps on
+// NeedsPromoted is whether the app's code uses what a Promoted app has: workers. Trade
+// ordering comes with any paid plan, so it is not one (the control plane's
+// model.TradeIncluded). The control plane lets one worker run on a plan that keeps apps on
 // (scheduler.PlanWorker). Its production deploy then waits until the business makes it a Promoted app in the
 // dashboard (PROMOTED_APP_REQUIRED). It reads only what the code uses, never the promoted key,
 // so a business that stops promoting an app never has to change the app's files to deploy it
 // again. Pure, table-tested.
-func (m Manifest) NeedsPromoted() bool { return len(m.Workers) > 0 || m.B2B }
+func (m Manifest) NeedsPromoted() bool { return len(m.Workers) > 0 }
 
 // KeepsKVKeys reports whether the app's cache keeps every key when full instead of evicting:
 // only when it asks for a cache and sets kv_evict: false. Pure.

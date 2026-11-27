@@ -50,8 +50,8 @@ plan's, when it gives more), and is served first when its server is busy. Never 
 anything in this skill, and never promote an app yourself: it is charged, so it is the owner's
 choice. Only the dashboard says whether an app is a Promoted app: whisk.yaml never does, so
 leave `promoted:` out of it (doctor's W179), and never change the app's files when an owner
-promotes it or stops. An app with more than one worker, or `b2b: true`, needs a Promoted app,
-and so does one worker on the free plan; one worker on a paid plan runs in the app's own memory
+promotes it or stops. An app with more than one worker needs a Promoted app, and so does one
+worker, or `b2b: true`, on the free plan; one worker on a paid plan runs in the app's own memory
 and keeps it on. When it needs one, its production deploy waits, `blocked` with `PROMOTED_APP_REQUIRED`, until an owner promotes it,
 and goes live by itself after; relay the NEEDS_HUMAN block. Previews of it run with a Promoted
 app's memory without waiting. Everything else in this skill still applies.
@@ -89,8 +89,9 @@ A Promoted app is where an existing product brings what it already has:
   (GST number, phone, address, policy pages, own domain and email) without holding up the launch.
 - **Trade ordering.** The shop template runs on any plan with room for it and
   keeps its own customer sign-in. Its trade ordering (companies, trade prices, paying on
-  account, the ERP link) comes only with Promoted apps: with `b2b: true` a production deploy
-  waits until the app is one, and a preview of an app not yet promoted fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
+  account, the ERP link) comes with any paid plan, or with a Promoted app on the free plan: with
+  `b2b: true` on the free plan a production deploy waits until the app is one, and a preview
+  fails with `B2B_UNAVAILABLE`. Its whisk.yaml says
   `commerce: medusa`: keep it, since Whisk's commerce engine answers its API (`/store`,
   `/admin`, `/auth`, `/hooks`, in Medusa's shape) and the app serves only its pages. The site
   and shop templates' whisk.yaml say `content: payload`: keep it, since Whisk's content engine

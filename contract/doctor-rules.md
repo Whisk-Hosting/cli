@@ -1037,5 +1037,5 @@ Safe fix: no
 Details: Whisk does not read the key, whatever its value. A Promoted app is something a business
 buys, so only the platform says whether an app is one; a whisk.yaml that said so would go stale
 the moment the business stopped promoting the app. What
-needs a Promoted app is read from what the app uses (`workers` beyond the plan's one, `b2b: true`;
-`manifest.NeedsPromoted`, `scheduler.PlanWorker`), and its production deploy waits with `PROMOTED_APP_REQUIRED` only then.
+needs a Promoted app is read from what the app uses (`workers` beyond the plan's one;
+`manifest.NeedsPromoted`, `scheduler.PlanWorker`; `b2b: true` on the free plan, `model.TradeIncluded`), and its production deploy waits with `PROMOTED_APP_REQUIRED` only then.
