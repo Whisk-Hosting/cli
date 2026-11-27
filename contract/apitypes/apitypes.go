@@ -787,6 +787,9 @@ type CreateDeployRequest struct {
 	DeployID    string `json:"deploy_id,omitempty"` // roll back to this deploy's build
 	CommitSHA   string `json:"commit_sha,omitempty"`
 	Environment string `json:"environment,omitempty"` // default production
+	// Rebuild builds the named commit again instead of deploying its build, so the deploy
+	// carries what the platform puts in a build now (its engines, a base image's fixes).
+	Rebuild bool `json:"rebuild,omitempty"`
 }
 
 // DeclareSecretRequest is POST /orgs/:org/secrets.

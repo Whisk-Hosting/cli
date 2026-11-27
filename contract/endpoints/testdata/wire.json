@@ -3442,6 +3442,9 @@
         },
         "environment": {
           "type": "string"
+        },
+        "rebuild": {
+          "type": "boolean"
         }
       },
       "type": "object"

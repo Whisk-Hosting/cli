@@ -870,6 +870,16 @@
    {
     "usage": "whisk deploys log [\u003cid\u003e]",
     "short": "Print a deploy's whole build log, or the app's last lines when it failed to start"
+   },
+   {
+    "usage": "whisk deploys rebuild [--env name]",
+    "short": "Build the live version again and deploy it, so it carries what a build gets now",
+    "flags": [
+     {
+      "name": "--env string",
+      "usage": "production or preview:\u003cbranch\u003e (default production)"
+     }
+    ]
    }
   ]
  },

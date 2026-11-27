@@ -1363,7 +1363,7 @@ migrate, it also prints the lines the deploy's error carries. --json gives {"dep
 			return nil
 		},
 	}
-	deploys.AddCommand(list, info, cancel, logCmd)
+	deploys.AddCommand(list, info, cancel, logCmd, deploysRebuildCmd(s))
 	return deploys
 }
 
@@ -1645,4 +1645,34 @@ func latestDeployID(recent []api.Deploy) (string, error) {
 		return "", output.New("NOT_FOUND", "This app has no deploys yet, so there is no log to print.", "Deploy it with whisk deploy, then run whisk deploys log.", nil)
 	}
 	return recent[0].ID, nil
+}
+
+// deploysRebuildCmd builds the environment's live commit again and deploys it (CONTROL-PLANE.md
+// §6.5), so a version already live carries the platform as it is now.
+func deploysRebuildCmd(s *session) *cobra.Command {
+	var rebuildEnv string
+	rebuild := &cobra.Command{
+		Use:   "rebuild [--env name]",
+		Short: "Build the live version again and deploy it, so it carries what a build gets now",
+		Long: `Builds the environment's live commit again and deploys it, with no push. A build carries the
+platform's engines and its base image as they were when it ran, so this is how a version already
+live picks up an engine fix or a base image's fixes without a change of its own.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			d, err := api.Send(s.ctx, client, endpoints.CreateDeploy, api.CreateDeployRequest{Environment: rebuildEnv, Rebuild: true}, org, app)
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "deploy": d}, func(w io.Writer) {
+				fmt.Fprintf(w, "Building %s again as deploy %s. Follow it with: whisk deploys info %s\n", short(d.CommitSHA), d.ID, d.ID)
+			})
+			return nil
+		},
+	}
+	rebuild.Flags().StringVar(&rebuildEnv, "env", "", "production or preview:<branch> (default production)")
+	return rebuild
 }
