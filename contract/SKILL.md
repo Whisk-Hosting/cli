@@ -643,18 +643,21 @@ whisk.yaml no longer names, you remove with `whisk secrets delete NAME`; one wit
 person deletes.
 
 Previews get a secret only when a person has shared it with previews, so by default a preview
-runs without production's keys and must cope with them missing. If a preview needs one, run
-`whisk secrets set NAME --previews` and relay the link; turning it on is the human's decision.
+runs without production's keys and must cope with them missing. A preview that starts without a
+key the business already has, or a connection, carries `GRANT_OFFERED`: relay its link, the
+same one-tap approval a production deploy waits on, which shares the key with previews and
+starts the preview again. For the app's own key, run `whisk secrets set NAME --previews` and
+relay the link; turning it on is the human's decision.
 
-**How the business's key reaches this app.** A production deploy that names a key another app
-of the business holds waits with `GRANT_NEEDED` (kind `secret`, whose `change` names that app)
-instead of asking for a value: the one tap that allows the deploy shares the value and lets this
-app read it. Relay that link with everything else the deploy waits on; never send the person to
-paste the key or to the Keys page as a separate step. Outside production, `SECRET_UNSET` says which
-app holds it (`details.elsewhere`): run `whisk secrets share NAME --from <app>`. A business secret
-reaches only the apps on its list (`whisk secrets apps NAME`), and the deploy's one approval adds
-the app to it. A preview starts without a business secret its app is not on the list of and says
-so (`SECRET_NOT_GRANTED`). Keys never move between businesses. Values shorter than 8 characters
+**How the business's key reaches this app.** A deploy that names a key another app of the
+business holds is offered it instead of asking for a value: production waits with `GRANT_NEEDED`
+and a preview starts with `GRANT_OFFERED` (kind `secret`, whose `change` names that app). The one
+tap that allows it shares the value and lets this app read it, in production and previews alike.
+Relay that link with everything else it offers; never send the person to paste the key or to the
+Keys page as a separate step. Where a command still reports a key missing that another app holds
+(`SECRET_UNSET`'s `details.elsewhere`, `whisk connections list`), run `whisk secrets share NAME
+--from <app>`. A business secret reaches only the apps on its list (`whisk secrets apps NAME`),
+and the one approval adds the app to it. Keys never move between businesses. Values shorter than 8 characters
 are refused (`SECRET_TOO_SHORT`) because they cannot be scrubbed; put those under `env`.
 
 ## 7. Jobs and workflows

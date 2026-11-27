@@ -1094,6 +1094,24 @@ and when the fix names a kept copy, offer to show the person the rows it changes
 {"error":{"code":"GRANT_NEEDED","message":"This deploy waits for an owner or admin to approve what the update does to the data people entered (1 row of notes is removed; 2 rows of notes have a different value in body).","fix":"Ask an owner or admin to approve it at https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z: it takes one tap there, signed in. Do not try to approve it yourself. The deploy starts when it is approved. To look first, read the data as the update left it with whisk db query --database app_crm_restore_1762765200 until 2026-11-11T09:00:00Z.","docs":"https://skill.whisk.run/errors/GRANT_NEEDED","details":{"grants":[{"kind":"data","name":"rows:notes","environment":"production","hash":"sha256:4b1e…","recipe_changed":false,"new_operations":[],"change":"1 row of notes is removed."},{"kind":"data","name":"column:notes.body:changed","environment":"production","hash":"sha256:4b1e…","recipe_changed":false,"new_operations":[],"change":"2 rows of notes have a different value in body."}],"unset_secrets":[],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9Z"}}}
 ```
 
+
+## GRANT_OFFERED
+
+Status: - · Surface: deploy
+
+When: a preview starts without something a person can allow in one tap: a connection not granted
+in previews, or a key the business already has that the preview does not get (off the app's list,
+not shared with previews, or still another app's own). The preview never waits; the deploy
+carries this warning, with the names in `details.names` and the entries in
+`details.grants_needed` (each `environment: previews`), and its `grants_needed` holds them.
+
+Fix: Relay `details.url`, the deploy's approval link, to an owner or admin: one tap there allows
+it, shares the keys with previews and starts the preview again with them. Never ask them to paste
+a key the business already has.
+
+```json
+{"error":{"code":"GRANT_OFFERED","message":"The preview started without MAPS_KEY, erp, which a person can allow crm's previews in one tap.","fix":"Relay https://whisk.run/o/acme/apps/crm/deploys?approve=01J9 to an owner or admin: one tap there allows it and starts the preview again with it. Never ask them to paste a key the business already has.","docs":"https://skill.whisk.run/errors/GRANT_OFFERED","details":{"names":["MAPS_KEY","erp"],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9"}}}
+```
 ## SECRET_HELD
 
 Status: - · Surface: deploy
@@ -1115,18 +1133,14 @@ push. The value stays as it is; nobody sets it again.
 
 Status: - · Surface: deploy
 
-When: a preview deploy's manifest names a secret the business shares that the app is not on the
-list of apps for. The preview never waits: it starts without the
-secret, and the deploy carries this warning with the names in `details.names`. A production
-deploy waits instead, with `GRANT_NEEDED`.
+When: no longer sent. A preview that starts without a business secret its app is not on the list
+of carries `GRANT_OFFERED` instead, with the same one-tap approval a production deploy waits on.
+A client that reads this code reads `GRANT_OFFERED` too.
 
-`details.url` opens that one key on the business's Keys page when one secret is named
+`details.url` opened that one key on the business's Keys page when one secret was named
 (`?key=NAME`), else the Keys page.
 
-Fix: If the app should use it, deploy to production and relay the approval link of the deploy
-that waits for it: one tap there adds the app to the secret's apps along with anything else the
-deploy waits on. A preview also
-needs the secret shared with previews.
+Fix: Relay the preview deploy's `GRANT_OFFERED` link.
 
 ```json
 {"error":{"code":"SECRET_NOT_GRANTED","message":"The preview started without the shared secret MAPS_KEY: crm is not on the list of apps the business shares it with.","fix":"If crm should use it, deploy to production and relay the approval link of the deploy that waits for it: one tap there adds crm to its apps (https://whisk.run/o/acme/keys?key=MAPS_KEY). A preview also needs the secret shared with previews.","docs":"https://skill.whisk.run/errors/SECRET_NOT_GRANTED","details":{"names":["MAPS_KEY"],"url":"https://whisk.run/o/acme/keys?key=MAPS_KEY"}}}
