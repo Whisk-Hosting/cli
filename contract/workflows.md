@@ -61,6 +61,9 @@ code you write:
   are sleeping or waiting for an event count. Set `concurrency: { limit: N }` at or below your
   plan's number so a burst queues instead of parking the function.
 - **Steps per run.** A run past 1,000 steps is cancelled with `RUN_STEP_LIMIT`.
+- **Schedules that keep failing.** When 5 runs in a row of a scheduled function fail in your
+  code, its schedule runs at most once an hour and you are told. The full schedule comes back by
+  itself when a run succeeds or a deploy goes live; `whisk cron run` starts it at any time.
 - **Events per minute.** Your plan's rate; more are refused with `EVENT_RATE_LIMITED`.
 - **Run state.** The engine sends each call the event and every step's output, up to 64 MB in
   all; keep outputs small and store large data in the database or the storage bucket.

@@ -215,6 +215,9 @@ func (s *session) doctorGate(org, app string, client *api.Client) error {
 		if line := observeLine(rep.Findings); line != "" {
 			s.printer.Progress("%s", line)
 		}
+		if line := staffLine(rep.Findings); line != "" {
+			s.printer.Progress("%s", line)
+		}
 		return nil
 	}
 	if !s.json {
@@ -240,6 +243,22 @@ func observeLine(findings []doctor.Finding) string {
 		return ""
 	}
 	return fmt.Sprintf("Not set up: %s. The app does not send them yet; SKILL.md §3 \"Errors and traces\" shows how for this stack.", strings.Join(missing, " and "))
+}
+
+// staffLine names, at deploy, the routes named for staff that every signed-in customer can open
+// (W180), since a count of warnings hides the one that leaks a business's data; "" when there are
+// none. Pure.
+func staffLine(findings []doctor.Finding) string {
+	var where []string
+	for _, f := range findings {
+		if f.Rule == "W180" {
+			where = append(where, f.File)
+		}
+	}
+	if len(where) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("Open to signed-in customers: routes named for staff in %s never check who the caller is (W180). whisk doctor says how to close them.", strings.Join(where, ", "))
 }
 
 // gitRun runs git in the app directory; a missing binary is a CLI error with a fix.

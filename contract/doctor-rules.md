@@ -1039,3 +1039,23 @@ buys, so only the platform says whether an app is one; a whisk.yaml that said so
 the moment the business stopped promoting the app. What
 needs a Promoted app is read from what the app uses (`workers` beyond the plan's one;
 `manifest.NeedsPromoted`, `scheduler.PlanWorker`; `b2b: true` on the free plan, `model.TradeIncluded`), and its production deploy waits with `PROMOTED_APP_REQUIRED` only then.
+
+## W180
+
+Level: warning
+Check: the app signs in its customers (customer_identity app or org) and serves a route named for staff that never checks who the caller is.
+Fix: Answer the route only to the business's team: check that X-Whisk-Audience is team, or the caller's role with hasRole (has_role, HasRole), in the route or in a middleware every request passes.
+Safe fix: no
+
+Details: the edge signs every caller in before the app sees a request, and with
+`customer_identity` on that includes customers, so a route is open to every signed-in customer
+unless its code asks. A route named for staff has a segment `admin`, `administrator`, `manage`,
+`internal` or `staff`, registered in server code with any method (JavaScript `.get(`, `.post(`,
+`.use(`, `.all(`, `.route(` and the like; Python `@app.get(`, `@app.route(` and the like; Go
+`.Get(`, `.Group(`, `HandleFunc("/admin/…")` and the like), or a file under such a segment in a
+folder a framework serves by path (`app/`, `pages/`, `routes/`, `server/api/`). A file counts as
+checking when it reads `X-Whisk-Audience` or `X-Whisk-Roles`, the caller's `audience` or `roles`,
+or calls `hasRole(`, `scopeFor(`, `canSee(`, `canChange(` or their Python and Go spellings; a
+`middleware` or `hooks.server` file that checks covers every route. Skipped for a Promoted app, a
+shop, or an app with its own sign-in (W099's exceptions). One finding per file, at its first such
+route.

@@ -2678,6 +2678,21 @@ Fix: Remove the link. If the address is yours and the list is wrong, write to su
 {"error":{"code":"EMAIL_LINK_BLOCKED","message":"The message links to bad.example, which a phishing list names.","fix":"Remove the link. If the address is yours and the list is wrong, write to support@whisk.run.","docs":"https://skill.whisk.run/errors/EMAIL_LINK_BLOCKED","details":{"host":"bad.example"}}}
 ```
 
+## EMAIL_REPEATED
+
+Status: - · Surface: container (a warning in the app's logs)
+
+When: an app sent the same message (subject and body) to the same person three times within ten
+minutes. Every one was sent; the line is written once per message and window. A send that
+carries an Idempotency-Key already used is the same message and is not counted.
+
+Fix: If a retry or a job that runs twice sends it, give each send an Idempotency-Key, so a retry
+is the same message and goes once.
+
+```json
+{"error":{"code":"EMAIL_REPEATED","message":"The email \"Your order\" went to the same person 3 times in 10 minutes. Each was sent.","fix":"If a retry or a job running twice sends it, give each send an Idempotency-Key, so a retry is the same message and goes once.","docs":"https://skill.whisk.run/errors/EMAIL_REPEATED"}}
+```
+
 ## EMAIL_RATE_LIMITED
 
 Status: 429 · Surface: api
@@ -3320,6 +3335,22 @@ Fix: Run the SQL again without `--confirm` for a fresh preview and code.
 {"error":{"code":"CONFIRM_CHANGED","message":"Nothing was changed: the SQL would now delete 50 rows in public.orders, not delete 48 rows in public.orders as the preview said.","fix":"Run the SQL again without --confirm for a fresh preview and code.","docs":"https://skill.whisk.run/errors/CONFIRM_CHANGED","details":{}}}
 ```
 
+## QUERY_SLOW
+
+Status: - · Surface: container (a warning in the app's logs)
+
+When: a query of the app's production database ran longer than the platform's slow-query line
+(one second). The query ran to the end; nothing is stopped or limited. The line names the
+statement with its values taken out, how often it ran slow in the last ten minutes and the
+slowest time, and says each statement at most once a day.
+
+Fix: Add an index on the columns the query's WHERE, JOIN and ORDER BY read (EXPLAIN shows a Seq
+Scan on a large table when one is missing), or fetch fewer rows at once.
+
+```json
+{"error":{"code":"QUERY_SLOW","message":"A query ran for 2.5 s (3 times in the last 10 minutes): SELECT * FROM orders WHERE email = ?. It ran to the end.","fix":"Add an index on the columns its WHERE, JOIN and ORDER BY read, or fetch fewer rows at once.","docs":"https://skill.whisk.run/errors/QUERY_SLOW"}}
+```
+
 ## QUERY_FAILED
 
 Status: 422 · Surface: api, cli
@@ -3438,6 +3469,24 @@ image.
 
 ```json
 {"error":{"code":"PACKAGE_CHECK_OFF","message":"This platform does not send lockfiles to osv.dev, so they cannot be checked before a deploy.","fix":"Deploy as usual: once the app is live the platform's registry checks the packages in its image. The platform's team can turn the lockfile check on with WHISK_OSV=on.","docs":"https://skill.whisk.run/errors/PACKAGE_CHECK_OFF","details":{"setting":"WHISK_OSV"}}}
+```
+
+## MIGRATION_RISKY
+
+Status: - · Surface: git (a warning)
+
+When: a push to the production branch adds a migration that removes or renames a table, column,
+view, function or type, or changes a column's type. The push is accepted and the deploy runs as
+before, with a restore point taken before the migration. The version live while the migration
+runs may still read what it removes, and a type change writes the table again, holding its reads
+and writes until it ends.
+
+Fix: Deploy code that no longer uses the name first, then the migration in a later deploy; for a
+type change on a large table, add a new column, fill it in batches and switch reads to it.
+`whisk rollback --data` puts the data back.
+
+```json
+{"error":{"code":"MIGRATION_RISKY","message":"db/migrations/0012_drop.sql:1 removes companies.phone while the version live now may still read it, so its requests can fail until this deploy takes over.","fix":"Deploy code that no longer uses companies.phone first, then the migration in a later deploy. The deploy takes a restore point before the migration, and whisk rollback --data puts the data back.","docs":"https://skill.whisk.run/errors/MIGRATION_RISKY"}}
 ```
 
 ## REPO_LARGE
@@ -3837,6 +3886,22 @@ plan.
 
 ```json
 {"error":{"code":"APP_CPU_SLEEP","message":"whisk: put to sleep at 09:30:05 UTC for using all of its 0.5 core processor share for ten minutes (APP_CPU_SLEEP). The next request wakes it.","fix":"Find the loop or heavy job that keeps it busy, spread the work out, or move to a paid plan, where a busy app keeps running.","docs":"https://skill.whisk.run/errors/APP_CPU_SLEEP","details":{}}}
+```
+
+## APP_MEMORY_RESTARTED
+
+Status: - · Surface: container (a platform line in the app's logs)
+
+When: the app's memory stayed at 92 % of its container's limit or more for ten minutes, so the
+platform started a new copy of the live release and let it take over before the old one stopped.
+No request was turned away. It happens at most once every six hours for one app; past that the app
+runs on and is killed at its limit with `APP_OUT_OF_MEMORY`. The owners hear at most once a day.
+
+Fix: Find what keeps growing (a cache or list that never shrinks, listeners added on every request,
+large files read whole) with `whisk apps info` and the memory chart, or give the app Boost.
+
+```json
+{"error":{"code":"APP_MEMORY_RESTARTED","message":"Started again at 12:00:00 UTC because its memory stayed at 94% of its 512 MiB limit since 11:50 UTC.","fix":"Find what keeps growing with whisk apps info and the memory chart, or give the app Boost.","docs":"https://skill.whisk.run/errors/APP_MEMORY_RESTARTED"}}
 ```
 
 ## APP_MEMORY_HIGH
