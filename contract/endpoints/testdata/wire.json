@@ -5050,6 +5050,12 @@
     },
     "apitypes.EmailSent": {
       "properties": {
+        "held": {
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
         "id": {
           "type": "string"
         },
@@ -5739,6 +5745,30 @@
         "kind",
         "message",
         "redacted"
+      ],
+      "type": "object"
+    },
+    "apitypes.FilesRestored": {
+      "properties": {
+        "kept_since": {
+          "format": "date-time",
+          "type": "string"
+        },
+        "more": {
+          "type": "boolean"
+        },
+        "newer": {
+          "type": "integer"
+        },
+        "restored": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "kept_since",
+        "more",
+        "newer",
+        "restored"
       ],
       "type": "object"
     },
@@ -9457,6 +9487,21 @@
         "ip",
         "network",
         "os"
+      ],
+      "type": "object"
+    },
+    "apitypes.RestoreFilesRequest": {
+      "properties": {
+        "prefix": {
+          "type": "string"
+        },
+        "since": {
+          "format": "date-time",
+          "type": "string"
+        }
+      },
+      "required": [
+        "since"
       ],
       "type": "object"
     },
@@ -13910,6 +13955,14 @@
       },
       "body": {
         "$ref": "#/$defs/apitypes.EventRequest"
+      }
+    },
+    "POST /v1/orgs/{org}/apps/{app}/files/restore": {
+      "answer": {
+        "$ref": "#/$defs/apitypes.FilesRestored"
+      },
+      "body": {
+        "$ref": "#/$defs/apitypes.RestoreFilesRequest"
       }
     },
     "POST /v1/orgs/{org}/apps/{app}/fork/suggestions": {

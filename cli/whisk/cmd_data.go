@@ -190,7 +190,7 @@ app's restores.`,
 			return nil
 		},
 	}
-	c.AddCommand(show, list, restoreDiscardCmd(s))
+	c.AddCommand(show, list, restoreDiscardCmd(s), restoreFilesCmd(s))
 	return c
 }
 
@@ -220,6 +220,60 @@ while the plan's restore window reaches back that far.`,
 			return nil
 		},
 	}
+}
+
+// restoreFilesCmd is whisk restore files: the app's deleted files put back (CLI.md §5.9,
+// CONTROL-PLANE.md §6.13 "Deleted files are kept for a week").
+func restoreFilesCmd(s *session) *cobra.Command {
+	var since, prefix string
+	c := &cobra.Command{
+		Use:   "files --since <RFC 3339 time | duration ago> [--prefix path/]",
+		Short: "Put back the app's files deleted since a moment in the last week",
+		Long: `Puts back the app's production files deleted at or after --since, a moment in the last week:
+every file the app or the business deletes is kept that long, on every plan. --prefix narrows it to
+the keys under a path, as the app names them. A file whose name a newer file has taken since is
+left as it is, and counted. Nothing else changes, and the restore is audited.
+
+One run puts back up to 2000 files; when more remain it says so, and running it again carries on.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if since == "" {
+				return output.New("INVALID_REQUEST", "Say from when to put deleted files back with --since.", "Pass --since with a duration ago like 2h, or an RFC 3339 time like 2026-09-07T14:13:00Z, from just before the delete.", nil)
+			}
+			at, err := parseSince(since, time.Now())
+			if err != nil {
+				return output.New("INVALID_REQUEST", fmt.Sprintf("--since %q is not a time or a duration.", since), "Pass an RFC 3339 time like 2026-09-07T14:13:00Z, or a duration ago like 2h or 3d.", nil)
+			}
+			client, org, app, err := s.appClient()
+			if err != nil {
+				return err
+			}
+			r, err := client.RestoreFiles(s.ctx, org, app, at, prefix)
+			if err != nil {
+				return wrap(err)
+			}
+			s.printer.Result(map[string]any{"org": org, "app": app, "files": r}, func(w io.Writer) { fmt.Fprintln(w, filesRestoredLine(r)) })
+			return nil
+		},
+	}
+	c.Flags().StringVar(&since, "since", "", "put back what was deleted at or after this: RFC 3339, or a duration ago (2h, 3d)")
+	c.Flags().StringVar(&prefix, "prefix", "", "only the keys under this path, as the app names them")
+	return c
+}
+
+// filesRestoredLine says what a restore of deleted files did. Pure.
+func filesRestoredLine(r api.FilesRestored) string {
+	line := fmt.Sprintf("Put back %d deleted file%s.", r.Restored, plural(r.Restored))
+	if r.Restored == 0 {
+		line = "No deleted file to put back since then."
+	}
+	if r.Newer > 0 {
+		line += fmt.Sprintf(" Left %d kept: a newer file has that name now.", r.Newer)
+	}
+	if r.More {
+		line += " More remain: run it again to carry on."
+	}
+	return line
 }
 
 // restoreTo is the moment whisk restore goes back to with --at, or zero with --before, which

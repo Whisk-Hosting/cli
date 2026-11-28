@@ -42,3 +42,10 @@ func TestEveryShapeHasANameAndCompiles(t *testing.T) {
 		t.Error("two shapes share a name")
 	}
 }
+
+func TestIsNamesOneShape(t *testing.T) {
+	live := "sk_live_" + "51HxQ2eZvKYlo2C0aBcDeFgHiJ"
+	if !Is("stripe_key", live) || Is("stripe_key", "sk_test_"+"51HxQ2eZvKYlo2C0aBcDeFgHiJ") || Is("github_token", live) || Is("no_such_shape", live) {
+		t.Error("Is does not tell a live Stripe key by its shape alone")
+	}
+}

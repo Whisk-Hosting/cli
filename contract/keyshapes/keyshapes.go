@@ -46,3 +46,13 @@ func Text(v string) string {
 	}
 	return v
 }
+
+// Is reports whether v holds a credential of the shape named name. Pure.
+func Is(name, v string) bool {
+	for i, s := range Shapes {
+		if s.Name == name {
+			return compiled[i].MatchString(v)
+		}
+	}
+	return false
+}

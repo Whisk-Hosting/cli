@@ -14,9 +14,9 @@ import (
 
 // storeRoute is the diagnostic the platform's harness drives to see what this app's store key
 // reaches (CONTRACT.md §8): each environment's key reaches its own prefix and nothing else.
-// ?put=<key> writes a small object, ?get=<key> reads one, ?list=<prefix> lists one ("/" lists
-// the whole bucket). Each answers ok, denied, missing or error. The answer also names the
-// environment's bucket and prefix, which are not secrets.
+// ?put=<key> writes a small object, ?get=<key> reads one, ?delete=<key> deletes one (after the
+// read), ?list=<prefix> lists one ("/" lists the whole bucket). Each answers ok, denied, missing
+// or error. The answer also names the environment's bucket and prefix, which are not secrets.
 func storeRoute(w http.ResponseWriter, req *http.Request) {
 	c, err := storageClient()
 	if err != nil {
@@ -50,6 +50,11 @@ func storeRoute(w http.ResponseWriter, req *http.Request) {
 			defer o.Close()
 			_, err = io.Copy(io.Discard, o)
 			return err
+		})
+	}
+	if key := q.Get("delete"); key != "" {
+		out["delete"] = call(func(ctx context.Context) error {
+			return c.RemoveObject(ctx, bucket, key, minio.RemoveObjectOptions{})
 		})
 	}
 	if prefix := q.Get("list"); prefix != "" {

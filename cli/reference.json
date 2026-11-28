@@ -1776,6 +1776,20 @@
     "short": "Drop the copy a restore made beside the live database"
    },
    {
+    "usage": "whisk restore files --since \u003cRFC 3339 time | duration ago\u003e [--prefix path/]",
+    "short": "Put back the app's files deleted since a moment in the last week",
+    "flags": [
+     {
+      "name": "--prefix string",
+      "usage": "only the keys under this path, as the app names them"
+     },
+     {
+      "name": "--since string",
+      "usage": "put back what was deleted at or after this: RFC 3339, or a duration ago (2h, 3d)"
+     }
+    ]
+   },
+   {
     "usage": "whisk restore list",
     "short": "List the app's restores, newest first"
    },

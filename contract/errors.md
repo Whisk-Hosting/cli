@@ -1112,6 +1112,22 @@ a key the business already has.
 ```json
 {"error":{"code":"GRANT_OFFERED","message":"The preview started without MAPS_KEY, erp, which a person can allow crm's previews in one tap.","fix":"Relay https://whisk.run/o/acme/apps/crm/deploys?approve=01J9 to an owner or admin: one tap there allows it and starts the preview again with it. Never ask them to paste a key the business already has.","docs":"https://skill.whisk.run/errors/GRANT_OFFERED","details":{"names":["MAPS_KEY","erp"],"url":"https://whisk.run/o/acme/apps/crm/deploys?approve=01J9"}}}
 ```
+## PREVIEW_LIVE_PAYMENT_KEY
+
+Status: - · Surface: container (a line in the preview's logs)
+
+When: a preview started with a live Stripe key (`sk_live_` or `rk_live_`) in a secret shared with
+previews, so payments its untested code makes are real. The key was delivered as shared; the line
+names the secret, never its value, and comes at each start of the preview.
+
+Fix: Share a Stripe test key (`sk_test_`) with previews instead, and keep the live key for
+production: an owner or admin turns Share with previews off for the live one on the app's
+secrets page and on for the test one.
+
+```json
+{"error":{"code":"PREVIEW_LIVE_PAYMENT_KEY","message":"The preview pr-7 started with a live Stripe key in STRIPE_SECRET_KEY, shared with previews, so payments it makes are real.","fix":"Share a Stripe test key with previews instead, and keep the live key for production.","docs":"https://skill.whisk.run/errors/PREVIEW_LIVE_PAYMENT_KEY"}}
+```
+
 ## SECRET_HELD
 
 Status: - · Surface: deploy
@@ -2693,6 +2709,21 @@ is the same message and goes once.
 {"error":{"code":"EMAIL_REPEATED","message":"The email \"Your order\" went to the same person 3 times in 10 minutes. Each was sent.","fix":"If a retry or a job running twice sends it, give each send an Idempotency-Key, so a retry is the same message and goes once.","docs":"https://skill.whisk.run/errors/EMAIL_REPEATED"}}
 ```
 
+## EMAIL_HELD_IN_PREVIEW
+
+Status: - · Surface: container (a line in the preview's logs), api (the send's `held`)
+
+When: a preview sent email to someone who is not a member of the business. A preview sends only to
+the business's members, so that address was left out of the message and nothing went to it; the
+send answers it under `held`. Production sends to everyone as usual.
+
+Fix: Send the message to your own address to see it from a preview; it goes to everyone from
+production.
+
+```json
+{"error":{"code":"EMAIL_HELD_IN_PREVIEW","message":"The preview pr-12 held the message to j***@example.com and did not send it there.","fix":"Send the message to your own address to see it from a preview; it goes to everyone from production.","docs":"https://skill.whisk.run/errors/EMAIL_HELD_IN_PREVIEW"}}
+```
+
 ## EMAIL_RATE_LIMITED
 
 Status: 429 · Surface: api
@@ -2942,6 +2973,19 @@ then try again.
 
 ```json
 {"error":{"code":"BUCKET_UNREACHABLE","message":"The bucket this business brought did not answer.","fix":"Check that the endpoint is your provider's public https:// S3 address and that it is up, then try again.","docs":"https://skill.whisk.run/errors/BUCKET_UNREACHABLE","details":{}}}
+```
+
+## FILES_NOT_KEPT
+
+Status: 409 · Surface: api
+
+When: whisk restore files was asked of an app whose business keeps its files in a bucket it
+brought. Its deletes go straight to its own provider, so the platform kept no copy to put back.
+
+Fix: Put the files back with the bucket's own versions or backups, at its provider.
+
+```json
+{"error":{"code":"FILES_NOT_KEPT","message":"This business keeps its files in a bucket of its own, whose deletes the platform never sees.","fix":"Put the files back with the bucket's own versions or backups, at its provider.","docs":"https://skill.whisk.run/errors/FILES_NOT_KEPT","details":{}}}
 ```
 
 ## UPLOAD_TOO_LARGE

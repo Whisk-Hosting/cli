@@ -26,6 +26,12 @@ it carries on; `whisk uploads list` and `whisk uploads show <id>` read them back
 is stored without a scan, with status `unscanned`, and your app can still use it. If a file must
 be scanned before it is used, split it into pieces under 100 MB before uploading.
 
+**A delete by mistake.** A file your app deletes with its store key, one by one or a thousand at
+a time, is gone for the app at once as with any store, and kept for a week where nothing reaches
+it. `whisk restore files --since 2h [--prefix uploads/]` puts back what was deleted since then,
+leaving any file written again under the same name as it is. It counts against no allowance. A
+removal through the uploads API above takes the upload's record too and is not kept.
+
 **Video and audio.** Never stream video through your app or hand out the 15-minute read link
 for it. Authorise the upload as above with its real `content_type` (`video/mp4`,
 `video/quicktime`, `audio/mpeg`…) and `"visibility": "public"` if anyone may watch it (a
@@ -158,7 +164,9 @@ against the limit; check it after a job's first real run. There is no persistent
 anywhere, and everything in storage is backed up.
 
 **Email** (`email: true`). `POST /v1/orgs/<org>/apps/<app>/email/send` with the service token
-and `{to, subject, html, text, from}`; `to` is one address or a list. Addresses are plain ASCII:
+and `{to, subject, html, text, from}`; `to` is one address or a list. A preview sends only to the
+business's members: anyone else is left out and listed under `held` in the answer, so test with
+your own address; production sends to everyone. Addresses are plain ASCII:
 a name before one may hold any letters (`Zoë <zoe@example.com>`), but an address with accents is
 refused with `INVALID_REQUEST`, since mail servers refuse it (a domain with accents goes in its
 `xn--` form). Leave `from` out and the

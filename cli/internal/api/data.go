@@ -129,3 +129,12 @@ type DBTable = apitypes.DatabaseTable
 func (c *Client) DatabaseSchema(ctx context.Context, org, app, environment, database string) (DBSchema, error) {
 	return Send(ctx, c, endpoints.DbSchema, apitypes.DbSchemaRequest{Environment: environment, Database: database}, org, app)
 }
+
+// FilesRestored is what a restore of deleted files did (CONTROL-PLANE.md §6.13).
+type FilesRestored = apitypes.FilesRestored
+
+// RestoreFiles puts back the app's files deleted at or after since, under prefix.
+// POST /orgs/:org/apps/:app/files/restore.
+func (c *Client) RestoreFiles(ctx context.Context, org, app string, since time.Time, prefix string) (FilesRestored, error) {
+	return Send(ctx, c, endpoints.RestoreFiles, apitypes.RestoreFilesRequest{Since: since.UTC(), Prefix: prefix}, org, app)
+}
