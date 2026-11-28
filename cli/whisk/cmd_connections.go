@@ -635,8 +635,9 @@ func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string
 		listed[i], names[i], changes[i] = g, g.Name, grantChange(g)
 	}
 	unset = nonNilStrings(unset)
-	message := fmt.Sprintf("Deploy %s waits for an owner or admin to allow: %s.", deployID, strings.Join(changes, "; "))
-	fix := fmt.Sprintf("Ask an owner or admin to allow it at %s: it takes one step there, signed in. Tell them plainly what each item lets the app do. Do not try to allow it yourself: only a person, freshly signed in, can. The deploy starts when it is allowed.", page)
+	who := allower(grants)
+	message := fmt.Sprintf("Deploy %s waits for %s to allow: %s.", deployID, who, strings.Join(changes, "; "))
+	fix := fmt.Sprintf("Ask %s to allow it at %s: it takes one step there, signed in. Tell them plainly what each item lets the app do. Do not try to allow it yourself: only a person, freshly signed in, can. The deploy starts when it is allowed.", who, page)
 	if len(unset) > 0 {
 		fix += fmt.Sprintf(" They paste %s on the same page.", strings.Join(unset, ", "))
 	}
@@ -647,6 +648,23 @@ func grantsNeededBlock(deployID string, grants []api.GrantNeeded, unset []string
 		Docs:    werrors.DocsBase + "GRANT_NEEDED",
 		Details: map[string]any{"deploy_id": deployID, "grants": listed, "names": names, "unset_secrets": unset, "url": page},
 	}
+}
+
+// allower is who may allow what a deploy waits on: the person who set every key it would let the
+// app use, when the deploy waits only on keys one person set, or an owner; else an owner or admin
+// (CONTROL-PLANE.md §6.5 "Reusing your own keys never waits"). Pure.
+func allower(grants []api.GrantNeeded) string {
+	name := ""
+	for _, g := range grants {
+		if g.Kind != apitypes.GrantSecret && g.Kind != apitypes.GrantConnection || g.SetBy == "" || g.SetByName == "" || name != "" && name != g.SetByName {
+			return "an owner or admin"
+		}
+		name = g.SetByName
+	}
+	if name == "" {
+		return "an owner or admin"
+	}
+	return name + " or an owner"
 }
 
 // keysPage is where a blocked deploy's keys are pasted: the page the control plane named (a

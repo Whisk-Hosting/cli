@@ -88,3 +88,28 @@ func TestSecretApps(t *testing.T) {
 		t.Errorf("key url %q", got)
 	}
 }
+
+// A deploy that waits only on keys one person set names them as who allows it (CONTROL-PLANE.md
+// §6.5 "Reusing your own keys never waits").
+func TestAllower(t *testing.T) {
+	dana := func(kind apitypes.GrantKind, name string) api.GrantNeeded {
+		return api.GrantNeeded{Kind: kind, Name: name, SetBy: "u7", SetByName: "Dana"}
+	}
+	for _, tc := range []struct {
+		name   string
+		grants []api.GrantNeeded
+		want   string
+	}{
+		{"keys Dana set", []api.GrantNeeded{dana(apitypes.GrantSecret, "ERP_KEY"), dana(apitypes.GrantConnection, "erp")}, "Dana or an owner"},
+		{"keys set by two people", []api.GrantNeeded{dana(apitypes.GrantSecret, "ERP_KEY"), {Kind: apitypes.GrantSecret, Name: "MAIL_KEY", SetBy: "u8", SetByName: "Olivia"}}, "an owner or admin"},
+		{"a key nobody is named for", []api.GrantNeeded{{Kind: apitypes.GrantSecret, Name: "ERP_KEY"}}, "an owner or admin"},
+		{"wider access beside the keys", []api.GrantNeeded{dana(apitypes.GrantSecret, "ERP_KEY"), {Kind: apitypes.GrantAccess, Name: "public:/x", SetBy: "u7", SetByName: "Dana"}}, "an owner or admin"},
+		{"nothing", nil, "an owner or admin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := allower(tc.grants); got != tc.want {
+				t.Fatalf("allower = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
