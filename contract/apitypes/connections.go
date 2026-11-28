@@ -65,6 +65,11 @@ type GrantNeeded struct {
 	// AI is set for a connection to an AI model: the person chooses its spending limit as they
 	// allow it.
 	AI *GrantAI `json:"ai,omitempty"`
+	// SetBy is, for a secret or a connection, the person who set every business key it would
+	// let the app use: they may allow it, as may an owner or admin. Empty when the keys were set
+	// by different people, or by none still in the business. SetByName is how to name them.
+	SetBy     string `json:"set_by,omitempty"`
+	SetByName string `json:"set_by_name,omitempty"`
 }
 
 // GrantAI is the spending limit an Allow page starts an AI connection's fields at: its grant's,

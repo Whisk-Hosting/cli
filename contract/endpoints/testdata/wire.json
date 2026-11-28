@@ -6339,6 +6339,12 @@
         },
         "recipe_changed": {
           "type": "boolean"
+        },
+        "set_by": {
+          "type": "string"
+        },
+        "set_by_name": {
+          "type": "string"
         }
       },
       "required": [
